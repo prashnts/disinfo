@@ -20,39 +20,58 @@ forecast_url = f'https://api.pirateweather.net/forecast/{pw_api_key}/{latitude},
 db = redis.Redis(host='localhost', port=6379, db=0)
 
 keys = {
-    'last_check': 'weather.last_check',
-    'data': 'weather.forecast_data',
+    'weather_last_check': 'weather.last_check',
+    'weather_data': 'weather.forecast_data',
+    'random_msg_last_check': 'misc.random_msg.last_check',
+    'random_msg': 'misc.random_msg',
 }
 
+
 def get_weather():
-    try:
-        r = requests.get(forecast_url)
-        data = r.json()
-    except requests.exceptions.RequestException as e:
-        print('error', e)
+    # Every 15 minutes, fetch the weather.
+    min_delay = 15 * 60
 
-    # write out the forecast.
-    db.set(keys['data'], json.dumps(data))
-    db.set(keys['last_check'], str(int(time.time())))
-
-# Every 15 minutes, fetch the weather.
-min_delay = 15 * 60
-
-while True:
-    last_update = db.get(keys['last_check'])
-
+    last_update = db.get(keys['weather_last_check'])
     if not last_update:
         # first_run
         last_update = -min_delay
     else:
         last_update = int(last_update)
 
-    if time.time() > last_update + min_delay:
-        print('Fetching new weather data')
-        get_weather()
-        print(f'Sleeping for {min_delay=}s')
-        time.sleep(min_delay)
+    if time.time() < (last_update + min_delay):
+        print('No need to fetch weather')
+
+    try:
+        r = requests.get(forecast_url)
+        data = r.json()
+        # write out the forecast.
+        db.set(keys['weather_data'], json.dumps(data))
+        db.set(keys['weather_last_check'], str(int(time.time())))
+    except requests.exceptions.RequestException as e:
+        print('error', e)
+
+def get_random_text():
+    min_delay = 2 * 60
+    last_update = db.get(keys['random_msg_last_check'])
+    if not last_update:
+        # first_run
+        last_update = -min_delay
     else:
-        # sleep premptively
-        print('No need to get weather right now, sleeping')
-        time.sleep(time.time() + min_delay - last_update)
+        last_update = int(last_update)
+
+    if time.time() < (last_update + min_delay):
+        print('not fetching random text')
+        return
+    try:
+        r = requests.get('http://numbersapi.com/random/year')
+        data = r.text
+        db.set(keys['random_msg'], data)
+        db.set(keys['random_msg_last_check'], str(int(time.time())))
+    except requests.exceptions.RequestException as e:
+        print('error', e)
+
+
+while True:
+    get_weather()
+    get_random_text()
+    time.sleep(0.1)

@@ -42,7 +42,8 @@ font_px_op__xxl = ImageFont.truetype('PixelOperator.ttf', 48)
 db = redis.Redis(host='localhost', port=6379, db=0)
 
 keys = {
-    'weather': 'weather.forecast_data'
+    'weather': 'weather.forecast_data',
+    'random_msg': 'misc.random_msg',
 }
 
 def get_json_key(key: str):
@@ -224,46 +225,70 @@ class ScrollableText:
         width: int=128,
         anchor: tuple=(10, 10),
         speed: int=1,
+        delta: int=1,
         font: ImageFont=font_px_op__l,
-        fill: str='#e68b1b'
+        fill: str='#e68b1b',
+        gap: int=5,
     ):
-        self.message = message
         self.width = width
         self.anchor = anchor
         self.font = font
         self.fill = fill
-
-        # make a "base image" which will be scrolled later.
-        _qimg = Image.new('RGBA', (0, 0))
-        _qdraw = ImageDraw.Draw(_qimg)
-        _, _, w, h = _qdraw.textbbox((0, 0), self.message, font=self.font, anchor='lt')
-        self.msg_width = w
-        self.msg_height = h
-
-        self.im_base = Image.new('RGBA', (w, h))
-        base_draw = ImageDraw.Draw(self.im_base)
-        base_draw.text((0, 0), self.message, font=self.font, fill=self.fill, anchor='lt')
+        self.gap = gap
+        self.delta = delta
 
         # the cursor position
         self.ypos = 0
         self.last_step = 0 # a step is a "second"
         self.speed = speed  # px/s
 
+        self.message = ''
+        self.set_message(message)
+
+    def set_message(self, msg: str):
+        # make a "base image" which will be scrolled later.
+        if msg == self.message:
+            return
+        self.message = msg
+        self.ypos = 0
+        _qimg = Image.new('RGBA', (0, 0))
+        _qdraw = ImageDraw.Draw(_qimg)
+        _, _, w, h = _qdraw.textbbox((0, 0), self.message, font=self.font, anchor='lt')
+        self.msg_width = w + (self.width * 2)
+        self.msg_height = h
+
+        self.im_base = Image.new('RGBA', (self.msg_width, h))
+        base_draw = ImageDraw.Draw(self.im_base)
+        base_draw.text((self.width, 0), self.message, font=self.font, fill=self.fill, anchor='lt')
+
     def draw(self, step: int, im: Image) -> Image:
         if (step - self.last_step) >= self.speed:
-            self.ypos += 2
+            self.ypos += self.delta
             self.ypos %= self.msg_width
             self.last_step = step
         # we need to crop the base image by cursor offset.
+        patchimg = Image.new('RGBA', (CANVAS_WIDTH, CANVAS_HEIGHT))
+        yspan = self.ypos + self.width
+
         crop_rect = (
             self.ypos,
             0,
-            min(self.ypos + self.width, self.msg_width),
+            min(yspan, self.msg_width),
             self.msg_height
         )
         patch = self.im_base.crop(crop_rect)
+        patchimg.paste(patch.convert('RGBA'), box=self.anchor)
+        # if yspan > self.msg_width + self.gap:
+        #     patch_r = self.im_base.crop((
+        #         0,
+        #         0,
+        #         self.width - self.ypos + self.gap,
+        #         self.msg_height,
+        #     ))
+        #     px, py = self.anchor
+        #     patchimg.paste(patch_r.convert('RGBA'), box=(px + (self.width - 10), py))
 
-        im.paste(patch.convert('RGBA'), box=self.anchor)
+        im.alpha_composite(patchimg)
         return im
 
 
@@ -283,14 +308,12 @@ def draw_frame(st):
     draw_date_time(draw)
     draw_22_22(draw)
     draw_weather(draw, image)
-
     image = st.draw(tick, image)
-
+    st.set_message(db.get(keys['random_msg']).decode())
 
     enchancer = ImageEnhance.Sharpness(image)
     image = enchancer.enhance(.7)
 
-    # image = Image.alpha_composite(asset_testtw, image)
 
     return image
 
@@ -299,21 +322,28 @@ double_buffer = matrix.CreateFrameCanvas()
 msgs = [
     'Bonjour!',
     'Hello',
-    '(｡◕‿‿◕｡)',
+    # '(｡◕‿‿◕｡)',
     'Namaste',
-    '(-(-_-(-_(-_(-_-)_-)-_-)_-)_-)-)',
-    'World!',
-    'This is a public service announcement.',
-    'Plese note you must celebrate 22:22.',
-    'It is our duty.',
-    'So We MUST!',
-    'QUESTIONS?',
-    '(｡◕‿‿◕｡)'
+    # '(-(-_-(-_(-_(-_-)_-)-_-)_-)_-)-)',
+    # 'World!',
+    # 'This is a public service announcement.',
+    # 'Plese note you must celebrate 22:22.',
+    # 'It is our duty.',
+    # 'So We MUST!',
+    # 'QUESTIONS?',
+    # '(｡◕‿‿◕｡)'
 ]
 
 try:
     print("Press CTRL-C to stop.")
-    st = ScrollableText(' * '.join(msgs), anchor=(0, 50), speed=.0001)
+    st = ScrollableText(
+        ' * '.join(msgs),
+        anchor=(0, 55),
+        speed=.01,
+        delta=2,
+        font=font_px_op__r,
+        fill='#961409'
+    )
     while True:
         img = draw_frame(st)
         double_buffer.SetImage(img.convert('RGB'))
