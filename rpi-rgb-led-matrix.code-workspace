@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../rpi-rgb-led-matrix"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}

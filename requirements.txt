@@ -1,0 +1,5 @@
+pillow
+watchdog
+requests
+redis[hiredis]
+matplotlib
