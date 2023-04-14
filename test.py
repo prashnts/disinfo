@@ -60,7 +60,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     OFFSET = 10
     DIVISOR = divisor # 1.5
 
-    y_step = lambda x: int(math.sin(step + x / DIVISOR) * AMP + OFFSET)
+    y_step = lambda x: round(math.sin(step + x / DIVISOR) * AMP + OFFSET)
     xys = [(x + 0, y_step(x) + yoffset) for x in range(128)]
 
     # draw.line([(0, OFFSET), (16, OFFSET)], fill='green')
@@ -254,7 +254,7 @@ class ScrollableText:
         _qimg = Image.new('RGBA', (0, 0))
         _qdraw = ImageDraw.Draw(_qimg)
         _, _, w, h = _qdraw.textbbox((0, 0), self.message, font=self.font, anchor='lt')
-        self.msg_width = w + (self.width * 2)
+        self.msg_width = w + (self.width * 1)
         self.msg_height = h
 
         self.im_base = Image.new('RGBA', (self.msg_width, h))
@@ -291,26 +291,53 @@ class ScrollableText:
         im.alpha_composite(patchimg)
         return im
 
+def draw_numbers(image, draw, st, st_detail, tick):
+    numbers = get_json_key(keys['random_msg'])
+    num_str = f'#{numbers["number"]}'
+    st.set_message(numbers['text'])
+    st_detail.set_message(num_str)
+    _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=font_px_op_mono_8, anchor='lt')
+    if num_w < 40:
+        # draw static text
+        draw.rounded_rectangle([(0, 43), (num_w + 1, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        draw.text((1, 45), num_str, font=font_px_op_mono_8, fill='#9bb10d', anchor='lt')
+    else:
+        draw.rounded_rectangle([(0, 43), (43, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        image = st_detail.draw(tick, image)
 
-def draw_frame(st):
+
+    draw.rounded_rectangle([(0, 53), (CANVAS_WIDTH - 1, CANVAS_HEIGHT - 1)], radius=0, fill='#010a29')
+    image = st.draw(tick, image)
+    draw.text((1, 52), 'i', font=font_tamzen__rm)
+
+    # draw.text((1, 42), f'#{numbers["number"]}', font=font_tamzen__rm)
+
+    return image
+
+
+def draw_frame(st, st_detail):
     tick = time.time()
-    step = int(tick * 15)
+    step = tick * 15
 
     image = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
 
-    draw_sin_wave(step=(1 + step * .6), draw=draw, yoffset=38, amp=10, divisor=6, color='#98A9D0', width=1)
-    draw_sin_wave(step=step, draw=draw, yoffset=30, amp=4, divisor=2, color='#3A6D8C')
-    draw_sin_wave(step=step * .5, draw=draw, yoffset=38, amp=7, divisor=14, color='#34424A', width=2)
-    draw_sin_wave(step=(3 + step * .2), draw=draw, yoffset=38, amp=7, divisor=10, color='#5A5A5A')
+    # draw_sin_wave(step=(1 + step * .6), draw=draw, yoffset=38, amp=10, divisor=6, color='#98A9D0', width=1)
+    draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')
+    # draw_sin_wave(step=step * .5, draw=draw, yoffset=38, amp=7, divisor=14, color='#34424A', width=2)
+    draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=25, amp=7, divisor=10, color='#5A5A5A')
 
     draw_date_time(draw)
-    draw_22_22(draw)
-    draw_weather(draw, image)
-    image = st.draw(tick, image)
-    st.set_message(db.get(keys['random_msg']).decode())
 
+    try:
+        draw_weather(draw, image)
+    except Exception as e:
+        print(e)
+
+    image = draw_numbers(image, draw, st, st_detail, tick)
+
+    draw_22_22(draw)
     enchancer = ImageEnhance.Sharpness(image)
     image = enchancer.enhance(.7)
 
@@ -338,14 +365,24 @@ try:
     print("Press CTRL-C to stop.")
     st = ScrollableText(
         ' * '.join(msgs),
-        anchor=(0, 55),
-        speed=.01,
+        anchor=(9, 55),
+        width=(CANVAS_WIDTH - 9),
+        speed=.001,
         delta=2,
         font=font_px_op__r,
-        fill='#961409'
+        fill='#12cce1'
+    )
+    st_detail = ScrollableText(
+        ' * '.join(msgs),
+        anchor=(2, 45),
+        width=(40),
+        speed=.001,
+        delta=2,
+        font=font_px_op_mono_8,
+        fill='#9bb10d'
     )
     while True:
-        img = draw_frame(st)
+        img = draw_frame(st, st_detail)
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
         time.sleep(0.01)

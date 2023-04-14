@@ -40,6 +40,7 @@ def get_weather():
 
     if time.time() < (last_update + min_delay):
         print('No need to fetch weather')
+        return
 
     try:
         r = requests.get(forecast_url)
@@ -63,9 +64,9 @@ def get_random_text():
         print('not fetching random text')
         return
     try:
-        r = requests.get('http://numbersapi.com/random/year')
-        data = r.text
-        db.set(keys['random_msg'], data)
+        r = requests.get('http://numbersapi.com/random/trivia?json')
+        data = r.json()
+        db.set(keys['random_msg'], json.dumps(data))
         db.set(keys['random_msg_last_check'], str(int(time.time())))
     except requests.exceptions.RequestException as e:
         print('error', e)
