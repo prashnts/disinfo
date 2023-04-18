@@ -9,7 +9,9 @@ import json
 import redis
 
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
-from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
+
+from weather_icons import get_icon_for_condition, arrow_x, render_icon
 
 
 # Configuration for the matrix
@@ -173,26 +175,32 @@ def draw_22_22(draw: ImageDraw):
 def draw_weather(draw: ImageDraw, image: Image):
     forecast = get_json_key(keys['weather'])
 
-    color_temp = '#6e7078'
+    color_temp = '#9a9ba2'
     color_deg_c = '#6E7078'
-    color_condition = '#989A9F'
+    color_condition = '#5b5e64'
 
     temperature = forecast['currently']['apparentTemperature']
     condition = forecast['currently']['summary']
+    icon_name = forecast['currently']['icon']
 
     temp_str = f'{round(temperature)}'
     deg_c = '°'
 
     o_x = 0
-    o_y = 1
+    o_y = 0
 
     _, _, temp_w, temp_h = draw.textbbox((0, 0), temp_str, font=font_px_op__l, anchor='lt')
     _, _, degc_w, _ = draw.textbbox((0, 0), deg_c, font=font_tamzen__rs, anchor='lt')
 
-    draw.text((o_x, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
-    draw.text((o_x + temp_w, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
+    # icon = get_icon_for_condition('clear-night', scale=2)
+    icon = get_icon_for_condition(icon_name, scale=2)
+    # icon = icon.filter(ImageFilter.BoxBlur(.3))
+    # icon = icon.resize((icon.width // 2, icon.height // 2), resample=Image.Resampling.HAMMING)
+    image.alpha_composite(icon, (o_x, o_y))
 
-    draw.text((o_x + 1, o_y + temp_h + 3), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
+    draw.text((o_x + icon.width + 2, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
+    draw.text((o_x + icon.width + temp_w + 2, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
+    draw.text((o_x + icon.width + 2, o_y + temp_h + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
     today = forecast['daily']['data'][0]
@@ -205,6 +213,7 @@ def draw_weather(draw: ImageDraw, image: Image):
 
     color_high = '#967b03'
     color_low = '#2d83b4'
+    # color_high = '#0f29ea'
 
     _, _, highl_w, highl_h = draw.textbbox((0, 0), temp_high_label, font=high_low_font, anchor='lt')
     _, _, lowl_w, lowl_h = draw.textbbox((0, 0), temp_low_label, font=high_low_font, anchor='lt')
@@ -212,11 +221,12 @@ def draw_weather(draw: ImageDraw, image: Image):
     _, _, lowv_w, lowv_h = draw.textbbox((0, 0), temp_low, font=high_low_font, anchor='lt')
     high_line_h = max(highl_h, highv_h) + 1
 
-    draw.text((o_x + temp_w + degc_w + 1, o_y), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
-    draw.text((o_x + temp_w + degc_w + 1 + highl_w + 1, o_y), temp_high, font=high_low_font, fill=color_high, anchor='lt')
+    #! todo
+    draw.text((o_x + 2, o_y + icon.height + 1), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
+    draw.text((o_x + highl_w + 3, o_y + icon.height + 1), temp_high, font=high_low_font, fill=color_high, anchor='lt')
 
-    draw.text((o_x + temp_w + degc_w + 1, o_y + high_line_h), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    draw.text((o_x + temp_w + degc_w + 1 + highl_w + 1, o_y + high_line_h), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((o_x + highl_w + highv_w + 5, o_y + icon.height + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((o_x + highl_w + highv_w + lowl_w + 6, o_y + icon.height + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
 
 class ScrollableText:
@@ -297,12 +307,12 @@ def draw_numbers(image, draw, st, st_detail, tick):
     st.set_message(numbers['text'])
     st_detail.set_message(num_str)
     _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=font_px_op_mono_8, anchor='lt')
-    if num_w < 40:
+    if num_w < 42:
         # draw static text
-        draw.rounded_rectangle([(0, 43), (num_w + 1, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        draw.rounded_rectangle([(-2, 43), (num_w + 1, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
         draw.text((1, 45), num_str, font=font_px_op_mono_8, fill='#9bb10d', anchor='lt')
     else:
-        draw.rounded_rectangle([(0, 43), (43, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        draw.rounded_rectangle([(-2, 43), (43, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
         image = st_detail.draw(tick, image)
 
 
@@ -330,41 +340,31 @@ def draw_frame(st, st_detail):
 
     draw_date_time(draw)
 
-    try:
-        draw_weather(draw, image)
-    except Exception as e:
-        print(e)
+
 
     image = draw_numbers(image, draw, st, st_detail, tick)
 
     draw_22_22(draw)
     enchancer = ImageEnhance.Sharpness(image)
     image = enchancer.enhance(.7)
+    draw = ImageDraw.Draw(image)
+    try:
+        draw_weather(draw, image)
+    except Exception as e:
+        print(e)
 
+    # icon = render_icon(arrow_x, scale=1)
+    # image.alpha_composite(icon, (50, 30))
 
     return image
 
 double_buffer = matrix.CreateFrameCanvas()
 
-msgs = [
-    'Bonjour!',
-    'Hello',
-    # '(｡◕‿‿◕｡)',
-    'Namaste',
-    # '(-(-_-(-_(-_(-_-)_-)-_-)_-)_-)-)',
-    # 'World!',
-    # 'This is a public service announcement.',
-    # 'Plese note you must celebrate 22:22.',
-    # 'It is our duty.',
-    # 'So We MUST!',
-    # 'QUESTIONS?',
-    # '(｡◕‿‿◕｡)'
-]
 
 try:
     print("Press CTRL-C to stop.")
     st = ScrollableText(
-        ' * '.join(msgs),
+        '',
         anchor=(9, 55),
         width=(CANVAS_WIDTH - 9),
         speed=.001,
@@ -373,7 +373,7 @@ try:
         fill='#12cce1'
     )
     st_detail = ScrollableText(
-        ' * '.join(msgs),
+        '',
         anchor=(2, 45),
         width=(40),
         speed=.001,
