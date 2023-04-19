@@ -39,10 +39,10 @@ def get_weather():
         last_update = int(last_update)
 
     if time.time() < (last_update + min_delay):
-        print('No need to fetch weather')
         return
 
     try:
+        print('fetching weather')
         r = requests.get(forecast_url)
         data = r.json()
         # write out the forecast.
@@ -61,9 +61,9 @@ def get_random_text():
         last_update = int(last_update)
 
     if time.time() < (last_update + min_delay):
-        print('not fetching random text')
         return
     try:
+        print('fetching random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
         data = r.json()
         db.set(keys['random_msg'], json.dumps(data))
