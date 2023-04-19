@@ -33,13 +33,14 @@ origin = (CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
 
 matrix = RGBMatrix(options = options)
 
-font_tamzen__rs = ImageFont.truetype('TamzenForPowerline5x9r.ttf', 9)
-font_tamzen__rm = ImageFont.truetype('Tamzen7x13r.ttf', 13)
-font_px_op__r = ImageFont.truetype('PixelOperator8.ttf', 8)
-font_px_op_mono_8 = ImageFont.truetype('PixelOperatorMono8.ttf', 8)
-font_px_op__l = ImageFont.truetype('PixelOperator.ttf', 16)
-font_px_op__xl = ImageFont.truetype('PixelOperator.ttf', 32)
-font_px_op__xxl = ImageFont.truetype('PixelOperator.ttf', 48)
+font_tamzen__rs = ImageFont.truetype('fonts/TamzenForPowerline5x9r.ttf', 9)
+font_tamzen__rm = ImageFont.truetype('fonts/Tamzen7x13r.ttf', 13)
+font_px_op__r = ImageFont.truetype('fonts/PixelOperator8.ttf', 8)
+font_px_op_mono_8 = ImageFont.truetype('fonts/PixelOperatorMono8.ttf', 8)
+font_px_op__l = ImageFont.truetype('fonts/PixelOperator.ttf', 16)
+font_px_op__xl = ImageFont.truetype('fonts/PixelOperator.ttf', 32)
+font_px_op__xxl = ImageFont.truetype('fonts/PixelOperator.ttf', 48)
+# font_cd_icon = ImageFont.truetype('fonts/CD-IconsPC.ttf', 22)
 
 db = redis.Redis(host='localhost', port=6379, db=0)
 
@@ -277,7 +278,6 @@ class ScrollableText:
             self.ypos %= self.msg_width
             self.last_step = step
         # we need to crop the base image by cursor offset.
-        patchimg = Image.new('RGBA', (CANVAS_WIDTH, CANVAS_HEIGHT))
         yspan = self.ypos + self.width
 
         crop_rect = (
@@ -287,18 +287,8 @@ class ScrollableText:
             self.msg_height
         )
         patch = self.im_base.crop(crop_rect)
-        patchimg.paste(patch.convert('RGBA'), box=self.anchor)
-        # if yspan > self.msg_width + self.gap:
-        #     patch_r = self.im_base.crop((
-        #         0,
-        #         0,
-        #         self.width - self.ypos + self.gap,
-        #         self.msg_height,
-        #     ))
-        #     px, py = self.anchor
-        #     patchimg.paste(patch_r.convert('RGBA'), box=(px + (self.width - 10), py))
 
-        im.alpha_composite(patchimg)
+        im.alpha_composite(patch, self.anchor)
         return im
 
 def draw_numbers(image, draw, st, st_detail, tick):
@@ -319,8 +309,6 @@ def draw_numbers(image, draw, st, st_detail, tick):
     draw.rounded_rectangle([(0, 53), (CANVAS_WIDTH - 1, CANVAS_HEIGHT - 1)], radius=0, fill='#010a29')
     image = st.draw(tick, image)
     draw.text((1, 52), 'i', font=font_tamzen__rm)
-
-    # draw.text((1, 42), f'#{numbers["number"]}', font=font_tamzen__rm)
 
     return image
 
@@ -385,6 +373,6 @@ try:
         img = draw_frame(st, st_detail)
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
-        time.sleep(0.01)
+        # time.sleep(0.005)
 except KeyboardInterrupt:
     sys.exit(0)
