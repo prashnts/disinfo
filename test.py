@@ -101,14 +101,14 @@ def draw_22_22(draw: ImageDraw):
     if not equal_elements:
         return
 
-    all_twentytwo = t.hour == t.second == 22
+    all_equal = t.hour == t.minute == t.second
     text = t.strftime('%H:%M')
     font = font_px_op__xl
     fill = '#2FB21B'
     if twentytwo:
         fill = '#CF8C13'
         font = font_px_op__xxl
-    if all_twentytwo:
+    if all_equal:
         fill = '#CF3F13'
 
     # draw a rectangle in the background of the text (with padding * 2)
@@ -123,7 +123,7 @@ def draw_22_22(draw: ImageDraw):
     draw.text(origin, text, font=font, fill=fill, anchor='mm')
 
     # glittering colors if it's the magic hour
-    if not twentytwo:
+    if not (twentytwo or all_equal):
         return
 
     gcols = [
