@@ -3,6 +3,14 @@ import requests
 import redis
 import time
 import json
+import logging
+import datetime
+
+from traceback import format_exc
+from schedule import Scheduler
+
+
+logger = logging.getLogger('schedule')
 
 latitude = 48.842
 longitude = 2.391
@@ -20,59 +28,69 @@ forecast_url = f'https://api.pirateweather.net/forecast/{pw_api_key}/{latitude},
 db = redis.Redis(host='localhost', port=6379, db=0)
 
 keys = {
-    'weather_last_check': 'weather.last_check',
     'weather_data': 'weather.forecast_data',
-    'random_msg_last_check': 'misc.random_msg.last_check',
     'random_msg': 'misc.random_msg',
 }
 
 
+class SafeScheduler(Scheduler):
+    '''
+    An implementation of Scheduler that catches jobs that fail, logs their
+    exception tracebacks as errors, optionally reschedules the jobs for their
+    next run time, and keeps going.
+    Use this to run jobs that may or may not crash without worrying about
+    whether other jobs will run or if they'll crash the entire script.
+
+    Copied from https://gist.github.com/mplewis/8483f1c24f2d6259aef6
+    '''
+
+    def __init__(self, reschedule_on_failure=True):
+        '''
+        If reschedule_on_failure is True, jobs will be rescheduled for their
+        next run as if they had completed successfully. If False, they'll run
+        on the next run_pending() tick.
+        '''
+        self.reschedule_on_failure = reschedule_on_failure
+        super().__init__()
+
+    def _run_job(self, job):
+        try:
+            super()._run_job(job)
+        except Exception:
+            logger.error(format_exc())
+            job.last_run = datetime.datetime.now()
+            job._schedule_next_run()
+
 def get_weather():
-    # Every 15 minutes, fetch the weather.
-    min_delay = 15 * 60
-
-    last_update = db.get(keys['weather_last_check'])
-    if not last_update:
-        # first_run
-        last_update = -min_delay
-    else:
-        last_update = int(last_update)
-
-    if time.time() < (last_update + min_delay):
-        return
-
+    '''Fetch Weather from PirateWeather API.'''
     try:
-        print('fetching weather')
+        print('[fetch] weather')
         r = requests.get(forecast_url)
         data = r.json()
         # write out the forecast.
         db.set(keys['weather_data'], json.dumps(data))
-        db.set(keys['weather_last_check'], str(int(time.time())))
     except requests.exceptions.RequestException as e:
         print('error', e)
 
 def get_random_text():
-    min_delay = 2 * 60
-    last_update = db.get(keys['random_msg_last_check'])
-    if not last_update:
-        # first_run
-        last_update = -min_delay
-    else:
-        last_update = int(last_update)
-
-    if time.time() < (last_update + min_delay):
-        return
+    '''Fetch trivia from Numbers API.'''
     try:
-        print('fetching random text')
+        print('[fetch] random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
         data = r.json()
         db.set(keys['random_msg'], json.dumps(data))
-        db.set(keys['random_msg_last_check'], str(int(time.time())))
     except requests.exceptions.RequestException as e:
         print('error', e)
 
 
-while True:
-    get_weather()
-    get_random_text()
-    time.sleep(0.1)
+scheduler = SafeScheduler()
+
+scheduler.every(15).minutes.do(get_weather)
+scheduler.every(2).to(3).minutes.do(get_random_text)
+
+
+if __name__ == '__main__':
+    while True:
+        print('[Data Service] Scheduler Started')
+        scheduler.run_pending()
+        time.sleep(1)

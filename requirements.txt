@@ -3,3 +3,4 @@ watchdog
 requests
 redis[hiredis]
 matplotlib
+schedule
