@@ -35,14 +35,14 @@ origin = (CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
 
 matrix = RGBMatrix(options = options)
 
-font_tamzen__rs = ImageFont.truetype('fonts/TamzenForPowerline5x9r.ttf', 9)
-font_tamzen__rm = ImageFont.truetype('fonts/Tamzen7x13r.ttf', 13)
-font_px_op__r = ImageFont.truetype('fonts/PixelOperator8.ttf', 8)
-font_px_op_mono_8 = ImageFont.truetype('fonts/PixelOperatorMono8.ttf', 8)
-font_px_op__l = ImageFont.truetype('fonts/PixelOperator.ttf', 16)
-font_px_op__xl = ImageFont.truetype('fonts/PixelOperator.ttf', 32)
-font_px_op__xxl = ImageFont.truetype('fonts/PixelOperator.ttf', 48)
-# font_cd_icon = ImageFont.truetype('fonts/CD-IconsPC.ttf', 22)
+font_tamzen__rs = ImageFont.truetype('assets/fonts/TamzenForPowerline5x9r.ttf', 9)
+font_tamzen__rm = ImageFont.truetype('assets/fonts/Tamzen7x13r.ttf', 13)
+font_px_op__r = ImageFont.truetype('assets/fonts/PixelOperator8.ttf', 8)
+font_px_op_mono_8 = ImageFont.truetype('assets/fonts/PixelOperatorMono8.ttf', 8)
+font_px_op__l = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
+font_px_op__xl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
+font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
+# font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
 
 db = redis.Redis(host='localhost', port=6379, db=0)
 
