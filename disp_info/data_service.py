@@ -5,13 +5,15 @@ import time
 import json
 import logging
 import datetime
+import sys
 
 from traceback import format_exc
 from schedule import Scheduler
 
 from . import config
 
-logger = logging.getLogger('schedule')
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger('data_service')
 
 
 db = redis.Redis(host='localhost', port=6379, db=0)
