@@ -88,9 +88,8 @@ scheduler = SafeScheduler()
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 
-
 if __name__ == '__main__':
+    print('[Data Service] Scheduler Started')
     while True:
-        print('[Data Service] Scheduler Started')
         scheduler.run_pending()
         time.sleep(1)
