@@ -43,6 +43,7 @@ font_px_op__l = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
 font_px_op__xl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
 font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
 # font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
+font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 9)
 
 db = redis.Redis(host='localhost', port=6379, db=0)
 
