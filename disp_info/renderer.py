@@ -11,7 +11,7 @@ import redis
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 
-from weather_icons import get_icon_for_condition, arrow_x, render_icon
+from .weather_icons import get_icon_for_condition, arrow_x, render_icon
 
 
 # Configuration for the matrix
