@@ -64,23 +64,23 @@ class SafeScheduler(Scheduler):
 def get_weather():
     '''Fetch Weather from PirateWeather API.'''
     try:
-        print('[fetch] weather')
+        logger.info('[fetch] weather')
         r = requests.get(forecast_url)
         data = r.json()
         # write out the forecast.
         db.set(keys['weather_data'], json.dumps(data))
     except requests.exceptions.RequestException as e:
-        print('error', e)
+        logger.error('error', e)
 
 def get_random_text():
     '''Fetch trivia from Numbers API.'''
     try:
-        print('[fetch] random text')
+        logger.info('[fetch] random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
         data = r.json()
         db.set(keys['random_msg'], json.dumps(data))
     except requests.exceptions.RequestException as e:
-        print('error', e)
+        logger.error('error', e)
 
 
 scheduler = SafeScheduler()
@@ -89,7 +89,7 @@ scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 
 if __name__ == '__main__':
-    print('[Data Service] Scheduler Started')
+    logger.info('[Data Service] Scheduler Started')
     while True:
         scheduler.run_pending()
         time.sleep(1)
