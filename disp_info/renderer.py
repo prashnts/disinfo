@@ -203,7 +203,7 @@ def draw_weather(draw: ImageDraw, image: Image):
 
     draw.text((o_x + icon.width + 2, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
     draw.text((o_x + icon.width + temp_w + 2, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
-    draw.text((o_x + icon.width + 2, o_y + temp_h + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
+    draw.text((o_x + 2, o_y + icon.height), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
     today = forecast['daily']['data'][0]
@@ -224,12 +224,12 @@ def draw_weather(draw: ImageDraw, image: Image):
     _, _, lowv_w, lowv_h = draw.textbbox((0, 0), temp_low, font=high_low_font, anchor='lt')
     high_line_h = max(highl_h, highv_h) + 1
 
-    #! todo
-    draw.text((o_x + 2, o_y + icon.height + 1), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
-    draw.text((o_x + highl_w + 3, o_y + icon.height + 1), temp_high, font=high_low_font, fill=color_high, anchor='lt')
+    #! todo. This really needs to be fixed!
+    draw.text((o_x + icon.width + 2, o_y + temp_h + 2), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
+    draw.text((o_x + icon.width + highl_w + 3, o_y + temp_h + 2), temp_high, font=high_low_font, fill=color_high, anchor='lt')
 
-    draw.text((o_x + highl_w + highv_w + 5, o_y + icon.height + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    draw.text((o_x + highl_w + highv_w + lowl_w + 6, o_y + icon.height + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((o_x + icon.width + highl_w + highv_w + 5, o_y + temp_h + 2), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((o_x + icon.width + highl_w + highv_w + lowl_w + 6, o_y + temp_h + 2), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
 
 class ScrollableText:

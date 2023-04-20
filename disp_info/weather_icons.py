@@ -15,7 +15,7 @@
 # CYN,  // 4
 # GRY,  // 5
 # RED   // 6
-from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw
 from functools import cache
 
 
