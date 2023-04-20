@@ -9,20 +9,9 @@ import datetime
 from traceback import format_exc
 from schedule import Scheduler
 
+from . import config
 
 logger = logging.getLogger('schedule')
-
-latitude = 48.842
-longitude = 2.391
-
-pw_api_key = os.environ.get('PIRATE_WEATHER_TOKEN')
-pw_unit = 'ca'  # SI units with kmph for wind.
-
-
-if not pw_api_key:
-    print('WARNING: No API Key for Pirate Weather')
-
-forecast_url = f'https://api.pirateweather.net/forecast/{pw_api_key}/{latitude},{longitude}?units={pw_unit}'
 
 
 db = redis.Redis(host='localhost', port=6379, db=0)
@@ -63,6 +52,7 @@ class SafeScheduler(Scheduler):
 
 def get_weather():
     '''Fetch Weather from PirateWeather API.'''
+    forecast_url = f'https://api.pirateweather.net/forecast/{config.pw_api_key}/{config.pw_latitude},{config.pw_longitude}?units={config.pw_unit}'
     try:
         logger.info('[fetch] weather')
         r = requests.get(forecast_url)
