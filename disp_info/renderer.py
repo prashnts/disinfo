@@ -43,7 +43,9 @@ font_px_op__l = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
 font_px_op__xl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
 font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
 # font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
-font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 9)
+font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 11)
+font_scientifica__b = ImageFont.truetype('assets/fonts/scientificaBold.ttf', 11)
+font_scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
 
 db = redis.Redis(host='localhost', port=6379, db=0)
 
@@ -204,7 +206,7 @@ def draw_weather(draw: ImageDraw, image: Image):
 
     draw.text((o_x + icon.width + 2, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
     draw.text((o_x + icon.width + temp_w + 2, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
-    draw.text((o_x + 2, o_y + icon.height), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
+    draw.text((o_x + 2, o_y + icon.height + 1), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
     today = forecast['daily']['data'][0]
@@ -299,11 +301,11 @@ def draw_numbers(image, draw, st, st_detail, tick):
     num_str = f'#{numbers["number"]}'
     st.set_message(numbers['text'])
     st_detail.set_message(num_str)
-    _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=font_px_op_mono_8, anchor='lt')
+    _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=st_detail.font, anchor='lt')
     if num_w < 42:
         # draw static text
         draw.rounded_rectangle([(-2, 43), (num_w + 1, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
-        draw.text((1, 45), num_str, font=font_px_op_mono_8, fill='#9bb10d', anchor='lt')
+        draw.text((1, 45), num_str, font=st_detail.font, fill='#9bb10d', anchor='lt')
     else:
         draw.rounded_rectangle([(-2, 43), (43, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
         image = st_detail.draw(tick, image)
@@ -346,6 +348,7 @@ def draw_frame(st, st_detail):
 
     # icon = render_icon(arrow_x, scale=1)
     # image.alpha_composite(icon, (50, 30))
+    # draw.text((30, 42), '→ ← ₨ ♥  ⮀ ♡  卐', font=font_scientifica__r)
 
     return image
 
@@ -368,8 +371,8 @@ try:
         anchor=(2, 45),
         width=(40),
         speed=.001,
-        delta=2,
-        font=font_px_op_mono_8,
+        delta=1,
+        font=font_scientifica__i,
         fill='#9bb10d'
     )
     while True:
