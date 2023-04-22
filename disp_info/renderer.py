@@ -8,32 +8,13 @@ import random
 import json
 import redis
 
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon
 
-
-# Configuration for the matrix
-options = RGBMatrixOptions()
-options.rows = 64
-options.cols = 64
-options.chain_length = 2
-options.parallel = 1
-options.brightness = 80
-options.pwm_bits = 11   # 1..11
-options.scan_mode = 0   # 0: progressive, 1: interlaced
-options.pixel_mapper_config = 'Rotate:180'
-options.gpio_slowdown = 2
-options.drop_privileges = True
-# options.show_refresh_rate = 1
-options.hardware_mapping = 'regular'
-
 CANVAS_WIDTH = 128
 CANVAS_HEIGHT = 64
 origin = (CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
-
-matrix = RGBMatrix(options = options)
 
 font_tamzen__rs = ImageFont.truetype('assets/fonts/TamzenForPowerline5x9r.ttf', 9)
 font_tamzen__rm = ImageFont.truetype('assets/fonts/Tamzen7x13r.ttf', 13)
@@ -352,33 +333,24 @@ def draw_frame(st, st_detail):
 
     return image
 
-double_buffer = matrix.CreateFrameCanvas()
+st = ScrollableText(
+    '',
+    anchor=(9, 55),
+    width=(CANVAS_WIDTH - 9),
+    speed=.001,
+    delta=2,
+    font=font_px_op__r,
+    fill='#12cce1'
+)
+st_detail = ScrollableText(
+    '',
+    anchor=(2, 45),
+    width=(40),
+    speed=.001,
+    delta=2,
+    font=font_px_op_mono_8,
+    fill='#9bb10d'
+)
 
-
-try:
-    print("Press CTRL-C to stop.")
-    st = ScrollableText(
-        '',
-        anchor=(9, 55),
-        width=(CANVAS_WIDTH - 9),
-        speed=.001,
-        delta=2,
-        font=font_px_op__r,
-        fill='#12cce1'
-    )
-    st_detail = ScrollableText(
-        '',
-        anchor=(2, 45),
-        width=(40),
-        speed=.001,
-        delta=1,
-        font=font_scientifica__i,
-        fill='#9bb10d'
-    )
-    while True:
-        img = draw_frame(st, st_detail)
-        double_buffer.SetImage(img.convert('RGB'))
-        double_buffer = matrix.SwapOnVSync(double_buffer)
-        # time.sleep(0.005)
-except KeyboardInterrupt:
-    sys.exit(0)
+def get_frame():
+    return draw_frame(st, st_detail)
