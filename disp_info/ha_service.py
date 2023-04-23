@@ -20,11 +20,12 @@ def on_message(client, userdata, msg):
         set_dict(rkeys['ha_pir_salon'], payload)
 
 
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
+if __name__ == '__main__':
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
 
-client.username_pw_set(config.ha_mqtt_username, config.ha_mqtt_password)
-client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
+    client.username_pw_set(config.ha_mqtt_username, config.ha_mqtt_password)
+    client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
 
-client.loop_forever()
+    client.loop_forever()
