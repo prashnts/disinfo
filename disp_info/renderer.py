@@ -295,9 +295,8 @@ def draw_frame(st, st_detail):
     image = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    pir_state = get_dict(rkeys['ha_pir_salon'])
-
     try:
+        pir_state = get_dict(rkeys['ha_pir_salon'])
         if not pir_state['occupancy']:
             # do not draw if nobody is there.
             return image
