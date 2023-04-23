@@ -297,9 +297,13 @@ def draw_frame(st, st_detail):
 
     pir_state = get_dict(rkeys['ha_pir_salon'])
 
-    if not pir_state['occupancy']:
-        # do not draw if nobody is there.
-        return image
+    try:
+        if not pir_state['occupancy']:
+            # do not draw if nobody is there.
+            return image
+    except TypeError:
+        # uninitialized state, draw the screen
+        pass
 
     # draw_sin_wave(step=(1 + step * .6), draw=draw, yoffset=38, amp=10, divisor=6, color='#98A9D0', width=1)
     draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')
