@@ -41,7 +41,7 @@ try:
         dither = sixel_dither_new(256)
         sixel_dither_initialize(dither, data, width, height, SIXEL_PIXELFORMAT_RGB888)
         sixel_encode(data, width, height, 1, dither, output)
-        # print('\033c')
+        print('\033[10;10H')
         print(buf.getvalue().decode('ascii'))
 
         time.sleep(0.01)

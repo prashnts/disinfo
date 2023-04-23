@@ -287,6 +287,31 @@ def draw_numbers(image, draw, st, st_detail, tick):
 
     return image
 
+pos_x = 0
+pos_y = 0
+
+def draw_btn_test(image, draw):
+    global pos_x, pos_y
+
+    try:
+        action = get_dict(rkeys['ha_enki_rmt'])
+        if action['action'] == 'color_saturation_step_up':
+            pos_y -= 1
+        if action['action'] == 'color_saturation_step_down':
+            pos_y += 1
+        if action['action'] == 'color_hue_step_up':
+            pos_x += 1
+        if action['action'] == 'color_hue_step_down':
+            pos_x -= 1
+
+        pos_x %= CANVAS_WIDTH
+        pos_y %= CANVAS_HEIGHT
+    except TypeError:
+        pass
+
+    draw.text((pos_x, pos_y), '*', font=font_tamzen__rm)
+    return image
+
 
 def draw_frame(st, st_detail):
     tick = time.time()
@@ -323,6 +348,8 @@ def draw_frame(st, st_detail):
         draw_weather(draw, image)
     except Exception as e:
         print(e)
+
+    image = draw_btn_test(image, draw)
 
     # icon = render_icon(arrow_x, scale=1)
     # image.alpha_composite(icon, (50, 30))
