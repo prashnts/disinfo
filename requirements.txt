@@ -4,3 +4,4 @@ requests
 redis[hiredis]
 matplotlib
 schedule
+paho-mqtt

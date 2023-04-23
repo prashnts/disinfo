@@ -6,11 +6,11 @@ import datetime
 import math
 import random
 import json
-import redis
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon
+from .redis import get_dict, rkeys
 
 CANVAS_WIDTH = 128
 CANVAS_HEIGHT = 64
@@ -27,17 +27,6 @@ font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
 font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 11)
 font_scientifica__b = ImageFont.truetype('assets/fonts/scientificaBold.ttf', 11)
 font_scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
-
-db = redis.Redis(host='localhost', port=6379, db=0)
-
-keys = {
-    'weather': 'weather.forecast_data',
-    'random_msg': 'misc.random_msg',
-}
-
-def get_json_key(key: str):
-    value = db.get(key)
-    return json.loads(value)
 
 # assets are loaded in advance (for now)
 asset_clear_day = Image.open('assets/clear-day.png')
@@ -160,7 +149,7 @@ def draw_22_22(draw: ImageDraw):
                 draw.point(random.choice(pts), fill=random.choice(gcols))
 
 def draw_weather(draw: ImageDraw, image: Image):
-    forecast = get_json_key(keys['weather'])
+    forecast = get_dict(rkeys['weather_data'])
 
     color_temp = '#9a9ba2'
     color_deg_c = '#6E7078'
@@ -278,7 +267,7 @@ class ScrollableText:
         return im
 
 def draw_numbers(image, draw, st, st_detail, tick):
-    numbers = get_json_key(keys['random_msg'])
+    numbers = get_dict(rkeys['random_msg'])
     num_str = f'#{numbers["number"]}'
     st.set_message(numbers['text'])
     st_detail.set_message(num_str)

@@ -1,8 +1,6 @@
 import os
 import requests
-import redis
 import time
-import json
 import logging
 import datetime
 import sys
@@ -11,17 +9,10 @@ from traceback import format_exc
 from schedule import Scheduler
 
 from . import config
+from .redis import rkeys, set_dict
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('data_service')
-
-
-db = redis.Redis(host='localhost', port=6379, db=0)
-
-keys = {
-    'weather_data': 'weather.forecast_data',
-    'random_msg': 'misc.random_msg',
-}
 
 
 class SafeScheduler(Scheduler):
@@ -60,7 +51,7 @@ def get_weather():
         r = requests.get(forecast_url)
         data = r.json()
         # write out the forecast.
-        db.set(keys['weather_data'], json.dumps(data))
+        set_dict(rkeys['weather_data'], data)
     except requests.exceptions.RequestException as e:
         logger.error('error', e)
 
@@ -70,7 +61,7 @@ def get_random_text():
         logger.info('[fetch] random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
         data = r.json()
-        db.set(keys['random_msg'], json.dumps(data))
+        set_dict(rkeys['random_msg'], data)
     except requests.exceptions.RequestException as e:
         logger.error('error', e)
 
