@@ -509,6 +509,14 @@ arrow_x = [
     0, 0, 0, 0, 0, 0, 0, 0, 0
 ]
 
+cursor = [
+    1, 1, 1, 1, 0,
+    1, 1, 1, 0, 0,
+    1, 1, 1, 0, 0,
+    1, 0, 0, 1, 0,
+    0, 0, 0, 0, 1,
+]
+
 pw_icon_mapping = {
     'clear-day': icon16d,
     'clear-night': icon16n,
@@ -523,12 +531,13 @@ pw_icon_mapping = {
 }
 
 def render_icon(icon: list, scale: int=1) -> Image:
-    width = 9 * scale
+    rank = int(len(icon) ** .5)
+    width = rank * scale
     img = Image.new('RGBA', (width, width), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    for x in range(9):
-        for y in range(9):
-            value = icon[9 * x + y]
+    for x in range(rank):
+        for y in range(rank):
+            value = icon[rank * x + y]
             if value == 0:
                 # skip black pixels to be transparent.
                 continue

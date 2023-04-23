@@ -9,7 +9,7 @@ import json
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 
-from .weather_icons import get_icon_for_condition, arrow_x, render_icon
+from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
 
 CANVAS_WIDTH = 128
@@ -312,7 +312,10 @@ def draw_btn_test(image, draw):
     pos_x %= CANVAS_WIDTH
     pos_y %= CANVAS_HEIGHT
 
-    draw.text((pos_x, pos_y), '↖', font=font_scientifica__r)
+    # draw.text((pos_x, pos_y), '↖', font=font_scientifica__r)
+    icon = render_icon(cursor)
+
+    image.alpha_composite(icon, (pos_x, pos_y))
     return image
 
 

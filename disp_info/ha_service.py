@@ -33,7 +33,6 @@ def on_message(client, userdata, msg):
             if payload['action'] == 'scene_1':
                 ttl = 1000
             db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
-        # set_dict(rkeys['ha_enki_rmt'], payload)
 
 
 if __name__ == '__main__':
