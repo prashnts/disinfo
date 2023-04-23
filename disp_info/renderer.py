@@ -23,7 +23,7 @@ font_px_op_mono_8 = ImageFont.truetype('assets/fonts/PixelOperatorMono8.ttf', 8)
 font_px_op__l = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
 font_px_op__xl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
 font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
-# font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
+font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
 font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 11)
 font_scientifica__b = ImageFont.truetype('assets/fonts/scientificaBold.ttf', 11)
 font_scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
@@ -69,15 +69,21 @@ def draw_date_time(draw: ImageDraw):
 
 def draw_22_22(draw: ImageDraw):
     t = datetime.datetime.now()
+    action = get_dict(rkeys['ha_enki_rmt']).get('action')
     # t = datetime.datetime(2022, 2, 1, 22, 22, t.second)
 
     equal_elements = t.hour == t.minute
     twentytwo = t.hour == t.minute == 22
+    all_equal = t.hour == t.minute == t.second
+
+    if action == 'scene_1':
+        twentytwo == True
+        equal_elements = True
+        all_equal = True
 
     if not equal_elements:
         return
 
-    all_equal = t.hour == t.minute == t.second
     text = t.strftime('%H:%M')
     font = font_px_op__xl
     fill = '#2FB21B'
@@ -293,23 +299,20 @@ pos_y = 0
 def draw_btn_test(image, draw):
     global pos_x, pos_y
 
-    try:
-        action = get_dict(rkeys['ha_enki_rmt'])
-        if action['action'] == 'color_saturation_step_up':
-            pos_y -= 1
-        if action['action'] == 'color_saturation_step_down':
-            pos_y += 1
-        if action['action'] == 'color_hue_step_up':
-            pos_x += 1
-        if action['action'] == 'color_hue_step_down':
-            pos_x -= 1
+    action = get_dict(rkeys['ha_enki_rmt']).get('action')
+    if action == 'color_saturation_step_up':
+        pos_y -= 1
+    if action == 'color_saturation_step_down':
+        pos_y += 1
+    if action == 'color_hue_step_up':
+        pos_x += 1
+    if action == 'color_hue_step_down':
+        pos_x -= 1
 
-        pos_x %= CANVAS_WIDTH
-        pos_y %= CANVAS_HEIGHT
-    except TypeError:
-        pass
+    pos_x %= CANVAS_WIDTH
+    pos_y %= CANVAS_HEIGHT
 
-    draw.text((pos_x, pos_y), '*', font=font_tamzen__rm)
+    draw.text((pos_x, pos_y), '↖', font=font_scientifica__r)
     return image
 
 
@@ -320,14 +323,10 @@ def draw_frame(st, st_detail):
     image = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    try:
-        pir_state = get_dict(rkeys['ha_pir_salon'])
-        if not pir_state['occupancy']:
-            # do not draw if nobody is there.
-            return image
-    except TypeError:
-        # uninitialized state, draw the screen
-        pass
+    pir_state = get_dict(rkeys['ha_pir_salon']).get('occupancy')
+    if not pir_state:
+        # do not draw if nobody is there.
+        return image
 
     # draw_sin_wave(step=(1 + step * .6), draw=draw, yoffset=38, amp=10, divisor=6, color='#98A9D0', width=1)
     draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')

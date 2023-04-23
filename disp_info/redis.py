@@ -13,7 +13,10 @@ db = redis.Redis(host='localhost', port=6379, db=0)
 
 def get_dict(key: str) -> dict:
     value = db.get(key)
-    return json.loads(value)
+    try:
+        return json.loads(value)
+    except TypeError:
+        return {}
 
 def set_dict(key: str, payload: dict):
     data = json.dumps(payload)
