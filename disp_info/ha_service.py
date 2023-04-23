@@ -29,7 +29,10 @@ def on_message(client, userdata, msg):
         # We will retain the messages with a timeout.
         payload = json.loads(msg.payload)
         if payload['action']:
-            db.set(rkeys['ha_enki_rmt'], msg.payload, px=300)
+            ttl = 300
+            if payload['action'] == 'scene_1':
+                ttl = 1000
+            db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
         # set_dict(rkeys['ha_enki_rmt'], payload)
 
 
