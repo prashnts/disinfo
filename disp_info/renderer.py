@@ -341,18 +341,22 @@ def draw_currently_playing(image, draw, st_music, tick):
         return image
 
     state = state['new_state']
-    media_title = ''
+    media_info = ''
 
     if state['state'] == 'playing':
         media_title = state['attributes']['media_title']
+        media_album = state['attributes']['media_album_name']
+        media_artist = state['attributes']['media_artist']
+        elements = [media_title, media_album, media_artist]
+        media_info = ' >> '.join([e for e in elements if e])
 
-    if not media_title or media_title == 'TV':
+    if not media_info or media_info == 'TV':
         return image
 
     art = get_album_art(state['attributes'].get('entity_picture'))
 
-    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#c44910')
-    st_music.set_message(media_title)
+    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#1a810e')
+    st_music.set_message(media_info)
     image = st_music.draw(tick, image)
 
     if art:
@@ -421,10 +425,10 @@ st_detail = ScrollableText(
 )
 st_music = ScrollableText(
     '',
-    anchor=(83, 15),
+    anchor=(83, 16),
     width=(CANVAS_WIDTH - 83 - 7),
     speed=.001,
-    delta=1,
+    delta=2,
     font=font_tamzen__rs,
     fill='#72be9c'
 )
