@@ -381,7 +381,6 @@ def draw_frame(st, st_detail, st_music):
 
 
     image = draw_numbers(image, draw, st, st_detail, tick)
-    image = draw_currently_playing(image, draw, st_music, tick)
 
     draw_22_22(draw)
 
@@ -393,6 +392,7 @@ def draw_frame(st, st_detail, st_music):
     except Exception as e:
         print(e)
 
+    image = draw_currently_playing(image, draw, st_music, tick)
     image = draw_btn_test(image, draw)
 
     # icon = render_icon(arrow_x, scale=1)
