@@ -345,7 +345,7 @@ def draw_currently_playing(image, draw, st_music, tick):
     if state['state'] == 'playing':
         media_title = state['attributes']['media_title']
 
-    if not media_title:
+    if not media_title or media_title == 'TV':
         return image
 
     art = get_album_art(state['attributes'].get('entity_picture'))

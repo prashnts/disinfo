@@ -21,6 +21,5 @@ def get_dict(key: str) -> dict:
         return {}
 
 def set_dict(key: str, payload: dict):
-    print(f'setting dict {key=}, {payload=}')
     data = json.dumps(payload)
     db.set(key, data)
