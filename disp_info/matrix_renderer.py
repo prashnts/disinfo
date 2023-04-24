@@ -1,3 +1,5 @@
+import sys
+
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 from .renderer import get_frame

@@ -31,6 +31,8 @@ def draw_panel(img, scale=5, gap=1):
 
 
 try:
+    # First we clear the screen.
+    print('\033[2J')
     while True:
         img = draw_panel(get_frame())
         buf = BytesIO()
@@ -41,7 +43,9 @@ try:
         dither = sixel_dither_new(256)
         sixel_dither_initialize(dither, data, width, height, SIXEL_PIXELFORMAT_RGB888)
         sixel_encode(data, width, height, 1, dither, output)
-        print('\033[10;10H')
+
+        # Print sixel at previous location.
+        print('\033[10;10H')    # Term Cursor Position x, y , ref colorama
         print(buf.getvalue().decode('ascii'))
 
         time.sleep(0.01)

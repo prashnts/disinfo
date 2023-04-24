@@ -318,8 +318,29 @@ def draw_btn_test(image, draw):
     image.alpha_composite(icon, (pos_x, pos_y))
     return image
 
+def draw_currently_playing(image, draw, st_music, tick):
+    state = get_dict(rkeys['ha_sonos_beam'])
 
-def draw_frame(st, st_detail):
+    if not state.get('new_state'):
+        return image
+
+    state = state['new_state']
+    media_title = ''
+
+    if state['state'] == 'playing':
+        media_title = state['attributes']['media_title']
+
+    if not media_title:
+        return image
+
+
+    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#ce1c1c')
+    st_music.set_message(media_title)
+    image = st_music.draw(tick, image)
+    return image
+
+
+def draw_frame(st, st_detail, st_music):
     tick = time.time()
     step = tick * 15
 
@@ -352,6 +373,7 @@ def draw_frame(st, st_detail):
         print(e)
 
     image = draw_btn_test(image, draw)
+    image = draw_currently_playing(image, draw, st_music, tick)
 
     # icon = render_icon(arrow_x, scale=1)
     # image.alpha_composite(icon, (50, 30))
@@ -377,6 +399,15 @@ st_detail = ScrollableText(
     font=font_px_op_mono_8,
     fill='#9bb10d'
 )
+st_music = ScrollableText(
+    '',
+    anchor=(83, 15),
+    width=(CANVAS_WIDTH - 83 - 7),
+    speed=.001,
+    delta=1,
+    font=font_tamzen__rs,
+    fill='#ce1c1c'
+)
 
 def get_frame():
-    return draw_frame(st, st_detail)
+    return draw_frame(st, st_detail, st_music)

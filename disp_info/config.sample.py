@@ -10,3 +10,9 @@ ha_mqtt_host = '10.0.1.207'
 ha_mqtt_port = 1883
 ha_mqtt_username = 'username'
 ha_mqtt_password = 'password'
+
+# Quirks
+mqtt_btn_latch_t = 100
+
+# idf mobilité
+idfm_api_key = 'fill-me'

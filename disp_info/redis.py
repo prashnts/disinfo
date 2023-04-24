@@ -7,6 +7,8 @@ rkeys = {
     'octoprint_printing': 'hass.octoprint.printing',
     'ha_pir_salon': 'hass.pir.salon',
     'ha_enki_rmt': 'hass.enki.rmt',
+    'ha_sonos_beam': 'hass.sonos.beam',
+    'ha_enviomental_lux': 'hass.enviomental.lux',
 }
 
 db = redis.Redis(host='localhost', port=6379, db=0)
