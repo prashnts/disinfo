@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
+import arrow
 
 from . import config
 from .redis import set_dict, rkeys, db
@@ -34,6 +35,7 @@ def on_message(client, userdata, msg):
         set_dict(rkeys['octoprint_printing'], payload)
     if msg.topic == 'zigbee2mqtt/ikea.pir.salon':
         payload = json.loads(msg.payload)
+        payload['timestamp'] = arrow.now().isoformat()
         set_dict(rkeys['ha_pir_salon'], payload)
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.

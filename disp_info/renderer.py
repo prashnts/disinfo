@@ -14,6 +14,7 @@ from functools import cache
 
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
+from .state_proxy import should_turn_on_display
 from . import config
 
 CANVAS_WIDTH = 128
@@ -297,8 +298,8 @@ def draw_numbers(image, draw, st, st_detail, tick):
 
     return image
 
-pos_x = 0
-pos_y = 0
+pos_x = 64
+pos_y = 32
 
 def draw_btn_test(image, draw):
     global pos_x, pos_y
@@ -366,8 +367,7 @@ def draw_frame(st, st_detail, st_music):
     image = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    pir_state = get_dict(rkeys['ha_pir_salon']).get('occupancy')
-    if not pir_state:
+    if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
 
