@@ -17,9 +17,8 @@ from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
 from . import config
 
-CANVAS_WIDTH = 128
-CANVAS_HEIGHT = 64
-origin = (CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
+
+origin = (config.matrix_w / 2, config.matrix_h / 2)
 
 font_tamzen__rs = ImageFont.truetype('assets/fonts/TamzenForPowerline5x9r.ttf', 9)
 font_tamzen__rm = ImageFont.truetype('assets/fonts/Tamzen7x13r.ttf', 13)
@@ -58,7 +57,7 @@ def draw_date_time(draw: ImageDraw):
     font = font_tamzen__rs
     time_size = draw.textbbox((0, 0), time_str, font=font, anchor='lt')
     # we want to draw the time on right side, so we need to go left from CANVAS_WIDTH
-    xpos = CANVAS_WIDTH - time_size[2]
+    xpos = config.matrix_w - time_size[2]
     ypos = 1
     time_color = '#2BBEC9' if t.second % 2 == 0 else '#0E699D'
     draw.text((xpos, ypos), time_str, font=font, fill=time_color, anchor='lt')
@@ -66,7 +65,7 @@ def draw_date_time(draw: ImageDraw):
     # next we draw the date just below the time.
     date_str = t.strftime('%a %d/%m')
     date_size = draw.textbbox((0, 0), date_str, font=font, anchor='lt')
-    xpos = CANVAS_WIDTH - date_size[2]
+    xpos = config.matrix_w - date_size[2]
     ypos = 2 + time_size[3] + 1
 
     date_color = '#9F4006'
@@ -123,8 +122,8 @@ def draw_22_22(draw: ImageDraw):
     ]
 
     # draw some shimmering leds everywhere!
-    for x in range(CANVAS_WIDTH):
-        for y in range(CANVAS_HEIGHT):
+    for x in range(config.matrix_w):
+        for y in range(config.matrix_h):
             if random.random() < .003:
                 pts = [(x, y)]
                 if random.random() < 0.2:
@@ -285,14 +284,14 @@ def draw_numbers(image, draw, st, st_detail, tick):
     _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=st_detail.font, anchor='lt')
     if num_w < 42:
         # draw static text
-        draw.rounded_rectangle([(-2, 43), (num_w + 1, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        draw.rounded_rectangle([(-2, 43), (num_w + 1, config.matrix_h - 10)], radius=2, fill='#013117')
         draw.text((1, 45), num_str, font=st_detail.font, fill='#9bb10d', anchor='lt')
     else:
-        draw.rounded_rectangle([(-2, 43), (43, CANVAS_HEIGHT - 10)], radius=2, fill='#013117')
+        draw.rounded_rectangle([(-2, 43), (43, config.matrix_h - 10)], radius=2, fill='#013117')
         image = st_detail.draw(tick, image)
 
 
-    draw.rounded_rectangle([(0, 53), (CANVAS_WIDTH - 1, CANVAS_HEIGHT - 1)], radius=0, fill='#010a29')
+    draw.rounded_rectangle([(0, 53), (config.matrix_w - 1, config.matrix_h - 1)], radius=0, fill='#010a29')
     image = st.draw(tick, image)
     draw.text((1, 52), 'i', font=font_tamzen__rm)
 
@@ -314,8 +313,8 @@ def draw_btn_test(image, draw):
     if action == 'color_hue_step_down':
         pos_x -= 1
 
-    pos_x %= CANVAS_WIDTH
-    pos_y %= CANVAS_HEIGHT
+    pos_x %= config.matrix_w
+    pos_y %= config.matrix_h
 
     # draw.text((pos_x, pos_y), '↖', font=font_scientifica__r)
     icon = render_icon(cursor)
@@ -362,7 +361,7 @@ def draw_currently_playing(image, draw, st_music, tick):
     image = st_music.draw(tick, image)
 
     if art:
-        image.paste(art, (CANVAS_WIDTH - 25 - 2, 24))
+        image.paste(art, (config.matrix_w - 25 - 2, 24))
     return image
 
 
@@ -410,7 +409,7 @@ def draw_frame(st, st_detail, st_music):
 st = ScrollableText(
     '',
     anchor=(9, 55),
-    width=(CANVAS_WIDTH - 9),
+    width=(config.matrix_w - 9),
     speed=.001,
     delta=2,
     font=font_px_op__r,
@@ -428,7 +427,7 @@ st_detail = ScrollableText(
 st_music = ScrollableText(
     '',
     anchor=(83, 16),
-    width=(CANVAS_WIDTH - 83 - 7),
+    width=(config.matrix_w - 83 - 7),
     speed=.001,
     delta=2,
     font=font_tamzen__rs,

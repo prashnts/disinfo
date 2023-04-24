@@ -17,3 +17,8 @@ mqtt_btn_latch_t = 100
 
 # idf mobilité
 idfm_api_key = 'fill-me'
+
+# Matrix config
+# Represents combined panels
+matrix_w = 128
+matrix_h = 64
