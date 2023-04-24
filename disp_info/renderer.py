@@ -334,7 +334,7 @@ def draw_currently_playing(image, draw, st_music, tick):
         return image
 
 
-    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#ce1c1c')
+    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#c44910')
     st_music.set_message(media_title)
     image = st_music.draw(tick, image)
     return image
@@ -362,8 +362,10 @@ def draw_frame(st, st_detail, st_music):
 
 
     image = draw_numbers(image, draw, st, st_detail, tick)
+    image = draw_currently_playing(image, draw, st_music, tick)
 
     draw_22_22(draw)
+
     enchancer = ImageEnhance.Sharpness(image)
     image = enchancer.enhance(.7)
     draw = ImageDraw.Draw(image)
@@ -373,7 +375,6 @@ def draw_frame(st, st_detail, st_music):
         print(e)
 
     image = draw_btn_test(image, draw)
-    image = draw_currently_playing(image, draw, st_music, tick)
 
     # icon = render_icon(arrow_x, scale=1)
     # image.alpha_composite(icon, (50, 30))
@@ -406,7 +407,7 @@ st_music = ScrollableText(
     speed=.001,
     delta=1,
     font=font_tamzen__rs,
-    fill='#ce1c1c'
+    fill='#72be9c'
 )
 
 def get_frame():
