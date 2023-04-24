@@ -344,13 +344,15 @@ def draw_currently_playing(image, draw, st_music, tick):
     media_info = ''
 
     if state['state'] == 'playing':
-        media_title = state['attributes']['media_title']
-        media_album = state['attributes']['media_album_name']
-        media_artist = state['attributes']['media_artist']
+        media_title = state['attributes'].get('media_title')
+        media_album = state['attributes'].get('media_album_name')
+        media_artist = state['attributes'].get('media_artist')
         elements = [media_title, media_album, media_artist]
         media_info = ' >> '.join([e for e in elements if e])
+    else:
+        return image
 
-    if not media_info or media_info == 'TV':
+    if not media_info or media_title == 'TV':
         return image
 
     art = get_album_art(state['attributes'].get('entity_picture'))
