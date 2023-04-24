@@ -6,6 +6,7 @@ pw_latitude = 42
 pw_longitude = 2
 
 # Homeassistant MQTT
+ha_base_url = '10.0.1.207:8123'
 ha_mqtt_host = '10.0.1.207'
 ha_mqtt_port = 1883
 ha_mqtt_username = 'username'

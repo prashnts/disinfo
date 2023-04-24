@@ -6,11 +6,15 @@ import datetime
 import math
 import random
 import json
+import requests
+import io
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
+from functools import cache
 
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
+from . import config
 
 CANVAS_WIDTH = 128
 CANVAS_HEIGHT = 64
@@ -318,6 +322,17 @@ def draw_btn_test(image, draw):
     image.alpha_composite(icon, (pos_x, pos_y))
     return image
 
+@cache
+def get_album_art(fragment: str):
+    try:
+        r = requests.get(f'http://{config.ha_base_url}{fragment}')
+        r.raise_for_status()
+        fp = io.BytesIO(r.content)
+        img = Image.open(fp)
+        return img.resize((25, 25))
+    except requests.RequestException:
+        return None
+
 def draw_currently_playing(image, draw, st_music, tick):
     state = get_dict(rkeys['ha_sonos_beam'])
 
@@ -333,10 +348,14 @@ def draw_currently_playing(image, draw, st_music, tick):
     if not media_title:
         return image
 
+    art = get_album_art(state['attributes'].get('entity_picture'))
 
     draw.text((122, 14), '♫', font=font_scientifica__r, fill='#c44910')
     st_music.set_message(media_title)
     image = st_music.draw(tick, image)
+
+    if art:
+        image.paste(art, (CANVAS_WIDTH - 25 - 2, 24))
     return image
 
 
