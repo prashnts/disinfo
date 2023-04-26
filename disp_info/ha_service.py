@@ -5,19 +5,21 @@ import arrow
 from . import config
 from .redis import set_dict, rkeys, db
 
-topic_key_map = {
-    'octoPrint/hass/printing': 'octoprint_printing',
+pir_topic_map = {
     'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
-    'zigbee2mqtt/enki.rmt.0x03': 'ha_enki_rmt',
+    'zigbee2mqtt/ikea.pir.kitchen': 'ha_pir_kitchen',
 }
 
 def on_connect(client, userdata, flags, rc):
     print('connected!')
 
     client.subscribe('octoPrint/hass/printing')
-    client.subscribe('zigbee2mqtt/ikea.pir.salon')
     client.subscribe('zigbee2mqtt/enki.rmt.0x03')   # Remote to control the display
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
+
+    for topic in pir_topic_map.keys():
+        # subscribe to PIR sensor states
+        client.subscribe(topic)
 
 def on_message(client, userdata, msg):
     # print(msg.topic, str(msg.payload))
@@ -33,10 +35,10 @@ def on_message(client, userdata, msg):
     if msg.topic == 'octoPrint/hass/printing':
         payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_printing'], payload)
-    if msg.topic == 'zigbee2mqtt/ikea.pir.salon':
+    if msg.topic in pir_topic_map:
         payload = json.loads(msg.payload)
         payload['timestamp'] = arrow.now().isoformat()
-        set_dict(rkeys['ha_pir_salon'], payload)
+        set_dict(rkeys[pir_topic_map[msg.topic]], payload)
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         payload = json.loads(msg.payload)
