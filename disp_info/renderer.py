@@ -15,6 +15,7 @@ from functools import cache
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
+from .sprite_icons import SpriteIcon
 from . import config
 
 
@@ -158,7 +159,7 @@ def draw_22_22(draw: ImageDraw):
                     ]
                 draw.point(random.choice(pts), fill=random.choice(gcols))
 
-def draw_weather(draw: ImageDraw, image: Image):
+def draw_weather(draw: ImageDraw, image: Image, step: int):
     forecast = get_dict(rkeys['weather_data'])
 
     color_temp = '#9a9ba2'
@@ -179,14 +180,20 @@ def draw_weather(draw: ImageDraw, image: Image):
     _, _, degc_w, _ = draw.textbbox((0, 0), deg_c, font=font_tamzen__rs, anchor='lt')
 
     # icon = get_icon_for_condition('clear-night', scale=2)
-    icon = get_icon_for_condition(icon_name, scale=2)
-    # icon = icon.filter(ImageFilter.BoxBlur(.3))
-    # icon = icon.resize((icon.width // 2, icon.height // 2), resample=Image.Resampling.HAMMING)
-    image.alpha_composite(icon, (o_x, o_y))
+    # icon = get_icon_for_condition(icon_name, scale=2)
+    weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
+    weather_icon.anchor = (o_x + 1, o_y + 1)
+    weather_icon.draw(step, image)
+    icon_width = weather_icon.sprite.width
+    icon_height = icon_width
 
-    draw.text((o_x + icon.width + 2, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
-    draw.text((o_x + icon.width + temp_w + 2, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
-    draw.text((o_x + 2, o_y + icon.height + 1), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
+    # icon = icon.filter(ImageFilter.BoxBlur(.3))
+    # icon = icon.resize((icon.width // 2, icon_height // 2), resample=Image.Resampling.HAMMING)
+    # image.alpha_composite(icon, (o_x, o_y))
+
+    draw.text((o_x + icon_width + 1, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
+    draw.text((o_x + icon_width + temp_w + 1, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
+    draw.text((o_x + 1, o_y + icon_height + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
     today = forecast['daily']['data'][0]
@@ -200,6 +207,7 @@ def draw_weather(draw: ImageDraw, image: Image):
     color_high = '#967b03'
     color_low = '#2d83b4'
     # color_high = '#0f29ea'
+    left_span = o_x + icon_width + temp_w + degc_w + 2
 
     _, _, highl_w, highl_h = draw.textbbox((0, 0), temp_high_label, font=high_low_font, anchor='lt')
     _, _, lowl_w, lowl_h = draw.textbbox((0, 0), temp_low_label, font=high_low_font, anchor='lt')
@@ -208,11 +216,11 @@ def draw_weather(draw: ImageDraw, image: Image):
     high_line_h = max(highl_h, highv_h) + 1
 
     #! todo. This really needs to be fixed!
-    draw.text((o_x + icon.width + 2, o_y + temp_h + 2), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
-    draw.text((o_x + icon.width + highl_w + 3, o_y + temp_h + 2), temp_high, font=high_low_font, fill=color_high, anchor='lt')
+    draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
+    draw.text((left_span + highl_w + 1, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
 
-    draw.text((o_x + icon.width + highl_w + highv_w + 5, o_y + temp_h + 2), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    draw.text((o_x + icon.width + highl_w + highv_w + lowl_w + 6, o_y + temp_h + 2), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((left_span, o_y + highl_h + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((left_span + lowl_w, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
 
 class ScrollableText:
@@ -365,7 +373,7 @@ def draw_currently_playing(image, draw, st_music, tick):
     return image
 
 
-def draw_frame(st, st_detail, st_music):
+def draw_frame(st, st_detail, st_music, weather_icon):
     tick = time.time()
     step = tick * 15
 
@@ -393,7 +401,7 @@ def draw_frame(st, st_detail, st_music):
     image = enchancer.enhance(.7)
     draw = ImageDraw.Draw(image)
     try:
-        draw_weather(draw, image)
+        draw_weather(draw, image, tick)
     except Exception as e:
         print(e)
 
@@ -433,6 +441,7 @@ st_music = ScrollableText(
     font=font_tamzen__rs,
     fill='#72be9c'
 )
+weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.1)
 
 def get_frame():
-    return draw_frame(st, st_detail, st_music)
+    return draw_frame(st, st_detail, st_music, weather_icon)
