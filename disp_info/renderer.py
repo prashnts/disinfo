@@ -441,7 +441,7 @@ st_music = ScrollableText(
     font=font_tamzen__rs,
     fill='#72be9c'
 )
-weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.1)
+weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.05)
 
 def get_frame():
     return draw_frame(st, st_detail, st_music, weather_icon)
