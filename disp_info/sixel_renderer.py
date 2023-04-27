@@ -48,6 +48,7 @@ try:
         print('\033[10;10H')    # Term Cursor Position x, y , ref colorama
         print(buf.getvalue().decode('ascii'))
 
+        break
         time.sleep(0.01)
 except KeyboardInterrupt:
     sixel_dither_unref(dither)

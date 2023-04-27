@@ -200,8 +200,8 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     temp_high_label = 'H'
     temp_low_label = 'L'
     label_margin = 2
-    temp_high = f'{round(today["temperatureHigh"])}°'
-    temp_low = f'{round(today["temperatureLow"])}°'
+    temp_high = f'{round(today["apparentTemperatureMax"])}°'
+    temp_low = f'{round(today["apparentTemperatureMin"])}°'
     high_low_font = font_tamzen__rs
 
     color_high = '#967b03'
@@ -220,7 +220,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     draw.text((left_span + highl_w + 1, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
 
     draw.text((left_span, o_y + highl_h + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    draw.text((left_span + lowl_w, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+    draw.text((left_span + lowl_w + 1, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
 
 class ScrollableText:
