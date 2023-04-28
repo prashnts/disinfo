@@ -164,14 +164,14 @@ def draw_22_22(draw: ImageDraw):
 def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Image:
     '''Generates a vertical range graph of temperatures.'''
 
-    i = Image.new('RGBA', (3, span), (0, 0, 0, 0))
+    i = Image.new('RGBA', (4, span), (0, 0, 0, 0))
     d = ImageDraw.Draw(i)
 
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
     gradient = color_high.range_to(color_low, span)
 
-    color_current = Color('#e54221')
+    color_current = Color('#c41414')
 
     high_span = t_high - t_low
     factor = span / high_span
@@ -183,17 +183,23 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
         current_pos = span
 
     # "flip" the current pos.
-    current_pos = span - current_pos
+    cp = span - current_pos
 
-    d.line([(1, 0), (2, 0)], fill=color_high.hex)
-    d.line([(1, span - 1), (2, span - 1)], fill=color_low.hex)
+    d.line([(2, 0), (3, 0)], fill=color_high.hex)
+    d.line([(2, span - 1), (3, span - 1)], fill=color_low.hex)
 
     for x, c in enumerate(gradient):
-        d.point([(1, x)], fill=c.hex)
+        d.point([(2, x)], fill=c.hex)
+
+    d.point([
+        (0, cp - 1),
+        (1, cp),
+        (0, cp + 1),
+    ], fill=color_current.hex)
 
     # d.line([(0, 0), (current_pos, 0)], fill=color_low)
     # d.line([(current_pos, 0), (span, 0)], fill=color_high)
-    d.line([(0, current_pos), (1, current_pos)], fill=color_current.hex)
+    # d.line([(0, current_pos), (1, current_pos)], fill=color_current.hex)
 
     return i
 
@@ -262,7 +268,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
 
     image.alpha_composite(t_range_vis, (left_span, o_y))
 
-    left_span += 4
+    left_span += 5
 
     #! todo. This really needs to be fixed!
     draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
