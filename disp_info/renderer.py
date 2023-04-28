@@ -8,6 +8,8 @@ import random
 import json
 import requests
 import io
+import arrow
+import dateutil
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 from functools import cache
@@ -16,7 +18,7 @@ from colour import Color
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
-from .sprite_icons import SpriteIcon
+from .sprite_icons import SpriteIcon, SpriteImage
 from . import config
 
 
@@ -279,6 +281,21 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     draw.text((left_span, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
     draw.text((left_span, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
+    left_span += max(highv_w, lowv_w) + 1
+
+    sunset_time = arrow.get(today['sunsetTime']).astimezone(dateutil.tz.tzlocal())
+    sunset_time_text = sunset_time.strftime('%H:%M')
+    now = arrow.now()
+
+    if sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60:
+        sunset_arrow.anchor = (0, 20)
+        sunset_arrow.draw(step, image)
+
+        draw.text((sunset_arrow.sprite.width + 1, 20), sunset_time_text, font=font_tamzen__rs)
+
+    # image.alpha_composite(sunrise_sunset_icon[0], (left_span, o_y))
+    # print(t_range_vis.height)
+
 
 class ScrollableText:
     def __init__(self,
@@ -497,6 +514,8 @@ st_music = ScrollableText(
     fill='#72be9c'
 )
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.05)
+sunset_arrow = SpriteIcon('assets/sunset-arrow.png', anchor=(0, 0), step_time=.05)
+sunrise_sunset_icon = SpriteImage('assets/sunrise-sunset.png')
 
 def get_frame():
     return draw_frame(st, st_detail, st_music, weather_icon)

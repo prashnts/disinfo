@@ -1,6 +1,29 @@
 from PIL import Image
 from functools import cached_property
 
+
+class SpriteImage:
+    def __init__(self, filename: str, vertical_layout=True):
+        self._init_sprites(filename)
+
+    def _init_sprites(self, filename: str):
+        img = Image.open(filename)
+        self.nframes = img.height // img.width
+        self.width = img.width
+        self.height = img.width
+        self._frames = []
+        for i in range(self.nframes):
+            croprect = (
+                0,
+                img.width * i,
+                img.width,
+                img.width * (i + 1),
+            )
+            self._frames.append(img.crop(croprect))
+
+    def __getitem__(self, index) -> Image:
+        return self._frames[index]
+
 class SpriteIcon:
     # Renders animated sprites
     # Assumes the frames are vertically stacked and that its a square frame.
@@ -13,19 +36,9 @@ class SpriteIcon:
         self.init_sprite(filename)
 
     def init_sprite(self, filename: str):
-        img = Image.open(filename)
+        self.sprite = SpriteImage(filename)
         self.filename = filename
-        self.nframes = img.height // img.width
-        self.sprite = img
-        self._frames = []
-        for i in range(self.nframes):
-            croprect = (
-                0,
-                self.sprite.width * i,
-                self.sprite.width,
-                self.sprite.width * (i + 1),
-            )
-            self._frames.append(self.sprite.crop(croprect))
+        self.nframes = self.sprite.nframes
 
     def set_icon(self, filename: str):
         if filename == self.filename:
@@ -41,7 +54,7 @@ class SpriteIcon:
             self.current_frame %= self.nframes
             self.last_step = step
 
-        frame = self._frames[self.current_frame]
+        frame = self.sprite[self.current_frame]
 
         image.alpha_composite(frame, self.anchor)
         return image
