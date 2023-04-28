@@ -180,7 +180,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
 
     if current_pos <= 0:
         current_pos = 0
-    elif current_pos >= span:
+    elif current_pos >= span - 1:
         current_pos = span - 1
 
     # "flip" the current pos and move it in frame.
