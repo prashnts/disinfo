@@ -169,7 +169,8 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
 
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
-    gradient = color_high.range_to(color_low, span - 2)
+    span = span - 2
+    gradient = color_high.range_to(color_low, span)
 
     color_current = Color('#6b86cb')
 
@@ -177,16 +178,16 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
     factor = span / high_span
     current_pos = (t_current - t_low) * factor
 
-    if current_pos < 0:
+    if current_pos <= 0:
         current_pos = 0
-    elif current_pos > span:
-        current_pos = span
+    elif current_pos >= span:
+        current_pos = span - 1
 
-    # "flip" the current pos.
+    # "flip" the current pos and move it in frame.
     cp = span - current_pos
 
     d.line([(3, 1), (4, 1)], fill=color_high.hex)
-    d.line([(3, span - 2), (4, span - 2)], fill=color_low.hex)
+    d.line([(3, span), (4, span)], fill=color_low.hex)
 
     for x, c in enumerate(gradient):
         d.point([(3, x + 1)], fill=c.hex)
@@ -217,8 +218,8 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     o_x = 0
     o_y = 0
 
-    _, _, temp_w, temp_h = draw.textbbox((0, 0), temp_str, font=font_px_op__l, anchor='lt')
-    _, _, degc_w, _ = draw.textbbox((0, 0), deg_c, font=font_tamzen__rs, anchor='lt')
+    _, _, temp_w, temp_h = font_px_op__l.getbbox(temp_str, anchor='lt')
+    _, _, degc_w, _ = font_px_op__r.getbbox(deg_c, anchor='lt')
 
 
     # icon = get_icon_for_condition('clear-night', scale=2)
@@ -234,8 +235,8 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     # image.alpha_composite(icon, (o_x, o_y))
 
 
-    draw.text((o_x + icon_width + 1, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
-    draw.text((o_x + icon_width + temp_w + 1, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
+    draw.text((o_x + icon_width + 1, o_y + 2), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
+    draw.text((o_x + icon_width + temp_w, o_y), deg_c, font=font_px_op__r, fill=color_deg_c, anchor='lt')
     draw.text((o_x + 1, o_y + icon_height + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
@@ -252,12 +253,12 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     color_high = '#967b03'
     color_low = '#2d83b4'
     # color_high = '#0f29ea'
-    left_span = o_x + icon_width + temp_w + degc_w + 1
+    left_span = o_x + icon_width + temp_w + degc_w
 
-    _, _, highl_w, highl_h = draw.textbbox((0, 0), temp_high_label, font=high_low_font, anchor='lt')
-    _, _, lowl_w, lowl_h = draw.textbbox((0, 0), temp_low_label, font=high_low_font, anchor='lt')
-    _, _, highv_w, highv_h = draw.textbbox((0, 0), temp_high, font=high_low_font, anchor='lt')
-    _, _, lowv_w, lowv_h = draw.textbbox((0, 0), temp_low, font=high_low_font, anchor='lt')
+    _, _, highl_w, highl_h = high_low_font.getbbox(temp_high_label, anchor='lt')
+    _, _, lowl_w, lowl_h = high_low_font.getbbox(temp_low_label, anchor='lt')
+    _, _, highv_w, highv_h = high_low_font.getbbox(temp_high, anchor='lt')
+    _, _, lowv_w, lowv_h = high_low_font.getbbox(temp_low, anchor='lt')
     high_line_h = max(highl_h, highv_h) + 1
 
     t_range_vis = draw_temp_range(temperature, t_high, t_low, span=highv_h + lowv_h + 1)
@@ -306,9 +307,7 @@ class ScrollableText:
             return
         self.message = msg
         self.ypos = 0
-        _qimg = Image.new('RGBA', (0, 0))
-        _qdraw = ImageDraw.Draw(_qimg)
-        _, _, w, h = _qdraw.textbbox((0, 0), self.message, font=self.font, anchor='lt')
+        _, _, w, h = self.font.getbbox(self.message, anchor='lt')
         self.msg_width = w + (self.width * 1)
         self.msg_height = h
 
