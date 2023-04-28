@@ -169,8 +169,10 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
     color_current = Color('#ffffff')
 
     high_span = t_high - t_low
-    factor = span / high_span
-    current_pos = (t_current - t_low) * factor
+    try:
+        current_pos = (t_current - t_low) * (span / high_span)
+    except ZeroDivisionError:
+        current_pos = span // 2
 
     if current_pos <= 0:
         current_pos = 0
@@ -238,8 +240,8 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     temp_high_label = 'H'
     temp_low_label = 'L'
     label_margin = 2
-    t_high = today["apparentTemperatureMax"]
-    t_low = today["apparentTemperatureMin"]
+    t_high = today['temperatureHigh']
+    t_low = today['temperatureLow']
     temp_high = f'{round(t_high)}°'
     temp_low = f'{round(t_low)}°'
     high_low_font = font_tamzen__rs
