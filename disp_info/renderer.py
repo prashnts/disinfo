@@ -182,6 +182,9 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
     elif current_pos > span:
         current_pos = span
 
+    # "flip" the current pos.
+    current_pos = span - current_pos
+
     d.line([(1, 0), (2, 0)], fill=color_high.hex)
     d.line([(1, span - 1), (2, span - 1)], fill=color_low.hex)
 
