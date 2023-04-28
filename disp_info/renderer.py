@@ -11,6 +11,7 @@ import io
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 from functools import cache
+from colour import Color
 
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
@@ -159,6 +160,41 @@ def draw_22_22(draw: ImageDraw):
                     ]
                 draw.point(random.choice(pts), fill=random.choice(gcols))
 
+@cache
+def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Image:
+    '''Generates a vertical range graph of temperatures.'''
+
+    i = Image.new('RGBA', (3, span), (0, 0, 0, 0))
+    d = ImageDraw.Draw(i)
+
+    color_high = Color('#967b03')
+    color_low = Color('#2d83b4')
+    gradient = color_high.range_to(color_low, span)
+
+    color_current = Color('#eeeeee')
+
+    high_span = t_high - t_low
+    factor = span / high_span
+    current_pos = (t_current - t_low) * factor
+
+    if current_pos < 0:
+        current_pos = 0
+    elif current_pos > span:
+        current_pos = span
+
+    d.line([(1, 0), (2, 0)], fill=color_high.hex)
+    d.line([(1, span - 1), (2, span - 1)], fill=color_low.hex)
+
+    for x, c in enumerate(gradient):
+        d.point([(1, x)], fill=c.hex)
+
+    # d.line([(0, 0), (current_pos, 0)], fill=color_low)
+    # d.line([(current_pos, 0), (span, 0)], fill=color_high)
+    d.line([(0, current_pos), (1, current_pos)], fill=color_current.hex)
+
+    return i
+
+
 def draw_weather(draw: ImageDraw, image: Image, step: int):
     forecast = get_dict(rkeys['weather_data'])
 
@@ -179,6 +215,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     _, _, temp_w, temp_h = draw.textbbox((0, 0), temp_str, font=font_px_op__l, anchor='lt')
     _, _, degc_w, _ = draw.textbbox((0, 0), deg_c, font=font_tamzen__rs, anchor='lt')
 
+
     # icon = get_icon_for_condition('clear-night', scale=2)
     # icon = get_icon_for_condition(icon_name, scale=2)
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
@@ -191,6 +228,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     # icon = icon.resize((icon.width // 2, icon_height // 2), resample=Image.Resampling.HAMMING)
     # image.alpha_composite(icon, (o_x, o_y))
 
+
     draw.text((o_x + icon_width + 1, o_y + 1), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
     draw.text((o_x + icon_width + temp_w + 1, o_y + 1), deg_c, font=font_tamzen__rs, fill=color_deg_c, anchor='lt')
     draw.text((o_x + 1, o_y + icon_height + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
@@ -200,20 +238,28 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     temp_high_label = 'H'
     temp_low_label = 'L'
     label_margin = 2
-    temp_high = f'{round(today["apparentTemperatureMax"])}°'
-    temp_low = f'{round(today["apparentTemperatureMin"])}°'
+    t_high = today["apparentTemperatureMax"]
+    t_low = today["apparentTemperatureMin"]
+    temp_high = f'{round(t_high)}°'
+    temp_low = f'{round(t_low)}°'
     high_low_font = font_tamzen__rs
 
     color_high = '#967b03'
     color_low = '#2d83b4'
     # color_high = '#0f29ea'
-    left_span = o_x + icon_width + temp_w + degc_w + 2
+    left_span = o_x + icon_width + temp_w + degc_w + 1
 
     _, _, highl_w, highl_h = draw.textbbox((0, 0), temp_high_label, font=high_low_font, anchor='lt')
     _, _, lowl_w, lowl_h = draw.textbbox((0, 0), temp_low_label, font=high_low_font, anchor='lt')
     _, _, highv_w, highv_h = draw.textbbox((0, 0), temp_high, font=high_low_font, anchor='lt')
     _, _, lowv_w, lowv_h = draw.textbbox((0, 0), temp_low, font=high_low_font, anchor='lt')
     high_line_h = max(highl_h, highv_h) + 1
+
+    t_range_vis = draw_temp_range(temperature, t_high, t_low, span=highv_h + lowv_h + 1)
+
+    image.alpha_composite(t_range_vis, (left_span, o_y))
+
+    left_span += 4
 
     #! todo. This really needs to be fixed!
     draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')

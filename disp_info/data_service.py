@@ -49,6 +49,7 @@ def get_weather():
     try:
         logger.info('[fetch] weather')
         r = requests.get(forecast_url)
+        r.raise_for_status()
         data = r.json()
         # write out the forecast.
         set_dict(rkeys['weather_data'], data)
@@ -60,6 +61,7 @@ def get_random_text():
     try:
         logger.info('[fetch] random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
+        r.raise_for_status()
         data = r.json()
         set_dict(rkeys['random_msg'], data)
     except requests.exceptions.RequestException as e:

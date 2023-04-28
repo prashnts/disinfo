@@ -6,3 +6,4 @@ matplotlib
 schedule
 paho-mqtt
 arrow
+colour
