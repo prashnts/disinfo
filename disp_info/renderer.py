@@ -236,7 +236,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
 
 
     draw.text((o_x + icon_width + 1, o_y + 2), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
-    draw.text((o_x + icon_width + temp_w, o_y), deg_c, font=font_px_op__r, fill=color_deg_c, anchor='lt')
+    draw.text((o_x + icon_width + temp_w, o_y + 2), deg_c, font=font_px_op__r, fill=color_deg_c, anchor='lt')
     draw.text((o_x + 1, o_y + icon_height + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # high low:
