@@ -59,7 +59,7 @@ def draw_date_time(draw: ImageDraw):
     t = datetime.datetime.now()
     time_str = t.strftime('%H:%M:%S')
     font = font_tamzen__rs
-    time_size = draw.textbbox((0, 0), time_str, font=font, anchor='lt')
+    time_size = font.getbbox(time_str, anchor='lt')
     # we want to draw the time on right side, so we need to go left from CANVAS_WIDTH
     xpos = config.matrix_w - time_size[2]
     ypos = 1
@@ -68,7 +68,7 @@ def draw_date_time(draw: ImageDraw):
 
     # next we draw the date just below the time.
     date_str = t.strftime('%a %d/%m')
-    date_size = draw.textbbox((0, 0), date_str, font=font, anchor='lt')
+    date_size = font.getbbox(date_str, anchor='lt')
     xpos = config.matrix_w - date_size[2]
     ypos = 2 + time_size[3] + 1
 
@@ -100,14 +100,6 @@ def draw_22_22(draw: ImageDraw):
         font = font_px_op__xxl
     if all_equal:
         fill = '#CF3F13'
-
-    # draw a rectangle in the background of the text (with padding * 2)
-    pad = 2
-    tl, tt, tr, tb = draw.textbbox(origin, text, font=font, anchor='mm')
-    # draw.rounded_rectangle(
-    #     [(tl - pad, tt - pad), (tr + pad, tb + pad)],
-    #     radius=3,
-    #     fill='#282828')
 
     # draw time
     draw.text(origin, text, font=font, fill=fill, anchor='mm')
@@ -291,7 +283,7 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
         sunset_arrow.anchor = (0, 20)
         sunset_arrow.draw(step, image)
 
-        draw.text((sunset_arrow.sprite.width + 1, 20), sunset_time_text, font=font_tamzen__rs)
+        draw.text((sunset_arrow.sprite.width + 1, 22), sunset_time_text, font=font_tamzen__rs, fill=color_condition, anchor='lt')
 
     # image.alpha_composite(sunrise_sunset_icon[0], (left_span, o_y))
     # print(t_range_vis.height)
@@ -361,7 +353,7 @@ def draw_numbers(image, draw, st, st_detail, tick):
     num_str = f'#{numbers["number"]}'
     st.set_message(numbers['text'])
     st_detail.set_message(num_str)
-    _, _, num_w, _ = draw.textbbox((0, 0), num_str, font=st_detail.font, anchor='lt')
+    _, _, num_w, _ = st_detail.font.getbbox(num_str, anchor='lt')
     if num_w < 42:
         # draw static text
         draw.rounded_rectangle([(-2, 43), (num_w + 1, config.matrix_h - 10)], radius=2, fill='#013117')
@@ -514,7 +506,7 @@ st_music = ScrollableText(
     fill='#72be9c'
 )
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.05)
-sunset_arrow = SpriteIcon('assets/sunset-arrow.png', anchor=(0, 0), step_time=.05)
+sunset_arrow = SpriteIcon('assets/sunset-arrow.png', anchor=(0, 0), step_time=.2)
 sunrise_sunset_icon = SpriteImage('assets/sunrise-sunset.png')
 
 def get_frame():

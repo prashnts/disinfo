@@ -27,7 +27,7 @@ def draw_panel(img, scale=5, gap=1):
             d.rounded_rectangle([(rx, ry), (ex, ey)], radius, fill=px, outline=outline_color, width=gap)
 
     enhancer = ImageEnhance.Brightness(i)
-    return enhancer.enhance(2)
+    return enhancer.enhance(1.5)
 
 
 try:
