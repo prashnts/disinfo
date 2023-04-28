@@ -171,7 +171,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
     color_low = Color('#2d83b4')
     gradient = color_high.range_to(color_low, span)
 
-    color_current = Color('#a53823')
+    color_current = Color('#244fba')
 
     high_span = t_high - t_low
     factor = span / high_span
@@ -193,13 +193,9 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
 
     d.point([
         (0, cp - 1),
-        (1, cp),
+        (0, cp), (1, cp),
         (0, cp + 1),
     ], fill=color_current.hex)
-
-    # d.line([(0, 0), (current_pos, 0)], fill=color_low)
-    # d.line([(current_pos, 0), (span, 0)], fill=color_high)
-    # d.line([(0, current_pos), (1, current_pos)], fill=color_current.hex)
 
     return i
 
