@@ -268,11 +268,16 @@ def draw_weather(draw: ImageDraw, image: Image, step: int):
     left_span += 6
 
     #! todo. This really needs to be fixed!
-    draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
-    draw.text((left_span + highl_w + 1, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
+    #! WITH Labels
+    # draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
+    # draw.text((left_span + highl_w + 1, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
 
-    draw.text((left_span, o_y + highl_h + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    draw.text((left_span + lowl_w + 1, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+    # draw.text((left_span, o_y + highl_h + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
+    # draw.text((left_span + lowl_w + 1, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
+
+    # Without labels.
+    draw.text((left_span, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
+    draw.text((left_span, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
 
 
 class ScrollableText:
