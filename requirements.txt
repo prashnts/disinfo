@@ -1,9 +1,8 @@
-pillow
-watchdog
-requests
-redis[hiredis]
-matplotlib
-schedule
-paho-mqtt
-arrow
-colour
+pillow>=8.1.2
+watchdog>=3.0.0
+requests>=2.25.1
+redis[hiredis]>=4.5.4
+schedule>=1.2.0
+paho-mqtt>=1.6.1
+arrow>=1.2.3
+colour>=0.1.5
