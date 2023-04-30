@@ -331,7 +331,7 @@ def draw_numbers(image, draw, st, st_detail, tick):
     if num_w < 42:
         # draw static text
         draw.rounded_rectangle([(-2, 43), (num_w + 1, config.matrix_h - 10)], radius=2, fill='#013117')
-        draw.text((1, 45), num_str, font=st_detail.font, fill='#9bb10d', anchor='lt')
+        draw.text((1, 45), num_str, font=st_detail.font, fill='#9bb10d', anchor='lt', stroke_width=1, stroke_fill='black')
     else:
         draw.rounded_rectangle([(-2, 43), (43, config.matrix_h - 10)], radius=2, fill='#013117')
         image = st_detail.draw(tick, image)
