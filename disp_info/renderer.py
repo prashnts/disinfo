@@ -15,10 +15,14 @@ from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
 from functools import cache
 from colour import Color
 
+
 from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
 from .sprite_icons import SpriteIcon, SpriteImage
+from .components.text import Text
+from .components.elements import Frame
+from .components.layouts import stack_horizontal, stack_vertical
 from . import config
 
 
@@ -155,14 +159,26 @@ def draw_22_22(draw: ImageDraw):
                 draw.point(random.choice(pts), fill=random.choice(gcols))
 
 @cache
-def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Image:
+def draw_temp_range(
+    t_current: float,
+    t_high: float,
+    t_low: float,
+    font: ImageFont = font_tamzen__rs) -> Frame:
     '''Generates a vertical range graph of temperatures.'''
-
-    i = Image.new('RGBA', (5, span), (0, 0, 0, 0))
-    d = ImageDraw.Draw(i)
 
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
+
+    text_high = Text(f'{round(t_high)}°', font, color_high.hex)
+    text_low = Text(f'{round(t_low)}°', font, color_low.hex)
+    span = text_high.height + text_low.height + 1
+
+    # Draw the range graph.
+    # todo: this can be refactored.
+
+    range_graph = Image.new('RGBA', (5, span), (0, 0, 0, 0))
+    d = ImageDraw.Draw(range_graph)
+
     span = span - 2
     gradient = color_high.range_to(color_low, span)
 
@@ -194,101 +210,57 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float, span=5) -> Im
         (0, cp + 1),
     ], fill=color_current.hex)
 
-    return i
+    return stack_horizontal([
+        Frame(range_graph),
+        stack_vertical([text_high, text_low], gap=1, align='left'),
+    ], gap=1, align='center')
 
 
-def draw_weather(draw: ImageDraw, image: Image, step: int):
+def draw_weather(step: int):
     forecast = get_dict(rkeys['weather_data'])
 
     color_temp = '#9a9ba2'
     color_deg_c = '#6E7078'
     color_condition = '#5b5e64'
 
+    # Current temperature and codition + High/Low
     temperature = forecast['currently']['apparentTemperature']
     condition = forecast['currently']['summary']
     icon_name = forecast['currently']['icon']
-
-    temp_str = f'{round(temperature)}'
-    deg_c = '°'
-
-    o_x = 0
-    o_y = 0
-
-    _, _, temp_w, temp_h = font_px_op__l.getbbox(temp_str, anchor='lt')
-    _, _, degc_w, _ = font_px_op__r.getbbox(deg_c, anchor='lt')
-
-
-    # icon = get_icon_for_condition('clear-night', scale=2)
-    # icon = get_icon_for_condition(icon_name, scale=2)
-    weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
-    weather_icon.anchor = (o_x + 1, o_y + 1)
-    weather_icon.draw(step, image)
-    icon_width = weather_icon.sprite.width
-    icon_height = icon_width
-
-    # icon = icon.filter(ImageFilter.BoxBlur(.3))
-    # icon = icon.resize((icon.width // 2, icon_height // 2), resample=Image.Resampling.HAMMING)
-    # image.alpha_composite(icon, (o_x, o_y))
-
-
-    draw.text((o_x + icon_width + 1, o_y + 2), temp_str, font=font_px_op__l, fill=color_temp, anchor='lt')
-    draw.text((o_x + icon_width + temp_w, o_y + 2), deg_c, font=font_px_op__r, fill=color_deg_c, anchor='lt')
-    draw.text((o_x + 1, o_y + icon_height + 2), condition, font=font_tamzen__rs, fill=color_condition, anchor='lt')
-
-    # high low:
     today = forecast['daily']['data'][0]
-    temp_high_label = 'H'
-    temp_low_label = 'L'
-    label_margin = 2
     t_high = today['temperatureHigh']
     t_low = today['temperatureLow']
-    temp_high = f'{round(t_high)}°'
-    temp_low = f'{round(t_low)}°'
-    high_low_font = font_tamzen__rs
 
-    color_high = '#967b03'
-    color_low = '#2d83b4'
-    # color_high = '#0f29ea'
-    left_span = o_x + icon_width + temp_w + degc_w
-
-    _, _, highl_w, highl_h = high_low_font.getbbox(temp_high_label, anchor='lt')
-    _, _, lowl_w, lowl_h = high_low_font.getbbox(temp_low_label, anchor='lt')
-    _, _, highv_w, highv_h = high_low_font.getbbox(temp_high, anchor='lt')
-    _, _, lowv_w, lowv_h = high_low_font.getbbox(temp_low, anchor='lt')
-    high_line_h = max(highl_h, highv_h) + 1
-
-    t_range_vis = draw_temp_range(temperature, t_high, t_low, span=highv_h + lowv_h + 1)
-
-    image.alpha_composite(t_range_vis, (left_span, o_y))
-
-    left_span += 6
-
-    #! todo. This really needs to be fixed!
-    #! WITH Labels
-    # draw.text((left_span, o_y ), temp_high_label, font=high_low_font, fill=color_high, anchor='lt')
-    # draw.text((left_span + highl_w + 1, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
-
-    # draw.text((left_span, o_y + highl_h + 1), temp_low_label, font=high_low_font, fill=color_low, anchor='lt')
-    # draw.text((left_span + lowl_w + 1, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
-
-    # Without labels.
-    draw.text((left_span, o_y ), temp_high, font=high_low_font, fill=color_high, anchor='lt')
-    draw.text((left_span, o_y + highl_h + 1), temp_low, font=high_low_font, fill=color_low, anchor='lt')
-
-    left_span += max(highv_w, lowv_w) + 1
-
+    # Sunset info
     sunset_time = arrow.get(today['sunsetTime']).astimezone(dateutil.tz.tzlocal())
-    sunset_time_text = sunset_time.strftime('%H:%M')
     now = arrow.now()
+    should_show_sunset = sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60
 
-    if sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60:
-        sunset_arrow.anchor = (0, 20)
-        sunset_arrow.draw(step, image)
+    weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
 
-        draw.text((sunset_arrow.sprite.width + 1, 22), sunset_time_text, font=font_tamzen__rs, fill=color_condition, anchor='lt')
+    temp_text = stack_horizontal([
+        Text(f'{round(temperature)}', font=font_px_op__l, fill=color_temp),
+        Text('°', font=font_px_op__r, fill=color_deg_c),
+    ], gap=0, align='top')
 
-    # image.alpha_composite(sunrise_sunset_icon[0], (left_span, o_y))
-    # print(t_range_vis.height)
+    weather_info = stack_vertical([
+        stack_horizontal([
+            weather_icon.draw(step),
+            temp_text,
+            draw_temp_range(temperature, t_high, t_low, font_tamzen__rs),
+        ], gap=1, align='center'),
+        Text(condition, font=font_tamzen__rs, fill=color_condition)
+    ], gap=1, align='left')
+
+    weather_stack = [weather_info]
+
+    if should_show_sunset:
+        weather_stack.append(stack_horizontal([
+            sunset_arrow.draw(step),
+            Text(sunset_time.strftime('%H:%M'), font=font_tamzen__rs, fill=color_condition),
+        ], gap=1, align='center'))
+
+    return stack_vertical(weather_stack, gap=1, align='left')
 
 
 class ScrollableText:
@@ -467,7 +439,8 @@ def draw_frame(st, st_detail, st_music, weather_icon):
     #image = enchancer.enhance(.7)
     #draw = ImageDraw.Draw(image)
     try:
-        draw_weather(draw, image, tick)
+        weather_frame = draw_weather(tick)
+        image.alpha_composite(weather_frame.image, (0, 0))
     except Exception as e:
         print(e)
 
@@ -507,8 +480,8 @@ st_music = ScrollableText(
     font=font_tamzen__rs,
     fill='#72be9c'
 )
-weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', anchor=(0, 0), step_time=.05)
-sunset_arrow = SpriteIcon('assets/sunset-arrow.png', anchor=(0, 0), step_time=.2)
+weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
+sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 sunrise_sunset_icon = SpriteImage('assets/sunrise-sunset.png')
 
 def get_frame():
