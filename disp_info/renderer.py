@@ -463,9 +463,9 @@ def draw_frame(st, st_detail, st_music, weather_icon):
 
     draw_22_22(draw)
 
-    enchancer = ImageEnhance.Sharpness(image)
-    image = enchancer.enhance(.7)
-    draw = ImageDraw.Draw(image)
+    #enchancer = ImageEnhance.Sharpness(image)
+    #image = enchancer.enhance(.7)
+    #draw = ImageDraw.Draw(image)
     try:
         draw_weather(draw, image, tick)
     except Exception as e:
