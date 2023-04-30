@@ -2,6 +2,7 @@ import redis
 import json
 
 rkeys = {
+    'remote': 'input.remote',
     'weather_data': 'weather.forecast_data',
     'random_msg': 'misc.random_msg',
     'octoprint_printing': 'hass.octoprint.printing',
