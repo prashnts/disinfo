@@ -23,8 +23,8 @@ class SpriteImage:
             )
             self._frames.append(img.crop(croprect))
 
-    def __getitem__(self, index) -> Image:
-        return self._frames[index]
+    def __getitem__(self, index) -> Frame:
+        return Frame(self._frames[index])
 
 class SpriteIcon:
     # Renders animated sprites
@@ -55,5 +55,4 @@ class SpriteIcon:
             self.current_frame %= self.nframes
             self.last_step = step
 
-        frame = self.sprite[self.current_frame]
-        return Frame(frame)
+        return self.sprite[self.current_frame]

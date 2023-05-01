@@ -222,19 +222,22 @@ def draw_weather(step: int):
     color_temp = '#9a9ba2'
     color_deg_c = '#6E7078'
     color_condition = '#5b5e64'
+    outdated_color = '#a00'
 
     # Current temperature and codition + High/Low
     temperature = forecast['currently']['apparentTemperature']
+    update_time = arrow.get(forecast['currently']['time'], tzinfo='local')
     condition = forecast['currently']['summary']
     icon_name = forecast['currently']['icon']
     today = forecast['daily']['data'][0]
     t_high = today['temperatureHigh']
     t_low = today['temperatureLow']
-
     # Sunset info
-    sunset_time = arrow.get(today['sunsetTime']).astimezone(dateutil.tz.tzlocal())
+    sunset_time = arrow.get(today['sunsetTime'], tzinfo='local')
+
     now = arrow.now()
     should_show_sunset = sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60
+    is_outdated = (now - update_time).total_seconds() > 30 * 60  # 30 mins.
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
 
@@ -243,13 +246,18 @@ def draw_weather(step: int):
         Text('°', font=font_px_op__r, fill=color_deg_c),
     ], gap=0, align='top')
 
+    condition_info = [Text(condition, font=font_tamzen__rs, fill=color_condition)]
+
+    if is_outdated:
+        condition_info.insert(0, warning_icon)
+
     weather_info = stack_vertical([
         stack_horizontal([
             weather_icon.draw(step),
             temp_text,
             draw_temp_range(temperature, t_high, t_low, font_tamzen__rs),
         ], gap=1, align='center'),
-        Text(condition, font=font_tamzen__rs, fill=color_condition)
+        stack_horizontal(condition_info, gap=2, align='center'),
     ], gap=1, align='left')
 
     weather_stack = [weather_info]
@@ -442,6 +450,7 @@ def draw_frame(st, st_detail, st_music, weather_icon):
         weather_frame = draw_weather(tick)
         image.alpha_composite(weather_frame.image, (0, 0))
     except Exception as e:
+        raise
         print(e)
 
     image = draw_currently_playing(image, draw, st_music, tick)
@@ -482,6 +491,7 @@ st_music = ScrollableText(
 )
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
+warning_icon = SpriteImage('assets/warning.7x7.png')[0]
 sunrise_sunset_icon = SpriteImage('assets/sunrise-sunset.png')
 
 def get_frame():
