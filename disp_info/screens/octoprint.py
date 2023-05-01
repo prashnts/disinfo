@@ -5,7 +5,7 @@ from disp_info.sprite_icons import SpriteImage
 from disp_info.components import fonts
 from disp_info.redis import rkeys, get_dict
 
-threed_icon = SpriteImage('assets/3D.png')[0]
+threed_icon = SpriteImage('assets/raster/nozzle.9x9.png')[0]
 
 
 def draw() -> Frame:
@@ -31,7 +31,7 @@ def draw() -> Frame:
     info_elem = stack_horizontal([
         threed_icon,
         info_text,
-    ], gap=4, align='center')
+    ], gap=2, align='center')
 
     elements = [
         info_elem,
