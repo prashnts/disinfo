@@ -31,7 +31,7 @@ def draw() -> Frame:
     info_elem = stack_horizontal([
         threed_icon,
         info_text,
-    ], gap=2, align='center')
+    ], gap=4, align='center')
 
     elements = [
         info_elem,
