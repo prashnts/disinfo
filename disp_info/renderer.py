@@ -19,6 +19,7 @@ from .components.elements import Frame
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components.scroller import ScrollableText
 from .components import fonts
+from .screens import octoprint
 from . import config
 
 
@@ -348,7 +349,14 @@ def draw_frame(st, st_detail, st_music, weather_icon):
 
     twenty_two = draw_22_22()
 
-    composite_at(draw_date_time(), image, 'tr')
+    octoprint_info = octoprint.draw()
+
+    right_widget = [draw_date_time()]
+
+    if octoprint_info:
+        right_widget.append(octoprint_info)
+
+    composite_at(stack_vertical(right_widget, gap=1, align='right'), image, 'tr')
     composite_at(draw_weather(tick), image, 'tl')
     image = draw_currently_playing(image, draw, st_music, tick)
 
