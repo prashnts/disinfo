@@ -11,7 +11,7 @@ class UIElement(metaclass=ABCMeta):
     image: Image
 
 class Frame(UIElement):
-    def __init__(self, image: Image):
+    def __init__(self, image: Image, hash: int = None):
         self.image = image
         self.width = image.width
         self.height = image.height

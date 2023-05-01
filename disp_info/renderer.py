@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import time
 import math
-import random
 import requests
 import io
-import arrow
 
 from PIL import Image, ImageDraw
 from functools import cache
@@ -12,13 +10,11 @@ from functools import cache
 from .weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
-from .components.text import Text
-from .components.elements import Frame
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components.scroller import ScrollableText
 from .components import fonts
 
-from .screens import date_time, octoprint, weather, twenty_two
+from .screens import date_time, octoprint, weather, twenty_two, now_playing
 from . import config
 
 
@@ -79,48 +75,6 @@ def draw_btn_test(image, draw):
     image.alpha_composite(icon, (pos_x, pos_y))
     return image
 
-@cache
-def get_album_art(fragment: str):
-    try:
-        r = requests.get(f'http://{config.ha_base_url}{fragment}')
-        r.raise_for_status()
-        fp = io.BytesIO(r.content)
-        img = Image.open(fp)
-        return img.resize((25, 25))
-    except requests.RequestException:
-        return None
-
-def draw_currently_playing(image, draw, st_music, tick):
-    state = get_dict(rkeys['ha_sonos_beam'])
-
-    if not state.get('new_state'):
-        return image
-
-    state = state['new_state']
-    media_info = ''
-
-    if state['state'] == 'playing':
-        media_title = state['attributes'].get('media_title')
-        media_album = state['attributes'].get('media_album_name')
-        media_artist = state['attributes'].get('media_artist')
-        elements = [media_title, media_album, media_artist]
-        media_info = ' >> '.join([e for e in elements if e])
-    else:
-        return image
-
-    if not media_info or media_title == 'TV':
-        return image
-
-    art = get_album_art(state['attributes'].get('entity_picture'))
-
-    draw.text((122, 14), '♫', font=fonts.scientifica__r, fill='#1a810e')
-    st_music.set_message(media_info)
-    image = st_music.draw(tick, image)
-
-    if art:
-        image.paste(art, (config.matrix_w - 25 - 2, 24))
-    return image
-
 
 def draw_frame(st, st_detail, st_music):
     tick = time.time()
@@ -149,7 +103,12 @@ def draw_frame(st, st_detail, st_music):
 
     composite_at(stack_vertical(right_widget, gap=1, align='right'), image, 'tr')
     composite_at(weather.draw(tick), image, 'tl')
-    image = draw_currently_playing(image, draw, st_music, tick)
+
+    now_playing_frame = now_playing.draw()
+
+    if now_playing_frame and not octoprint_info:
+        composite_at(now_playing_frame, image, 'mr')
+
 
     if twenty_two_frame:
         composite_at(twenty_two_frame, image, 'mm')
