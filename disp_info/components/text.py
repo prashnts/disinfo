@@ -5,9 +5,6 @@ from .elements import UIElement
 
 
 class Text(UIElement):
-    width: int
-    height: int
-
     def __init__(self, value: str, font: ImageFont, fill: str):
         self.font = font
         self.fill = fill

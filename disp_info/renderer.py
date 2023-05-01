@@ -22,7 +22,7 @@ from .state_proxy import should_turn_on_display
 from .sprite_icons import SpriteIcon, SpriteImage
 from .components.text import Text
 from .components.elements import Frame
-from .components.layouts import stack_horizontal, stack_vertical
+from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from . import config
 
 
@@ -59,30 +59,26 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     # draw.point(xys, fill='green')
 
 
-def draw_date_time(draw: ImageDraw):
-    t = datetime.datetime.now()
+def draw_date_time():
+    t = arrow.now()
     time_str = t.strftime('%H:%M:%S')
-    font = font_tamzen__rs
-    time_size = font.getbbox(time_str, anchor='lt')
-    # we want to draw the time on right side, so we need to go left from CANVAS_WIDTH
-    xpos = config.matrix_w - time_size[2]
-    ypos = 1
+    day_str = t.strftime('%a')
+    date_str = t.strftime('%d/%m')
     time_color = '#2BBEC9' if t.second % 2 == 0 else '#0E699D'
-    draw.text((xpos, ypos), time_str, font=font, fill=time_color, anchor='lt')
-
-    # next we draw the date just below the time.
-    date_str = t.strftime('%a %d/%m')
-    date_size = font.getbbox(date_str, anchor='lt')
-    xpos = config.matrix_w - date_size[2]
-    ypos = 2 + time_size[3] + 1
-
     date_color = '#9F4006'
-    draw.text((xpos, ypos), date_str, font=font, fill=date_color, anchor='lt')
 
-def draw_22_22(draw: ImageDraw):
-    t = datetime.datetime.now()
+    return stack_vertical([
+        Text(time_str, font=font_tamzen__rs, fill=time_color),
+        stack_horizontal([
+            Text(day_str, font=font_tamzen__rs, fill=date_color),
+            Text(date_str, font=font_tamzen__rs, fill=date_color),
+        ], gap=2, align='center'),
+    ], gap=1, align='right')
+
+def draw_22_22():
+    t = arrow.now()
+    t = arrow.get(2022, 2, 1, 21, 21, t.second)
     action = get_dict(rkeys['ha_enki_rmt']).get('action')
-    # t = datetime.datetime(2022, 2, 1, 22, 22, t.second)
 
     equal_elements = t.hour == t.minute
     twentytwo = t.hour == t.minute == 22
@@ -96,7 +92,6 @@ def draw_22_22(draw: ImageDraw):
     if not equal_elements:
         return
 
-    text = t.strftime('%H:%M')
     font = font_px_op__xl
     fill = '#2FB21B'
     if twentytwo:
@@ -105,12 +100,15 @@ def draw_22_22(draw: ImageDraw):
     if all_equal:
         fill = '#CF3F13'
 
-    # draw time
-    draw.text(origin, text, font=font, fill=fill, anchor='mm')
+    time_text = Text(t.strftime('%H:%M'), font=font, fill=fill)
+    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
+    composite_at(time_text, image, 'mm')
 
     # glittering colors if it's the magic hour
     if not (twentytwo or all_equal):
-        return
+        return Frame(image)
 
     gcols = [
         '#4096D9',
@@ -157,6 +155,8 @@ def draw_22_22(draw: ImageDraw):
                         ],
                     ]
                 draw.point(random.choice(pts), fill=random.choice(gcols))
+
+    return Frame(image)
 
 @cache
 def draw_temp_range(
@@ -430,35 +430,23 @@ def draw_frame(st, st_detail, st_music, weather_icon):
         # do not draw if nobody is there.
         return image
 
-    # draw_sin_wave(step=(1 + step * .6), draw=draw, yoffset=38, amp=10, divisor=6, color='#98A9D0', width=1)
     draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')
-    # draw_sin_wave(step=step * .5, draw=draw, yoffset=38, amp=7, divisor=14, color='#34424A', width=2)
     draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=25, amp=7, divisor=10, color='#5A5A5A')
 
-    draw_date_time(draw)
-
-
+    dt_frame = draw_date_time()
+    weather_frame = draw_weather(tick)
 
     image = draw_numbers(image, draw, st, st_detail, tick)
 
-    draw_22_22(draw)
+    twenty_two = draw_22_22()
 
-    #enchancer = ImageEnhance.Sharpness(image)
-    #image = enchancer.enhance(.7)
-    #draw = ImageDraw.Draw(image)
-    try:
-        weather_frame = draw_weather(tick)
-        image.alpha_composite(weather_frame.image, (0, 0))
-    except Exception as e:
-        raise
-        print(e)
-
+    composite_at(dt_frame, image, 'tr')
+    composite_at(weather_frame, image, 'tl')
     image = draw_currently_playing(image, draw, st_music, tick)
     image = draw_btn_test(image, draw)
 
-    # icon = render_icon(arrow_x, scale=1)
-    # image.alpha_composite(icon, (50, 30))
-    # draw.text((30, 42), '→ ← ₨ ♥  ⮀ ♡  卐', font=font_scientifica__r)
+    if twenty_two:
+        composite_at(twenty_two, image, 'mm')
 
     return image
 
@@ -492,7 +480,6 @@ st_music = ScrollableText(
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 warning_icon = SpriteImage('assets/warning.7x7.png')[0]
-sunrise_sunset_icon = SpriteImage('assets/sunrise-sunset.png')
 
 def get_frame():
     return draw_frame(st, st_detail, st_music, weather_icon)

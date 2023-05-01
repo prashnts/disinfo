@@ -5,6 +5,7 @@ from .elements import UIElement, Frame
 
 VerticalAlignment = Literal['center', 'top', 'bottom']
 HorizontalAlignment = Literal['center', 'left', 'right']
+ComposeAnchor = Literal['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
 
 
 def stack_horizontal(elements: list[UIElement], gap: int = 0, align: VerticalAlignment = 'center') -> Frame:
@@ -15,11 +16,9 @@ def stack_horizontal(elements: list[UIElement], gap: int = 0, align: VerticalAli
 
     x = 0
     for e in elements:
-        # todo: respect alignment
         if align == 'top':
             y = 0
         elif align == 'center':
-            # position in height
             y = (height - e.height) // 2
         elif align == 'bottom':
             y = height - e.height
@@ -38,11 +37,9 @@ def stack_vertical(elements: list[UIElement], gap: int = 0, align: HorizontalAli
 
     y = 0
     for e in elements:
-        # todo: respect alignment
         if align == 'left':
             x = 0
         elif align == 'center':
-            # position in height
             x = (width - e.width) // 2
         elif align == 'right':
             x = width - e.width
@@ -51,3 +48,34 @@ def stack_vertical(elements: list[UIElement], gap: int = 0, align: HorizontalAli
         y += gap
 
     return Frame(img)
+
+def composite_at(frame: Frame, dest: Image, anchor: ComposeAnchor = 'tl') -> Image:
+    # composes the `frame` in middle of the image. It modifies the image.
+    dw = dest.width
+    dh = dest.height
+    fw = frame.width
+    fh = frame.height
+
+    left = (dw - fw) // 2
+    top = (dh - fh) // 2
+
+    if anchor[0] == 't':
+        top = 0
+    elif anchor[0] == 'm':
+        top = (dh - fh) // 2
+    elif anchor[0] == 'b':
+        top = dh - fh
+    else:
+        raise ValueError('Wrong value for anchor.')
+
+    if anchor[1] == 'l':
+        left = 0
+    elif anchor[1] == 'm':
+        left = (dw - fw) // 2
+    elif anchor[1] == 'r':
+        left = dw - fw
+    else:
+        raise ValueError('Wrong value for anchor.')
+
+    dest.alpha_composite(frame.image, (left, top))
+    return dest
