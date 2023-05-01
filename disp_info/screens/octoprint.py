@@ -19,8 +19,8 @@ def draw() -> Frame:
     finish_at = state['progress']['printTimeFormatted']
 
     finish_text = stack_horizontal([
-        Text(f'⤙', font=fonts.scientifica__r, fill='#096478'),
-        Text(f'{time_left}', font=fonts.tamzen__rs, fill='#0d8c12'),
+        Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e'),
+        Text(f'{time_left}', font=fonts.tamzen__rs, fill='#d6a851'),
     ], gap=1, align='bottom')
 
     info_text = stack_horizontal([
