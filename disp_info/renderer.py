@@ -388,7 +388,7 @@ st_music = ScrollableText(
 )
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
-warning_icon = SpriteImage('assets/warning.7x7.png')[0]
+warning_icon = SpriteImage('assets/sync.png')[0]
 
 def get_frame():
     return draw_frame(st, st_detail, st_music, weather_icon)
