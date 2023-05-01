@@ -1,48 +1,25 @@
 #!/usr/bin/env python
 import time
-import sys
-import colorsys
-import datetime
 import math
 import random
-import json
 import requests
 import io
 import arrow
-import dateutil
 
-from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 from functools import cache
 from colour import Color
 
-
-from .weather_icons import get_icon_for_condition, arrow_x, render_icon, cursor
+from .weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
 from .sprite_icons import SpriteIcon, SpriteImage
 from .components.text import Text
 from .components.elements import Frame
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
+from .components.scroller import ScrollableText
+from .components import fonts
 from . import config
-
-
-origin = (config.matrix_w / 2, config.matrix_h / 2)
-
-font_tamzen__rs = ImageFont.truetype('assets/fonts/TamzenForPowerline5x9r.ttf', 9)
-font_tamzen__rm = ImageFont.truetype('assets/fonts/Tamzen7x13r.ttf', 13)
-font_px_op__r = ImageFont.truetype('assets/fonts/PixelOperator8.ttf', 8)
-font_px_op_mono_8 = ImageFont.truetype('assets/fonts/PixelOperatorMono8.ttf', 8)
-font_px_op__l = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
-font_px_op__xl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
-font_px_op__xxl = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
-font_cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
-font_scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 11)
-font_scientifica__b = ImageFont.truetype('assets/fonts/scientificaBold.ttf', 11)
-font_scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
-
-# assets are loaded in advance (for now)
-asset_clear_day = Image.open('assets/clear-day.png')
-asset_testtw = Image.open('assets/test-tw.png')
 
 
 def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
@@ -53,31 +30,25 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     y_step = lambda x: round(math.sin(step + x / DIVISOR) * AMP + OFFSET)
     xys = [(x + 0, y_step(x) + yoffset) for x in range(128)]
 
-    # draw.line([(0, OFFSET), (16, OFFSET)], fill='green')
-
     draw.line(xys, fill=color, width=width, joint='curve')
-    # draw.point(xys, fill='green')
 
 
 def draw_date_time():
     t = arrow.now()
-    time_str = t.strftime('%H:%M:%S')
-    day_str = t.strftime('%a')
-    date_str = t.strftime('%d/%m')
     time_color = '#2BBEC9' if t.second % 2 == 0 else '#0E699D'
     date_color = '#9F4006'
 
     return stack_vertical([
-        Text(time_str, font=font_tamzen__rs, fill=time_color),
+        Text(t.strftime('%H:%M:%S'), font=fonts.tamzen__rs, fill=time_color),
         stack_horizontal([
-            Text(day_str, font=font_tamzen__rs, fill=date_color),
-            Text(date_str, font=font_tamzen__rs, fill=date_color),
+            Text(t.strftime('%a'), font=fonts.tamzen__rs, fill=date_color),
+            Text(t.strftime('%d/%m'), font=fonts.tamzen__rs, fill=date_color),
         ], gap=2, align='center'),
     ], gap=1, align='right')
 
 def draw_22_22():
     t = arrow.now()
-    t = arrow.get(2022, 2, 1, 21, 21, t.second)
+    # t = arrow.get(2022, 2, 1, 21, 21, t.second)
     action = get_dict(rkeys['ha_enki_rmt']).get('action')
 
     equal_elements = t.hour == t.minute
@@ -92,11 +63,11 @@ def draw_22_22():
     if not equal_elements:
         return
 
-    font = font_px_op__xl
+    font = fonts.px_op__xl
     fill = '#2FB21B'
     if twentytwo:
         fill = '#CF8C13'
-        font = font_px_op__xxl
+        font = fonts.px_op__xxl
     if all_equal:
         fill = '#CF3F13'
 
@@ -163,7 +134,7 @@ def draw_temp_range(
     t_current: float,
     t_high: float,
     t_low: float,
-    font: ImageFont = font_tamzen__rs) -> Frame:
+    font: ImageFont = fonts.tamzen__rs) -> Frame:
     '''Generates a vertical range graph of temperatures.'''
 
     color_high = Color('#967b03')
@@ -222,18 +193,17 @@ def draw_weather(step: int):
     color_temp = '#9a9ba2'
     color_deg_c = '#6E7078'
     color_condition = '#5b5e64'
-    outdated_color = '#a00'
 
     # Current temperature and codition + High/Low
     temperature = forecast['currently']['apparentTemperature']
     update_time = arrow.get(forecast['currently']['time'], tzinfo='local')
     condition = forecast['currently']['summary']
     icon_name = forecast['currently']['icon']
-    today = forecast['daily']['data'][0]
-    t_high = today['temperatureHigh']
-    t_low = today['temperatureLow']
+    _today = forecast['daily']['data'][0]
+    t_high = _today['temperatureHigh']
+    t_low = _today['temperatureLow']
     # Sunset info
-    sunset_time = arrow.get(today['sunsetTime'], tzinfo='local')
+    sunset_time = arrow.get(_today['sunsetTime'], tzinfo='local')
 
     now = arrow.now()
     should_show_sunset = sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60
@@ -242,11 +212,11 @@ def draw_weather(step: int):
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
 
     temp_text = stack_horizontal([
-        Text(f'{round(temperature)}', font=font_px_op__l, fill=color_temp),
-        Text('°', font=font_px_op__r, fill=color_deg_c),
+        Text(f'{round(temperature)}', font=fonts.px_op__l, fill=color_temp),
+        Text('°', font=fonts.px_op__r, fill=color_deg_c),
     ], gap=0, align='top')
 
-    condition_info = [Text(condition, font=font_tamzen__rs, fill=color_condition)]
+    condition_info = [Text(condition, font=fonts.tamzen__rs, fill=color_condition)]
 
     if is_outdated:
         condition_info.insert(0, warning_icon)
@@ -255,7 +225,7 @@ def draw_weather(step: int):
         stack_horizontal([
             weather_icon.draw(step),
             temp_text,
-            draw_temp_range(temperature, t_high, t_low, font_tamzen__rs),
+            draw_temp_range(temperature, t_high, t_low, fonts.tamzen__rs),
         ], gap=1, align='center'),
         stack_horizontal(condition_info, gap=2, align='center'),
     ], gap=1, align='left')
@@ -265,70 +235,11 @@ def draw_weather(step: int):
     if should_show_sunset:
         weather_stack.append(stack_horizontal([
             sunset_arrow.draw(step),
-            Text(sunset_time.strftime('%H:%M'), font=font_tamzen__rs, fill=color_condition),
+            Text(sunset_time.strftime('%H:%M'), font=fonts.tamzen__rs, fill=color_condition),
         ], gap=1, align='center'))
 
     return stack_vertical(weather_stack, gap=1, align='left')
 
-
-class ScrollableText:
-    def __init__(self,
-        message: str,
-        width: int=128,
-        anchor: tuple=(10, 10),
-        speed: int=1,
-        delta: int=1,
-        font: ImageFont=font_px_op__l,
-        fill: str='#e68b1b',
-        gap: int=5,
-    ):
-        self.width = width
-        self.anchor = anchor
-        self.font = font
-        self.fill = fill
-        self.gap = gap
-        self.delta = delta
-
-        # the cursor position
-        self.ypos = 0
-        self.last_step = 0 # a step is a "second"
-        self.speed = speed  # px/s
-
-        self.message = ''
-        self.set_message(message)
-
-    def set_message(self, msg: str):
-        # make a "base image" which will be scrolled later.
-        if msg == self.message:
-            return
-        self.message = msg
-        self.ypos = 0
-        _, _, w, h = self.font.getbbox(self.message, anchor='lt')
-        self.msg_width = w + (self.width * 1)
-        self.msg_height = h
-
-        self.im_base = Image.new('RGBA', (self.msg_width, h))
-        base_draw = ImageDraw.Draw(self.im_base)
-        base_draw.text((self.width, 0), self.message, font=self.font, fill=self.fill, anchor='lt')
-
-    def draw(self, step: int, im: Image) -> Image:
-        if (step - self.last_step) >= self.speed:
-            self.ypos += self.delta
-            self.ypos %= self.msg_width
-            self.last_step = step
-        # we need to crop the base image by cursor offset.
-        yspan = self.ypos + self.width
-
-        crop_rect = (
-            self.ypos,
-            0,
-            min(yspan, self.msg_width),
-            self.msg_height
-        )
-        patch = self.im_base.crop(crop_rect)
-
-        im.alpha_composite(patch, self.anchor)
-        return im
 
 def draw_numbers(image, draw, st, st_detail, tick):
     numbers = get_dict(rkeys['random_msg'])
@@ -347,7 +258,7 @@ def draw_numbers(image, draw, st, st_detail, tick):
 
     draw.rounded_rectangle([(0, 53), (config.matrix_w - 1, config.matrix_h - 1)], radius=0, fill='#010a29')
     image = st.draw(tick, image)
-    draw.text((1, 52), 'i', font=font_tamzen__rm)
+    draw.text((1, 52), 'i', font=fonts.tamzen__rm)
 
     return image
 
@@ -410,7 +321,7 @@ def draw_currently_playing(image, draw, st_music, tick):
 
     art = get_album_art(state['attributes'].get('entity_picture'))
 
-    draw.text((122, 14), '♫', font=font_scientifica__r, fill='#1a810e')
+    draw.text((122, 14), '♫', font=fonts.scientifica__r, fill='#1a810e')
     st_music.set_message(media_info)
     image = st_music.draw(tick, image)
 
@@ -433,20 +344,18 @@ def draw_frame(st, st_detail, st_music, weather_icon):
     draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')
     draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=25, amp=7, divisor=10, color='#5A5A5A')
 
-    dt_frame = draw_date_time()
-    weather_frame = draw_weather(tick)
-
     image = draw_numbers(image, draw, st, st_detail, tick)
 
     twenty_two = draw_22_22()
 
-    composite_at(dt_frame, image, 'tr')
-    composite_at(weather_frame, image, 'tl')
+    composite_at(draw_date_time(), image, 'tr')
+    composite_at(draw_weather(tick), image, 'tl')
     image = draw_currently_playing(image, draw, st_music, tick)
-    image = draw_btn_test(image, draw)
 
     if twenty_two:
         composite_at(twenty_two, image, 'mm')
+
+    image = draw_btn_test(image, draw)
 
     return image
 
@@ -456,7 +365,7 @@ st = ScrollableText(
     width=(config.matrix_w - 9),
     speed=.001,
     delta=2,
-    font=font_px_op__r,
+    font=fonts.px_op__r,
     fill='#12cce1'
 )
 st_detail = ScrollableText(
@@ -465,7 +374,7 @@ st_detail = ScrollableText(
     width=(40),
     speed=.001,
     delta=2,
-    font=font_px_op_mono_8,
+    font=fonts.px_op_mono_8,
     fill='#9bb10d'
 )
 st_music = ScrollableText(
@@ -474,7 +383,7 @@ st_music = ScrollableText(
     width=(config.matrix_w - 83 - 7),
     speed=.001,
     delta=2,
-    font=font_tamzen__rs,
+    font=fonts.tamzen__rs,
     fill='#72be9c'
 )
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)

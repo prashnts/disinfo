@@ -50,7 +50,7 @@ def stack_vertical(elements: list[UIElement], gap: int = 0, align: HorizontalAli
     return Frame(img)
 
 def composite_at(frame: Frame, dest: Image, anchor: ComposeAnchor = 'tl') -> Image:
-    # composes the `frame` in middle of the image. It modifies the image.
+    # composes the `frame` so that it is at `anchor` corner of `dest`. It modifies the image.
     dw = dest.width
     dh = dest.height
     fw = frame.width
