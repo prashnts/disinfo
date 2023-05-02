@@ -16,6 +16,15 @@ weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 warning_icon = SpriteImage('assets/sync.png')[0]
 
+color_temp = '#9a9ba2'
+color_deg_c = '#6E7078'
+color_condition = '#5b5e64'
+
+text_temperature_value = Text('', font=fonts.px_op__l, fill=color_temp)
+text_temperature_degree = Text('°', font=fonts.px_op__r, fill=color_deg_c)
+text_condition = Text('', font=fonts.tamzen__rs, fill=color_condition)
+text_sunset_time = Text('', font=fonts.tamzen__rs, fill=color_condition)
+
 
 @cache
 def draw_temp_range(
@@ -78,10 +87,6 @@ def draw_temp_range(
 def draw(step: int):
     forecast = get_dict(rkeys['weather_data'])
 
-    color_temp = '#9a9ba2'
-    color_deg_c = '#6E7078'
-    color_condition = '#5b5e64'
-
     # Current temperature and codition + High/Low
     temperature = forecast['currently']['apparentTemperature']
     update_time = arrow.get(forecast['currently']['time'], tzinfo='local')
@@ -97,14 +102,19 @@ def draw(step: int):
     should_show_sunset = sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60
     is_outdated = (now - update_time).total_seconds() > 30 * 60  # 30 mins.
 
+    # update values
+    text_temperature_value.set_value(f'{round(temperature)}')
+    text_condition.set_value(condition)
+    text_sunset_time.set_value(sunset_time.strftime('%H:%M'))
+
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
 
     temp_text = stack_horizontal([
-        Text(f'{round(temperature)}', font=fonts.px_op__l, fill=color_temp),
-        Text('°', font=fonts.px_op__r, fill=color_deg_c),
+        text_temperature_value,
+        text_temperature_degree,
     ], gap=0, align='top')
 
-    condition_info = [Text(condition, font=fonts.tamzen__rs, fill=color_condition)]
+    condition_info = [text_condition]
 
     if is_outdated:
         condition_info.insert(0, warning_icon)
@@ -123,7 +133,7 @@ def draw(step: int):
     if should_show_sunset:
         weather_stack.append(stack_horizontal([
             sunset_arrow.draw(step),
-            Text(sunset_time.strftime('%H:%M'), font=fonts.tamzen__rs, fill=color_condition),
+            text_sunset_time,
         ], gap=1, align='center'))
 
     return stack_vertical(weather_stack, gap=1, align='left')

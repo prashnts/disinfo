@@ -20,3 +20,7 @@ class Text(UIElement):
         self.value = value
         self.width = w
         self.height = h
+
+    def set_value(self, value: str):
+        if self.value != value:
+            self._init_str(value)
