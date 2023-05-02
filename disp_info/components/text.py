@@ -24,3 +24,12 @@ class Text(UIElement):
     def set_value(self, value: str):
         if self.value != value:
             self._init_str(value)
+            return True
+        return False
+
+    def set_fill(self, fill: str):
+        if self.fill != fill:
+            self.fill = fill
+            self._init_str(self.value)
+            return True
+        return False

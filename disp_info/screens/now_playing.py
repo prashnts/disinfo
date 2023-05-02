@@ -13,8 +13,11 @@ from disp_info.sprite_icons import SpriteImage
 from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
 
-hscroller = HScroller(size=30)
+hscroller = HScroller(size=30, delta=1, speed=0.1)
 play_icon = SpriteImage('assets/raster/play.9x9.png')[0]
+
+text_music_info = Text('', font=fonts.tamzen__rs, fill='#a1a9b0')
+
 
 @cache
 def get_album_art(fragment: str):
@@ -52,8 +55,9 @@ def draw():
 
     art = get_album_art(state['attributes'].get('entity_picture'))
 
-    music_info = Text(media_info, font=fonts.tamzen__rs, fill='#a1a9b0')
-    hscroller.set_frame(music_info, False)
+    changed = text_music_info.set_value(media_info)
+
+    hscroller.set_frame(text_music_info, changed)
 
     music_elements = [
         stack_horizontal([
