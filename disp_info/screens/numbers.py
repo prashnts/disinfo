@@ -17,7 +17,7 @@ hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=2, 
 hscroller_num = HScroller(size=40, delta=1, speed=0.01)
 
 text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
-text_number = Text('', font=fonts.px_op__r, fill='#12cce1')
+text_number = Text('', font=fonts.px_op__r, fill='#9bb10d')
 
 
 def draw(tick: float):
