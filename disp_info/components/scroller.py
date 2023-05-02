@@ -19,10 +19,13 @@ class _Scroller:
         self._init_scroller(frame, reset)
 
     def _init_scroller(self, frame: Frame, reset: bool):
-        self.frame = frame
+        self.frame = self._get_frame(frame)
         if reset:
             self.pos = 0
             self.last_step = 0
+
+    def _get_frame(self, frame: Frame) -> Frame:
+        return frame
 
     def _get_crop_rect(self):
         raise NotImplemented
@@ -57,6 +60,13 @@ class HScroller(_Scroller):
 
     def _get_image(self):
         return Image.new('RGBA', (self.size, self.frame.height))
+
+    def _get_frame(self, frame: Frame) -> Frame:
+        f = frame
+        w = f.width + self.size
+        i = Image.new('RGBA', (w, f.height), (0, 0, 0, 0))
+        i.alpha_composite(f.image, (self.size, 0))
+        return Frame(i)
 
 class VScroller(_Scroller):
     def _get_crop_rect(self):

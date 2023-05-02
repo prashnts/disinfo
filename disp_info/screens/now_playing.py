@@ -56,7 +56,7 @@ def draw():
     art = get_album_art(state['attributes'].get('entity_picture'))
 
     changed = text_music_info.set_value(media_info)
-
+    # "Refresh" the scroller with the change status of the frame.
     hscroller.set_frame(text_music_info, changed)
 
     music_elements = [
