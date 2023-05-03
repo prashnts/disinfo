@@ -19,3 +19,6 @@ cd_icon = ImageFont.truetype('assets/fonts/CD-IconsPC.ttf', 22)
 scientifica__r = ImageFont.truetype('assets/fonts/scientifica.ttf', 11)
 scientifica__b = ImageFont.truetype('assets/fonts/scientificaBold.ttf', 11)
 scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
+
+# BitOcra
+bitocra = ImageFont.truetype('assets/fonts/bitocra7.bdf', 7)
