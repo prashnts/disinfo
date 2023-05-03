@@ -23,7 +23,7 @@ color_condition = '#5b5e64'
 text_temperature_value = Text('', font=fonts.px_op__l, fill=color_temp)
 text_temperature_degree = Text('°', font=fonts.px_op__r, fill=color_deg_c)
 text_condition = Text('', font=fonts.tamzen__rs, fill=color_condition)
-text_sunset_time = Text('', font=fonts.tamzen__rs, fill=color_condition)
+text_sunset_time = Text('', font=fonts.bitocra, fill=color_condition)
 
 
 @cache

@@ -22,3 +22,4 @@ scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
 
 # BitOcra
 bitocra = ImageFont.truetype('assets/fonts/bitocra7.bdf', 7)
+cozette = ImageFont.truetype('assets/fonts/cozette.bdf', 13)
