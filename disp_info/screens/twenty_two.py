@@ -10,6 +10,8 @@ from disp_info.components.text import Text
 from disp_info.redis import rkeys, get_dict
 from disp_info import config
 
+text_timestr = Text()
+
 
 def draw():
     t = arrow.now()
@@ -36,11 +38,15 @@ def draw():
     if all_equal:
         fill = '#CF3F13'
 
-    time_text = Text(t.strftime('%H:%M'), font=font, fill=fill)
+    text_timestr.update(
+        value=t.strftime('%H:%M'),
+        font=font,
+        fill=fill)
+
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    composite_at(time_text, image, 'mm')
+    composite_at(text_timestr, image, 'mm')
 
     # glittering colors if it's the magic hour
     if not (twentytwo or all_equal):

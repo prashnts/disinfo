@@ -7,6 +7,11 @@ from disp_info.redis import rkeys, get_dict
 
 threed_icon = SpriteImage('assets/raster/nozzle.9x9.png')[0]
 
+text_time_left_icon = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
+text_time_left = Text(font=fonts.tamzen__rs, fill='#d6a851')
+text_progress = Text(font=fonts.scientifica__b, fill='#888888')
+text_percent_sign = Text('%', font=fonts.tamzen__rs, fill='#888')
+
 
 def draw() -> Frame:
     state = get_dict(rkeys['octoprint_printing'])
@@ -18,14 +23,17 @@ def draw() -> Frame:
     time_left = state['progress']['printTimeLeftFormatted']
     finish_at = state['progress']['printTimeFormatted']
 
+    text_time_left.update(value=f'{time_left}')
+    text_progress.update(value=f'{progress:0.1f}')
+
     finish_text = stack_horizontal([
-        Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e'),
-        Text(f'{time_left}', font=fonts.tamzen__rs, fill='#d6a851'),
+        text_time_left_icon,
+        text_time_left,
     ], gap=1, align='bottom')
 
     info_text = stack_horizontal([
-        Text(f'{progress:0.1f}', font=fonts.scientifica__b, fill='#888888'),
-        Text('%', font=fonts.tamzen__rs, fill='#888'),
+        text_progress,
+        text_percent_sign,
     ], align='top')
 
     info_elem = stack_horizontal([

@@ -24,8 +24,8 @@ def draw(tick: float):
     numbers = get_dict(rkeys['random_msg'])
     num_str = f'#{numbers["number"]}'
 
-    info_changed = text_number_info.set_value(numbers['text'])
-    number_changed = text_number.set_value(num_str)
+    info_changed = text_number_info.update(value=numbers['text'])
+    number_changed = text_number.update(value=num_str)
 
     hscroller_main.set_frame(text_number_info, info_changed)
     hscroller_num.set_frame(text_number, number_changed)

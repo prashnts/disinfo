@@ -16,7 +16,7 @@ from disp_info.components.scroller import HScroller
 hscroller = HScroller(size=30, delta=1, speed=0.01)
 play_icon = SpriteImage('assets/raster/play.9x9.png')[0]
 
-text_music_info = Text('', font=fonts.tamzen__rs, fill='#a1a9b0')
+text_music_info = Text(font=fonts.tamzen__rs, fill='#a1a9b0')
 
 
 @cache
@@ -55,7 +55,7 @@ def draw():
 
     art = get_album_art(state['attributes'].get('entity_picture'))
 
-    changed = text_music_info.set_value(media_info)
+    changed = text_music_info.update(value=media_info)
     # "Refresh" the scroller with the change status of the frame.
     hscroller.set_frame(text_music_info, changed)
 

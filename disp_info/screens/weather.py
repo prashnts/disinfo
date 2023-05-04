@@ -20,10 +20,10 @@ color_temp = '#9a9ba2'
 color_deg_c = '#6E7078'
 color_condition = '#5b5e64'
 
-text_temperature_value = Text('', font=fonts.px_op__l, fill=color_temp)
+text_temperature_value = Text(font=fonts.px_op__l, fill=color_temp)
 text_temperature_degree = Text('°', font=fonts.px_op__r, fill=color_deg_c)
-text_condition = Text('', font=fonts.tamzen__rs, fill=color_condition)
-text_sunset_time = Text('', font=fonts.bitocra, fill=color_condition)
+text_condition = Text(font=fonts.tamzen__rs, fill=color_condition)
+text_sunset_time = Text(font=fonts.bitocra, fill=color_condition)
 
 
 @cache
@@ -103,9 +103,9 @@ def draw(step: int):
     is_outdated = (now - update_time).total_seconds() > 30 * 60  # 30 mins.
 
     # update values
-    text_temperature_value.set_value(f'{round(temperature)}')
-    text_condition.set_value(condition)
-    text_sunset_time.set_value(sunset_time.strftime('%H:%M'))
+    text_temperature_value.update(value=f'{round(temperature)}')
+    text_condition.update(value=condition)
+    text_sunset_time.update(value=sunset_time.strftime('%H:%M'))
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
 
