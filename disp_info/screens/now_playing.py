@@ -26,7 +26,7 @@ def get_album_art(fragment: str):
         r.raise_for_status()
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
-        img = img.resize((120, 120)).quantize(kmeans=2)
+        img = img.resize((80, 80)).quantize()
         return Frame(img.resize((25, 25)).convert('RGBA'))
     except requests.RequestException:
         return None
