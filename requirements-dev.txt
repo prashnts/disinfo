@@ -1,2 +1,3 @@
 libsixel-python
 ipython
+snakeviz

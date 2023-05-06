@@ -7,3 +7,4 @@ paho-mqtt>=1.6.1
 arrow>=1.2.3
 colour>=0.1.5
 typer[all]
+typing-extensions>=4.5.0
