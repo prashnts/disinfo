@@ -1,12 +1,19 @@
-from colour import Color
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from PIL.ImageFont import FreeTypeFont
+from typing import TypedDict
+from typing_extensions import Unpack
 
 from .elements import UIElement
 from . import fonts
 
 
+class TextVars(TypedDict):
+    value: str
+    fill: str
+    font: FreeTypeFont
+
 class Text(UIElement):
-    def __init__(self, value: str = None, font: ImageFont = fonts.tamzen__rs, fill: str = '#fff'):
+    def __init__(self, value: str = None, font: FreeTypeFont = fonts.tamzen__rs, fill: str = '#fff'):
         self.font = font
         self.fill = fill
         self.value = value
@@ -26,7 +33,7 @@ class Text(UIElement):
         self.width = w
         self.height = h
 
-    def update(self, **kwargs) -> bool:
+    def update(self, **kwargs: Unpack[TextVars]) -> bool:
         dirty = False
 
         for prop in ['value', 'fill', 'font']:

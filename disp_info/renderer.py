@@ -69,7 +69,7 @@ def draw_frame():
     draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=25, amp=7, divisor=10, color='#5A5A5A')
 
     twenty_two_frame = twenty_two.draw()
-    octoprint_info = octoprint.draw()
+    octoprint_info = octoprint.draw(tick)
 
     right_widget = [date_time.draw()]
 

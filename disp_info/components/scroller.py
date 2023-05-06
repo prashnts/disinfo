@@ -1,8 +1,7 @@
 import time
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
-from . import fonts
 from .elements import Frame
 
 class _Scroller:

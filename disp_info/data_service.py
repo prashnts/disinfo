@@ -11,8 +11,9 @@ from schedule import Scheduler
 from . import config
 from .redis import rkeys, set_dict
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger('data_service')
+logger.setLevel(logging.DEBUG)
 
 
 class SafeScheduler(Scheduler):
