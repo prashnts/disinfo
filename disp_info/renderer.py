@@ -13,7 +13,7 @@ from .state_proxy import should_turn_on_display
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components import fonts
 
-from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers
+from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro
 from . import config
 
 
@@ -79,6 +79,8 @@ def draw_frame():
     composite_at(stack_vertical(right_widget, gap=1, align='right'), image, 'tr')
     composite_at(weather.draw(tick), image, 'tl')
     composite_at(numbers.draw(tick), image, 'bl')
+
+    composite_at(paris_metro.draw(tick), image, 'ml')
 
     now_playing_frame = now_playing.draw()
 
