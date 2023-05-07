@@ -4,15 +4,34 @@ from PIL import Image, ImageDraw
 from disp_info.components import fonts
 from disp_info.components.elements import Frame
 from disp_info.components.text import Text
-from disp_info.components.layouts import composite_at, stack_horizontal
+from disp_info.components.layouts import composite_at, stack_horizontal, stack_vertical
 
 
+# Metro colors are taken from wikipedia [1] but some colors
+# were adjusted (saturated + darkened) to be better visible on LED Matrix.
+# [1]: https://commons.wikimedia.org/wiki/Template:Paris_transit_icons
+# First color represents color of metro line and second the text fill.
 metro_colors = {
     '1': ['#FFCE00', '#000'],
+    '2': ['#0064B0', '#fff'],
+    '3': ['#847e14', '#000'],
+    '3b': ['#57abbe', '#000'],
     '4': ['#C04191', '#fff'],
+    '5': ['#F28E42', '#000'],
     '6': ['#50a863', '#000'],
+    '7': ['#d7829a', '#000'],
+    '7b': ['#50a863', '#000'],
     '8': ['#b171b8', '#000'],
+    '9': ['#D5C900', '#000'],
+    '10': ['#E3B32A', '#000'],
+    '11': ['#8D5E2A', '#fff'],
+    '12': ['#00814F', '#fff'],
     '13': ['#57abbe', '#000'],
+    '14': ['#662483', '#fff'],
+    '15': ['#B90845', '#fff'],
+    '16': ['#d7829a', '#000'],
+    '17': ['#D5C900', '#000'],
+    '18': ['#00A88F', '#fff'],
 }
 
 
@@ -33,4 +52,7 @@ def metro_icon(line_name: str) -> Frame:
 
 
 def draw(tick: float):
-    return stack_horizontal([metro_icon(i) for i in metro_colors], gap=2, align='center')
+    return stack_vertical([
+        stack_horizontal([metro_icon(i) for i in list(metro_colors)[:10]], gap=2, align='center'),
+        stack_horizontal([metro_icon(i) for i in list(metro_colors)[10:]], gap=2, align='center'),
+    ], gap=1, align='left')
