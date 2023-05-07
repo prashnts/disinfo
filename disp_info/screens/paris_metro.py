@@ -23,11 +23,11 @@ def metro_icon(line_name: str) -> Frame:
 
     img = Image.new('RGBA', (size, size))
     draw = ImageDraw.Draw(img)
-    text_line = Text(line_name, font=fonts.bitocra, fill=text_color)
 
     draw.ellipse([0, 0, size - 1, size - 1], fill=background)
+    draw.text(((size - 1) / 2, (size - 1)/2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
 
-    return Frame(composite_at(text_line, img, 'mm'))
+    return Frame(img)
 
 
 def draw(tick: float):
