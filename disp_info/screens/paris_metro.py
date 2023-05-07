@@ -1,3 +1,5 @@
+import random
+
 from functools import cache
 from PIL import Image, ImageDraw
 
@@ -34,9 +36,21 @@ metro_colors = {
     '18': ['#086b5c', '#fff'],
 }
 
+@cache
+def status_icon(status_name: str):
+    size = 9
+    img = Image.new('RGBA', (size + 1, size + 1))
+    draw = ImageDraw.Draw(img)
+
+    draw.regular_polygon([size / 2, size / 2 + 1, size / 2 + 1], 3, fill='#e64539')
+
+    draw.text((size / 2 + 1, size / 2 + 1), '!', fill='#fff', font=fonts.tamzen__rs, anchor='mm')
+
+    return Frame(img)
+
 
 @cache
-def metro_icon(line_name: str) -> Frame:
+def metro_icon(line_name: str, problems: bool = False) -> Frame:
     size = 9
     background, text_color = metro_colors.get(line_name, ['#C6C6C6', '#000'])
 
@@ -45,14 +59,17 @@ def metro_icon(line_name: str) -> Frame:
 
     start_x = 0 if len(line_name) > 1 else 1
 
-    draw.ellipse([0, 0, size, size], fill=background)
+    draw.ellipse([0, 0, size, size], fill=background, outline='#e64539', width=problems)
     draw.text(((size / 2) + start_x, size / 2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
 
     return Frame(img)
 
 
 def draw(tick: float):
-    return stack_vertical([
-        stack_horizontal([metro_icon(i) for i in list(metro_colors)[:10]], gap=2, align='center'),
-        stack_horizontal([metro_icon(i) for i in list(metro_colors)[10:]], gap=2, align='center'),
-    ], gap=1, align='left')
+    traffic_ok = ['1', '8']
+    has_problems = random.random() > 0.9
+    ok_lines = stack_horizontal([metro_icon(i, has_problems) for i in traffic_ok], gap=1, align='center')
+    return stack_horizontal([
+        status_icon('ok'),
+        ok_lines,
+    ], gap=1, align='center')
