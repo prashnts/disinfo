@@ -20,12 +20,16 @@ text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
 
 
 @cache
-def get_album_art(fragment: str):
+def get_album_art(fragment: str, media_title: str):
+    if 'franceinfo' in media_title:
+        # Hard code some album arts.
+        return SpriteImage('assets/raster/france-info.png')[0]
     try:
         r = requests.get(f'http://{config.ha_base_url}{fragment}')
         r.raise_for_status()
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
+        # Dithering helps
         img = img.resize((80, 80)).quantize()
         return Frame(img.resize((25, 25)).convert('RGBA'))
     except requests.RequestException:
@@ -54,7 +58,7 @@ def draw():
         return
 
 
-    art = get_album_art(state['attributes'].get('entity_picture'))
+    art = get_album_art(state['attributes'].get('entity_picture'), media_title)
 
     changed = text_music_info.update(value=media_info)
     # "Refresh" the scroller with the change status of the frame.

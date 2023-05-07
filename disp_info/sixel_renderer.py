@@ -55,6 +55,7 @@ def main(single_frame: bool = False):
 
         sixel_dither_unref(dither)
         sixel_output_unref(output)
+        buf.close()
 
         if single_frame:
             break
