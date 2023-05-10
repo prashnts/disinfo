@@ -1,3 +1,6 @@
+import arrow
+
+from datetime import timedelta
 from pydash import py_
 
 from disp_info.components.text import Text
@@ -16,13 +19,12 @@ bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
 
 text_time_left_icon = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
 text_time_left = Text(font=fonts.bitocra, fill='#e88a36')
+text_completion_time = Text(font=fonts.bitocra, fill='#888888')
 text_progress = Text(font=fonts.scientifica__b, fill='#888888')
 text_percent_sign = Text('%', font=fonts.tamzen__rs, fill='#888')
 text_file_name = Text(font=fonts.bitocra, fill='#8fd032')
 text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
-text_toolt_target = Text(font=fonts.bitocra, fill='#888888')
 text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
-text_bedt_target = Text(font=fonts.bitocra, fill='#888888')
 
 hscroller_fname = HScroller(size=27)
 
@@ -34,11 +36,20 @@ def _get_state():
         print_state['job']['file']['display']
             .replace('.aw', '')
             .replace('.gcode', ''))
+    time_left = print_state['progress']['printTimeLeft']
+
+    now = arrow.now()
+    completion_time = now.shift(seconds=time_left)
+    completion_str = completion_time.strftime('>%H:%M')
+    # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
+    # if day_delta:
+        # completion_str = f'+{day_delta} {completion_str}'
+
     return dict(
         printing=print_state['state']['text'] == 'Printing',
         progress=print_state['progress']['completion'],
         time_left=print_state['progress']['printTimeLeftFormatted'],
-        finish_at=print_state['progress']['printTimeFormatted'],
+        completion_time=completion_str,
         file_name=filename,
         toolt_current=tool_temp['actual'],
         toolt_target=tool_temp['target'],
@@ -57,9 +68,8 @@ def draw(tick: float) -> Frame:
     text_time_left.update(value=f'{state["time_left"]}')
     text_progress.update(value=f'{state["progress"]:0.1f}')
     text_toolt_current.update(value=f'{round(state["toolt_current"])}')
-    text_toolt_target.update(value=f'{round(state["toolt_target"])}')
     text_bedt_current.update(value=f'{round(state["bedt_current"])}')
-    text_bedt_target.update(value=f'{round(state["bedt_target"])}')
+    text_completion_time.update(value=f'{state["completion_time"]}')
 
     fname_changed = text_file_name.update(value=state["file_name"])
     hscroller_fname.set_frame(text_file_name, fname_changed)
@@ -67,6 +77,11 @@ def draw(tick: float) -> Frame:
     finish_text = stack_horizontal([
         text_time_left_icon,
         text_time_left,
+    ], gap=2, align='center')
+
+    completion_text = stack_horizontal([
+        finish_text,
+        text_completion_time,
     ], gap=2, align='center')
 
     info_text = stack_horizontal([
@@ -91,7 +106,8 @@ def draw(tick: float) -> Frame:
 
     elements = [
         info_elem,
-        finish_text,
+        # finish_text,
+        completion_text,
         filename_elem,
         temp_elem,
     ]
