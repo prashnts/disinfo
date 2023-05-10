@@ -23,7 +23,7 @@ text_time_left = Text(font=fonts.bitocra, fill='#e88a36')
 text_completion_time = Text(font=fonts.bitocra, fill='#888888')
 text_progress = Text(font=fonts.scientifica__b, fill='#888888')
 text_percent_sign = Text('%', font=fonts.tamzen__rs, fill='#888')
-text_file_name = Text(font=fonts.bitocra, fill='#8fd032')
+text_file_name = Text(font=fonts.bitocra, fill='#888888')
 text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
 text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
