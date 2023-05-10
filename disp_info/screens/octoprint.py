@@ -17,7 +17,8 @@ file_icon = SpriteImage('assets/raster/file-icon.png')[0]
 toolt_icon = SpriteImage('assets/raster/nozzle-5x5.png')[0]
 bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
 
-text_time_left_icon = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
+tail_arrow_left = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
+tail_arrow_right = Text(f'⤚', font=fonts.scientifica__r, fill='#8c5b3e')
 text_time_left = Text(font=fonts.bitocra, fill='#e88a36')
 text_completion_time = Text(font=fonts.bitocra, fill='#888888')
 text_progress = Text(font=fonts.scientifica__b, fill='#888888')
@@ -26,7 +27,7 @@ text_file_name = Text(font=fonts.bitocra, fill='#8fd032')
 text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
 text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
-hscroller_fname = HScroller(size=27)
+hscroller_fname = HScroller(size=21)
 
 def _get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
@@ -40,7 +41,7 @@ def _get_state():
 
     now = arrow.now()
     completion_time = now.shift(seconds=time_left)
-    completion_str = completion_time.strftime('>%H:%M')
+    completion_str = completion_time.strftime('%H:%M')
     # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
     # if day_delta:
         # completion_str = f'+{day_delta} {completion_str}'
@@ -74,13 +75,10 @@ def draw(tick: float) -> Frame:
     fname_changed = text_file_name.update(value=state["file_name"])
     hscroller_fname.set_frame(text_file_name, fname_changed)
 
-    finish_text = stack_horizontal([
-        text_time_left_icon,
-        text_time_left,
-    ], gap=2, align='center')
-
     completion_text = stack_horizontal([
-        finish_text,
+        tail_arrow_left,
+        text_time_left,
+        tail_arrow_right,
         text_completion_time,
     ], gap=2, align='center')
 
@@ -92,24 +90,27 @@ def draw(tick: float) -> Frame:
     info_elem = stack_horizontal([
         threed_icon.draw(tick),
         info_text,
-    ], gap=2, align='center')
+    ], gap=2)
 
     filename_elem = stack_horizontal([
         file_icon,
         hscroller_fname.draw(tick)
-    ], gap=0, align='center')
+    ], gap=0)
 
     temp_elem = stack_horizontal([
         stack_horizontal([toolt_icon, text_toolt_current], gap=1),
         stack_horizontal([bedt_icon, text_bedt_current], gap=1),
-    ], gap=2, align='center')
+    ], gap=2)
+
+    detail_elem = stack_horizontal([
+        filename_elem,
+        temp_elem,
+    ], gap=2)
 
     elements = [
         info_elem,
-        # finish_text,
         completion_text,
-        filename_elem,
-        temp_elem,
+        detail_elem,
     ]
 
     return add_background(stack_vertical(elements, gap=1, align='right'), fill='#0000008c')
