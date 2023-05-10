@@ -6,6 +6,8 @@ rkeys = {
     'weather_data': 'weather.forecast_data',
     'random_msg': 'misc.random_msg',
     'octoprint_printing': 'hass.octoprint.printing',
+    'octoprint_bedt': 'hass.octoprint.bedt',
+    'octoprint_toolt': 'hass.octoprint.toolt',
     'ha_pir_salon': 'hass.pir.salon',
     'ha_pir_kitchen': 'hass.pir.kitchen',
     'ha_enki_rmt': 'hass.enki.rmt',

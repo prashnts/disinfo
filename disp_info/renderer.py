@@ -80,7 +80,7 @@ def draw_frame():
     composite_at(weather.draw(tick), image, 'tl')
     composite_at(numbers.draw(tick), image, 'bl')
 
-    composite_at(paris_metro.draw(tick), image, 'ml')
+    # composite_at(paris_metro.draw(tick), image, 'ml')
 
     now_playing_frame = now_playing.draw()
 

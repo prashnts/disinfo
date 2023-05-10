@@ -14,6 +14,8 @@ def on_connect(client, userdata, flags, rc):
     print('connected!')
 
     client.subscribe('octoPrint/hass/printing')
+    client.subscribe('octoPrint/temperature/bed')
+    client.subscribe('octoPrint/temperature/tool0')
     client.subscribe('zigbee2mqtt/enki.rmt.0x03')   # Remote to control the display
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
 
@@ -35,6 +37,12 @@ def on_message(client, userdata, msg):
     if msg.topic == 'octoPrint/hass/printing':
         payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_printing'], payload)
+    if msg.topic == 'octoPrint/temperature/bed':
+        payload = json.loads(msg.payload)
+        set_dict(rkeys['octoprint_bedt'], payload)
+    if msg.topic == 'octoPrint/temperature/tool0':
+        payload = json.loads(msg.payload)
+        set_dict(rkeys['octoprint_toolt'], payload)
     if msg.topic in pir_topic_map:
         payload = json.loads(msg.payload)
         payload['timestamp'] = arrow.now().isoformat()
