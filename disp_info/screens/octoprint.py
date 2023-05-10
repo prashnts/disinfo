@@ -30,12 +30,16 @@ def _get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
     bed_temp = get_dict(rkeys['octoprint_bedt'])
+    filename = py_.human_case(
+        print_state['job']['file']['display']
+            .replace('.aw', '')
+            .replace('.gcode', ''))
     return dict(
         printing=print_state['state']['text'] == 'Printing',
         progress=print_state['progress']['completion'],
         time_left=print_state['progress']['printTimeLeftFormatted'],
         finish_at=print_state['progress']['printTimeFormatted'],
-        file_name=print_state['job']['file']['display'],
+        file_name=filename,
         toolt_current=tool_temp['actual'],
         toolt_target=tool_temp['target'],
         bedt_current=bed_temp['actual'],
