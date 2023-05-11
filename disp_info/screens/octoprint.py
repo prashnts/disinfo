@@ -27,7 +27,7 @@ text_file_name = Text(font=fonts.bitocra, fill='#888888')
 text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
 text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
-hscroller_fname = HScroller(size=21)
+hscroller_fname = HScroller(size=22)
 
 def _get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
@@ -95,7 +95,7 @@ def draw(tick: float) -> Frame:
     filename_elem = stack_horizontal([
         file_icon,
         hscroller_fname.draw(tick)
-    ], gap=0)
+    ], gap=1)
 
     temp_elem = stack_horizontal([
         stack_horizontal([toolt_icon, text_toolt_current], gap=1),
