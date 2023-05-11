@@ -34,10 +34,7 @@ def _get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
     bed_temp = get_dict(rkeys['octoprint_bedt'])
-    filename = py_.human_case(
-        print_state['job']['file']['display']
-            .replace('.aw', '')
-            .replace('.gcode', ''))
+    _filename = print_state['job']['file']['display']
     time_left = print_state['progress']['printTimeLeft']
     progress = print_state['progress']['completion'] or -1
     flags = print_state['state']['flags']
@@ -52,6 +49,11 @@ def _get_state():
     is_visible = (is_on or is_done) and (last_update + timedelta(minutes=45)) > now
 
     completion_time = now.shift(seconds=time_left).strftime('%H:%M') if time_left else 'Idle'
+
+    if _filename:
+        filename = py_.human_case(_filename.replace('.aw', '').replace('.gcode', ''))
+    else:
+        filename = 'No file selected'
 
     # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
     # if day_delta:
