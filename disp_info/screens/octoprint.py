@@ -113,5 +113,5 @@ def draw(tick: float) -> Frame:
         detail_elem,
     ]
 
-    return add_background(stack_vertical(elements, gap=1, align='right'), fill='#0000008c')
+    return add_background(stack_vertical(elements, gap=1, align='right'), fill='#000000ac')
 
