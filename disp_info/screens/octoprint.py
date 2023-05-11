@@ -19,8 +19,8 @@ bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
 
 tail_arrow_left = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
 tail_arrow_right = Text(f'⤚', font=fonts.scientifica__r, fill='#8c5b3e')
-text_time_left = Text(font=fonts.bitocra, fill='#e88a36')
-text_completion_time = Text(font=fonts.bitocra, fill='#888888')
+text_time_left = Text(font=fonts.bitocra, fill='#888888')
+text_completion_time = Text(font=fonts.bitocra, fill='#e88a36')
 text_progress = Text(font=fonts.scientifica__b, fill='#888888')
 text_percent_sign = Text('%', font=fonts.tamzen__rs, fill='#888')
 text_file_name = Text(font=fonts.bitocra, fill='#888888')
