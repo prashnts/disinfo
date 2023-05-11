@@ -81,22 +81,24 @@ def draw(tick: float) -> Frame:
     text_progress.update(value=f'{state["progress"]:0.1f}')
     text_toolt_current.update(value=f'{round(state["toolt_current"])}')
     text_bedt_current.update(value=f'{round(state["bedt_current"])}')
-    text_completion_time.update(value=f'{state["completion_time"]}')
 
     fname_changed = text_file_name.update(value=state["file_name"])
     hscroller_fname.set_frame(text_file_name, fname_changed)
 
-    if not state['is_done']:
-        text_time_left.update(value=f'{state["time_left"]}')
-    else:
-        text_time_left.update(value='Done!')
-
-    completion_text = stack_horizontal([
+    completion_info = [
         tail_arrow_left,
         text_time_left,
         tail_arrow_right,
-        text_completion_time,
-    ], gap=2, align='center')
+    ]
+
+    if not state['is_done']:
+        text_time_left.update(value=f'{state["time_left"]}')
+        text_completion_time.update(value=f'{state["completion_time"]}')
+        completion_info.append(text_completion_time)
+    else:
+        text_time_left.update(value='Done!')
+
+    completion_text = stack_horizontal(completion_info, gap=2, align='center')
 
     info_text = stack_horizontal([
         text_progress,
