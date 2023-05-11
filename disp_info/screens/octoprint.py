@@ -13,7 +13,7 @@ from disp_info.components import fonts
 from disp_info.redis import rkeys, get_dict
 
 threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
-file_icon = SpriteImage('assets/raster/file-icon.png')[0]
+file_icon = SpriteImage('assets/raster/fileicon-5x5.png')[0]
 toolt_icon = SpriteImage('assets/raster/nozzle-5x5.png')[0]
 bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
 
