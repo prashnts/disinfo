@@ -39,30 +39,34 @@ def _get_state():
             .replace('.aw', '')
             .replace('.gcode', ''))
     time_left = print_state['progress']['printTimeLeft']
-    progress = print_state['progress']['completion']
+    progress = print_state['progress']['completion'] or -1
     flags = print_state['state']['flags']
     last_update = arrow.get(print_state['_timestamp'], tzinfo='local')
 
-    is_on = flags['operational'] or flags['printing']
+    is_printing = flags['printing']
+    is_on = flags['operational'] or is_printing
     is_done = is_on and progress == 100
 
     now = arrow.now()
 
     is_visible = (is_on or is_done) and (last_update + timedelta(minutes=45)) > now
 
-    completion_time = now.shift(seconds=time_left)
-    completion_str = completion_time.strftime('%H:%M')
+    completion_time = now.shift(seconds=time_left).strftime('%H:%M') if time_left else 'Idle'
+
     # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
     # if day_delta:
         # completion_str = f'+{day_delta} {completion_str}'
+
+    time_left = print_state['progress']['printTimeLeftFormatted'] or '--:--'
 
     return dict(
         is_on=is_on,
         is_visible=is_visible,
         is_done=is_done,
+        is_printing=is_printing,
         progress=progress,
-        time_left=print_state['progress']['printTimeLeftFormatted'],
-        completion_time=completion_str,
+        time_left=time_left,
+        completion_time=completion_time,
         file_name=filename,
         toolt_current=tool_temp['actual'],
         toolt_target=tool_temp['target'],
