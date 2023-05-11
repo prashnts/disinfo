@@ -13,6 +13,7 @@ from disp_info.components import fonts
 from disp_info.redis import rkeys, get_dict
 
 threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
+done_icon = SpriteImage('assets/raster/nozzle-9x9-done.png')[0]
 file_icon = SpriteImage('assets/raster/fileicon-5x5.png')[0]
 toolt_icon = SpriteImage('assets/raster/nozzle-5x5.png')[0]
 bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
@@ -38,8 +39,17 @@ def _get_state():
             .replace('.aw', '')
             .replace('.gcode', ''))
     time_left = print_state['progress']['printTimeLeft']
+    progress = print_state['progress']['completion']
+    flags = print_state['state']['flags']
+    last_update = arrow.get(print_state['_timestamp'], tzinfo='local')
+
+    is_on = flags['operational'] or flags['printing']
+    is_done = is_on and progress == 100
 
     now = arrow.now()
+
+    is_visible = (is_on or is_done) and (last_update + timedelta(minutes=45)) > now
+
     completion_time = now.shift(seconds=time_left)
     completion_str = completion_time.strftime('%H:%M')
     # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
@@ -47,8 +57,10 @@ def _get_state():
         # completion_str = f'+{day_delta} {completion_str}'
 
     return dict(
-        printing=print_state['state']['text'] == 'Printing',
-        progress=print_state['progress']['completion'],
+        is_on=is_on,
+        is_visible=is_visible,
+        is_done=is_done,
+        progress=progress,
         time_left=print_state['progress']['printTimeLeftFormatted'],
         completion_time=completion_str,
         file_name=filename,
@@ -63,10 +75,9 @@ get_state = py_.throttle(_get_state, 200)
 def draw(tick: float) -> Frame:
     state = get_state()
 
-    if not state['printing']:
+    if not state['is_visible']:
         return
 
-    text_time_left.update(value=f'{state["time_left"]}')
     text_progress.update(value=f'{state["progress"]:0.1f}')
     text_toolt_current.update(value=f'{round(state["toolt_current"])}')
     text_bedt_current.update(value=f'{round(state["bedt_current"])}')
@@ -74,6 +85,11 @@ def draw(tick: float) -> Frame:
 
     fname_changed = text_file_name.update(value=state["file_name"])
     hscroller_fname.set_frame(text_file_name, fname_changed)
+
+    if not state['is_done']:
+        text_time_left.update(value=f'{state["time_left"]}')
+    else:
+        text_time_left.update(value='Done!')
 
     completion_text = stack_horizontal([
         tail_arrow_left,
@@ -88,7 +104,7 @@ def draw(tick: float) -> Frame:
     ], align='top')
 
     info_elem = stack_horizontal([
-        threed_icon.draw(tick),
+        threed_icon.draw(tick) if not state['is_done'] else done_icon,
         info_text,
     ], gap=4)
 
