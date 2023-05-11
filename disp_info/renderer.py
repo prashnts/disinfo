@@ -29,7 +29,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 
 
 pos_x = 64
-pos_y = 32
+pos_y = 42
 
 def draw_btn_test(image, draw):
     global pos_x, pos_y

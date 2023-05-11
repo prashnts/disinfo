@@ -27,7 +27,7 @@ text_file_name = Text(font=fonts.bitocra, fill='#888888')
 text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
 text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
-hscroller_fname = HScroller(size=22)
+hscroller_fname = HScroller(size=22, pause_at_loop=True)
 
 def _get_state():
     print_state = get_dict(rkeys['octoprint_printing'])

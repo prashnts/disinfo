@@ -10,13 +10,17 @@ class _Scroller:
         frame: Frame = None,
         delta: int = 1,
         speed: float = 0.01,
-        static_if_small: bool = True):
+        static_if_small: bool = True,
+        pause_at_loop: bool = False,
+        pause_duration: float = 2):
         self.size = size
         self.delta = delta
         self.speed = speed
         self.pos = 0
         self.last_step = 0
         self.static_if_small = static_if_small
+        self.pause_at_loop = pause_at_loop
+        self.pause_duration = pause_duration
         if frame:
             self._init_scroller(frame, True)
 
@@ -43,7 +47,15 @@ class _Scroller:
     def _tick(self, step: float = None):
         if not step:
             step = time.time()
-        if (step - self.last_step) >= self.speed:
+        delta = step - self.last_step
+        if all([
+            self.pause_at_loop,
+            self.pos == self.size,
+            delta < self.pause_duration,
+        ]):
+            # We insert a pause by not incrementing position.
+            return
+        if delta >= self.speed:
             self.pos += self.delta
             self.pos %= self.frame.width
             self.last_step = step
