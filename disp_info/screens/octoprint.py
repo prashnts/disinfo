@@ -110,7 +110,7 @@ def draw(tick: float) -> Frame:
     ], align='top')
 
     info_elem = stack_horizontal([
-        threed_icon.draw(tick) if not state['is_done'] else done_icon,
+        threed_icon.draw(tick) if state['is_printing'] else done_icon,
         info_text,
     ], gap=4)
 
