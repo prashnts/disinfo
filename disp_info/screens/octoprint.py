@@ -90,7 +90,7 @@ def draw(tick: float) -> Frame:
     info_elem = stack_horizontal([
         threed_icon.draw(tick),
         info_text,
-    ], gap=2)
+    ], gap=4)
 
     filename_elem = stack_horizontal([
         file_icon,
