@@ -8,15 +8,21 @@ from disp_info.components.elements import Frame
 from disp_info.components.layouts import composite_at
 from disp_info.components.text import Text
 from disp_info.redis import rkeys, get_dict
+from disp_info.utils import throttle
 from disp_info import config
 
 text_timestr = Text()
 
 
+@throttle(50)
+def get_state():
+    return get_dict(rkeys['ha_enki_rmt']).get('action')
+
+
 def draw():
     t = arrow.now()
     # t = arrow.get(2022, 2, 1, 21, 21, t.second)
-    action = get_dict(rkeys['ha_enki_rmt']).get('action')
+    action = get_state()
 
     equal_elements = t.hour == t.minute
     twentytwo = t.hour == t.minute == 22

@@ -11,6 +11,7 @@ from disp_info.components.scroller import HScroller
 from disp_info.sprite_icons import SpriteIcon, SpriteImage
 from disp_info.components import fonts
 from disp_info.redis import rkeys, get_dict
+from disp_info.utils import throttle
 
 threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
 done_icon = SpriteImage('assets/raster/nozzle-9x9-done.png')[0]
@@ -30,7 +31,8 @@ text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
 hscroller_fname = HScroller(size=22, pause_at_loop=True)
 
-def _get_state():
+@throttle(500)
+def get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
     bed_temp = get_dict(rkeys['octoprint_bedt'])
@@ -75,8 +77,6 @@ def _get_state():
         bedt_current=bed_temp['actual'],
         bedt_target=bed_temp['target'],
     )
-
-get_state = py_.throttle(_get_state, 200)
 
 def draw(tick: float) -> Frame:
     state = get_state()

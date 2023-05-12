@@ -12,12 +12,17 @@ from disp_info.components.layouts import stack_horizontal, stack_vertical
 from disp_info.sprite_icons import SpriteImage
 from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
+from disp_info.utils import throttle
 
 hscroller = HScroller(size=30, delta=1, speed=0.01)
 play_icon = SpriteImage('assets/raster/play.9x9.png')[0]
 
 text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
 
+
+@throttle(500)
+def get_state():
+    return get_dict(rkeys['ha_sonos_beam'])
 
 @cache
 def get_album_art(fragment: str, media_title: str):
@@ -36,7 +41,7 @@ def get_album_art(fragment: str, media_title: str):
         return None
 
 def draw():
-    state = get_dict(rkeys['ha_sonos_beam'])
+    state = get_state()
 
     if not state.get('new_state'):
         return

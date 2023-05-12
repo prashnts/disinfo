@@ -10,18 +10,25 @@ from disp_info.components.layers import add_background
 from disp_info.sprite_icons import SpriteImage
 from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
+from disp_info.utils import throttle
 
 text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
 
-hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=2, speed=0.01)
+hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=2, speed=0.001)
 hscroller_num = HScroller(size=40, delta=1, speed=0.01, pause_at_loop=True)
 
 text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
 text_number = Text('', font=fonts.px_op__r, fill='#9bb10d')
 
 
-def draw(tick: float):
+@throttle(1000)
+def get_state():
     numbers = get_dict(rkeys['random_msg'])
+    return numbers
+
+
+def draw(tick: float):
+    numbers = get_state()
     num_str = f'#{numbers["number"]}'
 
     info_changed = text_number_info.update(value=numbers['text'])
