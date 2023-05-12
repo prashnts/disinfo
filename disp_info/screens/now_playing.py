@@ -37,7 +37,7 @@ def get_state():
     state['playing'] = s['state'] == 'playing'
     state['paused'] = s['state'] == 'paused'
 
-    last_change = arrow.get(s['last_changed']).to('local')
+    last_updated = arrow.get(s['last_updated']).to('local')
     now = arrow.now()
 
     state['media_title'] = s['attributes'].get('media_title')
@@ -54,7 +54,7 @@ def get_state():
     state['is_visible'] = all([
         state['playing'] or state['paused'],
         state['media_title'] != 'TV',
-        (last_change + timedelta(minutes=timeout_delay)) > now,
+        (last_updated + timedelta(minutes=timeout_delay)) > now,
     ])
 
     return state
