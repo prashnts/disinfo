@@ -43,7 +43,7 @@ def get_state():
     state['media_title'] = s['attributes'].get('media_title')
     state['media_album'] = s['attributes'].get('media_album_name')
     state['media_artist'] = s['attributes'].get('media_artist')
-    state['is_spotify'] = 'Spotify' in s['attributes']['source']
+    state['is_spotify'] = 'Spotify' in s['attributes'].get('source', '')
     state['album_art'] = get_album_art(
         s['attributes'].get('entity_picture'),
         media_album=state['media_album'],
@@ -61,7 +61,7 @@ def get_state():
 def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
     if not fragment:
         return None
-    if 'franceinfo' in media_album:
+    if media_album and 'franceinfo' in media_album:
         # Hard code some album arts.
         return SpriteImage('assets/raster/france-info.png')[0]
     try:
