@@ -12,6 +12,7 @@ from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components import fonts
+from .utils import throttle
 
 from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro
 from . import config
@@ -31,10 +32,15 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 pos_x = 64
 pos_y = 42
 
+@throttle(40)
+def get_remote_action():
+    return get_dict(rkeys['ha_enki_rmt']).get('action')
+
+
 def draw_btn_test(image, draw):
     global pos_x, pos_y
 
-    action = get_dict(rkeys['ha_enki_rmt']).get('action')
+    action = get_remote_action()
     if action == 'color_saturation_step_up':
         pos_y -= 1
     if action == 'color_saturation_step_down':
