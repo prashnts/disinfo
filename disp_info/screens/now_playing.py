@@ -11,6 +11,7 @@ from disp_info.components import fonts
 from disp_info.components.elements import Frame
 from disp_info.components.text import Text
 from disp_info.components.layouts import stack_horizontal, stack_vertical, composite_at
+from disp_info.components.layers import add_background
 from disp_info.sprite_icons import SpriteImage
 from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
@@ -107,4 +108,8 @@ def draw():
     if art:
         music_elements.append(art)
 
-    return stack_vertical(music_elements, gap=1, align='right')
+    return add_background(
+        stack_vertical(music_elements, gap=1, align='right'),
+        fill='#143464',
+        radius=2,
+        padding=2)

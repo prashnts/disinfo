@@ -9,7 +9,7 @@ class _Scroller:
         size: int,
         frame: Frame = None,
         delta: int = 1,
-        speed: float = 0.001,
+        speed: float = 0.01,
         static_if_small: bool = True,
         pause_at_loop: bool = False,
         pause_duration: float = 2):
