@@ -110,6 +110,6 @@ def draw():
 
     return add_background(
         stack_vertical(music_elements, gap=1, align='right'),
-        fill='#4a5462',
+        fill='#333941',
         radius=2,
         padding=2)
