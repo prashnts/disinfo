@@ -17,7 +17,7 @@ from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
 from disp_info.utils import throttle
 
-hscroller = HScroller(size=20, delta=1, speed=0.1, pause_at_loop=True, pause_duration=1)
+hscroller = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
 
 play_icon = SpriteImage('assets/raster/play-5x5.png')[0]
 pause_icon = SpriteImage('assets/raster/pause-5x5.png')[0]
