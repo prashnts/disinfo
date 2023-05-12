@@ -14,7 +14,7 @@ from disp_info.utils import throttle
 
 text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
 
-hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=2, speed=0.001)
+hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=1, speed=0.001)
 hscroller_num = HScroller(size=40, delta=1, speed=0.01, pause_at_loop=True)
 
 text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
