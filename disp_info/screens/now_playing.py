@@ -20,7 +20,7 @@ play_icon = SpriteImage('assets/raster/play.9x9.png')[0]
 text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
 
 
-@throttle(500)
+@throttle(1033)
 def get_state():
     return get_dict(rkeys['ha_sonos_beam'])
 

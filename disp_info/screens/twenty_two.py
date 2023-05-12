@@ -14,7 +14,7 @@ from disp_info import config
 text_timestr = Text()
 
 
-@throttle(50)
+@throttle(43)
 def get_state():
     return get_dict(rkeys['ha_enki_rmt']).get('action')
 

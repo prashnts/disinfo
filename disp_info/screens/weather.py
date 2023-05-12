@@ -10,6 +10,7 @@ from disp_info.components.text import Text
 from disp_info.components.layouts import stack_horizontal, stack_vertical
 from disp_info.redis import rkeys, get_dict
 from disp_info.sprite_icons import SpriteIcon, SpriteImage
+from disp_info.utils import throttle
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -83,31 +84,35 @@ def draw_temp_range(
         stack_vertical([text_high, text_low], gap=1, align='left'),
     ], gap=1, align='center')
 
+@throttle(1123)
+def get_state():
+    forecast = get_dict(rkeys['weather_data'])
+    _today = forecast['daily']['data'][0]
+
+    return dict(
+        temperature=forecast['currently']['apparentTemperature'],
+        update_time=arrow.get(forecast['currently']['time'], tzinfo='local'),
+        condition=forecast['currently']['summary'],
+        icon_name=forecast['currently']['icon'],
+        t_high=_today['temperatureHigh'],
+        t_low=_today['temperatureLow'],
+        sunset_time=arrow.get(_today['sunsetTime'], tzinfo='local'),
+    )
+
 
 def draw(step: int):
-    forecast = get_dict(rkeys['weather_data'])
-
-    # Current temperature and codition + High/Low
-    temperature = forecast['currently']['apparentTemperature']
-    update_time = arrow.get(forecast['currently']['time'], tzinfo='local')
-    condition = forecast['currently']['summary']
-    icon_name = forecast['currently']['icon']
-    _today = forecast['daily']['data'][0]
-    t_high = _today['temperatureHigh']
-    t_low = _today['temperatureLow']
-    # Sunset info
-    sunset_time = arrow.get(_today['sunsetTime'], tzinfo='local')
+    s = get_state()
 
     now = arrow.now()
-    should_show_sunset = sunset_time > now and (sunset_time - now).total_seconds() < 2 * 60 * 60
-    is_outdated = (now - update_time).total_seconds() > 30 * 60  # 30 mins.
+    should_show_sunset = s['sunset_time'] > now and (s['sunset_time'] - now).total_seconds() < 2 * 60 * 60
+    is_outdated = (now - s['update_time']).total_seconds() > 30 * 60  # 30 mins.
 
     # update values
-    text_temperature_value.update(value=f'{round(temperature)}')
-    text_condition.update(value=condition)
-    text_sunset_time.update(value=sunset_time.strftime('%H:%M'))
+    text_temperature_value.update(value=f'{round(s["temperature"])}')
+    text_condition.update(value=s['condition'])
+    text_sunset_time.update(value=s['sunset_time'].strftime('%H:%M'))
 
-    weather_icon.set_icon(f'assets/unicorn-weather-icons/{icon_name}.png')
+    weather_icon.set_icon(f'assets/unicorn-weather-icons/{s["icon_name"]}.png')
 
     temp_text = stack_horizontal([
         text_temperature_value,
@@ -123,7 +128,7 @@ def draw(step: int):
         stack_horizontal([
             weather_icon.draw(step),
             temp_text,
-            draw_temp_range(temperature, t_high, t_low, fonts.tamzen__rs),
+            draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs),
         ], gap=1, align='center'),
         stack_horizontal(condition_info, gap=2, align='center'),
     ], gap=1, align='left')

@@ -21,7 +21,7 @@ text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
 text_number = Text('', font=fonts.px_op__r, fill='#9bb10d')
 
 
-@throttle(1000)
+@throttle(1163)
 def get_state():
     numbers = get_dict(rkeys['random_msg'])
     return numbers

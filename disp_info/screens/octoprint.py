@@ -31,7 +31,7 @@ text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 
 hscroller_fname = HScroller(size=22, pause_at_loop=True)
 
-@throttle(500)
+@throttle(1061)
 def get_state():
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
