@@ -49,10 +49,12 @@ def get_state():
         media_album=state['media_album'],
         is_spotify=state['is_spotify'])
 
+    timeout_delay = 40 if state['playing'] else 2
+
     state['is_visible'] = all([
         state['playing'] or state['paused'],
         state['media_title'] != 'TV',
-        (last_change + timedelta(minutes=30)) > now,
+        (last_change + timedelta(minutes=timeout_delay)) > now,
     ])
 
     return state
