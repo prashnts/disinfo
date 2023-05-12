@@ -14,7 +14,7 @@ from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components import fonts
 from .utils import throttle
 
-from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro
+from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro, plant
 from . import config
 
 
@@ -77,7 +77,15 @@ def draw_frame():
     twenty_two_frame = twenty_two.draw()
     octoprint_info = octoprint.draw(tick)
 
-    right_widget = [date_time.draw()]
+    plant_info = plant.draw(tick)
+    date_time_info = date_time.draw()
+
+    right_widget = []
+
+    if plant_info:
+        right_widget.append(stack_horizontal([plant_info, date_time_info], gap=2, align='top'))
+    else:
+        right_widget.append(date_time_info)
 
     if octoprint_info:
         right_widget.append(octoprint_info)

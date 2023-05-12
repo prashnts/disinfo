@@ -30,10 +30,13 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload)
         if payload['event_type'] == 'state_changed':
             event = payload['event_data']
+            event['_timestamp'] = arrow.now().isoformat()
             if event['entity_id'] == 'media_player.sonos_beam':
                 set_dict(rkeys['ha_sonos_beam'], event)
             if event['entity_id'] == 'sensor.enviomental_lux':
                 set_dict(rkeys['ha_enviomental_lux'], event)
+            if event['entity_id'] == 'sensor.driplant_soil_cap':
+                set_dict(rkeys['ha_driplant_volts'], event)
     if msg.topic == 'octoPrint/hass/printing':
         payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_printing'], payload)
