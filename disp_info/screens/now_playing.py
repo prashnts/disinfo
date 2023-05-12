@@ -59,6 +59,8 @@ def get_state():
 
 @cache
 def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
+    if not fragment:
+        return None
     if 'franceinfo' in media_album:
         # Hard code some album arts.
         return SpriteImage('assets/raster/france-info.png')[0]
