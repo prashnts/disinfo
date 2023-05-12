@@ -14,7 +14,7 @@ from disp_info.redis import rkeys, get_dict
 from disp_info.components.scroller import HScroller
 from disp_info.utils import throttle
 
-hscroller = HScroller(size=30, delta=1, speed=0.01)
+hscroller = HScroller(size=30, delta=1, speed=0.01, pause_at_loop=True, pause_duration=1)
 play_icon = SpriteImage('assets/raster/play.9x9.png')[0]
 
 text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
