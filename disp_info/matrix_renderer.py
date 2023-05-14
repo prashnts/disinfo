@@ -22,11 +22,11 @@ options.drop_privileges = True
 # options.show_refresh_rate = 1
 options.hardware_mapping = 'regular'
 
-matrix = RGBMatrix(options = options)
-double_buffer = matrix.CreateFrameCanvas()
-
 
 def main(fps: int = 60, stats: bool = False):
+    matrix = RGBMatrix(options = options)
+    double_buffer = matrix.CreateFrameCanvas()
+
     print('Matrix Renderer started')
     _tf = 1 / fps
 
