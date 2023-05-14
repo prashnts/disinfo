@@ -33,7 +33,6 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     double_buffer = matrix.CreateFrameCanvas()
 
     print('Matrix Renderer started')
-    _tf = 1 / fps
 
     while True:
         t_a = time.time()
