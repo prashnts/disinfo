@@ -27,7 +27,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     if show_refresh_rate:
         options.show_refresh_rate = 1
     if fps > 0:
-        options.limit_refresh_rate = fps
+        options.limit_refresh_rate_hz = fps
 
     matrix = RGBMatrix(options=options)
     double_buffer = matrix.CreateFrameCanvas()
