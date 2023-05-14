@@ -23,8 +23,13 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
-def main(fps: int = 60, stats: bool = False):
-    matrix = RGBMatrix(options = options)
+def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
+    if show_refresh_rate:
+        options.show_refresh_rate = 1
+    if fps > 0:
+        options.limit_refresh_rate = fps
+
+    matrix = RGBMatrix(options=options)
     double_buffer = matrix.CreateFrameCanvas()
 
     print('Matrix Renderer started')
@@ -42,17 +47,14 @@ def main(fps: int = 60, stats: bool = False):
         t_matrix = t_c - t_b
         t_frame = t_c - t_a
 
-        delay = max(_tf - t_frame, 0)
-        _fps = (1 / (t_frame + delay))
+        _fps = (1 / t_frame)
 
         if stats:
             print('\033[2J')
             print(f't draw:      {t_draw:0.4}')
             print(f't sixel:     {t_matrix:0.4}')
-            print(f'frame delay: {delay}')
             print(f'fps:         \033[34m{_fps:0.4}\033[0m')
 
-        time.sleep(delay)
 
 if __name__=='__main__':
     typer.run(main)
