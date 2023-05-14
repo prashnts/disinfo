@@ -49,10 +49,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         _fps = (1 / t_frame)
 
         if stats:
-            print('\033[2J')
-            print(f't draw:      {t_draw:0.4}')
-            print(f't sixel:     {t_matrix:0.4}')
-            print(f'fps:         \033[34m{_fps:0.4}\033[0m')
+            print(f'[t draw: {t_draw:0.4}] [fps: {_fps:0.4}]')
 
 
 if __name__=='__main__':
