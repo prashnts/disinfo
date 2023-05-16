@@ -1,17 +1,28 @@
 import time
 import typer
 
+from itertools import cycle
+
 from .renderer import get_frame
+
+fifos = [
+    '/tmp/ledcat-01',
+    '/tmp/ledcat-02',
+    '/tmp/ledcat-03',
+    '/tmp/ledcat-04',
+]
 
 def main(fps: int = 60):
     _tf = 1 / fps
+
+    _fifos = cycle(fifos)
 
     while True:
         t_a = time.time()
         frame = get_frame()
         t_b = time.time()
 
-        with open('/tmp/ledcat-01', 'wb') as fp:
+        with open(next(_fifos), 'wb') as fp:
             fp.write(frame.convert('RGB').tobytes())
 
         t_c = time.time()
