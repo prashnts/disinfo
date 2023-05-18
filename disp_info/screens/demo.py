@@ -68,6 +68,9 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 def draw(tick: float):
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
+
+    draw_sin_wave(step=(tick * 20), draw=d, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
+
     composite_at(plot_parametric(
         L1,
         tick,
@@ -79,7 +82,6 @@ def draw(tick: float):
         step=0.02,
     ), image, 'mm')
 
-    draw_sin_wave(step=(tick * 20), draw=d, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
     draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#5A5A5A')
 
     composite_at(plot_parametric(
