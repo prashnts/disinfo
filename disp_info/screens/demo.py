@@ -21,7 +21,7 @@ def lissajous(*, a: float, b: float, A: float, B: float, d: float):
         return (x, y)
     return fn
 
-L1 = lissajous(a=3, b=2, A=16, B=16, d=math.pi / 2)
+L1 = lissajous(a=3, b=2, A=10, B=10, d=math.pi / 2)
 L2 = lissajous(a=5, b=4, A=24, B=24, d=math.pi / 2)
 
 
@@ -89,8 +89,8 @@ def draw(tick: float):
         tick,
         tspan=60,
         w=48,
-        h=48,
-        color='#0f793d',
+        h=38,
+        color='#FFBF00',
         width=1,
         step=0.02,
     ), image, 'mm')
