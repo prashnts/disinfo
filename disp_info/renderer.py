@@ -14,7 +14,7 @@ from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .components import fonts
 from .utils import throttle
 
-from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro, plant
+from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro, plant, demo
 from . import config
 
 
@@ -71,8 +71,10 @@ def draw_frame():
         # do not draw if nobody is there.
         return image
 
-    draw_sin_wave(step=step, draw=draw, yoffset=24, amp=4, divisor=2, color='#3A6D8C')
-    draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=25, amp=7, divisor=10, color='#5A5A5A')
+    # draw_sin_wave(step=step, draw=draw, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
+    draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=20, amp=7, divisor=10, color='#5A5A5A')
+
+    composite_at(demo.draw(tick), image, 'mm')
 
     twenty_two_frame = twenty_two.draw()
     octoprint_info = octoprint.draw(tick)
