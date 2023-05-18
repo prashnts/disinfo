@@ -52,8 +52,22 @@ def plot_parametric(
     return Frame(img)
 
 
+
+def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
+    AMP = amp
+    OFFSET = 10
+    DIVISOR = divisor # 1.5
+
+    y_step = lambda x: round(math.sin(step + x / DIVISOR) * AMP + OFFSET)
+    xys = [(x + 0, y_step(x) + yoffset) for x in range(128)]
+
+    draw.line(xys, fill=color, width=width, joint='curve')
+
+
+
 def draw(tick: float):
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(image)
     composite_at(plot_parametric(
         L1,
         tick,
@@ -64,6 +78,10 @@ def draw(tick: float):
         width=2,
         step=0.02,
     ), image, 'mm')
+
+    draw_sin_wave(step=(tick * 10), draw=d, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
+    draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#5A5A5A')
+
     composite_at(plot_parametric(
         L1,
         tick,

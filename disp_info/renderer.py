@@ -18,17 +18,6 @@ from .screens import date_time, octoprint, weather, twenty_two, now_playing, num
 from . import config
 
 
-def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
-    AMP = amp
-    OFFSET = 10
-    DIVISOR = divisor # 1.5
-
-    y_step = lambda x: round(math.sin(step + x / DIVISOR) * AMP + OFFSET)
-    xys = [(x + 0, y_step(x) + yoffset) for x in range(128)]
-
-    draw.line(xys, fill=color, width=width, joint='curve')
-
-
 pos_x = 64
 pos_y = 42
 
@@ -70,9 +59,6 @@ def draw_frame():
     if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
-
-    # draw_sin_wave(step=step, draw=draw, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
-    draw_sin_wave(step=(34 + step * .5), draw=draw, yoffset=20, amp=7, divisor=10, color='#5A5A5A')
 
     composite_at(demo.draw(tick), image, 'mm')
 
