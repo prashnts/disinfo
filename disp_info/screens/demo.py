@@ -47,7 +47,7 @@ def plot_parametric(
         return (x + xoffset, y + yoffset)
 
     pts = [_pt(t + (i * step)) for i in range(tspan)]
-    d.line(pts, fill=color, width=width, joint='curve')
+    d.line(pts, fill=color, width=width)
 
     return Frame(img)
 
