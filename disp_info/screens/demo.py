@@ -57,11 +57,21 @@ def draw(tick: float):
     composite_at(plot_parametric(
         L1,
         tick,
-        tspan=100,
+        tspan=400,
+        w=48,
+        h=48,
+        color='#052647',
+        width=2,
+        step=0.02,
+    ), image, 'mm')
+    composite_at(plot_parametric(
+        L1,
+        tick,
+        tspan=60,
         w=48,
         h=48,
         color='#0f793d',
         width=1,
-        step=0.05,
+        step=0.02,
     ), image, 'mm')
     return Frame(image)
