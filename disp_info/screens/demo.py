@@ -77,7 +77,7 @@ def draw(tick: float):
         tspan=400,
         w=48,
         h=48,
-        color='#052647',
+        color='#052647aa',
         width=2,
         step=0.02,
     ), image, 'mm')
@@ -90,7 +90,7 @@ def draw(tick: float):
         tspan=60,
         w=48,
         h=48,
-        color='#0f793dcc',
+        color='#0f793d',
         width=1,
         step=0.02,
     ), image, 'mm')
