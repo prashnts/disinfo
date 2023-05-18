@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 import time
-import math
-import requests
-import io
 
 from PIL import Image, ImageDraw
-from functools import cache
 
 from .weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
 from .state_proxy import should_turn_on_display
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
-from .components import fonts
 from .utils import throttle
 
 from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro, plant, demo

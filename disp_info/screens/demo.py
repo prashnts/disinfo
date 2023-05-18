@@ -82,7 +82,7 @@ def draw(tick: float):
         step=0.02,
     ), image, 'mm')
 
-    draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#5A5A5A')
+    draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#282828')
 
     composite_at(plot_parametric(
         L1,
