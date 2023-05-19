@@ -24,22 +24,28 @@ class GameOfLife:
         1: '#0d686e',
     }
 
-    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1):
+    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1):
         self.width = w
         self.height = h
+        self.scale = scale
         self.last_tick = 0
         self.speed = speed
         self.board = [[rval() for x in range(w)] for y in range(h)]
         self.frame = self.draw_board()
 
     def draw_board(self):
-        img = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+        s = self.scale
+        img = Image.new('RGBA', (self.width * s, self.height * s), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
 
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 color = self.color_map[cell]
-                d.point((y, x), color)
+                rx, ry = y * s, x * s
+                ex, ey = rx + (s - 1), ry + (s - 1)
+
+                # d.point((y, x), color)
+                d.rectangle([(rx, ry), (ex, ey)], fill=color)
 
         return Frame(img)
 
@@ -80,7 +86,7 @@ class GameOfLife:
                 if not cell and n_alive == 3:
                     b[x][y] = 1
         self.board = b
-        # self.frame = self.draw_board()
+        self.frame = self.draw_board()
 
     def draw(self, tick: float):
         self._tick(tick)
@@ -150,7 +156,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife(speed=1, w=128)
+gol = GameOfLife(speed=0.4, w=16, scale=3, h=8)
 
 
 def plot_parametric(
