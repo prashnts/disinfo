@@ -25,4 +25,4 @@ def draw(tick: float):
         text_time,
         stack_horizontal([text_day, text_date], gap=2, align='center'),
     ], gap=0, align='right')
-    return add_background(view, fill='#000000ac'))
+    return add_background(view, fill='#000000ac')
