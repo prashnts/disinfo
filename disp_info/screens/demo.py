@@ -107,7 +107,7 @@ def draw(tick: float):
     #     step=0.02,
     # ), image, 'mm')
     composite_at(plot_parametric(
-        partial(L3, tick * 100),
+        partial(L3, tick / 100),
         tick,
         tspan=360,
         w=48,
