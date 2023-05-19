@@ -20,7 +20,7 @@ rval = lambda: random.randint(0, 1)
 
 class GameOfLife:
     color_map = {
-        0: '#000000',
+        0: '#00000000',
         1: '#1ba2ab',
     }
 
@@ -150,7 +150,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife()
+gol = GameOfLife(speed=1)
 
 
 def plot_parametric(
