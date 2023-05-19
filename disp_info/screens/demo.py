@@ -1,5 +1,6 @@
 import math
 import arrow
+import random
 
 from functools import partial
 from PIL import Image, ImageDraw
@@ -13,6 +14,78 @@ from disp_info import config
 
 colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'
+
+
+rval = lambda: random.randint(0, 1)
+
+class GameOfLife:
+    color_map = {
+        0: '#000000',
+        1: '#1ba2ab',
+    }
+
+    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1):
+        self.width = w
+        self.height = h
+        self.last_tick = 0
+        self.speed = speed
+        self.board = [[rval() for x in range(w)] for y in range(h)]
+        self.frame = self.draw_board()
+
+    def draw_board(self):
+        img = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+
+        for x, row in enumerate(self.board):
+            for y, cell in enumerate(row):
+                color = self.color_map[cell]
+                d.point((y, x), color)
+
+        return Frame(img)
+
+    def neighbors(self, x: int, y: int):
+        dirns = [
+            (x - 1, y - 1),
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x - 1, y),
+            (x + 1, y),
+            (x - 1, y + 1),
+            (x, y + 1),
+            (x + 1, y + 1),
+        ]
+        for dx, dy in dirns:
+            try:
+                yield self.board[dx][dy]
+            except IndexError:
+                # todo: we'd like to wrap around.
+                pass
+
+    def _tick(self, tick: float):
+        if tick - self.last_tick >= self.speed:
+            self.next_generation()
+            self.last_tick = tick
+
+    def next_generation(self):
+        # copy the board
+        b = [row[:] for row in self.board]
+        for x, row in enumerate(self.board):
+            for y, cell in enumerate(row):
+                neighbors = self.neighbors(x, y)
+                n_alive = sum(neighbors)
+                if cell and n_alive < 2:
+                    b[x][y] = 0
+                elif cell and n_alive > 3:
+                    b[x][y] = 0
+                if not cell and n_alive == 3:
+                    b[x][y] = 1
+        self.board = b
+        self.frame = self.draw_board()
+
+    def draw(self, tick: float):
+        self._tick(tick)
+        return self.frame
+
 
 def cyclicvar(
     a: float,
@@ -54,6 +127,7 @@ def cyclicvar(
 
 
 def lissajous(*, a: float, b: float, A: float, B: float, d: float):
+    # https://en.m.wikipedia.org/wiki/Lissajous_curve
     def fn(t: float):
         x = A * math.sin((a * t) + d)
         y = B * math.sin(b * t)
@@ -75,6 +149,9 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
+
+gol = GameOfLife()
+
 
 def plot_parametric(
     fn,
@@ -145,16 +222,17 @@ def draw(tick: float):
     #     width=1,
     #     step=0.02,
     # ), image, 'mm')
+    composite_at(gol.draw(tick), image, 'mm')
 
-    composite_at(plot_parametric(
-        partial(L3, V1(tick)),
-        tick,
-        tspan=360,
-        w=48,
-        h=38,
-        color='#FF7E00',
-        width=1,
-        step=.03,
-    ), image, 'mm')
+    # composite_at(plot_parametric(
+    #     partial(L3, V1(tick)),
+    #     tick,
+    #     tspan=360,
+    #     w=48,
+    #     h=38,
+    #     color='#FF7E00',
+    #     width=1,
+    #     step=.03,
+    # ), image, 'mm')
 
     return Frame(image)
