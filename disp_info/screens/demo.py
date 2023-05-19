@@ -68,11 +68,17 @@ class GameOfLife:
             (x + 1, y + 1),
         ]
         for dx, dy in dirns:
-            try:
-                yield self.board[dx][dy]
-            except IndexError:
-                # todo: we'd like to wrap around.
-                pass
+            # wraparound.
+            if dx < 0:
+                dx = self.h - 1
+            elif dx > self.h - 1:
+                dx = 0
+            if dy < 0:
+                dy = self.w - 1
+            elif dy > self.w - 1:
+                dy = 0
+            yield self.board[dx][dy]
+
 
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
