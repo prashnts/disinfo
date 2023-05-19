@@ -76,7 +76,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     draw.line(xys, fill=color, width=width, joint='curve')
 
 
-ratio = 0
+ratio = .5
 last_tick = 0
 
 def draw(tick: float):
@@ -111,10 +111,12 @@ def draw(tick: float):
     #     step=0.02,
     # ), image, 'mm')
 
-    if tick - last_tick > 0.2:
+    if tick - last_tick > 2:
         last_tick = tick
         ratio += 0.01
         ratio %= 2
+        if ratio == 0:
+            ratio = 0.5
 
     composite_at(plot_parametric(
         partial(L3, ratio),
