@@ -29,7 +29,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
     # b is fixed to 1.
     b = 1
     def fn(r: float, t: float):
-        a = r % 3
+        a = r
         x = A * math.sin((a * t) + d)
         y = B * math.sin(b * t)
         return (x, y)
@@ -76,8 +76,12 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     draw.line(xys, fill=color, width=width, joint='curve')
 
 
+ratio = 0
+last_tick = 0
 
 def draw(tick: float):
+    global ratio, last_tick
+
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
 
@@ -106,15 +110,21 @@ def draw(tick: float):
     #     width=1,
     #     step=0.02,
     # ), image, 'mm')
+
+    if tick - last_tick > 0.2:
+        last_tick = tick
+        ratio += 0.01
+        ratio %= 2
+
     composite_at(plot_parametric(
-        partial(L3, tick / 1000),
+        partial(L3, ratio),
         tick,
         tspan=360,
         w=48,
         h=38,
         color='#FF7E00',
         width=1,
-        step=0.04,
+        step=.03,
     ), image, 'mm')
 
     return Frame(image)
