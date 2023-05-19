@@ -76,7 +76,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     draw.line(xys, fill=color, width=width, joint='curve')
 
 
-ratio = .5
+ratio = .4
 last_tick = 0
 
 def draw(tick: float):
@@ -113,7 +113,7 @@ def draw(tick: float):
 
     if tick - last_tick > 2:
         last_tick = tick
-        ratio += 0.0005
+        ratio += 0.001
         ratio %= 2
         if ratio == 0:
             ratio = 0.5
