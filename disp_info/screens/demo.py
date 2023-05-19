@@ -42,8 +42,8 @@ class GameOfLife:
 
     def _gen_board(self):
         self.color = Color(pick_for=self.last_changed)
-        self.color.luminance = 0.2
-        rint = lambda: int(random.random() > 0.8)
+        self.color.luminance = 0.1
+        rint = lambda: int(random.random() > 0.9)
         return [[rint() for x in range(self.w)] for y in range(self.h)]
 
     def draw_board(self):
