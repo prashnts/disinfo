@@ -51,7 +51,7 @@ def draw_frame():
         # do not draw if nobody is there.
         return image
 
-    # composite_at(screens.demo.draw(tick), image, 'mm')
+    composite_at(screens.demo.draw(tick), image, 'mm')
 
     octoprint_info = screens.octoprint.draw(tick)
 
