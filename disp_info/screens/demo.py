@@ -113,7 +113,7 @@ def draw(tick: float):
 
     if tick - last_tick > 2:
         last_tick = tick
-        ratio += 0.01
+        ratio += 0.005
         ratio %= 2
         if ratio == 0:
             ratio = 0.5
