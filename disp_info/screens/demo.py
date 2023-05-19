@@ -263,7 +263,7 @@ def draw(tick: float):
     #     step=0.02,
     # ), image, 'mm')
     composite_at(
-        tile_copies(gol.draw(tick), 10), image, 'mm')
+        tile_copies(gol.draw(tick), 11), image, 'mm')
 
     # composite_at(plot_parametric(
     #     partial(L3, V1(tick)),
