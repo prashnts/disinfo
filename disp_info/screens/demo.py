@@ -18,11 +18,6 @@ color_date = '#6d7682'
 
 
 class GameOfLife:
-    color_map = {
-        0: '#00000000',
-        1: '#0d686e',
-    }
-
     def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1, idle_timeout: float = 3, reset_after: float = 30):
         self.w = w
         self.h = h
@@ -47,7 +42,9 @@ class GameOfLife:
 
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
-                color = self.color_map[cell]
+                if not cell:
+                    continue
+                color = '#0d476e'
                 rx, ry = y * s, x * s
                 ex, ey = rx + (s - 1), ry + (s - 1)
 
