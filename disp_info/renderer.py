@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import time
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from .weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
@@ -9,8 +9,7 @@ from .state_proxy import should_turn_on_display
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .utils import throttle
 
-from .screens import date_time, octoprint, weather, twenty_two, now_playing, numbers, paris_metro, plant, demo
-from . import config
+from . import config, screens
 
 
 pos_x = 64
@@ -21,7 +20,7 @@ def get_remote_action():
     return get_dict(rkeys['ha_enki_rmt']).get('action')
 
 
-def draw_btn_test(image, draw):
+def draw_btn_test(image):
     global pos_x, pos_y
 
     action = get_remote_action()
@@ -37,7 +36,6 @@ def draw_btn_test(image, draw):
     pos_x %= config.matrix_w
     pos_y %= config.matrix_h
 
-    # draw.text((pos_x, pos_y), '↖', font=font_scientifica__r)
     icon = render_icon(cursor)
 
     image.alpha_composite(icon, (pos_x, pos_y))
@@ -46,49 +44,37 @@ def draw_btn_test(image, draw):
 
 def draw_frame():
     tick = time.time()
-    step = tick * 15
 
-    image = Image.new('RGBA', (128, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
 
     if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
 
-    composite_at(demo.draw(tick), image, 'mm')
+    composite_at(screens.demo.draw(tick), image, 'mm')
 
-    twenty_two_frame = twenty_two.draw()
-    octoprint_info = octoprint.draw(tick)
+    octoprint_info = screens.octoprint.draw(tick)
 
-    plant_info = plant.draw(tick)
-    date_time_info = date_time.draw()
-
-    right_widget = []
-
-    if plant_info:
-        right_widget.append(stack_horizontal([plant_info, date_time_info], gap=2, align='top'))
-    else:
-        right_widget.append(date_time_info)
-
-    if octoprint_info:
-        right_widget.append(octoprint_info)
-
-    composite_at(stack_vertical(right_widget, gap=1, align='right'), image, 'tr')
-    composite_at(weather.draw(tick), image, 'tl')
-    composite_at(numbers.draw(tick), image, 'bl')
+    composite_at(
+        stack_vertical([
+            stack_horizontal([
+                screens.plant.draw(tick),
+                screens.date_time.draw(tick),
+            ], gap=2, align='top'),
+            octoprint_info,
+        ], gap=1, align='right'),
+        image, 'tr')
+    composite_at(screens.weather.draw(tick), image, 'tl')
+    composite_at(screens.numbers.draw(tick), image, 'bl')
 
     # composite_at(paris_metro.draw(tick), image, 'ml')
 
-    now_playing_frame = now_playing.draw()
+    if not octoprint_info:
+        composite_at(screens.now_playing.draw(tick), image, 'mr')
 
-    if now_playing_frame and not octoprint_info:
-        composite_at(now_playing_frame, image, 'mr')
+    composite_at(screens.twenty_two.draw(tick), image, 'mm')
 
-
-    if twenty_two_frame:
-        composite_at(twenty_two_frame, image, 'mm')
-
-    image = draw_btn_test(image, draw)
+    image = draw_btn_test(image)
 
     return image
 

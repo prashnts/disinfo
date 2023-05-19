@@ -78,7 +78,7 @@ def get_state():
         bedt_target=bed_temp['target'],
     )
 
-def draw(tick: float) -> Frame:
+def draw(tick: float):
     state = get_state()
 
     if not state['is_visible']:

@@ -11,7 +11,7 @@ text_time = Text(font=fonts.bitocra, fill=colors_time[0])
 text_day = Text(font=fonts.bitocra, fill=color_date)
 text_date = Text(font=fonts.bitocra, fill=color_date)
 
-def draw():
+def draw(tick: float):
     t = arrow.now()
 
     text_time.update(

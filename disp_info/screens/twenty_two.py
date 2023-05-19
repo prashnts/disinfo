@@ -19,7 +19,7 @@ def get_state():
     return get_dict(rkeys['ha_enki_rmt']).get('action')
 
 
-def draw():
+def draw(tick: float):
     t = arrow.now()
     # t = arrow.get(2022, 2, 1, 21, 21, t.second)
     action = get_state()

@@ -80,7 +80,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
     except requests.RequestException:
         return None
 
-def draw():
+def draw(tick: float):
     s = get_state()
 
     if not s['is_visible']:
@@ -101,7 +101,7 @@ def draw():
     music_elements = [
         stack_horizontal([
             act_icon,
-            hscroller.draw(),
+            hscroller.draw(tick),
         ], gap=0)
     ]
 

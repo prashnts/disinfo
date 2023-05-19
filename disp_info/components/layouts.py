@@ -1,5 +1,5 @@
-from typing import Literal
 from PIL import Image
+from typing import Literal, Optional
 
 from .elements import UIElement, Frame
 
@@ -8,14 +8,20 @@ HorizontalAlignment = Literal['center', 'left', 'right']
 ComposeAnchor = Literal['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
 
 
-def stack_horizontal(elements: list[UIElement], gap: int = 0, align: VerticalAlignment = 'center') -> Frame:
-    gap_width = gap * (len(elements) - 1)
-    width = sum([e.width for e in elements]) + gap_width
-    height = max([e.height for e in elements])
+def stack_horizontal(
+    elements: list[Optional[UIElement]],
+    gap: int = 0,
+    align: VerticalAlignment = 'center',
+) -> Frame:
+    _elems = [e for e in elements if e]
+
+    gap_width = gap * (len(_elems) - 1)
+    width = sum([e.width for e in _elems]) + gap_width
+    height = max([e.height for e in _elems])
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
 
     x = 0
-    for e in elements:
+    for e in _elems:
         if align == 'top':
             y = 0
         elif align == 'center':
@@ -28,15 +34,21 @@ def stack_horizontal(elements: list[UIElement], gap: int = 0, align: VerticalAli
 
     return Frame(img)
 
-def stack_vertical(elements: list[UIElement], gap: int = 0, align: HorizontalAlignment = 'left') -> Frame:
-    gap_width = gap * (len(elements) - 1)
-    width = max([e.width for e in elements])
-    height = sum([e.height for e in elements]) + gap_width
+def stack_vertical(
+    elements: list[Optional[UIElement]],
+    gap: int = 0,
+    align: HorizontalAlignment = 'left',
+) -> Frame:
+    _elems = [e for e in elements if e]
+
+    gap_width = gap * (len(_elems) - 1)
+    width = max([e.width for e in _elems])
+    height = sum([e.height for e in _elems]) + gap_width
 
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
 
     y = 0
-    for e in elements:
+    for e in _elems:
         if align == 'left':
             x = 0
         elif align == 'center':
@@ -49,8 +61,15 @@ def stack_vertical(elements: list[UIElement], gap: int = 0, align: HorizontalAli
 
     return Frame(img)
 
-def composite_at(frame: Frame, dest: Image, anchor: ComposeAnchor = 'tl') -> Image:
+def composite_at(
+    frame: Optional[Frame],
+    dest: Image,
+    anchor: ComposeAnchor = 'tl',
+) -> Image:
     # composes the `frame` so that it is at `anchor` corner of `dest`. It modifies the image.
+    if not frame:
+        return dest
+
     dw = dest.width
     dh = dest.height
     fw = frame.width
