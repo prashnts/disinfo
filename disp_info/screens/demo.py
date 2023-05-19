@@ -7,9 +7,8 @@ from colour import Color
 from PIL import Image, ImageDraw
 
 from disp_info.components.elements import Frame
-from disp_info.components.layouts import composite_at
+from disp_info.components.layouts import composite_at, tile_copies
 from disp_info.components import fonts
-from disp_info.components.layouts import stack_horizontal, stack_vertical
 from disp_info.components.text import Text
 from disp_info import config
 
@@ -183,7 +182,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife(speed=0.5, w=16, h=8, scale=8)
+gol = GameOfLife(speed=0.5, w=8, h=8, scale=2)
 
 
 def plot_parametric(
@@ -255,7 +254,8 @@ def draw(tick: float):
     #     width=1,
     #     step=0.02,
     # ), image, 'mm')
-    composite_at(gol.draw(tick), image, 'mm')
+    composite_at(
+        tile_copies(gol.draw(tick), 8), image, 'mm')
 
     # composite_at(plot_parametric(
     #     partial(L3, V1(tick)),
