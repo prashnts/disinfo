@@ -175,4 +175,4 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     draw.line(xys, fill=color, width=width, joint='curve')
 
 def draw(tick: float):
-    return tile_copies(gol.draw(tick), nx=8, ny=4)
+    return tile_copies(gol.draw(tick), nx=8, ny=4, seamless=True)

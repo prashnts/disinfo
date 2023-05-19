@@ -1,3 +1,9 @@
+'''Layout utilities for arranging Frames and Images.
+
+Some of the functions are inspired with CSS FlexBoxes. Namely the
+horizontal and vertical alignments when differently sized elements
+are in the same container.
+'''
 from PIL import Image
 from typing import Literal, Optional
 from itertools import product
@@ -14,6 +20,17 @@ def stack_horizontal(
     gap: int = 0,
     align: VerticalAlignment = 'center',
 ) -> Frame:
+    '''Stacks the given elements horizontally with specified gap.
+
+    Alignment is relative to the tallest element:
+    T─┬──┬┬─┬┬─┬┬──┬─        ┌─┐   ┌──┐        ┌─┐
+      │  ││ ││ ││  │     ┌──┐│ │┌─┐│* │        │ │   ┌──┐
+      └──┘│ │└─┘│  │   C─┼──┼┼─┼┼─┼┼──┼─   ┌──┐│ │┌─┐│  │
+          │ │   └──┘     └──┘│ │└─┘└──┘    │  ││ ││ ││  │
+          └─┘                └─┘         B─┴──┴┴─┴┴─┴┴──┴─
+
+    Returns a new image.
+    '''
     _elems = [e for e in elements if e]
 
     gap_width = gap * (len(_elems) - 1)
@@ -40,6 +57,20 @@ def stack_vertical(
     gap: int = 0,
     align: HorizontalAlignment = 'left',
 ) -> Frame:
+    '''Stacks the given elements vertically with specified gap.
+
+    Alignment is relative to widest element:
+    ├───┐        ┌─┼─┐        ┌───┤
+    ├───┘        └─┼─┘        └───┤
+    ├─────┐     ┌──┼──┐     ┌─────┤
+    ├─────┘     └──┼──┘     └─────┤
+    ├───┐        ┌─┼─┐        ┌───┤
+    │   │        │ │ │        │   │
+    ├───┘        └─┼─┘        └───┤
+    L              C              R
+
+    Returns a new image.
+    '''
     _elems = [e for e in elements if e]
 
     gap_width = gap * (len(_elems) - 1)
@@ -67,7 +98,9 @@ def composite_at(
     dest: Image,
     anchor: ComposeAnchor = 'tl',
 ) -> Image:
-    # composes the `frame` so that it is at `anchor` corner of `dest`. It modifies the image.
+    '''Composes the `frame` so that it is at `anchor` corner of `dest`.
+    Modifies the image.
+    '''
     if not frame:
         return dest
 
@@ -100,32 +133,46 @@ def composite_at(
     dest.alpha_composite(frame.image, (left, top))
     return dest
 
-def tile_copies(frame: Frame, nx: int = 2, ny: int = 2, seamless: bool = True) -> Frame:
+def tile_copies(
+    frame: Frame,
+    nx: int = 2,
+    ny: int = 2,
+    seamless: bool = True,
+) -> Frame:
+    '''Tiles the frame in a grid.
+    If `seamless` is enabled the frame is flipped in x and y axes to
+    create a seamless tiling.
+    Returns a new image.
+    '''
     w = frame.width * nx
     h = frame.height * ny
     img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
     width_steps = [frame.width * i for i in range(nx)]
     height_steps = [frame.height * i for i in range(ny)]
-    flip_x_states = [(i + 1) % 2 == 0 for i in range(nx)]
-    flip_y_states = [(i + 1) % 2 == 0 for i in range(ny)]
 
-    flip_states = product(flip_x_states, flip_y_states)
     coords = product(width_steps, height_steps)
 
-    l_i = frame.image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    l_t = frame.image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-    l_ti = l_t.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if seamless:
+        flip_x_states = [(i + 1) % 2 == 0 for i in range(nx)]
+        flip_y_states = [(i + 1) % 2 == 0 for i in range(ny)]
+        flip_states = product(flip_x_states, flip_y_states)
+        i_lr = frame.image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        i_tb = frame.image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        i_tblr = i_tb.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
-    for c, f in zip(coords, flip_states):
-        if f[0] and f[1]:
-            i = l_ti
-        elif f[0] and not f[1]:
-            i = l_i
-        elif not f[0] and f[1]:
-            i = l_t
-        else:
-            i = frame.image
-        img.alpha_composite(i, (c[0], c[1]))
+        for c, f in zip(coords, flip_states):
+            if f[0] and f[1]:
+                i = i_tblr
+            elif f[0] and not f[1]:
+                i = i_lr
+            elif not f[0] and f[1]:
+                i = i_tb
+            else:
+                i = frame.image
+            img.alpha_composite(i, (c[0], c[1]))
+    else:
+        for cx, cy in coords:
+            img.alpha_composite(frame.image, (cx, cy))
 
     return Frame(img)
