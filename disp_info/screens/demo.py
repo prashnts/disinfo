@@ -14,6 +14,44 @@ from disp_info import config
 colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'
 
+def cyclicvar(
+    a: float,
+    b: float,
+    step: float = 0.1,
+    reverse: bool = True,
+    speed: float = 0.1,
+):
+    # todo: this looks like a class.
+    var = a
+    fwd = True
+    last_tick = 0
+
+    def _step():
+        nonlocal var, fwd
+        if fwd:
+            var += step
+        else:
+            var -= step
+        if var >= b:
+            if reverse:
+                fwd = False
+                var = b
+            else:
+                var = a
+        if var <= a:
+            fwd = True
+            var = a
+        return var
+
+    def _value(tick: float):
+        nonlocal last_tick
+        if tick - last_tick >= speed:
+            _step()
+            last_tick = tick
+        return var
+
+    return _value
+
 
 def lissajous(*, a: float, b: float, A: float, B: float, d: float):
     def fn(t: float):
@@ -36,6 +74,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
     return fn
 
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
+V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
 def plot_parametric(
     fn,
@@ -76,11 +115,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     draw.line(xys, fill=color, width=width, joint='curve')
 
 
-ratio = .4
-last_tick = 0
-
 def draw(tick: float):
-    global ratio, last_tick
 
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
@@ -111,15 +146,8 @@ def draw(tick: float):
     #     step=0.02,
     # ), image, 'mm')
 
-    if tick - last_tick > 2:
-        last_tick = tick
-        ratio += 0.001
-        ratio %= 2
-        if ratio == 0:
-            ratio = 0.5
-
     composite_at(plot_parametric(
-        partial(L3, ratio),
+        partial(L3, V1(tick)),
         tick,
         tspan=360,
         w=48,
