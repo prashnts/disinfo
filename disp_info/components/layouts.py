@@ -100,13 +100,13 @@ def composite_at(
     dest.alpha_composite(frame.image, (left, top))
     return dest
 
-def tile_copies(frame: Frame, n: int = 2) -> Frame:
-    w = frame.width * n
-    h = frame.height * n
+def tile_copies(frame: Frame, nx: int = 2, ny: int = 2) -> Frame:
+    w = frame.width * nx
+    h = frame.height * ny
     img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
-    width_steps = [frame.width * i for i in range(n)]
-    height_steps = [frame.height * i for i in range(n)]
+    width_steps = [frame.width * i for i in range(nx)]
+    height_steps = [frame.height * i for i in range(ny)]
 
     coords = product(width_steps, height_steps)
 

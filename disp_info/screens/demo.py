@@ -190,7 +190,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife(speed=0.2, w=12, h=12, scale=1)
+gol = GameOfLife(speed=0.2, w=16, h=16, scale=2)
 
 
 def plot_parametric(
@@ -262,8 +262,7 @@ def draw(tick: float):
     #     width=1,
     #     step=0.02,
     # ), image, 'mm')
-    composite_at(
-        tile_copies(gol.draw(tick), 11), image, 'mm')
+    composite_at(tile_copies(gol.draw(tick), nx=8, ny=4), image, 'mm')
 
     # composite_at(plot_parametric(
     #     partial(L3, V1(tick)),
