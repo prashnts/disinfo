@@ -1,6 +1,7 @@
 import math
 import arrow
 
+from functools import partial
 from PIL import Image, ImageDraw
 
 from disp_info.components.elements import Frame
@@ -24,6 +25,17 @@ def lissajous(*, a: float, b: float, A: float, B: float, d: float):
 L1 = lissajous(a=3, b=2, A=10, B=10, d=math.pi / 2)
 L2 = lissajous(a=5, b=4, A=24, B=24, d=math.pi / 2)
 
+def lissajous_ratio(*, A: float, B: float, d: float):
+    # b is fixed to 1.
+    b = 1
+    def fn(r: float, t: float):
+        a = r % 3
+        x = A * math.sin((a * t) + d)
+        y = B * math.sin(b * t)
+        return (x, y)
+    return fn
+
+L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 
 def plot_parametric(
     fn,
@@ -84,14 +96,25 @@ def draw(tick: float):
 
     draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#282828')
 
+    # composite_at(plot_parametric(
+    #     L1,
+    #     tick,
+    #     tspan=60,
+    #     w=48,
+    #     h=38,
+    #     color='#FF7E00',
+    #     width=1,
+    #     step=0.02,
+    # ), image, 'mm')
     composite_at(plot_parametric(
-        L1,
+        partial(L3, tick * 100),
         tick,
-        tspan=60,
+        tspan=360,
         w=48,
         h=38,
-        color='#FFBF00',
+        color='#FF7E00',
         width=1,
-        step=0.02,
+        step=0.01,
     ), image, 'mm')
+
     return Frame(image)
