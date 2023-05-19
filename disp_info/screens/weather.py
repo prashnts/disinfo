@@ -119,6 +119,7 @@ def draw(step: int):
         text_temperature_value,
         text_temperature_degree,
     ], gap=0, align='top')
+    temp_range = draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs)
 
     condition_info = [text_condition]
 
@@ -126,20 +127,27 @@ def draw(step: int):
         condition_info.insert(0, warning_icon)
 
     weather_info = stack_vertical([
-        stack_horizontal([
-            weather_icon.draw(step),
-            temp_text,
-            draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs),
-        ], gap=1, align='center'),
-        stack_horizontal(condition_info, gap=2, align='center'),
+        add_background(
+            stack_horizontal([
+                weather_icon.draw(step),
+                temp_text,
+                temp_range,
+            ], gap=1, align='center'),
+            fill='#000000ac',
+        ),
+        add_background(
+            stack_horizontal(condition_info, gap=2, align='center'),
+            fill='#000000ac',
+        ),
     ], gap=1, align='left')
 
     weather_stack = [weather_info]
 
     if should_show_sunset:
-        weather_stack.append(stack_horizontal([
+        sunset = stack_horizontal([
             sunset_arrow.draw(step),
             text_sunset_time,
-        ], gap=1, align='center'))
+        ], gap=1, align='center')
+        weather_stack.append(add_background(sunset, fill='#000000ac'))
 
-    return add_background(stack_vertical(weather_stack, gap=1, align='left'), fill='#000000ac')
+    return stack_vertical(weather_stack, gap=1, align='left')
