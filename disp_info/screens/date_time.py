@@ -1,6 +1,7 @@
 import arrow
 
 from disp_info.components import fonts
+from disp_info.components.layers import add_background
 from disp_info.components.layouts import stack_horizontal, stack_vertical
 from disp_info.components.text import Text
 
@@ -20,7 +21,8 @@ def draw(tick: float):
     text_day.update(value=t.strftime('%a'))
     text_date.update(value=t.strftime('%d/%m'))
 
-    return stack_vertical([
+    view = stack_vertical([
         text_time,
         stack_horizontal([text_day, text_date], gap=2, align='center'),
     ], gap=0, align='right')
+    return add_background(view, fill='#000000ac'))
