@@ -51,7 +51,7 @@ class GameOfLife:
                 rx, ry = y * s, x * s
                 ex, ey = rx + (s - 1), ry + (s - 1)
 
-                d.rounded_rectangle([(rx, ry), (ex, ey)], fill=color, radius=1, outline='#00000000', width=1)
+                d.rounded_rectangle([(rx, ry), (ex, ey)], fill=color, radius=2, outline='#00000000', width=1)
 
         return Frame(img)
 
@@ -176,7 +176,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife(speed=0.1, w=21, h=10, scale=6)
+gol = GameOfLife(speed=0.5, w=21, h=10, scale=6)
 
 
 def plot_parametric(
