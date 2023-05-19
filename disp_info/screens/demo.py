@@ -19,7 +19,14 @@ color_date = '#6d7682'
 color_range = list(Color('#6e4c0d').range_to(Color('#0d206e'), 20))
 
 class GameOfLife:
-    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1, idle_timeout: float = 10, reset_after: float = 30):
+    def __init__(self,
+        w: int = 32,
+        h: int = 32,
+        speed: float = 0.1,
+        scale: int = 1,
+        idle_timeout: float = 10,
+        reset_after: float = 30,
+    ):
         self.w = w
         self.h = h
         self.scale = scale
