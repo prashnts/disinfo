@@ -17,6 +17,8 @@ colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'
 
 
+color_range = list(Color('#6e4c0d').range_to(Color('#0d206e'), 20))
+
 class GameOfLife:
     def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1, idle_timeout: float = 3, reset_after: float = 30):
         self.w = w
@@ -27,11 +29,13 @@ class GameOfLife:
         self.last_tick = 0
         self.last_changed = 0
         self.last_reset = time.time()
+        self.color = random.choice(color_range)
         self.speed = speed
         self.board = self._gen_board()
         self.frame = self.draw_board()
 
     def _gen_board(self):
+        self.color = random.choice(color_range)
         rint = lambda: int(random.random() > 0.8)
         return [[rint() for x in range(self.w)] for y in range(self.h)]
 
@@ -44,7 +48,7 @@ class GameOfLife:
             for y, cell in enumerate(row):
                 if not cell:
                     continue
-                color = '#0d476e'
+                color = self.color.hex
                 rx, ry = y * s, x * s
                 ex, ey = rx + (s - 1), ry + (s - 1)
 
