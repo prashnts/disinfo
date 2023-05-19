@@ -80,7 +80,7 @@ class GameOfLife:
                 if not cell and n_alive == 3:
                     b[x][y] = 1
         self.board = b
-        self.frame = self.draw_board()
+        # self.frame = self.draw_board()
 
     def draw(self, tick: float):
         self._tick(tick)
