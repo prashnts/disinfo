@@ -1,8 +1,9 @@
 import math
-import arrow
+import time
 import random
 
 from functools import partial
+from colour import Color
 from PIL import Image, ImageDraw
 
 from disp_info.components.elements import Frame
@@ -16,26 +17,32 @@ colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'
 
 
-rval = lambda: random.randint(0, 1)
-
 class GameOfLife:
     color_map = {
         0: '#00000000',
         1: '#0d686e',
     }
 
-    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1):
-        self.width = w
-        self.height = h
+    def __init__(self, w: int = 32, h: int = 32, speed: float = 0.1, scale: int = 1, idle_timeout: float = 3, reset_after: float = 30):
+        self.w = w
+        self.h = h
         self.scale = scale
+        self.idle_timeout = idle_timeout
+        self.reset_after = reset_after
         self.last_tick = 0
+        self.last_changed = 0
+        self.last_reset = time.time()
         self.speed = speed
-        self.board = [[rval() for x in range(w)] for y in range(h)]
+        self.board = self._gen_board()
         self.frame = self.draw_board()
+
+    def _gen_board(self):
+        rint = lambda: int(random.random() > 0.8)
+        return [[rint() for x in range(self.w)] for y in range(self.h)]
 
     def draw_board(self):
         s = self.scale
-        img = Image.new('RGBA', (self.width * s, self.height * s), (0, 0, 0, 0))
+        img = Image.new('RGBA', (self.w * s, self.h * s), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
 
         for x, row in enumerate(self.board):
@@ -44,8 +51,7 @@ class GameOfLife:
                 rx, ry = y * s, x * s
                 ex, ey = rx + (s - 1), ry + (s - 1)
 
-                # d.point((y, x), color)
-                d.rectangle([(rx, ry), (ex, ey)], fill=color)
+                d.rounded_rectangle([(rx, ry), (ex, ey)], fill=color, radius=0)
 
         return Frame(img)
 
@@ -69,24 +75,38 @@ class GameOfLife:
 
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
-            self.next_generation()
+            changed = self.next_generation()
+            if changed:
+                self.last_changed = changed
+            elif tick - self.last_changed >= self.idle_timeout:
+                self.board = self._gen_board()
             self.last_tick = tick
+        if tick - self.last_reset >= self.reset_after:
+            self.board = self._gen_board()
+            self.last_reset = tick
+
 
     def next_generation(self):
         # copy the board
         b = [row[:] for row in self.board]
+        changed = False
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 neighbors = self.neighbors(x, y)
                 n_alive = sum(neighbors)
                 if cell and n_alive < 2:
                     b[x][y] = 0
+                    changed = True
                 elif cell and n_alive > 3:
                     b[x][y] = 0
+                    changed = True
                 if not cell and n_alive == 3:
                     b[x][y] = 1
-        self.board = b
-        self.frame = self.draw_board()
+                    changed = True
+        if changed:
+            self.board = b
+            self.frame = self.draw_board()
+        return changed
 
     def draw(self, tick: float):
         self._tick(tick)
@@ -156,7 +176,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
 L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
 V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
-gol = GameOfLife(speed=0.4, w=16, scale=3, h=8)
+gol = GameOfLife(speed=0.1, w=16, h=8, scale=4)
 
 
 def plot_parametric(
