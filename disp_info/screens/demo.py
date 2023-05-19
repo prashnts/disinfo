@@ -52,7 +52,7 @@ class GameOfLife:
                 rx, ry = y * s, x * s
                 ex, ey = rx + (s - 1), ry + (s - 1)
 
-                d.rounded_rectangle([(rx, ry), (ex, ey)], fill=color, radius=4, outline='#00000000', width=1)
+                d.rounded_rectangle([(rx, ry), (ex, ey)], fill=color, radius=0, outline='#00000000', width=0)
 
         return Frame(img)
 
