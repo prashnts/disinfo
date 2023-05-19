@@ -114,7 +114,7 @@ def draw(tick: float):
         h=38,
         color='#FF7E00',
         width=1,
-        step=0.01,
+        step=0.04,
     ), image, 'mm')
 
     return Frame(image)
