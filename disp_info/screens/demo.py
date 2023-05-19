@@ -2,21 +2,11 @@ import math
 import time
 import random
 
-from functools import partial
 from colour import Color
 from PIL import Image, ImageDraw
 
 from disp_info.components.elements import Frame
-from disp_info.components.layouts import composite_at, tile_copies
-from disp_info.components import fonts
-from disp_info.components.text import Text
-from disp_info import config
-
-colors_time = ['#1ba2ab', '#185e86']
-color_date = '#6d7682'
-
-
-color_range = list(Color('#6e4c0d').range_to(Color('#0d206e'), 20))
+from disp_info.components.layouts import tile_copies
 
 class GameOfLife:
     def __init__(self,
@@ -35,7 +25,6 @@ class GameOfLife:
         self.last_tick = 0
         self.last_changed = 0
         self.last_reset = time.time()
-        self.color = random.choice(color_range)
         self.speed = speed
         self.board = self._gen_board()
         self.frame = self.draw_board()
@@ -127,45 +116,6 @@ class GameOfLife:
         return self.frame
 
 
-def cyclicvar(
-    a: float,
-    b: float,
-    step: float = 0.1,
-    reverse: bool = True,
-    speed: float = 0.1,
-):
-    # todo: this looks like a class.
-    var = a
-    fwd = True
-    last_tick = 0
-
-    def _step():
-        nonlocal var, fwd
-        if fwd:
-            var += step
-        else:
-            var -= step
-        if var >= b:
-            if reverse:
-                fwd = False
-                var = b
-            else:
-                var = a
-        if var <= a:
-            fwd = True
-            var = a
-        return var
-
-    def _value(tick: float):
-        nonlocal last_tick
-        if tick - last_tick >= speed:
-            _step()
-            last_tick = tick
-        return var
-
-    return _value
-
-
 def lissajous(*, a: float, b: float, A: float, B: float, d: float):
     # https://en.m.wikipedia.org/wiki/Lissajous_curve
     def fn(t: float):
@@ -173,9 +123,6 @@ def lissajous(*, a: float, b: float, A: float, B: float, d: float):
         y = B * math.sin(b * t)
         return (x, y)
     return fn
-
-L1 = lissajous(a=3, b=2, A=10, B=10, d=math.pi / 2)
-L2 = lissajous(a=5, b=4, A=24, B=24, d=math.pi / 2)
 
 def lissajous_ratio(*, A: float, B: float, d: float):
     # b is fixed to 1.
@@ -186,9 +133,6 @@ def lissajous_ratio(*, A: float, B: float, d: float):
         y = B * math.sin(b * t)
         return (x, y)
     return fn
-
-L3 = lissajous_ratio(A=10, B=10, d=math.pi / 2)
-V1 = cyclicvar(1/2, 3/2, speed=5, step=0.2)
 
 gol = GameOfLife(speed=0.2, w=16, h=16, scale=1)
 
@@ -220,7 +164,6 @@ def plot_parametric(
     return Frame(img)
 
 
-
 def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     AMP = amp
     OFFSET = 10
@@ -231,48 +174,5 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 
     draw.line(xys, fill=color, width=width, joint='curve')
 
-
 def draw(tick: float):
-
-    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(image)
-
-    # draw_sin_wave(step=(tick * 20), draw=d, yoffset=21, amp=4, divisor=2, color='#3A6D8C')
-
-    # composite_at(plot_parametric(
-    #     L1,
-    #     tick,
-    #     tspan=400,
-    #     w=48,
-    #     h=48,
-    #     color='#052647aa',
-    #     width=2,
-    #     step=0.02,
-    # ), image, 'mm')
-
-    # draw_sin_wave(step=(34 + (tick * 5)), draw=d, yoffset=20, amp=7, divisor=10, color='#282828')
-
-    # composite_at(plot_parametric(
-    #     L1,
-    #     tick,
-    #     tspan=60,
-    #     w=48,
-    #     h=38,
-    #     color='#FF7E00',
-    #     width=1,
-    #     step=0.02,
-    # ), image, 'mm')
-    composite_at(tile_copies(gol.draw(tick), nx=8, ny=4), image, 'mm')
-
-    # composite_at(plot_parametric(
-    #     partial(L3, V1(tick)),
-    #     tick,
-    #     tspan=360,
-    #     w=48,
-    #     h=38,
-    #     color='#FF7E00',
-    #     width=1,
-    #     step=.03,
-    # ), image, 'mm')
-
-    return Frame(image)
+    return tile_copies(gol.draw(tick), nx=8, ny=4)

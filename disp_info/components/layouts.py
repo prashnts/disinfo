@@ -100,17 +100,32 @@ def composite_at(
     dest.alpha_composite(frame.image, (left, top))
     return dest
 
-def tile_copies(frame: Frame, nx: int = 2, ny: int = 2) -> Frame:
+def tile_copies(frame: Frame, nx: int = 2, ny: int = 2, seamless: bool = True) -> Frame:
     w = frame.width * nx
     h = frame.height * ny
     img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
     width_steps = [frame.width * i for i in range(nx)]
     height_steps = [frame.height * i for i in range(ny)]
+    flip_x_states = [(i + 1) % 2 == 0 for i in range(nx)]
+    flip_y_states = [(i + 1) % 2 == 0 for i in range(ny)]
 
+    flip_states = product(flip_x_states, flip_y_states)
     coords = product(width_steps, height_steps)
 
-    for cx, cy in coords:
-        img.alpha_composite(frame.image, (cx, cy))
+    l_i = frame.image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    l_t = frame.image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    l_ti = l_t.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+    for c, f in zip(coords, flip_states):
+        if f[0] and f[1]:
+            i = l_ti
+        elif f[0] and not f[1]:
+            i = l_i
+        elif not f[0] and f[1]:
+            i = l_t
+        else:
+            i = frame.image
+        img.alpha_composite(i, (c[0], c[1]))
 
     return Frame(img)
