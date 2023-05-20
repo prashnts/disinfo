@@ -4,6 +4,7 @@ import json
 rkeys = {
     'remote': 'input.remote',
     'weather_data': 'weather.forecast_data',
+    'metro_timing': 'metro.timing',
     'random_msg': 'misc.random_msg',
     'octoprint_printing': 'hass.octoprint.printing',
     'octoprint_bedt': 'hass.octoprint.bedt',

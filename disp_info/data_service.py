@@ -1,4 +1,4 @@
-import os
+import arrow
 import requests
 import time
 import logging
@@ -10,6 +10,7 @@ from schedule import Scheduler
 
 from . import config
 from .redis import rkeys, set_dict
+from .drat import metro_paris
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger('data_service')
@@ -68,11 +69,29 @@ def get_random_text():
     except requests.exceptions.RequestException as e:
         logger.error('error', e)
 
+def get_metro_info():
+    '''Fetch metro info in morning.'''
+    now = arrow.now()
+    do_fetch = any([
+        7 < now.hour < 9,
+        16 < now.hour < 18,
+    ])
+    if not do_fetch:
+        logger.info('[fetch] not fetching metro timing')
+        return
+    try:
+        logger.info('[fetch] metro timing')
+        data = metro_paris.fetch_state()
+        set_dict(rkeys['metro_timing'], data)
+    except Exception as e:
+        logger.error('error', e)
+
 
 scheduler = SafeScheduler()
 
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
+scheduler.every(1).minutes.do(get_metro_info)
 
 if __name__ == '__main__':
     logger.info('[Data Service] Scheduler Started')

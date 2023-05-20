@@ -67,7 +67,7 @@ def draw_frame():
     composite_at(screens.weather.draw(tick), image, 'tl')
     composite_at(screens.numbers.draw(tick), image, 'bl')
 
-    # composite_at(paris_metro.draw(tick), image, 'ml')
+    composite_at(screens.paris_metro.draw(tick), image, 'ml')
 
     if not octoprint_info:
         composite_at(screens.now_playing.draw(tick), image, 'mr')

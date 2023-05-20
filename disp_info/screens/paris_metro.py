@@ -1,4 +1,5 @@
 import random
+import arrow
 
 from functools import cache
 from PIL import Image, ImageDraw
@@ -7,6 +8,8 @@ from disp_info.components import fonts
 from disp_info.components.elements import Frame
 from disp_info.components.text import Text
 from disp_info.components.layouts import composite_at, stack_horizontal, stack_vertical
+from disp_info.redis import rkeys, get_dict
+from disp_info.utils import throttle
 
 
 # Metro colors are taken from wikipedia [1] but some colors
@@ -65,11 +68,49 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
     return Frame(img)
 
 
+@throttle(400)
+def get_state():
+    payload = get_dict(rkeys['metro_timing'])
+    now = arrow.now()
+    visible = any([
+        7 < now.hour < 9,
+        16 < now.hour < 18,
+    ])
+
+    return {
+        'is_visible': visible,
+        **payload,
+    }
+
+@cache
+def timing_text(value: float):
+    return Text(f'{round(value)}', fonts.bitocra, fill='#5b5e64')
+
+
 def draw(tick: float):
-    traffic_ok = ['1', '8']
+    s = get_state()
+
+    if not s['is_visible']:
+        return
+
     has_problems = random.random() > 0.9
-    ok_lines = stack_horizontal([metro_icon(i, has_problems) for i in traffic_ok], gap=1, align='center')
-    return stack_horizontal([
-        status_icon('ok'),
-        ok_lines,
-    ], gap=1, align='center')
+
+    train_times = []
+
+    for train in s['trains']:
+        if not train['timings']:
+            continue
+        ticon = metro_icon(train['line'])
+        times = []
+        for time in train['timings'][:3]:
+            times.append(timing_text(time['next_in']))
+        time_table = stack_horizontal([
+            ticon,
+            stack_horizontal(times, gap=2)
+        ], gap=3)
+        train_times.append(time_table)
+
+    if not train_times:
+        return
+
+    return stack_vertical(train_times, gap=1, align='left')
