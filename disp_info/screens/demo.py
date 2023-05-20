@@ -31,8 +31,8 @@ class GameOfLife:
 
     def _gen_board(self):
         self.color = Color(pick_for=self.last_changed)
-        self.color.luminance = 0.1
-        rint = lambda: int(random.random() > 0.85)
+        self.color.luminance = 0.15
+        rint = lambda: int(random.random() > 0.75)
         return [[rint() for x in range(self.w)] for y in range(self.h)]
 
     def draw_board(self):
@@ -134,7 +134,7 @@ def lissajous_ratio(*, A: float, B: float, d: float):
         return (x, y)
     return fn
 
-gol = GameOfLife(speed=0.2, w=16, h=16, scale=1)
+gol = GameOfLife(speed=0.1, w=16, h=16, scale=1)
 
 
 def plot_parametric(
