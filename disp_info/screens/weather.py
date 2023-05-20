@@ -5,18 +5,19 @@ from functools import cache
 from PIL import Image, ImageDraw, ImageFont
 
 from ..components import fonts
-from ..components.elements import Frame
+from ..components.elements import Frame, StillImage
 from ..components.text import Text
 from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
-from ..sprite_icons import SpriteIcon, SpriteImage
+from ..sprite_icons import SpriteIcon
 from ..utils import throttle
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
-warning_icon = SpriteImage('assets/sync.png')[0]
+warning_icon = StillImage('assets/sync.png')
+sunset_icon = StillImage('assets/raster/sunset-11x5.png')
 
 color_temp = '#9a9ba2'
 color_deg_c = '#6E7078'
@@ -126,13 +127,21 @@ def draw(step: int):
     if is_outdated:
         condition_info.insert(0, warning_icon)
 
+    main_info = [
+        weather_icon.draw(step),
+        temp_text,
+        temp_range,
+    ]
+
+    if should_show_sunset:
+        main_info.append(stack_horizontal([
+            sunset_icon,
+            text_sunset_time,
+        ], gap=1, align='center'))
+
     weather_info = stack_vertical([
         add_background(
-            stack_horizontal([
-                weather_icon.draw(step),
-                temp_text,
-                temp_range,
-            ], gap=1, align='center'),
+            stack_horizontal(main_info, gap=1, align='top'),
             fill='#000000ac',
         ),
         add_background(
@@ -142,12 +151,5 @@ def draw(step: int):
     ], gap=1, align='left')
 
     weather_stack = [weather_info]
-
-    if should_show_sunset:
-        sunset = stack_horizontal([
-            sunset_arrow.draw(step),
-            text_sunset_time,
-        ], gap=1, align='center')
-        weather_stack.append(add_background(sunset, fill='#000000ac'))
 
     return stack_vertical(weather_stack, gap=1, align='left')

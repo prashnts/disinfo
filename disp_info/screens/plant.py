@@ -2,11 +2,11 @@ import arrow
 
 from datetime import timedelta
 
-from ..sprite_icons import SpriteImage
+from ..components.elements import StillImage
 from ..redis import rkeys, get_dict
 from ..utils import throttle
 
-plant_icon = SpriteImage('assets/raster/plant-9x9.png')[0]
+plant_icon = StillImage('assets/raster/plant-9x9.png')
 
 WARNING_THRESHOLD = 1.7
 

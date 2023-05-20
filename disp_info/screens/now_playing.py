@@ -8,20 +8,19 @@ from datetime import timedelta
 
 from .. import config
 from ..components import fonts
-from ..components.elements import Frame
+from ..components.elements import Frame, StillImage
 from ..components.text import Text
 from ..components.layouts import stack_horizontal, stack_vertical, composite_at
 from ..components.layers import add_background
-from ..sprite_icons import SpriteImage
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils import throttle
 
 hscroller = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
 
-play_icon = SpriteImage('assets/raster/play-5x5.png')[0]
-pause_icon = SpriteImage('assets/raster/pause-5x5.png')[0]
-spotify_icon = SpriteImage('assets/raster/spotify-5x5.png')[0]
+play_icon = StillImage('assets/raster/play-5x5.png')
+pause_icon = StillImage('assets/raster/pause-5x5.png')
+spotify_icon = StillImage('assets/raster/spotify-5x5.png')
 
 text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
 
@@ -66,7 +65,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
         return None
     if media_album and 'franceinfo' in media_album:
         # Hard code some album arts.
-        return SpriteImage('assets/raster/france-info.png')[0]
+        return StillImage('assets/raster/france-info.png')
     try:
         r = requests.get(f'http://{config.ha_base_url}{fragment}')
         r.raise_for_status()

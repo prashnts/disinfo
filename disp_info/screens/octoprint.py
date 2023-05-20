@@ -4,20 +4,20 @@ from datetime import timedelta
 from pydash import py_
 
 from ..components.text import Text
-from ..components.elements import Frame
+from ..components.elements import StillImage
 from ..components.layouts import stack_vertical, stack_horizontal
 from ..components.layers import add_background
 from ..components.scroller import HScroller
-from ..sprite_icons import SpriteIcon, SpriteImage
+from ..sprite_icons import SpriteIcon
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils import throttle
 
 threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
-done_icon = SpriteImage('assets/raster/nozzle-9x9-done.png')[0]
-file_icon = SpriteImage('assets/raster/fileicon-5x5.png')[0]
-toolt_icon = SpriteImage('assets/raster/nozzle-5x5.png')[0]
-bedt_icon = SpriteImage('assets/raster/printerbed-5x5.png')[0]
+done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
+file_icon = StillImage('assets/raster/fileicon-5x5.png')
+toolt_icon = StillImage('assets/raster/nozzle-5x5.png')
+bedt_icon = StillImage('assets/raster/printerbed-5x5.png')
 
 tail_arrow_left = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
 tail_arrow_right = Text(f'⤚', font=fonts.scientifica__r, fill='#8c5b3e')
