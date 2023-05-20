@@ -75,7 +75,6 @@ class GameOfLife:
                 dy = 0
             yield self.board[dx][dy]
 
-
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
             changed = self.next_generation()
@@ -87,7 +86,6 @@ class GameOfLife:
         if tick - self.last_reset >= self.reset_after:
             self.board = self._gen_board()
             self.last_reset = tick
-
 
     def next_generation(self):
         # copy the board
@@ -134,9 +132,6 @@ def lissajous_ratio(*, A: float, B: float, d: float):
         return (x, y)
     return fn
 
-gol = GameOfLife(speed=0.1, w=16, h=16, scale=1)
-
-
 def plot_parametric(
     fn,
     t: float,
@@ -163,7 +158,6 @@ def plot_parametric(
 
     return Frame(img)
 
-
 def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
     AMP = amp
     OFFSET = 10
@@ -174,5 +168,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 
     draw.line(xys, fill=color, width=width, joint='curve')
 
+gol = GameOfLife(speed=0.1, w=24, h=8, scale=1)
+
 def draw(tick: float):
-    return tile_copies(gol.draw(tick), nx=8, ny=4, seamless=True)
+    return tile_copies(gol.draw(tick), nx=6, ny=8, seamless=True)

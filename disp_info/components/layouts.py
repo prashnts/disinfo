@@ -29,7 +29,7 @@ def stack_horizontal(
           │ │   └──┘     └──┘│ │└─┘└──┘    │  ││ ││ ││  │
           └─┘                └─┘         B─┴──┴┴─┴┴─┴┴──┴─
 
-    Returns a new image.
+    Returns a new frame.
     '''
     _elems = [e for e in elements if e]
 
@@ -69,7 +69,7 @@ def stack_vertical(
     ├───┘        └─┼─┘        └───┤
     L              C              R
 
-    Returns a new image.
+    Returns a new frame.
     '''
     _elems = [e for e in elements if e]
 
@@ -99,7 +99,16 @@ def composite_at(
     anchor: ComposeAnchor = 'tl',
 ) -> Image:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
-    Modifies the image.
+
+    Anchor positions with respect to `dest` are as follows:
+        ┌──────────────────┐
+        │tl      tm      tr│
+        │                  │
+        │ml      mm      mr│
+        │                  │
+        │bl      bm      br│
+        └──────────────────┘
+    It modifies the destination image.
     '''
     if not frame:
         return dest
@@ -140,9 +149,18 @@ def tile_copies(
     seamless: bool = True,
 ) -> Frame:
     '''Tiles the frame in a grid.
+
     If `seamless` is enabled the frame is flipped in x and y axes to
-    create a seamless tiling.
-    Returns a new image.
+    create a seamless tiling (illustrated below).
+
+                ┌───┬───┐         ┌───┬───┐
+    ┌───┐       │ ◢ │ ◢ │         │ ◢ │ ◣ │
+    │ ◢ │  ->   ├───┼───┤         ├───┼───┤
+    └───┘       │ ◢ │ ◢ │         │ ◥ │ ◤ │
+                └───┴───┘         └───┴───┘
+    Frame    Natural Tiling    Seamless Tiling
+
+    Returns a new frame.
     '''
     w = frame.width * nx
     h = frame.height * ny
