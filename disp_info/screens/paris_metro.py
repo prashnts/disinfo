@@ -73,8 +73,8 @@ def get_state():
     payload = get_dict(rkeys['metro_timing'])
     now = arrow.now()
     visible = any([
-        7 < now.hour < 9,
-        16 < now.hour < 18,
+        7 <= now.hour <= 9,
+        16 <= now.hour <= 18,
     ])
 
     return {

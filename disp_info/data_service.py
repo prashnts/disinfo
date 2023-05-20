@@ -73,8 +73,8 @@ def get_metro_info():
     '''Fetch metro info in morning.'''
     now = arrow.now()
     do_fetch = any([
-        7 < now.hour < 9,
-        16 < now.hour < 18,
+        7 <= now.hour <= 9,
+        16 <= now.hour <= 18,
     ])
     if not do_fetch:
         logger.info('[fetch] not fetching metro timing')
