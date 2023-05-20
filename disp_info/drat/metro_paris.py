@@ -63,6 +63,14 @@ traffic_stops = [
     },
 ]
 
+def is_active():
+    now = arrow.now()
+    return any([
+        7 <= now.hour <= 9,
+        16 <= now.hour < 17,
+    ])
+
+
 def collate_train_time(traffic: list[TrafficData], direction: str):
     now = arrow.now()
     for t in traffic:

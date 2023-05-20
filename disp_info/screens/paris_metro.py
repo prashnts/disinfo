@@ -2,15 +2,17 @@ import random
 import arrow
 
 from functools import cache
+from datetime import timedelta
 from PIL import Image, ImageDraw
 
-from disp_info.components import fonts
-from disp_info.components.elements import Frame
-from disp_info.components.text import Text
-from disp_info.components.layouts import composite_at, stack_horizontal, stack_vertical
+from ..components import fonts
+from ..components.elements import Frame
+from ..components.text import Text
+from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
-from disp_info.redis import rkeys, get_dict
-from disp_info.utils import throttle
+from ..drat import metro_paris
+from ..redis import rkeys, get_dict
+from ..utils import throttle
 
 
 # Metro colors are taken from wikipedia [1] but some colors
@@ -73,9 +75,10 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
 def get_state():
     payload = get_dict(rkeys['metro_timing'])
     now = arrow.now()
-    visible = any([
-        7 <= now.hour <= 9,
-        16 <= now.hour <= 18,
+    last_updated = arrow.get(payload['timestamp'])
+    visible = all([
+        metro_paris.is_active(),
+        (last_updated + timedelta(minutes=5)) > now,
     ])
 
     return {
