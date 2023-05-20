@@ -55,9 +55,13 @@ traffic_stops = [
         'line': '8',
         'stop': 'Montgallet',
         'direction': 'BALARD',
-    }
+    },
+    {
+        'line': '6',
+        'stop': 'Daumesnil',
+        'direction': 'CHARLES DE GAULLE-ETOILE',
+    },
 ]
-
 
 def collate_train_time(traffic: list[TrafficData], direction: str):
     now = arrow.now()

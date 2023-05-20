@@ -8,6 +8,7 @@ from disp_info.components import fonts
 from disp_info.components.elements import Frame
 from disp_info.components.text import Text
 from disp_info.components.layouts import composite_at, stack_horizontal, stack_vertical
+from ..components.layers import add_background
 from disp_info.redis import rkeys, get_dict
 from disp_info.utils import throttle
 
@@ -93,8 +94,6 @@ def draw(tick: float):
     if not s['is_visible']:
         return
 
-    has_problems = random.random() > 0.9
-
     train_times = []
 
     for train in s['trains']:
@@ -108,7 +107,7 @@ def draw(tick: float):
             ticon,
             stack_horizontal(times, gap=2)
         ], gap=3)
-        train_times.append(time_table)
+        train_times.append(add_background(time_table, '#000000ac'))
 
     if not train_times:
         return
