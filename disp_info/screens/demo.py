@@ -13,7 +13,7 @@ class GameOfLife:
         w: int = 32,
         h: int = 32,
         speed: float = 0.1,
-        idle_timeout: float = 10,
+        idle_timeout: float = 5,
         reset_after: float = 30,
     ):
         self.w = w
