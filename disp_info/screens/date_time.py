@@ -1,9 +1,9 @@
 import arrow
 
-from disp_info.components import fonts
-from disp_info.components.layers import add_background
-from disp_info.components.layouts import stack_horizontal, stack_vertical
-from disp_info.components.text import Text
+from ..components import fonts
+from ..components.layers import add_background
+from ..components.layouts import stack_horizontal, stack_vertical
+from ..components.text import Text
 
 colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'

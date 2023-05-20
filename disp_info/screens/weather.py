@@ -4,14 +4,14 @@ from colour import Color
 from functools import cache
 from PIL import Image, ImageDraw, ImageFont
 
-from disp_info.components import fonts
-from disp_info.components.elements import Frame
-from disp_info.components.text import Text
-from disp_info.components.layers import add_background
-from disp_info.components.layouts import stack_horizontal, stack_vertical
-from disp_info.redis import rkeys, get_dict
-from disp_info.sprite_icons import SpriteIcon, SpriteImage
-from disp_info.utils import throttle
+from ..components import fonts
+from ..components.elements import Frame
+from ..components.text import Text
+from ..components.layers import add_background
+from ..components.layouts import stack_horizontal, stack_vertical
+from ..redis import rkeys, get_dict
+from ..sprite_icons import SpriteIcon, SpriteImage
+from ..utils import throttle
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)

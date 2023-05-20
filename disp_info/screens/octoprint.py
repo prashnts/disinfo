@@ -3,15 +3,15 @@ import arrow
 from datetime import timedelta
 from pydash import py_
 
-from disp_info.components.text import Text
-from disp_info.components.elements import Frame
-from disp_info.components.layouts import stack_vertical, stack_horizontal
-from disp_info.components.layers import add_background
-from disp_info.components.scroller import HScroller
-from disp_info.sprite_icons import SpriteIcon, SpriteImage
-from disp_info.components import fonts
-from disp_info.redis import rkeys, get_dict
-from disp_info.utils import throttle
+from ..components.text import Text
+from ..components.elements import Frame
+from ..components.layouts import stack_vertical, stack_horizontal
+from ..components.layers import add_background
+from ..components.scroller import HScroller
+from ..sprite_icons import SpriteIcon, SpriteImage
+from ..components import fonts
+from ..redis import rkeys, get_dict
+from ..utils import throttle
 
 threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
 done_icon = SpriteImage('assets/raster/nozzle-9x9-done.png')[0]

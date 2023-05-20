@@ -5,8 +5,8 @@ import random
 from colour import Color
 from PIL import Image, ImageDraw
 
-from disp_info.components.elements import Frame
-from disp_info.components.layouts import tile_copies
+from ..components.elements import Frame
+from ..components.layouts import tile_copies
 
 class GameOfLife:
     def __init__(self,

@@ -3,13 +3,13 @@ import random
 
 from PIL import Image, ImageDraw
 
-from disp_info.components import fonts
-from disp_info.components.elements import Frame
-from disp_info.components.layouts import composite_at
-from disp_info.components.text import Text
-from disp_info.redis import rkeys, get_dict
-from disp_info.utils import throttle
-from disp_info import config
+from ..components import fonts
+from ..components.elements import Frame
+from ..components.layouts import composite_at
+from ..components.text import Text
+from ..redis import rkeys, get_dict
+from ..utils import throttle
+from .. import config
 
 text_timestr = Text()
 

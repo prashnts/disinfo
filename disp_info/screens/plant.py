@@ -2,9 +2,9 @@ import arrow
 
 from datetime import timedelta
 
-from disp_info.sprite_icons import SpriteImage
-from disp_info.redis import rkeys, get_dict
-from disp_info.utils import throttle
+from ..sprite_icons import SpriteImage
+from ..redis import rkeys, get_dict
+from ..utils import throttle
 
 plant_icon = SpriteImage('assets/raster/plant-9x9.png')[0]
 

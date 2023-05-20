@@ -1,16 +1,16 @@
 from PIL import Image
 from functools import cache
 
-from disp_info import config
-from disp_info.components import fonts
-from disp_info.components.elements import Frame
-from disp_info.components.text import Text
-from disp_info.components.layouts import stack_horizontal, stack_vertical
-from disp_info.components.layers import add_background
-from disp_info.sprite_icons import SpriteImage
-from disp_info.redis import rkeys, get_dict
-from disp_info.components.scroller import HScroller
-from disp_info.utils import throttle
+from .. import config
+from ..components import fonts
+from ..components.elements import Frame
+from ..components.text import Text
+from ..components.layouts import stack_horizontal, stack_vertical
+from ..components.layers import add_background
+from ..sprite_icons import SpriteImage
+from ..redis import rkeys, get_dict
+from ..components.scroller import HScroller
+from ..utils import throttle
 
 text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
 

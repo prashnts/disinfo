@@ -6,16 +6,16 @@ from PIL import Image
 from functools import cache
 from datetime import timedelta
 
-from disp_info import config
-from disp_info.components import fonts
-from disp_info.components.elements import Frame
-from disp_info.components.text import Text
-from disp_info.components.layouts import stack_horizontal, stack_vertical, composite_at
-from disp_info.components.layers import add_background
-from disp_info.sprite_icons import SpriteImage
-from disp_info.redis import rkeys, get_dict
-from disp_info.components.scroller import HScroller
-from disp_info.utils import throttle
+from .. import config
+from ..components import fonts
+from ..components.elements import Frame
+from ..components.text import Text
+from ..components.layouts import stack_horizontal, stack_vertical, composite_at
+from ..components.layers import add_background
+from ..sprite_icons import SpriteImage
+from ..redis import rkeys, get_dict
+from ..components.scroller import HScroller
+from ..utils import throttle
 
 hscroller = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
 
