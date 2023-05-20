@@ -13,13 +13,11 @@ class GameOfLife:
         w: int = 32,
         h: int = 32,
         speed: float = 0.1,
-        scale: int = 1,
         idle_timeout: float = 10,
         reset_after: float = 30,
     ):
         self.w = w
         self.h = h
-        self.scale = scale
         self.idle_timeout = idle_timeout
         self.reset_after = reset_after
         self.last_tick = 0
@@ -36,19 +34,14 @@ class GameOfLife:
         return [[rint() for x in range(self.w)] for y in range(self.h)]
 
     def draw_board(self):
-        s = self.scale
-        img = Image.new('RGBA', (self.w * s, self.h * s), (0, 0, 0, 0))
+        img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
 
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 if not cell:
                     continue
-                color = self.color.hex
-                rx, ry = y * s, x * s
-                ex, ey = rx + (s - 1), ry + (s - 1)
-
-                d.rectangle([(rx, ry), (ex, ey)], fill=color)
+                d.point((y, x), self.color.hex)
 
         return Frame(img)
 
@@ -168,7 +161,7 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 
     draw.line(xys, fill=color, width=width, joint='curve')
 
-gol = GameOfLife(speed=0.1, w=24, h=8, scale=1)
+gol = GameOfLife(speed=0.1, w=24, h=8)
 
 def draw(tick: float):
     return tile_copies(gol.draw(tick), nx=6, ny=8, seamless=True)
