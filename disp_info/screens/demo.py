@@ -5,6 +5,7 @@ import random
 from colour import Color
 from PIL import Image, ImageDraw
 
+from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
 
@@ -36,12 +37,13 @@ class GameOfLife:
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
+        pts = [
+            (y, x)
+            for x, row in enumerate(self.board)
+            for y, cell in enumerate(row)
+            if cell]
 
-        for x, row in enumerate(self.board):
-            for y, cell in enumerate(row):
-                if not cell:
-                    continue
-                d.point((y, x), self.color.hex)
+        d.point(pts, self.color.hex)
 
         return Frame(img)
 
@@ -70,10 +72,10 @@ class GameOfLife:
 
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
-            changed = self.next_generation()
+            changed, any_alive = self.next_generation()
             if changed:
                 self.last_changed = tick
-            elif tick - self.last_changed >= self.idle_timeout:
+            elif (tick - self.last_changed >= self.idle_timeout) or not any_alive:
                 self.board = self._gen_board()
             self.last_tick = tick
         if tick - self.last_reset >= self.reset_after:
@@ -84,6 +86,7 @@ class GameOfLife:
         # copy the board
         b = [row[:] for row in self.board]
         changed = False
+        any_alive = False
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 neighbors = self.neighbors(x, y)
@@ -97,10 +100,12 @@ class GameOfLife:
                 if not cell and n_alive == 3:
                     b[x][y] = 1
                     changed = True
+                if cell:
+                    any_alive = True
         if changed:
             self.board = b
             self.frame = self.draw_board()
-        return changed
+        return changed, any_alive
 
     def draw(self, tick: float):
         self._tick(tick)
@@ -161,7 +166,11 @@ def draw_sin_wave(step, draw, yoffset, amp, divisor, color, width=1):
 
     draw.line(xys, fill=color, width=width, joint='curve')
 
-gol = GameOfLife(speed=0.1, w=24, h=8)
+gol = GameOfLife(speed=0.1, w=18, h=12)
 
 def draw(tick: float):
-    return tile_copies(gol.draw(tick), nx=6, ny=8, seamless=True)
+    return tile_copies(
+        gol.draw(tick),
+        nx=config.matrix_w // gol.w + 1,
+        ny=config.matrix_h // gol.h + 1,
+    )
