@@ -128,20 +128,23 @@ def draw(step: int):
         condition_info.insert(0, warning_icon)
 
     main_info = [
-        weather_icon.draw(step),
-        temp_text,
-        temp_range,
+        stack_horizontal([
+            weather_icon.draw(step),
+            temp_text,
+            temp_range,
+        ], gap=1, align='center'),
     ]
 
     if should_show_sunset:
-        main_info.append(stack_horizontal([
+        sunset_info = stack_horizontal([
             sunset_icon,
             text_sunset_time,
-        ], gap=1, align='center'))
+        ], gap=1, align='center')
+        main_info.append(sunset_info)
 
     weather_info = stack_vertical([
         add_background(
-            stack_horizontal(main_info, gap=1, align='top'),
+            stack_horizontal(main_info, gap=2, align='top'),
             fill='#000000ac',
         ),
         add_background(
