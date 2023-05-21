@@ -4,6 +4,7 @@ import arrow
 
 from . import config
 from .redis import set_dict, rkeys, db
+from .data_service import get_metro_info
 
 pir_topic_map = {
     'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
@@ -57,6 +58,8 @@ def on_message(client, userdata, msg):
             ttl = config.mqtt_btn_latch_t
             if payload['action'] == 'scene_1':
                 ttl = 1000
+            if payload['action'] == 'scene_2':
+                get_metro_info(force=True)
             db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
 
 

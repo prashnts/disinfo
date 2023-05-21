@@ -10,7 +10,6 @@ from ..components.elements import Frame
 from ..components.text import Text
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
-from ..drat import metro_paris
 from ..redis import rkeys, get_dict
 from ..utils import throttle
 
@@ -76,10 +75,7 @@ def get_state():
     payload = get_dict(rkeys['metro_timing'])
     now = arrow.now()
     last_updated = arrow.get(payload['timestamp'])
-    visible = all([
-        metro_paris.is_active(),
-        (last_updated + timedelta(minutes=5)) > now,
-    ])
+    visible = (last_updated + timedelta(minutes=2)) > now
 
     return {
         'is_visible': visible,
@@ -87,8 +83,8 @@ def get_state():
     }
 
 @cache
-def timing_text(value: float):
-    return Text(f'{round(value)}', fonts.bitocra, fill='#5b5e64')
+def timing_text(value: int):
+    return Text(f'{value}', fonts.bitocra, fill='#5b5e64')
 
 
 def draw(tick: float):
@@ -105,7 +101,7 @@ def draw(tick: float):
         ticon = metro_icon(train['line'])
         times = []
         for time in train['timings'][:3]:
-            times.append(timing_text(time['next_in']))
+            times.append(timing_text(round(time['next_in'])))
         time_table = stack_horizontal([
             ticon,
             stack_horizontal(times, gap=4)

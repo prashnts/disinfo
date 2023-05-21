@@ -68,9 +68,9 @@ def get_random_text():
     except requests.exceptions.RequestException as e:
         logger.error('error', e)
 
-def get_metro_info():
+def get_metro_info(force: bool = False):
     '''Fetch metro info in morning.'''
-    if not metro_paris.is_active():
+    if not force and not metro_paris.is_active():
         logger.info('[fetch] not fetching metro timing')
         return
     try:
