@@ -34,7 +34,7 @@ def draw_temp_range(
     t_current: float,
     t_high: float,
     t_low: float,
-    font: ImageFont = fonts.tamzen__rs) -> Frame:
+    font: ImageFont.FreeTypeFont = fonts.tamzen__rs) -> Frame:
     '''Generates a vertical range graph of temperatures.'''
 
     color_high = Color('#967b03')

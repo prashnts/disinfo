@@ -30,7 +30,7 @@ class SpriteIcon:
     # Renders animated sprites
     # Assumes the frames are vertically stacked and that its a square frame.
 
-    def __init__(self, filename: str, step_time: float=1):
+    def __init__(self, filename: str, step_time: float = 1):
         self.step_time = step_time
         self.current_frame = 0
         self.last_step = 0
@@ -49,7 +49,7 @@ class SpriteIcon:
         self.current_frame = 0
         self.last_step = 0
 
-    def draw(self, step: int) -> Frame:
+    def draw(self, step: float) -> Frame:
         if (step - self.last_step) >= self.step_time:
             self.current_frame += 1
             self.current_frame %= self.nframes

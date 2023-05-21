@@ -5,10 +5,10 @@ horizontal and vertical alignments when differently sized elements
 are in the same container.
 '''
 from PIL import Image
-from typing import Literal, Optional
+from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
 
-from .elements import UIElement, Frame
+from .elements import Frame
 
 VerticalAlignment = Literal['center', 'top', 'bottom']
 HorizontalAlignment = Literal['center', 'left', 'right']
@@ -16,7 +16,7 @@ ComposeAnchor = Literal['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
 
 
 def stack_horizontal(
-    elements: list[Optional[UIElement]],
+    elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: VerticalAlignment = 'center',
 ) -> Frame:
@@ -53,7 +53,7 @@ def stack_horizontal(
     return Frame(img)
 
 def stack_vertical(
-    elements: list[Optional[UIElement]],
+    elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: HorizontalAlignment = 'left',
 ) -> Frame:
@@ -95,9 +95,9 @@ def stack_vertical(
 
 def composite_at(
     frame: Optional[Frame],
-    dest: Image,
+    dest: Image.Image,
     anchor: ComposeAnchor = 'tl',
-) -> Image:
+) -> Image.Image:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
     Anchor positions with respect to `dest` are as follows:

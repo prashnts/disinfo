@@ -1,19 +1,19 @@
 from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
-from typing import TypedDict
+from typing import TypedDict, Optional
 from typing_extensions import Unpack
 
-from .elements import UIElement
+from .elements import Frame
 from . import fonts
 
 
 class TextVars(TypedDict):
-    value: str
-    fill: str
-    font: FreeTypeFont
+    value: Optional[str]
+    fill: Optional[str]
+    font: Optional[FreeTypeFont]
 
-class Text(UIElement):
-    def __init__(self, value: str = None, font: FreeTypeFont = fonts.tamzen__rs, fill: str = '#fff'):
+class Text(Frame):
+    def __init__(self, value: Optional[str] = None, font: FreeTypeFont = fonts.tamzen__rs, fill: str = '#fff'):
         self.font = font
         self.fill = fill
         self.value = value

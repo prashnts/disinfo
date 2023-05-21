@@ -1,5 +1,6 @@
 from PIL import Image
 from abc import ABCMeta, abstractmethod
+from typing import Optional
 
 
 Postion = tuple[int, int]
@@ -8,10 +9,10 @@ Postion = tuple[int, int]
 class UIElement(metaclass=ABCMeta):
     width: int
     height: int
-    image: Image
+    image: Image.Image
 
 class Frame(UIElement):
-    def __init__(self, image: Image, hash: int = None):
+    def __init__(self, image: Image.Image, hash: Optional[int] = None):
         self.image = image
         self.width = image.width
         self.height = image.height

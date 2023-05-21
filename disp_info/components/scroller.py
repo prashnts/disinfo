@@ -1,13 +1,14 @@
 import time
 
 from PIL import Image
+from typing import Optional
 
 from .elements import Frame
 
 class _Scroller:
     def __init__(self,
         size: int,
-        frame: Frame = None,
+        frame: Optional[Frame] = None,
         delta: int = 1,
         speed: float = 0.01,
         static_if_small: bool = True,
@@ -48,7 +49,7 @@ class _Scroller:
     def _get_image(self):
         raise NotImplemented
 
-    def _tick(self, step: float = None):
+    def _tick(self, step: Optional[float] = None):
         if not step:
             step = time.time()
         delta = step - self.last_step
@@ -64,7 +65,7 @@ class _Scroller:
             self.pos %= self.frame.width
             self.last_step = step
 
-    def draw(self, step: float = None) -> Frame:
+    def draw(self, step: Optional[float] = None) -> Frame:
         self._tick(step)
         i = self._get_image()
         patch_img = self.frame.image.crop(self._get_crop_rect())

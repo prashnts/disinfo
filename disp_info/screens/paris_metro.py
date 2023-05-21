@@ -108,7 +108,7 @@ def draw(tick: float):
             times.append(timing_text(time['next_in']))
         time_table = stack_horizontal([
             ticon,
-            stack_horizontal(times, gap=2)
+            stack_horizontal(times, gap=4)
         ], gap=3)
         train_times.append(add_background(time_table, '#000000ac'))
 

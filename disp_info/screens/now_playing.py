@@ -27,7 +27,8 @@ text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
 
 @throttle(1033)
 def get_state():
-    state = dict(is_visible=False)
+    state = {}
+    state['is_visible'] = False
 
     s = get_dict(rkeys['ha_sonos_beam']).get('new_state')
 
