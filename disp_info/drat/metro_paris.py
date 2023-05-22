@@ -49,7 +49,7 @@ traffic_stops = [
     {
         'line': '1',
         'stop': 'Reuilly - Diderot',
-        'direction': 'CHARLES DE GAULLE-ETOILE',
+        'direction': 'LA DEFENSE',
     },
     {
         'line': '8',
