@@ -57,10 +57,10 @@ def draw_frame():
 
     composite_at(
         stack_vertical([
-            stack_horizontal([
-                screens.plant.draw(tick),
+            stack_vertical([
                 screens.date_time.draw(tick),
-            ], gap=2, align='top'),
+                screens.plant.draw(tick),
+            ], gap=2, align='right'),
             octoprint_info,
         ], gap=1, align='right'),
         image, 'tr')
