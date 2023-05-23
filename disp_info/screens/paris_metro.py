@@ -106,9 +106,9 @@ def draw(tick: float):
             ticon,
             stack_horizontal(times, gap=3)
         ], gap=3)
-        train_times.append(add_background(time_table, '#000000ac'))
+        train_times.append(time_table)
 
     if not train_times:
         return
 
-    return stack_vertical(train_times, gap=1, align='left')
+    return add_background(stack_vertical(train_times, gap=1, align='left'), '#000000ac', padding=2)
