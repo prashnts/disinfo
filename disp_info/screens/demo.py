@@ -3,7 +3,7 @@ import time
 import random
 
 from colour import Color
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageColor
 
 from .. import config
 from ..components.elements import Frame
@@ -31,11 +31,15 @@ class GameOfLife:
     def _gen_board(self):
         self.color = Color(pick_for=self.last_changed)
         self.color.luminance = 0.15
+        self.background = Color(self.color)
+        self.background.luminance = 0.05
+
         rint = lambda: int(random.random() > 0.65)
         return [[rint() for x in range(self.w)] for y in range(self.h)]
 
     def draw_board(self):
-        img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
+        color = ImageColor.getrgb(self.background.hex)
+        img = Image.new('RGBA', (self.w, self.h), color)
         d = ImageDraw.Draw(img)
         pts = [
             (y, x)
