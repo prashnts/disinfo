@@ -13,7 +13,7 @@ from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils import throttle
 
-threed_icon = SpriteIcon('assets/raster/nozzle.png', step_time=0.1)
+threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
 file_icon = StillImage('assets/raster/fileicon-5x5.png')
 toolt_icon = StillImage('assets/raster/nozzle-5x5.png')

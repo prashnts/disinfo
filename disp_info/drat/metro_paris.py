@@ -1,5 +1,7 @@
 from idfm_api import IDFMApi
 from idfm_api.models import TransportType, LineData, StopData, TrafficData, InfoData
+from functools import cache
+
 import asyncio
 import aiohttp
 import random
@@ -11,17 +13,39 @@ from dataclasses import dataclass
 from ..config import idfm_api_key
 
 
+traffic_stops = [
+    {
+        'line': '1',
+        'line_id': 'C01371',
+        'stop': 'Reuilly - Diderot',
+        'stop_id': '44637',
+        'direction': 'LA DEFENSE',
+    },
+    {
+        'line': '8',
+        'line_id': 'C01378',
+        'stop': 'Montgallet',
+        'stop_id': '44160',
+        'direction': 'BALARD',
+    },
+    {
+        'line': '6',
+        'line_id': 'C01376',
+        'stop': 'Daumesnil',
+        'stop_id': '45229',
+        'direction': 'CHARLES DE GAULLE-ETOILE',
+    },
+]
+
 @dataclass
 class MetroTrafficData:
     traffic: TrafficData
     info: InfoData
-    line: LineData
-    stop: StopData
 
 
-async def fetch_traffic_info_at_stop(line_name: str, stop_name: str = None) -> MetroTrafficData:
+async def get_stop(line_name: str, stop_name: str = None) -> tuple[LineData, StopData]:
+    # we don't need this session, but it's required.
     session = aiohttp.ClientSession()
-
     idfm = IDFMApi(session, idfm_api_key)
 
     _lines = await idfm.get_lines(TransportType.METRO)
@@ -29,39 +53,27 @@ async def fetch_traffic_info_at_stop(line_name: str, stop_name: str = None) -> M
 
     _stops = await idfm.get_stops(line.id)
 
-
     if stop_name:
         stop = [s for s in _stops if s.name == stop_name][0]
     else:
         stop = random.choice(_stops)
 
-    directions = await idfm.get_destinations(stop.id)
+    await session.close()
 
-    traffic = await idfm.get_traffic(stop.id)
-    infos = await idfm.get_infos(line.id)
+    return line, stop
+
+
+async def fetch_traffic_info_at_stop(line_id: str, stop_id: str) -> MetroTrafficData:
+    session = aiohttp.ClientSession()
+    idfm = IDFMApi(session, idfm_api_key)
+
+    traffic = await idfm.get_traffic(stop_id)
+    infos = await idfm.get_infos(line_id)
 
     await session.close()
 
-    return MetroTrafficData(traffic=traffic, info=infos, line=line, stop=stop)
+    return MetroTrafficData(traffic=traffic, info=infos)
 
-
-traffic_stops = [
-    {
-        'line': '1',
-        'stop': 'Reuilly - Diderot',
-        'direction': 'LA DEFENSE',
-    },
-    {
-        'line': '8',
-        'stop': 'Montgallet',
-        'direction': 'BALARD',
-    },
-    {
-        'line': '6',
-        'stop': 'Daumesnil',
-        'direction': 'CHARLES DE GAULLE-ETOILE',
-    },
-]
 
 def is_active():
     now = arrow.now()
@@ -97,10 +109,10 @@ def get_metro_traffic_info(line_name: str, stop_name: str = None):
 
 def fetch_state():
     trains = []
-    for stop in traffic_stops:
-        info = get_metro_traffic_info(stop['line'], stop['stop'])
-        timings = list(collate_train_time(info.traffic, stop['direction']))
-        trains.append({**stop, 'timings': timings})
+    for s in traffic_stops:
+        info = get_metro_traffic_info(s['line_id'], s['stop_id'])
+        timings = list(collate_train_time(info.traffic, s['direction']))
+        trains.append({**s, 'timings': timings})
 
     return {
         'trains': trains,
