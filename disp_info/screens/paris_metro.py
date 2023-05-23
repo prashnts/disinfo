@@ -111,4 +111,4 @@ def draw(tick: float):
     if not train_times:
         return
 
-    return add_background(stack_vertical(train_times, gap=1, align='left'), '#000000ac', padding=2)
+    return add_background(stack_vertical(train_times, gap=1, align='left'), '#000000c9', padding=2)
