@@ -82,7 +82,7 @@ def get_state():
 
 @cache
 def timing_text(value: int):
-    return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a55505')
+    return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a57a05')
 
 
 def draw(tick: float):
