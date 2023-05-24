@@ -112,6 +112,6 @@ def draw(tick: float):
 
     return add_background(
         stack_vertical(train_times, gap=1, align='left'),
-        fill='#ffffff0c',
+        fill='#123677cf',
         radius=2,
         padding=2)
