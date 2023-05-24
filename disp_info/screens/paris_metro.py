@@ -1,8 +1,7 @@
 import random
-import arrow
+import pendulum
 
 from functools import cache
-from datetime import timedelta
 from PIL import Image, ImageDraw
 
 from ..components import fonts
@@ -73,9 +72,8 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
 @throttle(400)
 def get_state():
     payload = get_dict(rkeys['metro_timing'])
-    now = arrow.now()
-    last_updated = arrow.get(payload['timestamp'])
-    visible = (last_updated + timedelta(minutes=1)) > now
+    last_updated = pendulum.parse(payload['timestamp'])
+    visible = last_updated.add(minutes=1, seconds=20) > pendulum.now()
 
     return {
         'is_visible': visible,
