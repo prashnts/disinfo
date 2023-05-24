@@ -12,6 +12,7 @@ rkeys = {
     'ha_pir_salon': 'hass.pir.salon',
     'ha_pir_kitchen': 'hass.pir.kitchen',
     'ha_enki_rmt': 'hass.enki.rmt',
+    'ha_ikea_rmt_0x01': 'hass.ikea.rmt.0x01',
     'ha_sonos_beam': 'hass.sonos.beam',
     'ha_enviomental_lux': 'hass.enviomental.lux',
     'ha_driplant_volts': 'hass.driplant.volts',

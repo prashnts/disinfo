@@ -1,11 +1,11 @@
 import arrow
 
-from pydash import py_
-
+from .utils import throttle
 from .redis import get_dict, rkeys
 
 
-def _should_turn_on_display() -> bool:
+@throttle(500)
+def should_turn_on_display() -> bool:
     def is_motion_detected(name: str) -> bool:
         pir_state = get_dict(rkeys[name])
         if not pir_state:
@@ -32,5 +32,3 @@ def _should_turn_on_display() -> bool:
 
     # if any sensor reports True we keep the display on.
     return any(motion_states)
-
-should_turn_on_display = py_.throttle(_should_turn_on_display, 500)

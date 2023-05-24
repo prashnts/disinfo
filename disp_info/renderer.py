@@ -16,21 +16,24 @@ pos_x = 64
 pos_y = 42
 
 @throttle(40)
-def get_remote_action():
-    return get_dict(rkeys['ha_enki_rmt']).get('action')
+def get_remotes_action():
+    return {
+        'enki': get_dict(rkeys['ha_enki_rmt']).get('action'),
+        'ikea': get_dict(rkeys['ha_ikea_rmt_0x01']).get('action'),
+    }
 
 
 def draw_btn_test(image):
     global pos_x, pos_y
 
-    action = get_remote_action()
-    if action == 'color_saturation_step_up':
+    actions = get_remotes_action()
+    if actions['enki'] == 'color_saturation_step_up' or actions['ikea'] == 'brightness_up_click':
         pos_y -= 1
-    if action == 'color_saturation_step_down':
+    if actions['enki'] == 'color_saturation_step_down' or actions['ikea'] == 'brightness_down_click':
         pos_y += 1
-    if action == 'color_hue_step_up':
+    if actions['enki'] == 'color_hue_step_up' or actions['ikea'] == 'arrow_right_click':
         pos_x += 1
-    if action == 'color_hue_step_down':
+    if actions['enki'] == 'color_hue_step_down' or actions['ikea'] == 'arrow_left_click':
         pos_x -= 1
 
     pos_x %= config.matrix_w

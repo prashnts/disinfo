@@ -16,6 +16,8 @@ def add_background(
     It is possible to only have rounded corners on specified corners,
     via `corners` argument. The corners are top-left, top-right,
     bottom-right, and bottom-left (in this order).
+
+    Note that this is much faster with radius=0 as we don't need to draw.
     '''
     w = frame.width + (2 * padding)
     h = frame.height + (2 * padding)

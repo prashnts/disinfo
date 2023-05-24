@@ -18,6 +18,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe('octoPrint/temperature/bed')
     client.subscribe('octoPrint/temperature/tool0')
     client.subscribe('zigbee2mqtt/enki.rmt.0x03')   # Remote to control the display
+    client.subscribe('zigbee2mqtt/ikea.rmt.0x01')   # Kitchen Remote
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
 
     for topic in pir_topic_map.keys():
@@ -61,6 +62,13 @@ def on_message(client, userdata, msg):
             if payload['action'] == 'scene_2':
                 get_metro_info(force=True)
             db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
+    if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
+        payload = json.loads(msg.payload)
+        ttl = config.mqtt_btn_latch_t
+        if payload['action']:
+            if payload['action'] == 'toggle':
+                get_metro_info(force=True)
+            db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
 
 
 if __name__ == '__main__':
