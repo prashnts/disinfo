@@ -27,7 +27,7 @@ metro_colors = {
     '6': ['#50a863', '#000'],
     '7': ['#d7829a', '#000'],
     '7b': ['#50a863', '#000'],
-    '8': ['#b171b8', '#000'],
+    '8': ['#86528b', '#000'],
     '9': ['#D5C900', '#000'],
     '10': ['#E3B32A', '#000'],
     '11': ['#8D5E2A', '#fff'],
@@ -63,7 +63,6 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
 
     start_x = 0 if len(line_name) > 1 else 1
 
-    # draw.ellipse([0, 0, size, size], fill=background, outline='#e64539', width=problems)
     draw.rounded_rectangle([0, 0, size, size - 1], fill=background, radius=2)
 
     draw.text(((size / 2) + start_x, size / 2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
