@@ -43,6 +43,6 @@ def draw(tick: float):
     ], gap=2, align='center')
 
     return stack_vertical([
-        add_background(hscroller_num.draw(tick), fill='#0131176c', padding=1),
+        add_background(hscroller_num.draw(tick), fill='#0131176c', padding=1, radius=2, corners=[0, 1, 0, 0]),
         add_background(info_ticker, fill='#010a298c', padding=1),
     ], gap=0, align='left')
