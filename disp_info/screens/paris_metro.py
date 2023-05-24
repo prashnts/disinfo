@@ -63,7 +63,9 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
 
     start_x = 0 if len(line_name) > 1 else 1
 
-    draw.ellipse([0, 0, size, size], fill=background, outline='#e64539', width=problems)
+    # draw.ellipse([0, 0, size, size], fill=background, outline='#e64539', width=problems)
+    draw.rounded_rectangle([0, 0, size, size], fill=background, radius=2)
+
     draw.text(((size / 2) + start_x, size / 2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
 
     return Frame(img)
