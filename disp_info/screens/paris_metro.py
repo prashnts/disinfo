@@ -58,13 +58,13 @@ def metro_icon(line_name: str, problems: bool = False) -> Frame:
     size = 9
     background, text_color = metro_colors.get(line_name, ['#C6C6C6', '#000'])
 
-    img = Image.new('RGBA', (size + 1, size + 1))
+    img = Image.new('RGBA', (size + 1, size))
     draw = ImageDraw.Draw(img)
 
     start_x = 0 if len(line_name) > 1 else 1
 
     # draw.ellipse([0, 0, size, size], fill=background, outline='#e64539', width=problems)
-    draw.rounded_rectangle([0, 0, size, size], fill=background, radius=2)
+    draw.rounded_rectangle([0, 0, size, size - 1], fill=background, radius=2)
 
     draw.text(((size / 2) + start_x, size / 2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
 
