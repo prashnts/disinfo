@@ -9,5 +9,5 @@ arrow>=1.2.3
 colour>=0.1.5
 typer[all]
 typing-extensions>=4.5.0
-idfm_api>=4.0.2
+idfm_api>=1.1.1
 pendulum>=2.1.2
