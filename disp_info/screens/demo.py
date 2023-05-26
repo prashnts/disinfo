@@ -81,7 +81,7 @@ class GameOfLife:
             changed, any_alive = self.next_generation()
             if changed:
                 self.last_changed = tick
-            elif (tick - self.last_changed >= self.idle_timeout) or not any_alive:
+            elif (tick - self.last_changed >= self.idle_timeout):
                 self.reinit_board()
             if (tick - self.last_seed > 1):
                 self.drop_seed()
