@@ -4,6 +4,7 @@ import random
 from colour import Color
 from PIL import Image, ImageDraw
 from statistics import mode
+from itertools import cycle
 
 from .. import config
 from ..components.elements import Frame
@@ -41,6 +42,7 @@ class GameOfLife:
     def reinit_board(self):
         self.board = [[0 for x in range(self.w)] for y in range(self.h)]
         self.game_colors = self._get_palette(random.choice([funkyfuture8, vinik24, kirokazegb]))
+        self.game_color_cycler = cycle(self.game_colors)
         self.seed_cells()
 
     def draw_board(self):
@@ -93,7 +95,8 @@ class GameOfLife:
         # add n points within a region.
         # we generate a random point within the board
         # grab a n x n region
-        color = random.randint(0, len(self.game_colors))
+        # color = random.randint(0, len(self.game_colors))
+        color = next(self.game_color_cycler)
         npts = 4
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
