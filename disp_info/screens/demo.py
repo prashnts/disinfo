@@ -135,7 +135,7 @@ class GameOfLife:
         return self.frame
 
 
-gol = GameOfLife(w=18, h=12)
+gol = GameOfLife(w=20, h=20)
 
 def draw(tick: float):
     return tile_copies(
