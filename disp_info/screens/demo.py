@@ -42,7 +42,7 @@ class GameOfLife:
     def reinit_board(self):
         self.board = [[0 for x in range(self.w)] for y in range(self.h)]
         self.game_colors = self._get_palette(random.choice([funkyfuture8, paper8, kirokazegb]))
-        self.game_color_cycler = cycle(self.game_colors)
+        self.game_color_seq = cycle(self.game_colors)
         for _ in range(2):
             self.seed_cells()
 
@@ -96,14 +96,13 @@ class GameOfLife:
         # add n points within a region.
         # we generate a random point within the board
         # grab a n x n region
-        # color = random.randint(0, len(self.game_colors))
-        color = self.game_colors.index(next(self.game_color_cycler))
-        npts = 4
+        color = self.game_colors.index(next(self.game_color_seq))
+        npts = random.randint(3, 6)
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
         for dx in range(npts):
             for dy in range(npts):
-                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.6 else 0
+                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.7 else 0
 
 
     def next_generation(self):
@@ -136,7 +135,7 @@ class GameOfLife:
         return self.frame
 
 
-gol = GameOfLife(w=20, h=20)
+gol = GameOfLife(w=25, h=20)
 
 def draw(tick: float):
     return tile_copies(
