@@ -9,51 +9,14 @@ from statistics import mode
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
+from ..utilities.palettes import vinik24
 
-# cols = list(Color('#2d0982').range_to(Color('#722408'), steps=8))
-cols = [
-    Color('#a95a61'),
-    Color('#cb8f68'),
-    Color('#ddb483'),
-    Color('#efd187'),
-    Color('#ecda9d'),
-    Color('#bcbc96'),
-    Color('#879c8b'),
-    Color('#5d8ea2'),
-    Color('#57697c'),
-    Color('#475264'),
-    Color('#635362'),
-    Color('#bb6650'),
-]
 
-cols = [
-    Color('#6f6776'),
-    Color('#9a9a97'),
-    Color('#c5ccb8'),
-    Color('#8b5580'),
-    Color('#c38890'),
-    Color('#a593a5'),
-    Color('#666092'),
-    Color('#9a4f50'),
-    Color('#c28d75'),
-    Color('#7ca1c0'),
-    Color('#416aa3'),
-    Color('#8d6268'),
-    Color('#be955c'),
-    Color('#68aca9'),
-    Color('#387080'),
-    Color('#6e6962'),
-    Color('#93a167'),
-    Color('#6eaa78'),
-    Color('#557064'),
-    Color('#9d9f7f'),
-    Color('#7e9e99'),
-    Color('#5d6872'),
-    Color('#433455'),
-]
-
-for color in cols:
-    color.luminance = 0.25
+game_colors = []
+for c in vinik24:
+    color = Color(c)
+    color.lumiance = 0.25
+    game_colors.append(color)
 
 class GameOfLife:
     def __init__(self,
@@ -98,8 +61,7 @@ class GameOfLife:
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 if cell:
-                    color = cols[cell - 1].hex
-
+                    color = game_colors[cell - 1].hex
                     d.point((y, x), color)
 
         return Frame(img)
@@ -146,7 +108,7 @@ class GameOfLife:
         # add n points within a region.
         # we generate a random point within the board
         # grab a n x n region
-        color = random.randint(0, len(cols))
+        color = random.randint(0, len(game_colors))
         npts = 4
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
