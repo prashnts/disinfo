@@ -52,3 +52,11 @@ funkyfuture8 = [
     '#3368dc',
     '#49e7ec',
 ]
+
+kirokazegb = [
+    # https://lospec.com/palette-list/kirokaze-gameboy
+    '#332c50',
+    '#46878f',
+    '#94e344',
+    '#e2f3e4',
+]

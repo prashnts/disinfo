@@ -1,5 +1,4 @@
 import math
-import time
 import random
 
 from colour import Color
@@ -9,60 +8,50 @@ from statistics import mode
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
-from ..utilities.palettes import funkyfuture8 as game_palette
+from ..utilities.palettes import funkyfuture8, vinik24, kirokazegb
 
-
-game_colors = []
-for c in game_palette:
-    color = Color(c)
-    color.luminance = 0.25
-    game_colors.append(color)
 
 class GameOfLife:
     def __init__(self,
         w: int = 32,
         h: int = 32,
         speed: float = 0.1,
-        idle_timeout: float = 5,
+        seed_interval: float = 2,
         reset_after: float = 180,
     ):
         self.w = w
         self.h = h
-        self.idle_timeout = idle_timeout
+        self.seed_interval = seed_interval
         self.reset_after = reset_after
         self.last_tick = 0
-        self.last_changed = 0
         self.last_reset = 0
         self.last_seed = 0
         self.speed = speed
         self.reinit_board()
         self.frame = self.draw_board()
 
-    def _gen_board(self):
-        self.color = Color(pick_for=self.last_changed)
-        self.color.luminance = 0.15
-        rint = lambda: 0 #int(random.random() > 0.65)
-        return [[rint() for x in range(self.w)] for y in range(self.h)]
+    def _get_palette(self, palette: list[str]):
+        game_colors = []
+        for c in palette:
+            color = Color(c)
+            color.luminance = 0.25
+            game_colors.append(color)
+        return game_colors
 
     def reinit_board(self):
-        self.board = self._gen_board()
-        self.drop_seed()
+        self.board = [[0 for x in range(self.w)] for y in range(self.h)]
+        self.game_colors = self._get_palette(random.choice([funkyfuture8, vinik24, kirokazegb]))
+        self.seed_cells()
 
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        # pts = [
-        #     (y, x)
-        #     for x, row in enumerate(self.board)
-        #     for y, cell in enumerate(row)
-        #     if cell]
 
-        # d.point(pts, self.color.hex)
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 if cell:
-                    color = game_colors[cell - 1].hex
-                    d.point((y, x), color)
+                    color = self.game_colors[cell - 1]
+                    d.point((y, x), color.hex)
 
         return Frame(img)
 
@@ -91,28 +80,23 @@ class GameOfLife:
 
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
-            changed, any_alive = self.next_generation()
-            if changed:
-                self.last_changed = tick
-            elif (tick - self.last_changed >= self.idle_timeout):
-                self.reinit_board()
-            if (tick - self.last_seed > 1):
-                self.drop_seed()
-                self.last_seed = tick
+            self.next_generation()
             self.last_tick = tick
+        if tick - self.last_seed >= self.seed_interval:
+            self.seed_cells()
+            self.last_seed = tick
         if tick - self.last_reset >= self.reset_after:
             self.reinit_board()
             self.last_reset = tick
 
-    def drop_seed(self):
+    def seed_cells(self):
         # add n points within a region.
         # we generate a random point within the board
         # grab a n x n region
-        color = random.randint(0, len(game_colors))
+        color = random.randint(0, len(self.game_colors))
         npts = 4
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
-        # print(s_x, s_y)
         for dx in range(npts):
             for dy in range(npts):
                 self.board[s_x + dx][s_y + dy] = color if random.random() > 0.6 else 0
