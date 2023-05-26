@@ -102,7 +102,7 @@ class GameOfLife:
         s_y = random.randint(0, self.w - npts - 1)
         for dx in range(npts):
             for dy in range(npts):
-                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.7 else 0
+                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.6 else 0
 
 
     def next_generation(self):
