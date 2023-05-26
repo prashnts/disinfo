@@ -15,7 +15,7 @@ from ..utilities.palettes import funkyfuture8 as game_palette
 game_colors = []
 for c in game_palette:
     color = Color(c)
-    color.lumiance = 0.25
+    color.luminance = 0.25
     game_colors.append(color)
 
 class GameOfLife:
