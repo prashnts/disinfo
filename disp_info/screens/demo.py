@@ -42,7 +42,8 @@ class GameOfLife:
         self.board = [[0 for x in range(self.w)] for y in range(self.h)]
         self.game_colors = self._get_palette(random.choice([funkyfuture8, paper8, kirokazegb]))
         self.game_color_cycler = cycle(self.game_colors)
-        self.seed_cells()
+        for _ in range(2):
+            self.seed_cells()
 
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
