@@ -10,7 +10,23 @@ from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
 
-cols = list(Color('#2d0982').range_to(Color('#722408'), steps=8))
+# cols = list(Color('#2d0982').range_to(Color('#722408'), steps=8))
+cols = [
+    Color('#a95a61'),
+    Color('#cb8f68'),
+    Color('#ddb483'),
+    Color('#efd187'),
+    Color('#ecda9d'),
+    Color('#bcbc96'),
+    Color('#879c8b'),
+    Color('#5d8ea2'),
+    Color('#57697c'),
+    Color('#475264'),
+    Color('#635362'),
+    Color('#bb6650'),
+]
+for color in cols:
+    color.luminance = 0.15
 
 class GameOfLife:
     def __init__(self,
@@ -55,7 +71,9 @@ class GameOfLife:
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
                 if cell:
-                    d.point((y, x), cols[cell - 1].hex)
+                    color = cols[cell - 1].hex
+
+                    d.point((y, x), )
 
         return Frame(img)
 
