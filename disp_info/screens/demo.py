@@ -102,7 +102,7 @@ class GameOfLife:
         # we generate a random point within the board
         # grab a n x n region
         color = random.randint(0, len(cols))
-        npts = 3
+        npts = 4
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
         # print(s_x, s_y)
