@@ -25,8 +25,8 @@ cols = [
     Color('#635362'),
     Color('#bb6650'),
 ]
-for color in cols:
-    color.luminance = 0.15
+# for color in cols:
+#     color.luminance = 0.15
 
 class GameOfLife:
     def __init__(self,
