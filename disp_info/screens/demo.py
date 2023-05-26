@@ -34,7 +34,8 @@ class GameOfLife:
         game_colors = []
         for c in palette:
             color = Color(c)
-            color.luminance = 0.20
+            color.luminance = 0.10
+            color.saturation = 0.80
             game_colors.append(color)
         return game_colors
 
