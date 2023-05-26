@@ -9,7 +9,7 @@ from itertools import cycle
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
-from ..utilities.palettes import funkyfuture8, vinik24, kirokazegb
+from ..utilities.palettes import funkyfuture8, paper8, kirokazegb
 
 
 class GameOfLife:
@@ -41,7 +41,7 @@ class GameOfLife:
 
     def reinit_board(self):
         self.board = [[0 for x in range(self.w)] for y in range(self.h)]
-        self.game_colors = self._get_palette(random.choice([funkyfuture8, vinik24, kirokazegb]))
+        self.game_colors = self._get_palette(random.choice([funkyfuture8, paper8, kirokazegb]))
         self.game_color_cycler = cycle(self.game_colors)
         self.seed_cells()
 

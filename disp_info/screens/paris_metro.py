@@ -1,4 +1,3 @@
-import random
 import pendulum
 
 from functools import cache
@@ -11,34 +10,8 @@ from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
 from ..utils import throttle
+from ..utilities.palettes import metro_colors
 
-
-# Metro colors are taken from wikipedia [1] but some colors
-# were adjusted (saturated + darkened) to be better visible on LED Matrix.
-# [1]: https://commons.wikimedia.org/wiki/Template:Paris_transit_icons
-# First color represents color of metro line and second the text fill.
-metro_colors = {
-    '1': ['#FFCE00', '#000'],
-    '2': ['#0064B0', '#fff'],
-    '3': ['#847e14', '#000'],
-    '3b': ['#57abbe', '#000'],
-    '4': ['#8a2465', '#fff'],
-    '5': ['#F28E42', '#000'],
-    '6': ['#50a863', '#000'],
-    '7': ['#d7829a', '#000'],
-    '7b': ['#50a863', '#000'],
-    '8': ['#86528b', '#000'],
-    '9': ['#D5C900', '#000'],
-    '10': ['#E3B32A', '#000'],
-    '11': ['#8D5E2A', '#fff'],
-    '12': ['#00814F', '#fff'],
-    '13': ['#57abbe', '#000'],
-    '14': ['#662483', '#fff'],
-    '15': ['#B90845', '#fff'],
-    '16': ['#d7829a', '#000'],
-    '17': ['#D5C900', '#000'],
-    '18': ['#086b5c', '#fff'],
-}
 
 @cache
 def status_icon(status_name: str):
