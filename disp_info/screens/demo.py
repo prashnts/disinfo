@@ -16,7 +16,7 @@ class GameOfLife:
     def __init__(self,
         w: int = 32,
         h: int = 32,
-        speed: float = 0.1,
+        speed: float = 0.05,
         seed_interval: float = 2,
         reset_after: float = 180,
     ):
@@ -35,7 +35,7 @@ class GameOfLife:
         game_colors = []
         for c in palette:
             color = Color(c)
-            color.luminance = 0.25
+            color.luminance = 0.20
             game_colors.append(color)
         return game_colors
 
