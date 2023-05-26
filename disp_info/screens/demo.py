@@ -25,6 +25,33 @@ cols = [
     Color('#635362'),
     Color('#bb6650'),
 ]
+
+cols = [
+    Color('#6f6776'),
+    Color('#9a9a97'),
+    Color('#c5ccb8'),
+    Color('#8b5580'),
+    Color('#c38890'),
+    Color('#a593a5'),
+    Color('#666092'),
+    Color('#9a4f50'),
+    Color('#c28d75'),
+    Color('#7ca1c0'),
+    Color('#416aa3'),
+    Color('#8d6268'),
+    Color('#be955c'),
+    Color('#68aca9'),
+    Color('#387080'),
+    Color('#6e6962'),
+    Color('#93a167'),
+    Color('#6eaa78'),
+    Color('#557064'),
+    Color('#9d9f7f'),
+    Color('#7e9e99'),
+    Color('#5d6872'),
+    Color('#433455'),
+]
+
 for color in cols:
     color.luminance = 0.15
 
