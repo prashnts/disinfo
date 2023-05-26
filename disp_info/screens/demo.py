@@ -53,7 +53,7 @@ cols = [
 ]
 
 for color in cols:
-    color.luminance = 0.15
+    color.luminance = 0.25
 
 class GameOfLife:
     def __init__(self,
