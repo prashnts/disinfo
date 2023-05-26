@@ -16,7 +16,7 @@ class GameOfLife:
         w: int = 32,
         h: int = 32,
         speed: float = 0.05,
-        seed_interval: float = 2,
+        seed_interval: float = 1,
         reset_after: float = 180,
     ):
         self.w = w
