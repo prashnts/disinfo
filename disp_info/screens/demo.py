@@ -23,16 +23,22 @@ class GameOfLife:
         self.reset_after = reset_after
         self.last_tick = 0
         self.last_changed = 0
-        self.last_reset = time.time()
+        self.last_reset = 0
+        self.last_seed = 0
         self.speed = speed
-        self.board = self._gen_board()
+        self.reinit_board()
         self.frame = self.draw_board()
 
     def _gen_board(self):
         self.color = Color(pick_for=self.last_changed)
         self.color.luminance = 0.15
-        rint = lambda: int(random.random() > 0.65)
+        rint = lambda: 0 #int(random.random() > 0.65)
         return [[rint() for x in range(self.w)] for y in range(self.h)]
+
+    def reinit_board(self):
+        self.board = self._gen_board()
+        self.drop_seed()
+
 
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
@@ -76,11 +82,27 @@ class GameOfLife:
             if changed:
                 self.last_changed = tick
             elif (tick - self.last_changed >= self.idle_timeout) or not any_alive:
-                self.board = self._gen_board()
+                self.reinit_board()
+            if (tick - self.last_seed > 1):
+                self.drop_seed()
+                self.last_seed = tick
             self.last_tick = tick
         if tick - self.last_reset >= self.reset_after:
-            self.board = self._gen_board()
+            self.reinit_board()
             self.last_reset = tick
+
+    def drop_seed(self):
+        # add n points within a region.
+        # we generate a random point within the board
+        # grab a n x n region
+        npts = 3
+        s_x = random.randint(0, self.h - npts - 1)
+        s_y = random.randint(0, self.w - npts - 1)
+        # print(s_x, s_y)
+        for dx in range(npts):
+            for dy in range(npts):
+                self.board[s_x + dx][s_y + dy] = int(random.random() > 0.6)
+
 
     def next_generation(self):
         # copy the board
