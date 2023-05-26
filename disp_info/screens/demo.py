@@ -9,11 +9,11 @@ from statistics import mode
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
-from ..utilities.palettes import vinik24
+from ..utilities.palettes import funkyfuture8 as game_palette
 
 
 game_colors = []
-for c in vinik24:
+for c in game_palette:
     color = Color(c)
     color.lumiance = 0.25
     game_colors.append(color)

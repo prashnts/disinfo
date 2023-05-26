@@ -40,3 +40,15 @@ vinik24 = [
     '#5d6872',
     '#433455',
 ]
+
+funkyfuture8 = [
+    # https://lospec.com/palette-list/funkyfuture-8
+    '#2b0f54',
+    '#ab1f65',
+    '#ff4f69',
+    '#fff7f8',
+    '#ff8142',
+    '#ffda45',
+    '#3368dc',
+    '#49e7ec',
+]
