@@ -4,10 +4,13 @@ import random
 
 from colour import Color
 from PIL import Image, ImageDraw
+from statistics import mode
 
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
+
+cols = list(Color('#2d0982').range_to(Color('#722408'), steps=8))
 
 class GameOfLife:
     def __init__(self,
@@ -39,17 +42,20 @@ class GameOfLife:
         self.board = self._gen_board()
         self.drop_seed()
 
-
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        pts = [
-            (y, x)
-            for x, row in enumerate(self.board)
-            for y, cell in enumerate(row)
-            if cell]
+        # pts = [
+        #     (y, x)
+        #     for x, row in enumerate(self.board)
+        #     for y, cell in enumerate(row)
+        #     if cell]
 
-        d.point(pts, self.color.hex)
+        # d.point(pts, self.color.hex)
+        for x, row in enumerate(self.board):
+            for y, cell in enumerate(row):
+                if cell:
+                    d.point((y, x), cols[cell - 1].hex)
 
         return Frame(img)
 
@@ -95,13 +101,14 @@ class GameOfLife:
         # add n points within a region.
         # we generate a random point within the board
         # grab a n x n region
+        color = random.randint(0, len(cols))
         npts = 3
         s_x = random.randint(0, self.h - npts - 1)
         s_y = random.randint(0, self.w - npts - 1)
         # print(s_x, s_y)
         for dx in range(npts):
             for dy in range(npts):
-                self.board[s_x + dx][s_y + dy] = int(random.random() > 0.6)
+                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.6 else 0
 
 
     def next_generation(self):
@@ -111,8 +118,8 @@ class GameOfLife:
         any_alive = False
         for x, row in enumerate(self.board):
             for y, cell in enumerate(row):
-                neighbors = self.neighbors(x, y)
-                n_alive = sum(neighbors)
+                neighbors = [n for n in self.neighbors(x, y) if n > 0]
+                n_alive = len(neighbors)
                 if cell and n_alive < 2:
                     b[x][y] = 0
                     changed = True
@@ -120,7 +127,7 @@ class GameOfLife:
                     b[x][y] = 0
                     changed = True
                 if not cell and n_alive == 3:
-                    b[x][y] = 1
+                    b[x][y] = mode(neighbors)
                     changed = True
                 if cell:
                     any_alive = True
