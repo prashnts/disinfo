@@ -25,8 +25,8 @@ cols = [
     Color('#635362'),
     Color('#bb6650'),
 ]
-# for color in cols:
-#     color.luminance = 0.15
+for color in cols:
+    color.luminance = 0.15
 
 class GameOfLife:
     def __init__(self,
@@ -73,7 +73,7 @@ class GameOfLife:
                 if cell:
                     color = cols[cell - 1].hex
 
-                    d.point((y, x), )
+                    d.point((y, x), color)
 
         return Frame(img)
 
