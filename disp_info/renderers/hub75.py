@@ -78,11 +78,11 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     matrix = RGBMatrix(options=options)
     double_buffer = matrix.CreateFrameCanvas()
 
-    state = get_state()
 
     print('Matrix Renderer started')
 
     while True:
+        state = get_state()
         t_a = time.time()
         img = get_frame()
         t_b = time.time()
