@@ -9,8 +9,8 @@ from ..components.text import Text
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
-from ..utilities.func import throttle
-from ..utilities.palettes import metro_colors
+from ..utils.func import throttle
+from ..utils.palettes import metro_colors
 
 
 @cache

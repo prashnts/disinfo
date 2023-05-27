@@ -8,7 +8,7 @@ from ..components.elements import Frame
 from ..components.layouts import composite_at
 from ..components.text import Text
 from ..redis import rkeys, get_dict
-from ..utilities.func import throttle
+from ..utils.func import throttle
 from .. import config
 
 text_timestr = Text()

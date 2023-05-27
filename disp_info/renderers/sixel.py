@@ -9,7 +9,7 @@ from io import BytesIO
 from PIL import Image
 
 from .renderer import get_frame
-from ..utilities.imops import enlarge_pixels
+from ..utils.imops import enlarge_pixels
 
 
 def encode_sixels(img: Image.Image, optimize: bool = False, scale=4, gap=1) -> str:

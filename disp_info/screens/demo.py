@@ -8,7 +8,7 @@ from itertools import cycle
 from .. import config
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
-from ..utilities.palettes import funkyfuture8, paper8, kirokazegb
+from ..utils.palettes import funkyfuture8, paper8, kirokazegb
 
 
 class GameOfLife:

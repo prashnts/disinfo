@@ -7,7 +7,7 @@ from ..weather_icons import render_icon, cursor
 from ..redis import get_dict, rkeys
 from ..state_proxy import should_turn_on_display
 from ..components.layouts import stack_horizontal, stack_vertical, composite_at
-from ..utilities.func import throttle
+from ..utils.func import throttle
 
 from .. import config, screens
 

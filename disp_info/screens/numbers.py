@@ -10,7 +10,7 @@ from ..components.layers import add_background
 from ..sprite_icons import SpriteImage
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
-from ..utilities.func import throttle
+from ..utils.func import throttle
 
 text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
 
