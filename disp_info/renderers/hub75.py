@@ -88,7 +88,9 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         t_b = time.time()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
-        matrix.brightness = lux_to_brightness(state['lux'])
+        new_brightness = lux_to_brightness(state['lux'])
+        print(new_brightness)
+        matrix.brightness = new_brightness
         t_c = time.time()
 
         t_draw = t_b - t_a
