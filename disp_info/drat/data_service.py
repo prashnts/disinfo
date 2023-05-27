@@ -7,9 +7,9 @@ import sys
 from traceback import format_exc
 from schedule import Scheduler
 
-from . import config
-from .redis import rkeys, set_dict
-from .drat import metro_paris
+from .. import config
+from ..redis import rkeys, set_dict
+from . import metro_paris
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger('data_service')

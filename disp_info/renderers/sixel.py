@@ -8,7 +8,7 @@ from libsixel import (
 from io import BytesIO
 from PIL import Image
 
-from .renderer import get_frame
+from ..compositor import get_frame
 from ..utils.imops import enlarge_pixels
 
 

@@ -1,7 +1,7 @@
 from PIL import Image
 from functools import cached_property
 
-from .components.elements import Frame
+from .elements import Frame
 
 
 class SpriteImage:

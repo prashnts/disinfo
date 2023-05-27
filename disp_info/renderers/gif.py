@@ -3,7 +3,7 @@ import typer
 
 from rich.progress import track, Progress, SpinnerColumn, TextColumn
 
-from .renderer import get_frame
+from ..compositor import get_frame
 from ..utils.imops import enlarge_pixels
 
 

@@ -3,7 +3,7 @@ import typer
 
 from itertools import cycle
 
-from .renderer import get_frame
+from ..compositor import get_frame
 
 fifos = [
     '/tmp/ledcat-01',

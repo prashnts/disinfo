@@ -10,7 +10,7 @@ from ..components.text import Text
 from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
-from ..sprite_icons import SpriteIcon
+from ..components.spriteim import SpriteIcon
 from ..utils.func import throttle
 
 

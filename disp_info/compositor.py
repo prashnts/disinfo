@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 import time
+import arrow
 
 from PIL import Image
 
-from ..weather_icons import render_icon, cursor
-from ..redis import get_dict, rkeys
-from ..state_proxy import should_turn_on_display
-from ..components.layouts import stack_horizontal, stack_vertical, composite_at
-from ..utils.func import throttle
+from .utils.weather_icons import render_icon, cursor
+from .redis import get_dict, rkeys
+from .components.layouts import stack_horizontal, stack_vertical, composite_at
+from .utils.func import throttle
 
-from .. import config, screens
+from . import config, screens
 
 
 pos_x = 64
@@ -21,6 +21,36 @@ def get_remotes_action():
         'enki': get_dict(rkeys['ha_enki_rmt']).get('action'),
         'ikea': get_dict(rkeys['ha_ikea_rmt_0x01']).get('action'),
     }
+
+@throttle(500)
+def should_turn_on_display() -> bool:
+    def is_motion_detected(name: str) -> bool:
+        pir_state = get_dict(rkeys[name])
+        if not pir_state:
+            # Uninitialized state on this sensor. Assume on.
+            return True
+
+        occupied = pir_state['occupancy']
+        if occupied:
+            # when motion is detected, it's on.
+            return True
+
+        # When motion is NOT detected, we want to keep the display on
+        # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
+        # this time is in local timezone.
+        last_change = arrow.get(pir_state['timestamp'])
+        now = arrow.now()
+        delay = 30 if 8 <= now.timetuple().tm_hour < 23 else 5
+        delta = (now - last_change).total_seconds()
+
+        return delta <= 60 * delay
+
+    sensors = ['ha_pir_salon', 'ha_pir_kitchen']
+    motion_states = [is_motion_detected(s) for s in sensors]
+
+    # if any sensor reports True we keep the display on.
+    return any(motion_states)
+
 
 
 def draw_btn_test(image):

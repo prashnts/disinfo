@@ -8,7 +8,7 @@ from ..components.elements import StillImage
 from ..components.layouts import stack_vertical, stack_horizontal
 from ..components.layers import add_background
 from ..components.scroller import HScroller
-from ..sprite_icons import SpriteIcon
+from ..components.spriteim import SpriteIcon
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle

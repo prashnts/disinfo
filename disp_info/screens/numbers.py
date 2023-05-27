@@ -7,7 +7,7 @@ from ..components.elements import Frame
 from ..components.text import Text
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..components.layers import add_background
-from ..sprite_icons import SpriteImage
+from ..components.spriteim import SpriteImage
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle

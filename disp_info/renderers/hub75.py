@@ -18,7 +18,7 @@ import typer
 
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
-from .renderer import get_frame
+from ..compositor import get_frame
 
 
 # Configuration for the matrix

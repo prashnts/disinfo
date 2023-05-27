@@ -2,8 +2,8 @@ import paho.mqtt.client as mqtt
 import json
 import arrow
 
-from . import config
-from .redis import set_dict, rkeys, db
+from .. import config
+from ..redis import set_dict, rkeys, db
 from .data_service import get_metro_info
 
 pir_topic_map = {
