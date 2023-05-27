@@ -3,13 +3,13 @@ import time
 
 from PIL import Image
 
-from .weather_icons import render_icon, cursor
-from .redis import get_dict, rkeys
-from .state_proxy import should_turn_on_display
-from .components.layouts import stack_horizontal, stack_vertical, composite_at
-from .utils import throttle
+from ..weather_icons import render_icon, cursor
+from ..redis import get_dict, rkeys
+from ..state_proxy import should_turn_on_display
+from ..components.layouts import stack_horizontal, stack_vertical, composite_at
+from ..utils import throttle
 
-from . import config, screens
+from .. import config, screens
 
 
 pos_x = 64
