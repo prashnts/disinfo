@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from ..components.elements import StillImage
 from ..redis import rkeys, get_dict
-from ..utils import throttle
+from ..utilities.func import throttle
 
 plant_icon = StillImage('assets/raster/plant-9x9.png')
 

@@ -1,3 +1,17 @@
+'''
+HW interface with `rgbmatrix` library to drive HUB75 LED Panels.
+         ┌──────────┐┌──────────┐
+┌───┐    │          ││          │
+│Pi ╞═══╗│   64x64  ││   64x64  │
+│   │ P1║│          ││          │
+└───┘   ╚╪═▍▶1     ▕╪╪═▍▶2     ▕│
+         └──────────┘└──────────┘
+═▍▶ HUB75 IN
+  ▕ HUB75 OUT
+
+P1: Matrix Parallel 1 (/3)
+Chain Length: 2
+'''
 import sys
 import time
 import typer
@@ -19,7 +33,6 @@ options.scan_mode = 0   # 0: progressive, 1: interlaced
 options.pixel_mapper_config = 'Rotate:180'
 options.gpio_slowdown = 2
 options.drop_privileges = True
-# options.show_refresh_rate = 1
 options.hardware_mapping = 'regular'
 
 

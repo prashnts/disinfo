@@ -11,7 +11,7 @@ from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
 from ..sprite_icons import SpriteIcon
-from ..utils import throttle
+from ..utilities.func import throttle
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)

@@ -1,6 +1,6 @@
 import arrow
 
-from .utils import throttle
+from .utilities.func import throttle
 from .redis import get_dict, rkeys
 
 

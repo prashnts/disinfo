@@ -4,7 +4,7 @@ import typer
 from rich.progress import track, Progress, SpinnerColumn, TextColumn
 
 from .renderer import get_frame
-from ..utils import enlarge_pixels
+from ..utilities.imops import enlarge_pixels
 
 
 def main(filename: str = 'assets/disinfo-export.gif', nframe: int = 60, scale: int = 5):

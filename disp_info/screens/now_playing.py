@@ -14,7 +14,7 @@ from ..components.layouts import stack_horizontal, stack_vertical, composite_at
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
-from ..utils import throttle
+from ..utilities.func import throttle
 
 hscroller = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
 

@@ -9,7 +9,7 @@ from ..components.text import Text
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
-from ..utils import throttle
+from ..utilities.func import throttle
 from ..utilities.palettes import metro_colors
 
 

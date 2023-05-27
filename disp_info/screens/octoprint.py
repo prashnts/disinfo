@@ -11,7 +11,7 @@ from ..components.scroller import HScroller
 from ..sprite_icons import SpriteIcon
 from ..components import fonts
 from ..redis import rkeys, get_dict
-from ..utils import throttle
+from ..utilities.func import throttle
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
