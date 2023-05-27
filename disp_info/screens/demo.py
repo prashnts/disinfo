@@ -135,11 +135,11 @@ class GameOfLife:
         return self.frame
 
 
-gol = GameOfLife(w=21, h=20, speed=0.1)
+gol = GameOfLife(w=18, h=20, speed=0.1)
 
 def draw(tick: float):
     return tile_copies(
         gol.draw(tick),
-        nx=config.matrix_w // gol.w + 1,
-        ny=config.matrix_h // gol.h + 1,
+        nx=round(config.matrix_w / gol.w + 1),
+        ny=round(config.matrix_h / gol.h + 1),
     )
