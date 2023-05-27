@@ -38,6 +38,14 @@ options.hardware_mapping = 'regular'
 
 
 def lux_to_brightness(lux: float) -> int:
+    if lux <= 0.5:
+        return 5
+    if lux <= 1.5:
+        return 8
+    if lux <= 2:
+        return 12
+    if lux <= 3:
+        return 16
     if lux <= 4:
         return 20
     if lux <= 10:
