@@ -12,7 +12,6 @@ HW interface with `rgbmatrix` library to drive HUB75 LED Panels.
 P1: Matrix Parallel 1 (/3)
 Chain Length: 2
 '''
-import sys
 import time
 import typer
 
@@ -27,7 +26,7 @@ options.rows = 64
 options.cols = 64
 options.chain_length = 2
 options.parallel = 1
-options.brightness = 80
+options.brightness = 100
 options.pwm_bits = 11   # 1..11
 options.scan_mode = 0   # 0: progressive, 1: interlaced
 options.pixel_mapper_config = 'Rotate:180'
