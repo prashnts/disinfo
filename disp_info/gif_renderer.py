@@ -11,13 +11,16 @@ from .utils import enlarge_pixels
 
 def main(filename: str = 'disinfo-export.gif', nframe: int = 60, scale: int = 5, stats: bool = True):
     frames = []
+    durations = []
     print('Matrix Renderer started')
 
     t_begin = time.time()
 
     for i in range(nframe):
+        t_a = time.time()
         img = get_frame()
-        frames.append(enlarge_pixels(img, scale=scale))
+        frames.append(enlarge_pixels(img, scale=scale).convert('RGB'))
+        durations.append((time.time() - t_a) * 100)
 
         if stats:
             print(f'[frame: {i}/{nframe}]')
@@ -25,7 +28,7 @@ def main(filename: str = 'disinfo-export.gif', nframe: int = 60, scale: int = 5,
     t_end = time.time()
     mean_fps = (t_end - t_begin) / nframe
 
-    frames[0].save(filename, save_all=True, append_images=frames[1:], duration=mean_fps * 100, loop=0, optimize=True)
+    frames[0].save(filename, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True)
     print(f'[i] Saved at {filename}, at {mean_fps}s per frame.')
 
 
