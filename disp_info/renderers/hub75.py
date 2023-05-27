@@ -42,8 +42,10 @@ def lux_to_brightness(lux: float) -> int:
         return 20
     if lux <= 10:
         return 30
-    if lux <= 50:
+    if lux <= 20:
         return 50
+    if lux <= 30:
+        return 55
     if lux <= 60:
         return 60
     return 80
