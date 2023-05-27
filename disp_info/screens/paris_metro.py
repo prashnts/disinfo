@@ -90,9 +90,7 @@ def draw(tick: float):
         if not train['timings']:
             continue
         ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
-        times = []
-        for time in train['timings'][:3]:
-            times.append(timing_text(round(time['next_in'])))
+        times = [timing_text(round(t['next_in'])) for t in train['timings'][:3]]
         time_table = stack_horizontal([
             ticon.draw(tick),
             stack_horizontal(times, gap=3)

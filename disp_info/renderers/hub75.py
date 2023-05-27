@@ -18,6 +18,8 @@ import typer
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 from ..compositor import get_frame
+from ..utils.func import throttle
+from ..redis import rkeys, get_dict
 
 
 # Configuration for the matrix
@@ -35,6 +37,28 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
+def lux_to_brightness(lux: float) -> int:
+    if lux <= 4:
+        return 20
+    if lux <= 10:
+        return 30
+    if lux <= 50:
+        return 50
+    if lux <= 60:
+        return 60
+    return 80
+
+
+@throttle(1000)
+def get_state():
+    try:
+        s = get_dict(rkeys['ha_enviomental_lux'])
+        lux = float(s['new_state']['state'])
+    except KeyError:
+        lux = 50
+    return { 'lux': lux }
+
+
 def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     if show_refresh_rate:
         options.show_refresh_rate = 1
@@ -44,6 +68,8 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     matrix = RGBMatrix(options=options)
     double_buffer = matrix.CreateFrameCanvas()
 
+    state = get_state()
+
     print('Matrix Renderer started')
 
     while True:
@@ -52,6 +78,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         t_b = time.time()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
+        matrix.brightness = lux_to_brightness(state['lux'])
         t_c = time.time()
 
         t_draw = t_b - t_a
