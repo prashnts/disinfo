@@ -8,6 +8,7 @@ from ..components.elements import Frame, StillImage
 from ..components.text import Text
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
+from ..components.frame_cycler import FrameCycler
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
@@ -27,17 +28,37 @@ def status_icon(status_name: str):
 
 
 @cache
-def metro_icon(line_name: str, problems: bool = False) -> Frame:
+def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
     size = 9
     start_x = 0 if len(line_name) > 1 else 1
     background, text_color = metro_colors.get(line_name, ['#C6C6C6', '#000'])
+    outline_color = '#ba1c11' if has_problems else '#000'
+    outline_width = 1 if outline else 0
 
     img = Image.new('RGBA', (size + 1, size))
     draw = ImageDraw.Draw(img)
-    draw.rounded_rectangle([0, 0, size, size - 1], fill=background, radius=2, outline='#e64539', width=1 if problems else 0)
-    draw.text(((size / 2) + start_x, size / 2), line_name, fill=text_color, font=fonts.tamzen__rs, anchor='mm')
+    draw.rounded_rectangle(
+        [0, 0, size, size - 1],
+        fill=background,
+        radius=2,
+        outline=outline_color,
+        width=outline_width)
+    draw.text(
+        ((size / 2) + start_x, size / 2),
+        line_name,
+        fill=text_color,
+        font=fonts.tamzen__rs,
+        anchor='mm')
 
     return Frame(img)
+
+@cache
+def metro_status_icon(line_name: str, issues: bool):
+    frames = [
+        metro_icon(line_name, outline=False),
+        metro_icon(line_name, outline=issues, has_problems=issues),
+    ]
+    return FrameCycler(frames)
 
 
 @throttle(400)
@@ -68,20 +89,20 @@ def draw(tick: float):
     for train in s['trains']:
         if not train['timings']:
             continue
-        ticon = metro_icon(train['line'], problems=train['information']['issues'])
+        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
         times = []
         for time in train['timings'][:3]:
             times.append(timing_text(round(time['next_in'])))
         time_table = stack_horizontal([
-            ticon,
+            ticon.draw(tick),
             stack_horizontal(times, gap=3)
         ], gap=3)
         train_times.append(time_table)
 
     for info in s['information']:
         if info['issues']:
-            ticon = metro_icon(info['line'], problems=True)
-            status_icons.append(ticon)
+            ticon = metro_status_icon(info['line'], issues=True)
+            status_icons.append(ticon.draw(tick))
 
 
     if not (train_times or status_icons):

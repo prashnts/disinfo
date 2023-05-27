@@ -7,7 +7,7 @@ from schedule import Scheduler
 
 from .. import config
 from ..redis import rkeys, set_dict
-from . import metro_paris
+from . import idfm
 
 
 class SafeScheduler(Scheduler):
@@ -64,12 +64,12 @@ def get_random_text():
 
 def get_metro_info(force: bool = False):
     '''Fetch metro info in morning.'''
-    if not force and not metro_paris.is_active():
+    if not force and not idfm.is_active():
         print('[i] [fetch] not fetching metro timing')
         return
     try:
         print('[i] [fetch] metro timing')
-        data = metro_paris.fetch_state()
+        data = idfm.fetch_state()
         set_dict(rkeys['metro_timing'], data)
     except Exception as e:
         print('[e] metro_info', e)
