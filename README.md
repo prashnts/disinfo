@@ -1,6 +1,6 @@
 # Disinfo!
 
-![Simulated Info Demo](assets/demo.png)
+![Simulated Info Demo](assets/disinfo-export.gif)
 
 Notes:
 
