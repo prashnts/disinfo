@@ -59,7 +59,7 @@ def lux_to_brightness(lux: float) -> int:
     return 80
 
 
-@throttle(1000)
+@throttle(50)
 def get_state():
     try:
         s = get_dict(rkeys['ha_enviomental_lux'])
