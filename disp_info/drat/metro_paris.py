@@ -36,6 +36,13 @@ traffic_stops = [
         'direction': 'CHARLES DE GAULLE-ETOILE',
     },
 ]
+line_infos = [
+    { 'line': '13', 'line_id': 'C01383' },
+    { 'line': '4',  'line_id': 'C01374' },
+    { 'line': '3',  'line_id': 'C01373' },
+    { 'line': '14', 'line_id': 'C01384' },
+]
+
 
 @dataclass
 class MetroTrafficData:
@@ -63,16 +70,20 @@ async def get_stop(line_name: str, stop_name: str = None) -> tuple[LineData, Sto
     return line, stop
 
 
-async def fetch_traffic_info_at_stop(line_id: str, stop_id: str) -> MetroTrafficData:
+async def fetch_stop_traffic(stop_id: str) -> list[TrafficData]:
     session = aiohttp.ClientSession()
     idfm = IDFMApi(session, idfm_api_key)
-
     traffic = await idfm.get_traffic(stop_id)
-    infos = await idfm.get_infos(line_id)
-
     await session.close()
+    return traffic
 
-    return MetroTrafficData(traffic=traffic, info=infos)
+
+async def fetch_line_infos(line_id: str) -> list[InfoData]:
+    session = aiohttp.ClientSession()
+    idfm = IDFMApi(session, idfm_api_key)
+    infos = await idfm.get_infos(line_id)
+    await session.close()
+    return infos
 
 
 def is_active():
@@ -97,24 +108,36 @@ def collate_train_time(traffic: list[TrafficData], direction: str):
                 'retarded': t.retarted
             }
 
+def collate_info(infos: list[InfoData]):
+    messages = [i.name.replace('\n', ' ** ') for i in infos]
+    has_pertubation = any([i.type == 'Perturbation' for i in infos])
 
-def get_metro_traffic_info(line_name: str, stop_name: str = None):
-    metros = asyncio.run(fetch_traffic_info_at_stop(line_name, stop_name))
+    return {
+        'messages': messages,
+        'issues': has_pertubation,
+    }
 
-    # transform the data to what we're interested in displaying.
-    # Information OU Perturbation OU Commercial
-    # Use closest time for the pertubations
-
-    return metros
 
 def fetch_state():
     trains = []
+    infos = []
+
     for s in traffic_stops:
-        info = get_metro_traffic_info(s['line_id'], s['stop_id'])
-        timings = list(collate_train_time(info.traffic, s['direction']))
-        trains.append({**s, 'timings': timings})
+        traffic = asyncio.run(fetch_stop_traffic(s['stop_id']))
+        info = asyncio.run(fetch_line_infos(s['line_id']))
+        timings = list(collate_train_time(traffic, s['direction']))
+        information = collate_info(info)
+        trains.append({**s, 'timings': timings, 'information': information})
+        infos.append({**s, **information})
+
+    for s in line_infos:
+        info = asyncio.run(fetch_line_infos(s['line_id']))
+        information = collate_info(info)
+        infos.append({**s, **information})
+
 
     return {
         'trains': trains,
+        'information': infos,
         'timestamp': arrow.now().isoformat(),
     }

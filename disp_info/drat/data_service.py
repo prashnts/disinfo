@@ -1,8 +1,6 @@
 import requests
 import time
-import logging
 import datetime
-import sys
 
 from traceback import format_exc
 from schedule import Scheduler
@@ -10,10 +8,6 @@ from schedule import Scheduler
 from .. import config
 from ..redis import rkeys, set_dict
 from . import metro_paris
-
-logging.basicConfig(stream=sys.stdout)
-logger = logging.getLogger('data_service')
-logger.setLevel(logging.DEBUG)
 
 
 class SafeScheduler(Scheduler):
@@ -40,7 +34,7 @@ class SafeScheduler(Scheduler):
         try:
             super()._run_job(job)
         except Exception:
-            logger.error(format_exc())
+            print(format_exc())
             job.last_run = datetime.datetime.now()
             job._schedule_next_run()
 
@@ -48,37 +42,37 @@ def get_weather():
     '''Fetch Weather from PirateWeather API.'''
     forecast_url = f'https://api.pirateweather.net/forecast/{config.pw_api_key}/{config.pw_latitude},{config.pw_longitude}?units={config.pw_unit}'
     try:
-        logger.info('[fetch] weather')
+        print('[i] [fetch] weather')
         r = requests.get(forecast_url)
         r.raise_for_status()
         data = r.json()
         # write out the forecast.
         set_dict(rkeys['weather_data'], data)
     except requests.exceptions.RequestException as e:
-        logger.error('error', e)
+        print('[e] weather', e)
 
 def get_random_text():
     '''Fetch trivia from Numbers API.'''
     try:
-        logger.info('[fetch] random text')
+        print('[i[ [fetch] random text')
         r = requests.get('http://numbersapi.com/random/trivia?json')
         r.raise_for_status()
         data = r.json()
         set_dict(rkeys['random_msg'], data)
     except requests.exceptions.RequestException as e:
-        logger.error('error', e)
+        print('[e] numbers', e)
 
 def get_metro_info(force: bool = False):
     '''Fetch metro info in morning.'''
     if not force and not metro_paris.is_active():
-        logger.info('[fetch] not fetching metro timing')
+        print('[i] [fetch] not fetching metro timing')
         return
     try:
-        logger.info('[fetch] metro timing')
+        print('[i] [fetch] metro timing')
         data = metro_paris.fetch_state()
         set_dict(rkeys['metro_timing'], data)
     except Exception as e:
-        logger.error('error', e)
+        print('[e] metro_info', e)
 
 
 scheduler = SafeScheduler()
@@ -88,7 +82,7 @@ scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
 
 if __name__ == '__main__':
-    logger.info('[Data Service] Scheduler Started')
+    print('[Data Service] Scheduler Started')
     while True:
         scheduler.run_pending()
         time.sleep(1)
