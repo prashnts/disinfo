@@ -39,11 +39,11 @@ options.hardware_mapping = 'regular'
 
 def lux_to_brightness(lux: float) -> int:
     if lux <= 0.5:
-        return 5
+        return 10
     if lux <= 1.5:
-        return 8
-    if lux <= 2:
         return 12
+    if lux <= 2:
+        return 14
     if lux <= 3:
         return 16
     if lux <= 4:
@@ -89,7 +89,6 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
         new_brightness = lux_to_brightness(state['lux'])
-        print(new_brightness)
         matrix.brightness = new_brightness
         t_c = time.time()
 

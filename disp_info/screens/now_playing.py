@@ -87,7 +87,7 @@ def draw(tick: float):
         return
 
     elements = [s['media_title'], s['media_album'], s['media_artist']]
-    media_info = ' >> '.join([e for e in elements if e])
+    media_info = ' >> '.join([e if e else '--' for e in elements])
 
 
     art = s['album_art']
