@@ -1,5 +1,6 @@
 import pendulum
 
+from textwrap import wrap
 from functools import cache
 from PIL import Image, ImageDraw
 
@@ -79,29 +80,19 @@ def timing_text(value: int):
 
 @cache
 def message_text(value: str):
-    max_width = 12
-    def adjust_line_width(text: str):
-        frags = []
-        words = text.split(' ')
-        line_w = 0
-        accum = []
-        for w in words:
-            line_w += len(w)
-            if line_w <= max_width:
-                accum.append(w)
-            else:
-                frags.append(' '.join(accum))
-                accum = [w]
-                line_w = len(w)
-        return '\n'.join(frags)
+    msgs = value.split('&&&')
 
-    vals = '\n---\n'.join(map(adjust_line_width, value.split('&')))
-    return MultiLineText(vals, fonts.tamzen__rs, fill='#fff')
+    max_width = 12
+    text = '\n---\n'.join(['\n'.join(wrap(v, max_width)) for v in msgs])
+
+    return MultiLineText(text, fonts.tamzen__rs, fill='#fff')
+
 
 def draw(tick: float):
     s = get_state()
 
     if not s['is_visible']:
+        msg_vscroll.reset_position()
         return
 
     train_times = []
@@ -123,8 +114,13 @@ def draw(tick: float):
         if info['issues']:
             ticon = metro_status_icon(info['line'], issues=True)
             status_icons.append(ticon.draw(tick))
-            msg_texts.append(ticon.draw(tick))
-            msg_texts.append(message_text('&'.join(info['messages'])))
+
+            msgs = info['messages']
+            if msgs:
+                msg_texts.append(ticon.draw(tick))
+                # List is not hashable, so we use this ugly hack to pass
+                # list of strings.
+                msg_texts.append(message_text('&&&'.join(msgs)))
 
 
     if not (train_times or status_icons):

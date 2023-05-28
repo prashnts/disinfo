@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 import random
-import arrow
+import pendulum
 
 from idfm_api import IDFMApi
 from idfm_api.models import TransportType, LineData, StopData, TrafficData, InfoData
@@ -85,7 +85,7 @@ async def fetch_line_infos(line_id: str) -> list[InfoData]:
 
 
 def is_active():
-    now = arrow.now()
+    now = pendulum.now()
     return any([
         7 <= now.hour <= 9,
         16 <= now.hour < 17,
@@ -93,11 +93,10 @@ def is_active():
 
 
 def collate_train_time(traffic: list[TrafficData], direction: str):
-    now = arrow.now()
+    now = pendulum.now()
     for t in traffic:
         if t.direction == direction:
-            sched = arrow.get(t.schedule).to('local')
-            mins = (sched - now).total_seconds() / 60
+            mins = now.diff(t.schedule).total_seconds() / 60
             if mins < 0:
                 # possible due to api delays
                 continue
@@ -107,7 +106,13 @@ def collate_train_time(traffic: list[TrafficData], direction: str):
             }
 
 def collate_info(infos: list[InfoData]):
-    messages = [i.name.replace('\n', ' ** ') for i in infos]
+    now = pendulum.now()
+    messages = []
+    for i in infos:
+        if now.diff(i.start_time).total_hours() > 12:
+            continue
+        messages.append(i.name)
+
     has_pertubation = any([i.type == 'Perturbation' for i in infos])
 
     return {
@@ -137,5 +142,5 @@ def fetch_state():
     return {
         'trains': trains,
         'information': infos,
-        'timestamp': arrow.now().isoformat(),
+        'timestamp': pendulum.now().isoformat(),
     }

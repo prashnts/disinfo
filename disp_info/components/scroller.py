@@ -32,6 +32,9 @@ class _Scroller:
         # Todo
         pass
 
+    def reset_position(self):
+        self.pos = 0
+
     def _init_scroller(self, frame: Frame, reset: bool):
         self.frame = self._get_frame(frame)
         if reset:
