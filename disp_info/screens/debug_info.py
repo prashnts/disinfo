@@ -15,14 +15,16 @@ text_brightness = Text(font=fonts.bitocra, fill='#fff')
 text_lux = Text(font=fonts.bitocra, fill='#fff')
 text_draw_time = Text(font=fonts.bitocra, fill='#fff')
 
-@throttle(11177)
+@throttle(100)
 def get_state(fs: FrameState):
-    if fs.rendererdata:
-        return fs.rendererdata
-    return {
+    renderinfo = fs.rendererdata if fs.rendererdata else {
         'brightness': '--',
         'lux': '--',
         'draw_time': 1,
+    }
+    return {
+        'is_visible': True,
+        **renderinfo,
     }
 
 
@@ -30,7 +32,7 @@ def draw(fs: FrameState):
     s = get_state(fs)
     text_brightness.update(value=f"{s['brightness']}%")
     text_lux.update(value=f"{s['lux']}")
-    text_draw_time.update(value=f"{s['draw_time']:0.1f}")
+    text_draw_time.update(value=f"{s['draw_time']:0.4f}")
 
     debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time], gap=2)
 
