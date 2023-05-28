@@ -1,4 +1,3 @@
-import arrow
 import random
 
 from PIL import Image, ImageDraw
@@ -7,29 +6,20 @@ from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
 from ..components.text import Text
-from ..redis import rkeys, get_dict
-from ..utils.func import throttle
-from .. import config
 from ..data_structures import FrameState
+from .. import config
 
 text_timestr = Text()
 
 
-@throttle(43)
-def get_state():
-    return get_dict(rkeys['ha_enki_rmt']).get('action')
-
-
 def draw(fs: FrameState):
     t = fs.now
-    # t = arrow.get(2022, 2, 1, 21, 21, t.second)
-    action = get_state()
 
     equal_elements = t.hour == t.minute
     twentytwo = t.hour == t.minute == 22
     all_equal = t.hour == t.minute == t.second
 
-    if action == 'scene_1':
+    if fs.enki_action == 'scene_1':
         twentytwo == True
         equal_elements = True
         all_equal = True

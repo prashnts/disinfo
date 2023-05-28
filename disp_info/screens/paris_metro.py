@@ -19,16 +19,6 @@ from ..data_structures import FrameState
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=38)
 
-@cache
-def status_icon(status_name: str):
-    size = 9
-    img = Image.new('RGBA', (size + 1, size + 1))
-    draw = ImageDraw.Draw(img)
-    draw.regular_polygon([size / 2, size / 2 + 1, size / 2 + 1], 3, fill='#e64539')
-    draw.text((size / 2 + 1, size / 2 + 1), '!', fill='#fff', font=fonts.tamzen__rs, anchor='mm')
-
-    return Frame(img)
-
 
 @cache
 def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
@@ -65,10 +55,10 @@ def metro_status_icon(line_name: str, issues: bool):
 
 
 @throttle(400)
-def get_state():
+def get_state(fs: FrameState):
     payload = get_dict(rkeys['metro_timing'])
     last_updated = pendulum.parse(payload['timestamp'])
-    visible = last_updated.add(minutes=1, seconds=20) > pendulum.now()
+    visible = last_updated.add(minutes=1, seconds=20) > fs.now
 
     return {
         'is_visible': visible,
@@ -76,21 +66,19 @@ def get_state():
     }
 
 @cache
-def timing_text(value: int):
+def timing_text(value: int) -> Text:
     return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a57a05')
 
 @cache
-def message_text(value: str):
+def message_text(value: str) -> MultiLineText:
     msgs = value.split('&&&')
-
     max_width = 12
     text = '\n---\n'.join(['\n'.join(wrap(v, max_width)) for v in msgs])
-
     return MultiLineText(text, fonts.tamzen__rs, fill='#fff')
 
 
 def draw(fs: FrameState):
-    s = get_state()
+    s = get_state(fs)
 
     if not s['is_visible']:
         msg_vscroll.reset_position()
