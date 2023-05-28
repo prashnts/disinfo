@@ -76,7 +76,7 @@ def draw_btn_test(image, fs: FrameState):
     return image
 
 
-def draw_frame(fs: FrameState):
+def compose_frame(fs: FrameState):
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
 
     if not should_turn_on_display():
@@ -116,6 +116,3 @@ def draw_frame(fs: FrameState):
 
     return image
 
-
-def get_frame(fs: FrameState):
-    return draw_frame(fs)

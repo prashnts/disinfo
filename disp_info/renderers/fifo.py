@@ -3,7 +3,7 @@ import typer
 
 from itertools import cycle
 
-from ..compositor import get_frame
+from ..compositor import compose_frame
 from ..data_structures import FrameState
 
 fifos = [
@@ -21,7 +21,7 @@ def main(fps: int = 60):
     while True:
         fs = FrameState.create()
         t_a = time.time()
-        frame = get_frame(fs)
+        frame = compose_frame(fs)
         t_b = time.time()
 
         with open(next(_fifos), 'wb') as fp:

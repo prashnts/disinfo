@@ -15,10 +15,10 @@ Chain Length: 2
 import time
 import typer
 
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix, RGBMatrixOptions  # type: ignore
 from scipy.interpolate import interp1d
 
-from ..compositor import get_frame
+from ..compositor import compose_frame
 from ..utils.func import throttle
 from ..redis import rkeys, get_dict
 from ..data_structures import FrameState
@@ -39,8 +39,8 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
-brightness_min = 10
-brightness_max = 100
+brightness_min: float = 10
+brightness_max: float = 100
 brightness_curve = [
     # LUX   BRIGHTNESS %
     [0.2,   10],
@@ -89,7 +89,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         fs.rendererdata = { **state, 'draw_time': last_draw_time }
 
         t_a = time.time()
-        img = get_frame(fs)
+        img = compose_frame(fs)
         t_b = time.time()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)

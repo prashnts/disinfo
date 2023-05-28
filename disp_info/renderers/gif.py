@@ -3,7 +3,7 @@ import typer
 
 from rich.progress import track, Progress, SpinnerColumn, TextColumn
 
-from ..compositor import get_frame
+from ..compositor import compose_frame
 from ..data_structures import FrameState
 from ..utils.imops import enlarge_pixels
 
@@ -19,7 +19,7 @@ def main(filename: str = 'assets/disinfo-export.gif', nframe: int = 60, scale: i
     for i in track(range(nframe), description='Rendering'):
         fs = FrameState.create()
         t_a = time.time()
-        img = get_frame(fs)
+        img = compose_frame(fs)
         frames.append(enlarge_pixels(img, scale=scale).convert('RGB'))
         durations.append((time.time() - t_a) * 100)
 
