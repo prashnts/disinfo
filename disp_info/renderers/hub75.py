@@ -39,19 +39,22 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
+brightness_min = 10
+brightness_max = 100
 brightness_curve = [
     # LUX   BRIGHTNESS %
-    [0.2,   5],
-    [2,     15],
-    [10,    30],
-    [20,    45],
-    [50,    60],
-    [200,   100],
+    [0.2,   10],
+    [2,     20],
+    [5,     40],
+    [20,    60],
+    [50,    70],
+    [200,   95],
+    [400,  100],
 ]
 brightness_interpolator = interp1d(
     *zip(*brightness_curve),
     bounds_error=False,
-    fill_value=(5, 100),
+    fill_value=(brightness_min, brightness_max),
 )
 
 @throttle(50)
