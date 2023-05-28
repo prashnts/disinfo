@@ -1,5 +1,4 @@
-import arrow
-
+from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
@@ -12,8 +11,8 @@ text_time = Text(font=fonts.bitocra, fill=colors_time[0])
 text_day = Text(font=fonts.bitocra, fill=color_date)
 text_date = Text(font=fonts.bitocra, fill=color_date)
 
-def draw(tick: float):
-    t = arrow.now()
+def draw(fs: FrameState):
+    t = fs.now
 
     text_time.update(
         value=t.strftime('%H:%M:%S'),

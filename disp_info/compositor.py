@@ -8,6 +8,7 @@ from .utils.weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .utils.func import throttle
+from .data_structures import FrameState
 
 from . import config, screens
 
@@ -75,42 +76,40 @@ def draw_btn_test(image):
     return image
 
 
-def draw_frame():
-    tick = time.time()
-
+def draw_frame(fs: FrameState):
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
 
     if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
 
-    composite_at(screens.demo.draw(tick), image, 'mm')
+    composite_at(screens.demo.draw(fs), image, 'mm')
 
-    octoprint_info = screens.octoprint.draw(tick)
+    octoprint_info = screens.octoprint.draw(fs)
 
     composite_at(
         stack_vertical([
             stack_vertical([
-                screens.date_time.draw(tick),
-                screens.plant.draw(tick),
+                screens.date_time.draw(fs),
+                screens.plant.draw(fs),
             ], gap=2, align='right'),
             octoprint_info,
         ], gap=1, align='right'),
         image, 'tr')
-    composite_at(screens.weather.draw(tick), image, 'tl')
-    composite_at(screens.numbers.draw(tick), image, 'bl')
+    composite_at(screens.weather.draw(fs), image, 'tl')
+    composite_at(screens.numbers.draw(fs), image, 'bl')
 
-    composite_at(screens.paris_metro.draw(tick), image, 'ml')
+    composite_at(screens.paris_metro.draw(fs), image, 'ml')
 
     if not octoprint_info:
-        composite_at(screens.now_playing.draw(tick), image, 'mr')
+        composite_at(screens.now_playing.draw(fs), image, 'mr')
 
-    composite_at(screens.twenty_two.draw(tick), image, 'mm')
+    composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     image = draw_btn_test(image)
 
     return image
 
 
-def get_frame():
-    return draw_frame()
+def get_frame(fs: FrameState):
+    return draw_frame(fs)

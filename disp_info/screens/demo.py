@@ -6,6 +6,7 @@ from statistics import mode
 from itertools import cycle
 
 from .. import config
+from ..data_structures import FrameState
 from ..components.elements import Frame
 from ..components.layouts import tile_copies
 from ..utils.palettes import funkyfuture8, paper8, kirokazegb
@@ -137,9 +138,9 @@ class GameOfLife:
 
 gol = GameOfLife(w=18, h=20, speed=0.1)
 
-def draw(tick: float):
+def draw(fs: FrameState):
     return tile_copies(
-        gol.draw(tick),
+        gol.draw(fs.tick),
         nx=round(config.matrix_w / gol.w + 1),
         ny=round(config.matrix_h / gol.h + 1),
     )

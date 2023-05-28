@@ -20,6 +20,7 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 from ..compositor import get_frame
 from ..utils.func import throttle
 from ..redis import rkeys, get_dict
+from ..data_structures import FrameState
 
 
 # Configuration for the matrix
@@ -65,7 +66,7 @@ def get_state():
     try:
         s = get_dict(rkeys['ha_enviomental_lux'])
         lux = float(s['new_state']['state'])
-    except KeyError:
+    except (KeyError, TypeError, ValueError):
         lux = 50
     return { 'lux': lux }
 
@@ -83,9 +84,10 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     print('Matrix Renderer started')
 
     while True:
+        fs = FrameState.create()
         state = get_state()
         t_a = time.time()
-        img = get_frame()
+        img = get_frame(fs)
         t_b = time.time()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)

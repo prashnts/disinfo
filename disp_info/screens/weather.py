@@ -12,6 +12,7 @@ from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
 from ..components.spriteim import SpriteIcon
 from ..utils.func import throttle
+from ..data_structures import FrameState
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -102,12 +103,11 @@ def get_state():
     )
 
 
-def draw(step: int):
+def draw(fs: FrameState):
     s = get_state()
 
-    now = arrow.now()
-    should_show_sunset = s['sunset_time'] > now and (s['sunset_time'] - now).total_seconds() < 2 * 60 * 60
-    is_outdated = (now - s['update_time']).total_seconds() > 30 * 60  # 30 mins.
+    should_show_sunset = s['sunset_time'] > fs.now and (s['sunset_time'] - fs.now).total_seconds() < 2 * 60 * 60
+    is_outdated = (fs.now - s['update_time']).total_seconds() > 30 * 60  # 30 mins.
 
     # update values
     text_temperature_value.update(value=f'{round(s["temperature"])}')
@@ -129,7 +129,7 @@ def draw(step: int):
 
     main_info = [
         stack_horizontal([
-            weather_icon.draw(step),
+            weather_icon.draw(fs.tick),
             temp_text,
             temp_range,
         ], gap=1, align='center'),

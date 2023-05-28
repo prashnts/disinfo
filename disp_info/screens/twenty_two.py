@@ -10,6 +10,7 @@ from ..components.text import Text
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from .. import config
+from ..data_structures import FrameState
 
 text_timestr = Text()
 
@@ -19,8 +20,8 @@ def get_state():
     return get_dict(rkeys['ha_enki_rmt']).get('action')
 
 
-def draw(tick: float):
-    t = arrow.now()
+def draw(fs: FrameState):
+    t = fs.now
     # t = arrow.get(2022, 2, 1, 21, 21, t.second)
     action = get_state()
 

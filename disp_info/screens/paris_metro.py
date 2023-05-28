@@ -14,6 +14,7 @@ from ..components.scroller import VScroller
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
+from ..data_structures import FrameState
 
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=38)
@@ -88,7 +89,7 @@ def message_text(value: str):
     return MultiLineText(text, fonts.tamzen__rs, fill='#fff')
 
 
-def draw(tick: float):
+def draw(fs: FrameState):
     s = get_state()
 
     if not s['is_visible']:
@@ -105,7 +106,7 @@ def draw(tick: float):
         ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
         times = [timing_text(round(t['next_in'])) for t in train['timings'][:3]]
         time_table = stack_horizontal([
-            ticon.draw(tick),
+            ticon.draw(fs.tick),
             stack_horizontal(times, gap=3)
         ], gap=3)
         train_times.append(time_table)
@@ -113,11 +114,11 @@ def draw(tick: float):
     for info in s['information']:
         if info['issues']:
             ticon = metro_status_icon(info['line'], issues=True)
-            status_icons.append(ticon.draw(tick))
+            status_icons.append(ticon.draw(fs.tick))
 
             msgs = info['messages']
             if msgs:
-                msg_texts.append(ticon.draw(tick))
+                msg_texts.append(ticon.draw(fs.tick))
                 # List is not hashable, so we use this ugly hack to pass
                 # list of strings.
                 msg_texts.append(message_text('&&&'.join(msgs)))
@@ -134,7 +135,7 @@ def draw(tick: float):
 
     if msg_texts:
         msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
-        main_view.append(msg_vscroll.draw(tick))
+        main_view.append(msg_vscroll.draw(fs.tick))
 
     return add_background(
         stack_horizontal(main_view, gap=2),

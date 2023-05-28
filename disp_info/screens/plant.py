@@ -5,6 +5,7 @@ from datetime import timedelta
 from ..components.elements import StillImage
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
+from ..data_structures import FrameState
 
 plant_icon = StillImage('assets/raster/plant-9x9.png')
 
@@ -31,7 +32,7 @@ def get_state():
     return state
 
 
-def draw(tick: float):
+def draw(fs: FrameState):
     s = get_state()
     if s['is_visible']:
         return plant_icon

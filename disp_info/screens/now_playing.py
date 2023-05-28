@@ -15,6 +15,7 @@ from ..components.layers import add_background
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
+from ..data_structures import FrameState
 
 hscroller = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
 
@@ -80,7 +81,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
     except requests.RequestException:
         return None
 
-def draw(tick: float):
+def draw(fs: FrameState):
     s = get_state()
 
     if not s['is_visible']:
@@ -101,7 +102,7 @@ def draw(tick: float):
     music_elements = [
         stack_horizontal([
             act_icon,
-            hscroller.draw(tick),
+            hscroller.draw(fs.tick),
         ], gap=0)
     ]
 

@@ -12,6 +12,7 @@ from ..components.spriteim import SpriteIcon
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
+from ..data_structures import FrameState
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
@@ -32,7 +33,7 @@ text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
 hscroller_fname = HScroller(size=22, pause_at_loop=True)
 
 @throttle(1061)
-def get_state():
+def get_state(fs: FrameState):
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
     bed_temp = get_dict(rkeys['octoprint_bedt'])
@@ -78,8 +79,8 @@ def get_state():
         bedt_target=bed_temp['target'],
     )
 
-def draw(tick: float):
-    state = get_state()
+def draw(fs: FrameState):
+    state = get_state(fs)
 
     if not state['is_visible']:
         return
@@ -112,13 +113,13 @@ def draw(tick: float):
     ], align='top')
 
     info_elem = stack_horizontal([
-        threed_icon.draw(tick) if state['is_printing'] else done_icon,
+        threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
         info_text,
     ], gap=4)
 
     filename_elem = stack_horizontal([
         file_icon,
-        hscroller_fname.draw(tick)
+        hscroller_fname.draw(fs.tick)
     ], gap=1)
 
     temp_elem = stack_horizontal([

@@ -9,6 +9,7 @@ from io import BytesIO
 from PIL import Image
 
 from ..compositor import get_frame
+from ..data_structures import FrameState
 from ..utils.imops import enlarge_pixels
 
 
@@ -42,8 +43,9 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4):
     _tf = 1 / fps
 
     while True:
+        fs = FrameState.create()
         t_a = time.time()
-        frame = get_frame()
+        frame = get_frame(fs)
         t_b = time.time()
         fsixel = encode_sixels(frame, optimize=True, scale=scale)
 

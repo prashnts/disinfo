@@ -4,6 +4,7 @@ import typer
 from itertools import cycle
 
 from ..compositor import get_frame
+from ..data_structures import FrameState
 
 fifos = [
     '/tmp/ledcat-01',
@@ -18,8 +19,9 @@ def main(fps: int = 60):
     _fifos = cycle(fifos)
 
     while True:
+        fs = FrameState.create()
         t_a = time.time()
-        frame = get_frame()
+        frame = get_frame(fs)
         t_b = time.time()
 
         with open(next(_fifos), 'wb') as fp:
