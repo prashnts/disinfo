@@ -11,6 +11,11 @@ pir_topic_map = {
     'zigbee2mqtt/ikea.pir.kitchen': 'ha_pir_kitchen',
 }
 
+latch_timing = {
+    'scene_1': 1000,
+    'scene_3': 4000,
+}
+
 def on_connect(client, userdata, flags, rc):
     print('connected!')
 
@@ -57,8 +62,8 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload)
         if payload['action']:
             ttl = config.mqtt_btn_latch_t
-            if payload['action'] == 'scene_1':
-                ttl = 1000
+            if payload['action'] in latch_timing:
+                ttl = latch_timing[payload['action']]
             if payload['action'] == 'scene_2':
                 get_metro_info(force=True)
             db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
