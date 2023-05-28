@@ -17,19 +17,22 @@ text_draw_time = Text(font=fonts.bitocra, fill='#fff')
 
 @throttle(100)
 def get_state(fs: FrameState):
-    renderinfo = fs.rendererdata if fs.rendererdata else {
+    stateinfo = fs.rendererdata if fs.rendererdata else {
         'brightness': '--',
         'lux': '--',
         'draw_time': 1,
     }
     return {
-        'is_visible': True,
-        **renderinfo,
+        'is_visible': fs.enki_action == 'scene_3',
+        **stateinfo,
     }
 
 
 def draw(fs: FrameState):
     s = get_state(fs)
+    if not s['is_visible']:
+        return
+
     text_brightness.update(value=f"{s['brightness']}%")
     text_lux.update(value=f"{s['lux']}")
     text_draw_time.update(value=f"{s['draw_time']:0.4f}")

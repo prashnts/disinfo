@@ -11,6 +11,9 @@ class FrameState:
 
     rendererdata: Optional[dict] = None
 
+    # Global state for button inputs
+    enki_action: Optional[str] = None
+
     @classmethod
     def create(cls):
         return cls(tick=time.time(), now=pendulum.now())

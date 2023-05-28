@@ -54,10 +54,9 @@ def should_turn_on_display() -> bool:
 
 
 
-def draw_btn_test(image):
+def draw_btn_test(image, actions: dict):
     global pos_x, pos_y
 
-    actions = get_remotes_action()
     if actions['enki'] == 'color_saturation_step_up' or actions['ikea'] == 'brightness_up_click':
         pos_y -= 1
     if actions['enki'] == 'color_saturation_step_down' or actions['ikea'] == 'brightness_down_click':
@@ -83,6 +82,10 @@ def draw_frame(fs: FrameState):
         # do not draw if nobody is there.
         return image
 
+    # While not ideal, this allows us to avoid fetching state multiple times.
+    rmt_action = get_remotes_action()
+    fs.enki_action = rmt_action['enki']
+
     composite_at(screens.demo.draw(fs), image, 'mm')
 
     octoprint_info = screens.octoprint.draw(fs)
@@ -107,7 +110,7 @@ def draw_frame(fs: FrameState):
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')
 
-    image = draw_btn_test(image)
+    image = draw_btn_test(image, rmt_action)
 
     return image
 
