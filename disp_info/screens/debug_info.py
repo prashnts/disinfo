@@ -22,15 +22,15 @@ def get_state(fs: FrameState):
     return {
         'brightness': '--',
         'lux': '--',
-        'draw_time': '--',
+        'draw_time': 1,
     }
 
 
 def draw(fs: FrameState):
     s = get_state(fs)
-    text_brightness.update(value=s['brightness'])
-    text_lux.update(value=s['lux'])
-    text_draw_time.update(value=s['draw_time'])
+    text_brightness.update(value=f"{s['brightness']}%")
+    text_lux.update(value=f"{s['lux']}")
+    text_draw_time.update(value=f"{s['draw_time']:0.1f}")
 
     debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time], gap=2)
 
