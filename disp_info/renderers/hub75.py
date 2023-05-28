@@ -39,13 +39,20 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
+brightness_curve = [
+    # LUX   BRIGHTNESS %
+    [0.2,   5],
+    [2,     15],
+    [10,    30],
+    [20,    45],
+    [50,    60],
+    [200,   100],
+]
 brightness_interpolator = interp1d(
-    [0.2, 2, 10, 20, 50, 150],  # <- LUX values
-    [5, 14, 30, 45, 60, 100],   # <- Assigned Brightness in %
+    *zip(*brightness_curve),
     bounds_error=False,
     fill_value=(5, 100),
 )
-
 
 @throttle(50)
 def get_state():
