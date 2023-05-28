@@ -16,6 +16,7 @@ import time
 import typer
 
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from scipy.interpolate import interp1d
 
 from ..compositor import get_frame
 from ..utils.func import throttle
@@ -38,27 +39,12 @@ options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
 
-def lux_to_brightness(lux: float) -> int:
-    # TODO: Replace this with a smooth function.
-    if lux <= 0.5:
-        return 10
-    if lux <= 1.5:
-        return 12
-    if lux <= 2:
-        return 14
-    if lux <= 3:
-        return 16
-    if lux <= 4:
-        return 20
-    if lux <= 10:
-        return 30
-    if lux <= 20:
-        return 50
-    if lux <= 30:
-        return 55
-    if lux <= 60:
-        return 60
-    return 80
+brightness_interpolator = interp1d(
+    [0.2, 2, 10, 20, 50, 150],  # <- LUX values
+    [5, 14, 30, 45, 60, 100],   # <- Assigned Brightness in %
+    bounds_error=False,
+    fill_value=(5, 100),
+)
 
 
 @throttle(50)
@@ -70,7 +56,7 @@ def get_state():
         lux = 50
     return {
         'lux': lux,
-        'brightness': lux_to_brightness(lux),
+        'brightness': int(brightness_interpolator(lux)),
     }
 
 

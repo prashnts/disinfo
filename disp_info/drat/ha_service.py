@@ -12,8 +12,8 @@ pir_topic_map = {
 }
 
 latch_timing = {
-    'scene_1': 1000,
-    'scene_3': 4000,
+    'scene_1': 1_000,
+    'scene_3': 10_000,
 }
 
 def on_connect(client, userdata, flags, rc):
