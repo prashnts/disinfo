@@ -19,7 +19,7 @@ def draw(fs: FrameState):
     twentytwo = t.hour == t.minute == 22
     all_equal = t.hour == t.minute == t.second
 
-    if fs.enki_action == 'scene_1':
+    if fs.rmt0_action == 'scene_1':
         twentytwo == True
         equal_elements = True
         all_equal = True

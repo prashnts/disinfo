@@ -27,7 +27,7 @@ def get_state(fs: FrameState):
         except FileNotFoundError:
             return -1
     return {
-        'is_visible': fs.enki_action == 'scene_3',
+        'is_visible': fs.rmt0_action == 'scene_3',
         'sys_temp': _get_temp,
         **stateinfo,
     }

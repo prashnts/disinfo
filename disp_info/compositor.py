@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import time
 import arrow
 
 from PIL import Image
@@ -54,16 +53,18 @@ def should_turn_on_display() -> bool:
 
 
 
-def draw_btn_test(image, actions: dict):
+def draw_btn_test(image, fs: FrameState):
     global pos_x, pos_y
+    a0 = fs.rmt0_action
+    a1 = fs.rmt1_action
 
-    if actions['enki'] == 'color_saturation_step_up' or actions['ikea'] == 'brightness_up_click':
+    if a0 == 'color_saturation_step_up' or a1 == 'brightness_up_click':
         pos_y -= 1
-    if actions['enki'] == 'color_saturation_step_down' or actions['ikea'] == 'brightness_down_click':
+    if a0 == 'color_saturation_step_down' or a1 == 'brightness_down_click':
         pos_y += 1
-    if actions['enki'] == 'color_hue_step_up' or actions['ikea'] == 'arrow_right_click':
+    if a0 == 'color_hue_step_up' or a1 == 'arrow_right_click':
         pos_x += 1
-    if actions['enki'] == 'color_hue_step_down' or actions['ikea'] == 'arrow_left_click':
+    if a0 == 'color_hue_step_down' or a1 == 'arrow_left_click':
         pos_x -= 1
 
     pos_x %= config.matrix_w
@@ -84,7 +85,8 @@ def draw_frame(fs: FrameState):
 
     # While not ideal, this allows us to avoid fetching state multiple times.
     rmt_action = get_remotes_action()
-    fs.enki_action = rmt_action['enki']
+    fs.rmt0_action = rmt_action['enki']
+    fs.rmt1_action = rmt_action['ikea']
 
     composite_at(screens.demo.draw(fs), image, 'mm')
 
@@ -110,7 +112,7 @@ def draw_frame(fs: FrameState):
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')
 
-    image = draw_btn_test(image, rmt_action)
+    image = draw_btn_test(image, fs)
 
     return image
 

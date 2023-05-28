@@ -12,7 +12,8 @@ class FrameState:
     rendererdata: Optional[dict] = None
 
     # Global state for button inputs
-    enki_action: Optional[str] = None
+    rmt0_action: Optional[str] = None
+    rmt1_action: Optional[str] = None
 
     @classmethod
     def create(cls):
