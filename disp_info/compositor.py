@@ -105,6 +105,7 @@ def draw_frame(fs: FrameState):
         composite_at(screens.now_playing.draw(fs), image, 'mr')
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    composite_at(screens.debug_info.draw(fs), image, 'mm')
 
     image = draw_btn_test(image)
 

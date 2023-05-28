@@ -68,7 +68,10 @@ def get_state():
         lux = float(s['new_state']['state'])
     except (KeyError, TypeError, ValueError):
         lux = 50
-    return { 'lux': lux }
+    return {
+        'lux': lux,
+        'brightness': lux_to_brightness(lux),
+    }
 
 
 def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
@@ -82,17 +85,19 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
 
 
     print('Matrix Renderer started')
+    last_draw_time = 0
 
     while True:
-        fs = FrameState.create()
         state = get_state()
+        fs = FrameState.create()
+        fs.rendererdata = { **state, 'draw_time': last_draw_time }
+
         t_a = time.time()
         img = get_frame(fs)
         t_b = time.time()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
-        new_brightness = lux_to_brightness(state['lux'])
-        matrix.brightness = new_brightness
+        matrix.brightness = state['brightness']
         t_c = time.time()
 
         t_draw = t_b - t_a
@@ -100,6 +105,8 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         t_frame = t_c - t_a
 
         _fps = (1 / t_frame)
+
+        last_draw_time = t_draw
 
         if stats:
             print(f'[t draw: {t_draw:0.4}] [fps: {_fps:0.4}]')
