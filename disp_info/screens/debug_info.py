@@ -19,14 +19,16 @@ def get_state(fs: FrameState):
         'lux': -1,
         'draw_time': -1,
     }
-    try:
-        with open('/sys/class/thermal/thermal_zone0/temp') as fp:
-            sys_temp = int(fp.read()) / 1000
-    except FileNotFoundError:
-        sys_temp = -1
+    def _get_temp():
+        # return a function to avoid unnecessary reads when hidden
+        try:
+            with open('/sys/class/thermal/thermal_zone0/temp') as fp:
+                return int(fp.read()) / 1000
+        except FileNotFoundError:
+            return -1
     return {
         'is_visible': fs.enki_action == 'scene_3',
-        'sys_temp': sys_temp,
+        'sys_temp': _get_temp,
         **stateinfo,
     }
 
@@ -39,7 +41,7 @@ def draw(fs: FrameState):
     text_brightness.update(value=f"Bri: {s['brightness']}%")
     text_lux.update(value=f"Lux: {s['lux']:0.1f}")
     text_draw_time.update(value=f"Tdr: {s['draw_time']:0.4f}")
-    text_sys_temp.update(value=f"t_s: {s['sys_temp']:0.1f}°")
+    text_sys_temp.update(value=f"t_s: {s['sys_temp']():0.1f}°")
 
     debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time, text_sys_temp], gap=2)
 
