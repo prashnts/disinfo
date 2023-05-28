@@ -5,16 +5,17 @@ from PIL import Image, ImageDraw
 
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text
+from ..components.text import Text, MultiLineText
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..components.frame_cycler import FrameCycler
+from ..components.scroller import VScroller
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
-
+msg_vscroll = VScroller(size=38)
 
 @cache
 def status_icon(status_name: str):
@@ -76,6 +77,26 @@ def get_state():
 def timing_text(value: int):
     return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a57a05')
 
+@cache
+def message_text(value: str):
+    max_width = 12
+    def adjust_line_width(text: str):
+        frags = []
+        words = text.split(' ')
+        line_w = 0
+        accum = []
+        for w in words:
+            line_w += len(w)
+            if line_w <= max_width:
+                accum.append(w)
+            else:
+                frags.append(' '.join(accum))
+                accum = [w]
+                line_w = len(w)
+        return '\n'.join(frags)
+
+    vals = '\n---\n'.join(map(adjust_line_width, value.split('&')))
+    return MultiLineText(vals, fonts.tamzen__rs, fill='#fff')
 
 def draw(tick: float):
     s = get_state()
@@ -85,6 +106,7 @@ def draw(tick: float):
 
     train_times = []
     status_icons = []
+    msg_texts = []
 
     for train in s['trains']:
         if not train['timings']:
@@ -101,18 +123,25 @@ def draw(tick: float):
         if info['issues']:
             ticon = metro_status_icon(info['line'], issues=True)
             status_icons.append(ticon.draw(tick))
+            msg_texts.append(ticon.draw(tick))
+            msg_texts.append(message_text('&'.join(info['messages'])))
 
 
     if not (train_times or status_icons):
         return
 
     list_view = [stack_vertical(train_times, gap=1, align='left')]
-
     if status_icons:
         list_view.append(stack_horizontal([metro_issue_icon, *status_icons], gap=2))
 
+    main_view = [stack_vertical(list_view, gap=2)]
+
+    if msg_texts:
+        msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
+        main_view.append(msg_vscroll.draw(tick))
+
     return add_background(
-        stack_vertical(list_view, gap=2),
+        stack_horizontal(main_view, gap=2),
         fill='#071e4ac2',
         radius=2,
         padding=2)

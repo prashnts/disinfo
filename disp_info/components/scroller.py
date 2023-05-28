@@ -49,6 +49,9 @@ class _Scroller:
     def _get_image(self):
         raise NotImplemented
 
+    def _get_frame_size(self):
+        raise NotImplemented
+
     def _tick(self, step: Optional[float] = None):
         if not step:
             step = time.time()
@@ -62,7 +65,7 @@ class _Scroller:
             return
         if delta >= self.speed:
             self.pos += self.delta
-            self.pos %= self.frame.width
+            self.pos %= self._get_frame_size()
             self.last_step = step
 
     def draw(self, step: Optional[float] = None) -> Frame:
@@ -89,6 +92,9 @@ class HScroller(_Scroller):
     def _get_image(self):
         return Image.new('RGBA', (self.size, self.frame.height))
 
+    def _get_frame_size(self):
+        return self.frame.width
+
     def _get_frame(self, frame: Frame) -> Frame:
         self._true_w = frame.width
         self._true_h = frame.height
@@ -113,6 +119,9 @@ class VScroller(_Scroller):
 
     def _get_image(self):
         return Image.new('RGBA', (self.frame.width, self.size))
+
+    def _get_frame_size(self):
+        return self.frame.height
 
     def _get_frame(self, frame: Frame) -> Frame:
         self._true_w = frame.width
