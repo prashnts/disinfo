@@ -58,8 +58,8 @@ class MultiLineText(Text):
         _imd = Image.new('RGBA', (0, 0))
         _dd = ImageDraw.Draw(_imd)
         l, t, r, b = _dd.multiline_textbbox((0, 0), value, font=self.font, spacing=2)
-        w = r - l
-        h = b - t
+        w = r + l
+        h = b + t
         im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.multiline_text((0, 0), value, fill=self.fill, font=self.font, spacing=2)

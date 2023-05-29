@@ -11,7 +11,8 @@ class _Scroller:
         speed: float = 0.01,
         static_if_small: bool = True,
         pause_at_loop: bool = False,
-        pause_duration: float = 2):
+        pause_duration: float = 2,
+    ):
         self.size = size
         self.delta = delta
         self.speed = speed
