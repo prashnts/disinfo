@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
 from typing import TypedDict, Optional
 from typing_extensions import Unpack
+from textwrap import wrap
 
 from .elements import Frame
 from . import fonts
@@ -49,20 +50,26 @@ class Text(Frame):
         return dirty
 
 class MultiLineText(Text):
-    def _init_str(self):
-        value = self.value
-        if not value:
-            return
+    def __init__(self, *args, line_width: int, **kwargs):
+        self.line_width = line_width
+        super().__init__(*args, **kwargs)
 
-        # create a dummy image in order to get the bbox.
-        _imd = Image.new('RGBA', (0, 0))
-        _dd = ImageDraw.Draw(_imd)
-        l, t, r, b = _dd.multiline_textbbox((0, 0), value, font=self.font, spacing=2)
+    def _init_str(self):
+        if not self.value:
+            return
+        # Wrap the string to fit in the container.
+        wrap_paragraph = lambda x: '\n'.join(wrap(x, self.line_width))
+        value = '\n'.join([wrap_paragraph(l) for l in self.value.splitlines()])
+
+        # create a dummy draw instance in order to get the bbox.
+        _dd = ImageDraw.Draw(Image.new('RGBA', (0, 0)))
+        l, t, r, b = _dd.multiline_textbbox((0, 0), value, font=self.font, spacing=1)
+        # TODO: add anchor.
         w = r + l
         h = b + t
         im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
-        d.multiline_text((0, 0), value, fill=self.fill, font=self.font, spacing=2)
+        d.multiline_text((0, 0), value, fill=self.fill, font=self.font, spacing=1)
         self.image = im
         self.width = w
         self.height = h

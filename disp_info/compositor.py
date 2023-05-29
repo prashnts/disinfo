@@ -12,7 +12,7 @@ from .data_structures import FrameState
 from . import config, screens
 
 
-pos_x = 64
+pos_x = 120
 pos_y = 42
 
 @throttle(40)
@@ -104,7 +104,7 @@ def compose_frame(fs: FrameState):
     composite_at(screens.weather.draw(fs), image, 'tl')
     composite_at(screens.numbers.draw(fs), image, 'bl')
 
-    composite_at(screens.paris_metro.draw(fs), image, 'ml')
+    composite_at(screens.paris_metro.draw(fs), image, 'bm')
 
     if not octoprint_info:
         composite_at(screens.now_playing.draw(fs), image, 'mr')

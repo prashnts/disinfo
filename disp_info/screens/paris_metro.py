@@ -17,7 +17,7 @@ from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
 
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
-msg_vscroll = VScroller(size=38)
+msg_vscroll = VScroller(size=40)
 
 
 @cache
@@ -71,10 +71,7 @@ def timing_text(value: int) -> Text:
 
 @cache
 def message_text(value: str) -> MultiLineText:
-    msgs = value.split('&&&')
-    max_width = 12
-    text = '\n---\n'.join(['\n'.join(wrap(v, max_width)) for v in msgs])
-    return MultiLineText(text, fonts.tamzen__rs, fill='#fff')
+    return MultiLineText(value, font=fonts.tamzen__rs, fill='#b9b9b9', line_width=12)
 
 
 def draw(fs: FrameState):
@@ -107,9 +104,7 @@ def draw(fs: FrameState):
             msgs = info['messages']
             if msgs:
                 msg_texts.append(ticon.draw(fs.tick))
-                # List is not hashable, so we use this ugly hack to pass
-                # list of strings.
-                msg_texts.append(message_text('&&&'.join(msgs)))
+                msg_texts.append(message_text('\n---\n'.join(msgs)))
 
 
     if not (train_times or status_icons):
@@ -123,10 +118,18 @@ def draw(fs: FrameState):
 
     if msg_texts:
         msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
-        main_view.append(msg_vscroll.draw(fs.tick))
+        main_view.append(add_background(
+            msg_vscroll.draw(fs.tick),
+            fill='#242424',
+            padding=1,
+            radius=2,
+            corners=[0, 1, 1, 0],
+        ))
 
     return add_background(
         stack_horizontal(main_view, gap=2),
-        fill='#071e4ac2',
+        fill='#071e4ae2',
         radius=2,
-        padding=2)
+        padding=2,
+        corners=[1, 1, 0, 0],
+    )
