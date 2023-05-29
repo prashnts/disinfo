@@ -1,6 +1,5 @@
 import pendulum
 
-from textwrap import wrap
 from functools import cache
 from PIL import Image, ImageDraw
 
@@ -85,17 +84,6 @@ def draw(fs: FrameState):
     status_icons = []
     msg_texts = []
 
-    for train in s['trains']:
-        if not train['timings']:
-            continue
-        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
-        times = [timing_text(round(t['next_in'])) for t in train['timings'][:3]]
-        time_table = stack_horizontal([
-            ticon.draw(fs.tick),
-            stack_horizontal(times, gap=3)
-        ], gap=3)
-        train_times.append(time_table)
-
     for info in s['information']:
         if info['issues']:
             ticon = metro_status_icon(info['line'], issues=True)
@@ -106,6 +94,21 @@ def draw(fs: FrameState):
                 msg_texts.append(ticon.draw(fs.tick))
                 msg_texts.append(message_text('\n---\n'.join(msgs)))
 
+    visible_timing_count = 3 if msg_texts else 5
+
+    for train in s['trains']:
+        if not train['timings']:
+            continue
+        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
+        next_train_times = train['timings'][:visible_timing_count]
+        timings = stack_horizontal([
+            timing_text(round(t['next_in'])) for t in next_train_times
+        ], gap=3)
+        time_table = stack_horizontal([
+            ticon.draw(fs.tick),
+            timings,
+        ], gap=3)
+        train_times.append(time_table)
 
     if not (train_times or status_icons):
         return
