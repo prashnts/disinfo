@@ -20,7 +20,12 @@ metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1)
 
-warning_line = tile_copies(warning_tile, nx=1, ny=msg_vscroll.size // warning_tile.height, seamless=True)
+warning_line = tile_copies(
+    warning_tile,
+    nx=1,
+    ny=msg_vscroll.size // warning_tile.height,
+    seamless=False)
+
 
 @cache
 def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
