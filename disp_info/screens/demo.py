@@ -139,12 +139,12 @@ class GameOfLife:
         return self.frame
 
 
-gol = GameOfLife(w=32, h=32, speed=0.1)
+gol = GameOfLife(w=28, h=24, speed=0.1)
 
 def composer(fs: FrameState):
     return tile_copies(
         gol.draw(fs.tick),
-        nx=round(config.matrix_w / gol.w),
+        nx=round(config.matrix_w / gol.w + 1),
         ny=round(config.matrix_h / gol.h),
     )
 
