@@ -1,4 +1,5 @@
 import random
+import time
 
 from colour import Color
 from PIL import Image, ImageDraw
@@ -127,6 +128,14 @@ class GameOfLife:
                     changed = True
                 if cell:
                     any_alive = True
+                if y == self.w % 5:
+                    # cooperative multithreading ""
+                    time.sleep(0.01)
+
+            if x == self.h % 5:
+                # cooperative multithreading ""
+                time.sleep(0.01)
+
         if changed:
             self.board = b
             self.frame = self.draw_board()

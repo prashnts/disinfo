@@ -27,4 +27,4 @@ def composer(fs: FrameState):
     ], gap=0, align='right')
     return add_background(view, fill='#000000ac')
 
-draw = composer_thread(composer, sleepms=100)
+draw = composer_thread(composer, sleepms=200)
