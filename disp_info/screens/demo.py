@@ -137,7 +137,7 @@ class GameOfLife:
         return self.frame
 
 
-gol = GameOfLife(w=48, h=20, speed=0.1)
+gol = GameOfLife(w=48, h=32, speed=0.1)
 
 def composer(fs: FrameState):
     return tile_copies(
