@@ -59,7 +59,7 @@ def draw_frame():
         if current_state and current_state != previous_state:
             current_frame = compose(current_state)
             previous_state = current_state
-            time.sleep(0.001)
+        time.sleep(0.001)
 
 t = threading.Thread(target=draw_frame, daemon=True)
 t.start()
