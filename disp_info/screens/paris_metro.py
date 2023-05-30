@@ -20,7 +20,7 @@ metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1)
 
-warning_line = tile_copies(warning_tile, nx=1, ny=msg_vscroll.size // warning_tile.height, seamless=False)
+warning_line = tile_copies(warning_tile, nx=1, ny=msg_vscroll.size // warning_tile.height, seamless=True)
 
 @cache
 def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
@@ -97,7 +97,7 @@ def draw(fs: FrameState):
                 msg_texts.append(ticon.draw(fs.tick))
                 msg_texts.append(message_text('\n---\n'.join(msgs)))
 
-    visible_timing_count = 3 if msg_texts else 5
+    visible_timing_count = 3 if msg_texts else 4
 
     for train in s['trains']:
         if not train['timings']:
@@ -139,7 +139,7 @@ def draw(fs: FrameState):
 
     return add_background(
         stack_horizontal(main_view, gap=2),
-        fill='#071e4ae2',
+        fill='#051534e2',
         radius=2,
         padding=2,
         corners=[1, 1, 0, 0],
