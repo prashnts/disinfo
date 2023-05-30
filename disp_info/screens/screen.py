@@ -9,10 +9,11 @@ from ..data_structures import FrameState
 DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
 
-def composer_thread(composer: ComposerFn, sleepms: int = 1) -> DrawerFn:
+def composer_thread(composer: ComposerFn, sleepms: int = 1, after = None) -> DrawerFn:
     current_state: Optional[FrameState] = None
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
+    started: bool = False
 
     def painter():
         nonlocal current_frame, previous_state
@@ -26,8 +27,11 @@ def composer_thread(composer: ComposerFn, sleepms: int = 1) -> DrawerFn:
     t.start()
 
     def draw(fs: FrameState) -> Optional[Frame]:
-        nonlocal current_state
+        nonlocal current_state, started
         current_state = fs
+        if not started and after:
+            after()
+        started = True
         return current_frame
 
     return draw

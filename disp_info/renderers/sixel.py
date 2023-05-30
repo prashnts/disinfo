@@ -35,7 +35,7 @@ def encode_sixels(img: Image.Image, optimize: bool = False, scale=4, gap=1) -> s
     return sixel
 
 
-def main(single_frame: bool = False, fps: int = 60, scale: int = 4):
+def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool = True):
     if not single_frame:
         # First we clear the screen.
         print('\033[2J')
@@ -50,7 +50,8 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4):
         fsixel = encode_sixels(frame, optimize=True, scale=scale)
 
         # Term Cursor Position x, y ; ref colorama
-        print('\033[0;0H')
+        if inline:
+            print('\033[0;0H')
 
         # Print sixel at previous location.
         print(fsixel)
