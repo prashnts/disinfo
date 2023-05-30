@@ -34,7 +34,8 @@ options.brightness = 80
 options.pwm_bits = 11   # 1..11
 options.scan_mode = 0   # 0: progressive, 1: interlaced
 options.pixel_mapper_config = 'Rotate:180'
-options.gpio_slowdown = 2
+# On Pi 3B+ this was 2. I set it to 5 on Pi 4B.
+options.gpio_slowdown = 5
 options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
