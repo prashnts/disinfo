@@ -95,7 +95,7 @@ def is_active():
 def collate_train_time(traffic: list[TrafficData], direction: str):
     now = pendulum.now()
     for t in traffic:
-        if t.direction == direction:
+        if t.direction == direction and t.schedule > now:
             mins = now.diff(t.schedule).total_seconds() / 60
             if mins < 0:
                 # possible due to api delays
