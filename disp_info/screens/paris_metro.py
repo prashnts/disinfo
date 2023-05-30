@@ -9,7 +9,7 @@ from ..components.text import Text, MultiLineText
 from ..components.layouts import composite_at, stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..components.frame_cycler import FrameCycler
-from ..components.scroller import VScroller
+from ..components.scroller import VScroller, HScroller
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
@@ -17,6 +17,7 @@ from ..data_structures import FrameState
 
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=40)
+status_hscroll = HScroller(size=30)
 
 
 @cache
@@ -115,7 +116,8 @@ def draw(fs: FrameState):
 
     list_view = [stack_vertical(train_times, gap=1, align='left')]
     if status_icons:
-        list_view.append(stack_horizontal([metro_issue_icon, *status_icons], gap=2))
+        status_hscroll.set_frame(stack_horizontal(status_icons, gap=2), reset=False)
+        list_view.append(stack_horizontal([metro_issue_icon, status_hscroll.draw(fs.tick)], gap=1))
 
     main_view = [stack_vertical(list_view, gap=2)]
 
