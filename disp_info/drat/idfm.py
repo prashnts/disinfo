@@ -125,7 +125,7 @@ def fetch_state():
     for s in traffic_stops:
         traffic = asyncio.run(fetch_stop_traffic(s['stop_id']))
         info = asyncio.run(fetch_line_infos(s['line_id']))
-        timings = sorted(collate_train_time(traffic, s['direction']))
+        timings = sorted(list(collate_train_time(traffic, s['direction'])))
         information = collate_info(info)
         trains.append({**s, 'timings': timings, 'information': information})
         infos.append({**s, **information})
