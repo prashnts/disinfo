@@ -29,6 +29,7 @@ def get_state():
     return numbers
 
 current_state: Optional[FrameState] = None
+previous_state: Optional[FrameState] = None
 current_frame: Optional[Frame] = None
 
 def compose(fs: FrameState):
@@ -53,10 +54,11 @@ def compose(fs: FrameState):
 
 def draw_frame():
     print("here")
-    global current_frame
+    global current_frame, previous_state
     while True:
-        if current_state:
+        if current_state and current_state != previous_state:
             current_frame = compose(current_state)
+            previous_state = current_state
             time.sleep(0.001)
 
 t = threading.Thread(target=draw_frame, daemon=True)
