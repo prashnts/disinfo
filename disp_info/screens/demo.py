@@ -130,11 +130,7 @@ class GameOfLife:
                     any_alive = True
                 if y == self.w % 5:
                     # cooperative multithreading ""
-                    time.sleep(0.01)
-
-            if x == self.h % 5:
-                # cooperative multithreading ""
-                time.sleep(0.01)
+                    time.sleep(0.005)
 
         if changed:
             self.board = b
