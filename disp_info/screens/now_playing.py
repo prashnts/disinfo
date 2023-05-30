@@ -112,8 +112,9 @@ def composer(fs: FrameState):
 
     return add_background(
         stack_vertical(music_elements, gap=1, align='right'),
-        fill='#333941',
+        fill='#2c2e31',
         radius=2,
-        padding=2)
+        padding=2,
+        corners=[1, 0, 0, 1])
 
 draw = composer_thread(composer, sleepms=10)
