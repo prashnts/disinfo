@@ -3,6 +3,7 @@ import pendulum
 from functools import cache
 from PIL import Image, ImageDraw
 
+from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText
@@ -81,7 +82,7 @@ def message_text(value: str) -> MultiLineText:
     return MultiLineText(value, font=fonts.tamzen__rs, fill='#b9b9b9', line_width=12)
 
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     s = get_state(fs)
 
     if not s['is_visible']:
@@ -149,3 +150,5 @@ def draw(fs: FrameState):
         padding=2,
         corners=[1, 1, 0, 0],
     )
+
+draw = composer_thread(composer, sleepms=50)

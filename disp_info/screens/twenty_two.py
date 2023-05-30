@@ -2,6 +2,7 @@ import random
 
 from PIL import Image, ImageDraw
 
+from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
@@ -12,7 +13,7 @@ from .. import config
 text_timestr = Text()
 
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     t = fs.now
 
     equal_elements = t.hour == t.minute
@@ -96,3 +97,6 @@ def draw(fs: FrameState):
                 draw.point(random.choice(pts), fill=random.choice(gcols))
 
     return Frame(image)
+
+
+draw = composer_thread(composer, sleepms=50)

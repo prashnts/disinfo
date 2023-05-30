@@ -3,6 +3,7 @@ import arrow
 from datetime import timedelta
 from pydash import py_
 
+from .screen import composer_thread
 from ..components.text import Text
 from ..components.elements import StillImage
 from ..components.layouts import stack_vertical, stack_horizontal
@@ -79,7 +80,7 @@ def get_state(fs: FrameState):
         bedt_target=bed_temp['target'],
     )
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     state = get_state(fs)
 
     if not state['is_visible']:
@@ -140,3 +141,5 @@ def draw(fs: FrameState):
 
     return add_background(stack_vertical(elements, gap=1, align='right'), fill='#000000ac')
 
+
+draw = composer_thread(composer, sleepms=10)

@@ -4,6 +4,7 @@ from colour import Color
 from functools import cache
 from PIL import Image, ImageDraw, ImageFont
 
+from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text
@@ -103,7 +104,7 @@ def get_state():
     )
 
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     s = get_state()
 
     should_show_sunset = s['sunset_time'] > fs.now and (s['sunset_time'] - fs.now).total_seconds() < 2 * 60 * 60
@@ -156,3 +157,6 @@ def draw(fs: FrameState):
     weather_stack = [weather_info]
 
     return stack_vertical(weather_stack, gap=1, align='left')
+
+
+draw = composer_thread(composer, sleepms=100)

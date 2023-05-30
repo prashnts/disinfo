@@ -1,3 +1,4 @@
+from .screen import composer_thread
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import add_background
@@ -11,7 +12,7 @@ text_time = Text(font=fonts.bitocra, fill=colors_time[0])
 text_day = Text(font=fonts.bitocra, fill=color_date)
 text_date = Text(font=fonts.bitocra, fill=color_date)
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     t = fs.now
 
     text_time.update(
@@ -25,3 +26,5 @@ def draw(fs: FrameState):
         stack_horizontal([text_day, text_date], gap=2, align='center'),
     ], gap=0, align='right')
     return add_background(view, fill='#000000ac')
+
+draw = composer_thread(composer, sleepms=100)

@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw
 from statistics import mode
 from itertools import cycle
 
+from .screen import composer_thread
 from .. import config
 from ..data_structures import FrameState
 from ..components.elements import Frame
@@ -138,9 +139,12 @@ class GameOfLife:
 
 gol = GameOfLife(w=18, h=20, speed=0.1)
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     return tile_copies(
         gol.draw(fs.tick),
         nx=round(config.matrix_w / gol.w + 1),
         ny=round(config.matrix_h / gol.h + 1),
     )
+
+
+draw = composer_thread(composer, sleepms=100)

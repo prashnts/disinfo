@@ -31,6 +31,9 @@ def stack_horizontal(
 
     Returns a new frame.
     '''
+    if not any(elements):
+        return Frame(Image.new('RGBA', (1, 1)))
+
     _elems = [e for e in elements if e]
 
     gap_width = gap * (len(_elems) - 1)
@@ -71,6 +74,9 @@ def stack_vertical(
 
     Returns a new frame.
     '''
+    if not any(elements):
+        return Frame(Image.new('RGBA', (1, 1)))
+
     _elems = [e for e in elements if e]
 
     gap_width = gap * (len(_elems) - 1)

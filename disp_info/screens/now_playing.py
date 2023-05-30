@@ -6,6 +6,7 @@ from PIL import Image
 from functools import cache
 from datetime import timedelta
 
+from .screen import composer_thread
 from .. import config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
@@ -81,7 +82,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
     except requests.RequestException:
         return None
 
-def draw(fs: FrameState):
+def composer(fs: FrameState):
     s = get_state()
 
     if not s['is_visible']:
@@ -114,3 +115,5 @@ def draw(fs: FrameState):
         fill='#333941',
         radius=2,
         padding=2)
+
+draw = composer_thread(composer, sleepms=10)

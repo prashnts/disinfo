@@ -1,11 +1,6 @@
-import threading
-import time
-
-from typing import Optional
-
+from .screen import composer_thread
 from .. import config
 from ..components import fonts
-from ..components.elements import Frame
 from ..components.text import Text
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..components.layers import add_background
@@ -28,11 +23,7 @@ def get_state():
     numbers = get_dict(rkeys['random_msg'])
     return numbers
 
-current_state: Optional[FrameState] = None
-previous_state: Optional[FrameState] = None
-current_frame: Optional[Frame] = None
-
-def compose(fs: FrameState):
+def composer(fs: FrameState):
     numbers = get_state()
     num_str = f'#{numbers["number"]}'
 
@@ -52,19 +43,5 @@ def compose(fs: FrameState):
         add_background(info_ticker, fill='#010a298c', padding=1),
     ], gap=0, align='left')
 
-def draw_frame():
-    print("here")
-    global current_frame, previous_state
-    while True:
-        if current_state and current_state != previous_state:
-            current_frame = compose(current_state)
-            previous_state = current_state
-        time.sleep(0.001)
 
-t = threading.Thread(target=draw_frame, daemon=True)
-t.start()
-
-def draw(fs: FrameState):
-    global current_state
-    current_state = fs
-    return current_frame
+draw = composer_thread(composer, sleepms=10)
