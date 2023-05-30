@@ -1,12 +1,15 @@
 import threading
 import time
 
-from typing import Optional
+from typing import Optional, Callable
 from ..components.elements import Frame
 from ..data_structures import FrameState
 
 
-def composer_thread(composer, sleepms: int = 1):
+DrawerFn = Callable[[FrameState], Optional[Frame]]
+ComposerFn = Callable[[FrameState], Optional[Frame]]
+
+def composer_thread(composer: ComposerFn, sleepms: int = 1) -> DrawerFn:
     current_state: Optional[FrameState] = None
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
