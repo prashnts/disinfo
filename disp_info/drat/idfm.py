@@ -95,11 +95,8 @@ def is_active():
 def collate_train_time(traffic: list[TrafficData], direction: str):
     now = pendulum.now()
     for t in traffic:
-        if t.direction == direction and t.schedule > now:
+        if t.direction == direction and t.schedule >= now:
             mins = now.diff(t.schedule).total_seconds() / 60
-            if mins < 0:
-                # possible due to api delays
-                continue
             yield {
                 'next_in': mins,
                 'retarded': t.retarted
@@ -128,7 +125,7 @@ def fetch_state():
     for s in traffic_stops:
         traffic = asyncio.run(fetch_stop_traffic(s['stop_id']))
         info = asyncio.run(fetch_line_infos(s['line_id']))
-        timings = list(collate_train_time(traffic, s['direction']))
+        timings = sorted(collate_train_time(traffic, s['direction']))
         information = collate_info(info)
         trains.append({**s, 'timings': timings, 'information': information})
         infos.append({**s, **information})
