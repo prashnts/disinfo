@@ -107,12 +107,10 @@ def composer(fs: FrameState):
 
     for train in s['trains']:
         if not train['timings']:
-            continue
-        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
-        next_train_times = [round(t['next_in']) for t in train['timings'][:visible_timing_count]]
-        if not next_train_times:
-            # provide a fallback data
             next_train_times = ['--', '--']
+        else:
+            next_train_times = [round(t['next_in']) for t in train['timings'][:visible_timing_count]]
+        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
         timings = stack_horizontal([
             timing_text(t) for t in next_train_times
         ], gap=3)
