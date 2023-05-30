@@ -57,7 +57,7 @@ def draw_frame():
     while True:
         if current_state:
             current_frame = compose(current_state)
-            time.sleep(0.01)
+            time.sleep(0.001)
 
 t = threading.Thread(target=draw_frame, daemon=True)
 t.start()
