@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText
-from ..components.layouts import composite_at, stack_horizontal, stack_vertical
+from ..components.layouts import stack_horizontal, stack_vertical, tile_copies
 from ..components.layers import add_background
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
@@ -15,10 +15,12 @@ from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
 
+warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 msg_vscroll = VScroller(size=40)
 status_hscroll = HScroller(size=30)
 
+warning_line = tile_copies(warning_tile, nx=1, ny=msg_vscroll.size // warning_tile.height, seamless=False)
 
 @cache
 def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
@@ -117,14 +119,18 @@ def draw(fs: FrameState):
     list_view = [stack_vertical(train_times, gap=1, align='left')]
     if status_icons:
         status_hscroll.set_frame(stack_horizontal(status_icons, gap=2), reset=False)
-        list_view.append(stack_horizontal([metro_issue_icon, status_hscroll.draw(fs.tick)], gap=1))
+        list_view.append(stack_horizontal([
+            metro_issue_icon,
+            status_hscroll.draw(fs.tick),
+        ], gap=1))
 
     main_view = [stack_vertical(list_view, gap=2)]
 
     if msg_texts:
         msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
+        msg_box = stack_horizontal([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
         main_view.append(add_background(
-            msg_vscroll.draw(fs.tick),
+            msg_box,
             fill='#242424',
             padding=1,
             radius=2,
