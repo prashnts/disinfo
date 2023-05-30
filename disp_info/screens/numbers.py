@@ -1,5 +1,11 @@
+import threading
+import time
+
+from typing import Optional
+
 from .. import config
 from ..components import fonts
+from ..components.elements import Frame
 from ..components.text import Text
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..components.layers import add_background
@@ -22,8 +28,10 @@ def get_state():
     numbers = get_dict(rkeys['random_msg'])
     return numbers
 
+current_state: Optional[FrameState] = None
+current_frame: Optional[Frame] = None
 
-def draw(fs: FrameState):
+def compose(fs: FrameState):
     numbers = get_state()
     num_str = f'#{numbers["number"]}'
 
@@ -42,3 +50,19 @@ def draw(fs: FrameState):
         add_background(hscroller_num.draw(fs.tick), fill='#0131176c', padding=1, radius=2, corners=[0, 1, 0, 0]),
         add_background(info_ticker, fill='#010a298c', padding=1),
     ], gap=0, align='left')
+
+def draw_frame():
+    print("here")
+    global current_frame
+    while True:
+        if current_state:
+            current_frame = compose(current_state)
+            time.sleep(0.01)
+
+t = threading.Thread(target=draw_frame, daemon=True)
+t.start()
+
+def draw(fs: FrameState):
+    global current_state
+    current_state = fs
+    return current_frame
