@@ -1,5 +1,3 @@
-import multiprocessing
-import threading
 import random
 import time
 
@@ -41,7 +39,7 @@ class GameOfLife:
             color = Color(c)
             color.luminance = 0.15
             color.saturation = 0.80
-            game_colors.append(color.hex)
+            game_colors.append(color)
         return game_colors
 
     def reinit_board(self):
@@ -59,7 +57,7 @@ class GameOfLife:
             for y, cell in enumerate(row):
                 if cell:
                     color = self.game_colors[cell - 1]
-                    d.point((y, x), color)
+                    d.point((y, x), color.hex)
 
         return Frame(img)
 
@@ -134,46 +132,21 @@ class GameOfLife:
         if changed:
             self.board = b
             self.frame = self.draw_board()
-        return self
+        return changed, any_alive
 
     def draw(self, tick: float):
         self._tick(tick)
-        return self
+        return self.frame
 
 
-gol = None
+gol = GameOfLife(w=24, h=24, speed=0.1)
 
 def composer(fs: FrameState):
-    if not gol:
-         return
     return tile_copies(
-        gol,
-        nx=round(config.matrix_w / gol.width + 1),
-        ny=round(config.matrix_h / gol.height + 1),
+        gol.draw(fs.tick),
+        nx=round(config.matrix_w / gol.w + 1),
+        ny=round(config.matrix_h / gol.h + 1),
     )
 
 
-def advance(g):
-    return g.draw(time.time())
-
-def boot():
-    global gol
-    pool = multiprocessing.Pool(4)
-    gols = GameOfLife(w=24, h=24, speed=0.1)
-    def painter():
-        global gol
-        nonlocal gols
-
-        while True:
-            p = pool.apply_async(advance, (gols,))
-            gols = p.get()
-            gol = gols.frame
-            time.sleep(0.1)
-
-
-    t = threading.Thread(target=painter, daemon=True)
-    t.start()
-
-
-
-draw = composer_thread(composer, sleepms=100, after=boot)
+draw = composer_thread(composer, sleepms=100)
