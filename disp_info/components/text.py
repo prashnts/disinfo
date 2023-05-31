@@ -36,6 +36,9 @@ class Text(Frame):
             return
 
         o = self.outline
+        # If the text has outline the bounding box needs to be adjusted
+        # in both axes. This is because the font has no way of knowing that
+        # an outline will be applied while drawing.
         _, _, w, h = self.font.getbbox(value, anchor='lt')
         im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
@@ -83,11 +86,20 @@ class MultiLineText(Text):
         _dd = ImageDraw.Draw(Image.new('RGBA', (0, 0)))
         l, t, r, b = _dd.multiline_textbbox((0, 0), value, font=self.font, spacing=1)
         # TODO: add anchor.
-        w = r + l
-        h = b + t
+        o = self.outline
+        w = r + l + (2 * o)
+        h = b + t + (2 * o)
         im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
-        d.multiline_text((0, 0), value, fill=self.fill, font=self.font, spacing=1)
+        d.multiline_text(
+            (0, 0),
+            value,
+            fill=self.fill,
+            font=self.font,
+            spacing=1,
+            stroke_width=o,
+            stroke_fill=self.outline_color,
+        )
         self.image = im
         self.width = w
         self.height = h
