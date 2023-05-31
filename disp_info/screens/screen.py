@@ -10,7 +10,7 @@ from ..data_structures import FrameState
 DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
 
-def composer_thread(composer: ComposerFn, sleepms: int = 1, after = None) -> DrawerFn:
+def composer_thread(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False) -> DrawerFn:
     '''Creates a daemon thread to executer composer function.
 
     The goal is not to gain in performance that much, rather it is to ensure
@@ -23,7 +23,9 @@ def composer_thread(composer: ComposerFn, sleepms: int = 1, after = None) -> Dra
     current_state: Optional[FrameState] = None
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
-    started: bool = False
+
+    if not use_threads:
+        return composer
 
     def painter():
         nonlocal current_frame, previous_state
@@ -37,11 +39,8 @@ def composer_thread(composer: ComposerFn, sleepms: int = 1, after = None) -> Dra
     t.start()
 
     def draw(fs: FrameState) -> Optional[Frame]:
-        nonlocal current_state, started
+        nonlocal current_state
         current_state = fs
-        if not started and after:
-            after()
-        started = True
         return current_frame
 
     return draw

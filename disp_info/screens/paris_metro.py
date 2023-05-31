@@ -111,13 +111,8 @@ def composer(fs: FrameState):
         else:
             next_train_times = [round(t['next_in']) for t in train['timings'][:visible_timing_count]]
         ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
-        timings = stack_horizontal([
-            timing_text(t) for t in next_train_times
-        ], gap=3)
-        time_table = stack_horizontal([
-            ticon.draw(fs.tick),
-            timings,
-        ], gap=3)
+        timings = stack_horizontal([timing_text(t) for t in next_train_times], gap=3)
+        time_table = stack_horizontal([ticon.draw(fs.tick), timings], gap=3)
         train_times.append(time_table)
 
     if not (train_times or status_icons):
