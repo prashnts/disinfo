@@ -46,7 +46,7 @@ def composer(fs: FrameState):
 
     debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time, text_sys_temp], gap=2)
 
-    return add_background(debuginfo, fill='#0000003c', padding=3)
+    return add_background(debuginfo, fill='#000000b6', padding=3, radius=2)
 
 
-draw = composer_thread(composer, sleepms=10)
+draw = composer_thread(composer, sleepms=10, use_threads=True)
