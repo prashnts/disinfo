@@ -149,4 +149,4 @@ def composer(fs: FrameState):
     )
 
 
-draw = composer_thread(composer, sleepms=100)
+draw = composer_thread(composer, sleepms=100, use_threads=True)
