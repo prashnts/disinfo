@@ -145,7 +145,7 @@ def composer(fs: FrameState):
     return tile_copies(
         gol.draw(fs.tick),
         nx=round(config.matrix_w / gol.w + 1),
-        ny=round(config.matrix_h / gol.h),
+        ny=round(config.matrix_h / gol.h + 1),
     )
 
 
