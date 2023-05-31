@@ -84,11 +84,16 @@ class MultiLineText(Text):
 
         # create a dummy draw instance in order to get the bbox.
         _dd = ImageDraw.Draw(Image.new('RGBA', (0, 0)))
-        l, t, r, b = _dd.multiline_textbbox((0, 0), value, font=self.font, spacing=1)
+        l, t, r, b = _dd.multiline_textbbox(
+            (0, 0),
+            value,
+            font=self.font,
+            spacing=1,
+            stroke_width=self.outline,
+        )
         # TODO: add anchor.
-        o = self.outline
-        w = r + l + (2 * o)
-        h = b + t + (2 * o)
+        w = r + l
+        h = b + t
         im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.multiline_text(
@@ -97,7 +102,7 @@ class MultiLineText(Text):
             fill=self.fill,
             font=self.font,
             spacing=1,
-            stroke_width=o,
+            stroke_width=self.outline,
             stroke_fill=self.outline_color,
         )
         self.image = im
