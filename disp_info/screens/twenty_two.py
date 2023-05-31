@@ -10,7 +10,7 @@ from ..components.text import Text
 from ..data_structures import FrameState
 from .. import config
 
-text_timestr = Text()
+text_timestr = Text(outline=1)
 
 
 def composer(fs: FrameState):

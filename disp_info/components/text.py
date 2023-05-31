@@ -14,10 +14,19 @@ class TextVars(TypedDict):
     font: Optional[FreeTypeFont]
 
 class Text(Frame):
-    def __init__(self, value: Optional[str] = None, font: FreeTypeFont = fonts.tamzen__rs, fill: str = '#fff'):
+    def __init__(
+        self,
+        value: Optional[str] = None,
+        font: FreeTypeFont = fonts.tamzen__rs,
+        fill: str = '#fff',
+        outline: int = 0,
+        outline_color: str = '#000',
+    ):
         self.font = font
         self.fill = fill
         self.value = value
+        self.outline = outline
+        self.outline_color = outline_color
 
         self._init_str()
 
@@ -29,7 +38,15 @@ class Text(Frame):
         _, _, w, h = self.font.getbbox(value, anchor='lt')
         im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
-        d.text((0, 0), value, fill=self.fill, font=self.font, anchor='lt')
+        d.text(
+            (0, 0),
+            value,
+            fill=self.fill,
+            font=self.font,
+            anchor='lt',
+            stroke_width=self.outline,
+            stroke_fill=self.outline_color,
+        )
         self.image = im
         self.width = w
         self.height = h
