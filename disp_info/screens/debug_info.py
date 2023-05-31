@@ -49,4 +49,4 @@ def composer(fs: FrameState):
     return add_background(debuginfo, fill='#000000b6', padding=3, radius=2)
 
 
-draw = composer_thread(composer, sleepms=10, use_threads=True)
+draw = composer_thread(composer, sleepms=100, use_threads=True)
