@@ -18,7 +18,7 @@ from ..data_structures import FrameState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
-msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.04)
+msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1)
 
 warning_line = tile_copies(
