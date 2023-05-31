@@ -35,11 +35,12 @@ class Text(Frame):
         if not value:
             return
 
+        o = self.outline
         _, _, w, h = self.font.getbbox(value, anchor='lt')
-        im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.text(
-            (0, 0),
+            (o, o),
             value,
             fill=self.fill,
             font=self.font,
@@ -48,8 +49,8 @@ class Text(Frame):
             stroke_fill=self.outline_color,
         )
         self.image = im
-        self.width = w
-        self.height = h
+        self.width = im.width
+        self.height = im.height
 
     def update(self, **kwargs: Unpack[TextVars]) -> bool:
         dirty = False
