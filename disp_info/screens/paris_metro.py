@@ -79,7 +79,14 @@ def timing_text(value: int) -> Text:
 
 @cache
 def message_text(value: str) -> MultiLineText:
-    return MultiLineText(value, font=fonts.tamzen__rs, fill='#b9b9b9', line_width=12, outline=1)
+    return MultiLineText(
+        value,
+        font=fonts.tamzen__rs,
+        fill='#b9b9b9',
+        line_width=12,
+        outline=1,
+        outline_color='#4b4b4b'
+    )
 
 
 def composer(fs: FrameState):
