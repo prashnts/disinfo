@@ -1,7 +1,8 @@
 import threading
 import time
 
-from typing import Optional, Callable
+from contextlib import contextmanager
+from typing import Optional, Callable, Union
 
 from ..components.elements import Frame
 from ..data_structures import FrameState
@@ -9,6 +10,33 @@ from ..data_structures import FrameState
 
 DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
+
+class AdaptiveDelay:
+    def __init__(self):
+        self.target
+
+    def __enter__(self):
+        self.t_start = time.time()
+
+    def __exit__(self):
+        self.t_end = time.time()
+
+    # def sleep(self, )
+
+@contextmanager
+def adaptive_delay(delay: Union[float, int]):
+    if isinstance(delay, int):
+        # interpret as milliseconds
+        delay /= 1000
+    t_start = time.monotonic()
+    try:
+        yield
+    finally:
+        t_end = time.monotonic()
+        t_exec = t_end - t_start
+        t_delay = max(delay - t_exec, 0)
+        time.sleep(t_delay)
+
 
 def composer_thread(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False) -> DrawerFn:
     '''Creates a daemon thread to executer composer function.
@@ -27,16 +55,16 @@ def composer_thread(composer: ComposerFn, sleepms: int = 1, use_threads: bool = 
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
 
-    if not use_threads:
-        return composer
+    # if not use_threads:
+    #     return composer
 
     def painter():
         nonlocal current_frame, previous_state
         while True:
-            if current_state and current_state != previous_state:
-                current_frame = composer(current_state)
-                previous_state = current_state
-            time.sleep(sleepms / 1000)
+            with adaptive_delay(sleepms):
+                if current_state and current_state != previous_state:
+                    current_frame = composer(current_state)
+                    previous_state = current_state
 
     t = threading.Thread(target=painter, daemon=True)
     t.start()
