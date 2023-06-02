@@ -44,4 +44,4 @@ def composer(fs: FrameState):
     ], gap=0, align='left')
 
 
-draw = composer_thread(composer, sleepms=5)
+draw = composer_thread(composer, sleepms=10)
