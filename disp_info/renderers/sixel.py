@@ -44,9 +44,9 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
 
     while True:
         fs = FrameState.create()
-        t_a = time.time()
+        t_a = time.monotonic()
         frame = compose_frame(fs)
-        t_b = time.time()
+        t_b = time.monotonic()
         fsixel = encode_sixels(frame, optimize=True, scale=scale)
 
         # Term Cursor Position x, y ; ref colorama
@@ -55,7 +55,7 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
 
         # Print sixel at previous location.
         print(fsixel)
-        t_c = time.time()
+        t_c = time.monotonic()
 
         # Show various times to execute.
 

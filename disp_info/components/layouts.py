@@ -200,3 +200,9 @@ def tile_copies(
             img.alpha_composite(frame.image, (cx, cy))
 
     return Frame(img)
+
+
+def tabular(table: list[list[Optional[Frame]]]):
+    # convert a 2d list of frames into a tabular grid.
+    # we need to find a way to put these irregular elements together.
+    ...

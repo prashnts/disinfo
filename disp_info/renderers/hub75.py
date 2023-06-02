@@ -89,16 +89,15 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         fs = FrameState.create()
         fs.rendererdata = { **state, 'draw_time': last_draw_time }
 
-        t_a = time.time()
+        t_a = time.monotonic()
         img = compose_frame(fs)
-        t_b = time.time()
+        t_b = time.monotonic()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
         matrix.brightness = state['brightness']
-        t_c = time.time()
+        t_c = time.monotonic()
 
         t_draw = t_b - t_a
-        t_matrix = t_c - t_b
         t_frame = t_c - t_a
 
         _fps = (1 / t_frame)

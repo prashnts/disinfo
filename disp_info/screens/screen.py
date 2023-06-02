@@ -1,29 +1,14 @@
 import threading
-import time
 
-from contextlib import contextmanager
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 
 from ..components.elements import Frame
 from ..data_structures import FrameState
+from ..utils.time import adaptive_delay
 
 
 DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
-
-
-@contextmanager
-def adaptive_delay(delay: Union[float, int]):
-    if isinstance(delay, int):
-        # interpret as milliseconds
-        delay /= 1000
-    t_start = time.monotonic()
-    try:
-        yield
-    finally:
-        t_exec = time.monotonic() - t_start
-        t_delay = max(delay - t_exec, 0)
-        time.sleep(t_delay)
 
 
 def composer_thread(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False) -> DrawerFn:
