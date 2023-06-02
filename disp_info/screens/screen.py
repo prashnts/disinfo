@@ -11,17 +11,6 @@ from ..data_structures import FrameState
 DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
 
-class AdaptiveDelay:
-    def __init__(self):
-        self.target
-
-    def __enter__(self):
-        self.t_start = time.time()
-
-    def __exit__(self):
-        self.t_end = time.time()
-
-    # def sleep(self, )
 
 @contextmanager
 def adaptive_delay(delay: Union[float, int]):
@@ -32,8 +21,7 @@ def adaptive_delay(delay: Union[float, int]):
     try:
         yield
     finally:
-        t_end = time.monotonic()
-        t_exec = t_end - t_start
+        t_exec = time.monotonic() - t_start
         t_delay = max(delay - t_exec, 0)
         time.sleep(t_delay)
 
@@ -55,8 +43,8 @@ def composer_thread(composer: ComposerFn, sleepms: int = 1, use_threads: bool = 
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
 
-    # if not use_threads:
-    #     return composer
+    if not use_threads:
+        return composer
 
     def painter():
         nonlocal current_frame, previous_state

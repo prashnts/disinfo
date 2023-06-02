@@ -11,7 +11,7 @@ from ..data_structures import FrameState
 
 text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
 
-hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=1, speed=0.002)
+hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=1, speed=0.02)
 hscroller_num = HScroller(size=40, delta=1, speed=0.02, pause_at_loop=True)
 
 text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
