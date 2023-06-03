@@ -19,6 +19,7 @@ from ..data_structures import FrameState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
+metro_paris_icon = StillImage('assets/raster/metro-paris-16x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
 
@@ -76,24 +77,29 @@ class StateVar:
         except KeyError:
             return None
 
-latch_state = StateVar()
+pstate = StateVar(dict(show=False))
 
 
 @throttle(400)
 def get_state(fs: FrameState):
     payload = get_dict(rkeys['metro_timing'])
     last_updated = pendulum.parse(payload['timestamp'])
-    valid_info = last_updated.add(minutes=1, seconds=20) > fs.now
+    valid_info = last_updated.add(minutes=0, seconds=20) > fs.now
 
-    if fs.rmt0_action == 'toggle':
-        latch_state.set_state(toggle_at=fs.now, loading=not valid_info)
+    if fs.rmt0_action == 'scene_2':
+        pstate.set_state(show=not pstate.show, last_toggle=fs.now)
 
-    latched = latch_state.toggle_at.add(seconds=15) > fs.now if latch_state.toggle_at else False
+    toggle_timeout = pstate.last_toggle.add(seconds=15) > fs.now if pstate.last_toggle else False
+    # latch_state.set_state(show=latched)
+    if toggle_timeout:
+        visible = pstate.show
+    else:
+        visible = valid_info
 
     return {
-        'is_visible': (valid_info or latched),
+        'is_visible': visible,
+        'is_valid': valid_info,
         **payload,
-        **latch_state.value,
     }
 
 @cache
@@ -112,12 +118,20 @@ def message_text(value: str) -> MultiLineText:
     )
 
 
+@cache
+def loading_screen():
+    return add_background(metro_paris_icon, fill='#051534e2', radius=2, padding=10)
+
+
 def composer(fs: FrameState):
     s = get_state(fs)
 
     if not s['is_visible']:
         msg_vscroll.reset_position()
         return
+
+    if not s['is_valid']:
+        return loading_screen()
 
     train_times = []
     status_icons = []
@@ -177,4 +191,4 @@ def composer(fs: FrameState):
         corners=[1, 1, 0, 0],
     )
 
-draw = composer_thread(composer, sleepms=50)
+draw = composer_thread(composer)

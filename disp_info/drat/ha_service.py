@@ -64,9 +64,9 @@ def on_message(client, userdata, msg):
             ttl = config.mqtt_btn_latch_t
             if payload['action'] in latch_timing:
                 ttl = latch_timing[payload['action']]
+            db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
             if payload['action'] == 'scene_2':
                 get_metro_info(force=True)
-            db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
         payload = json.loads(msg.payload)
         ttl = config.mqtt_btn_latch_t

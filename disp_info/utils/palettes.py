@@ -105,4 +105,6 @@ metro_colors = {
     'B':    ['#5291CE', '#fff'],
     'C':    ['#FFCE00', '#000'],
     'D':    ['#00814F', '#fff'],
+    # Placeholder Metro "M" icon
+    'M':    ['#ffffff', '#000'],
 }
