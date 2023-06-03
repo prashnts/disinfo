@@ -67,16 +67,8 @@ def metro_status_icon(line_name: str, issues: bool):
 
 @throttle(50)
 def get_state(fs: FrameState):
-    payload = get_dict(rkeys['metro_timing'])
-    appstate = MetroInfoState().get_state(fs)
-    last_updated = pendulum.parse(payload['timestamp'])
-    valid_info = last_updated.add(minutes=1, seconds=20) > fs.now
+    return MetroInfoState().get_state(fs)
 
-    return {
-        'is_visible': appstate['visible'],
-        'is_valid': valid_info,
-        **payload,
-    }
 
 @cache
 def timing_text(value: int) -> Text:
@@ -100,37 +92,39 @@ def loading_screen():
 
 
 def composer(fs: FrameState):
-    s = get_state(fs)
+    state = get_state(fs)
 
-    if not s['is_visible']:
+    if not state.visible:
         msg_vscroll.reset_position()
         return
 
-    if not s['is_valid']:
+    if not state.valid:
         return loading_screen()
+
+    s = state.data
 
     train_times = []
     status_icons = []
     msg_texts = []
 
-    for info in s['information']:
-        if info['issues']:
-            ticon = metro_status_icon(info['line'], issues=True)
+    for info in s.information:
+        if info.issues:
+            ticon = metro_status_icon(info.line, issues=True)
             status_icons.append(ticon.draw(fs.tick))
 
-            msgs = info['messages']
+            msgs = info.messages
             if msgs:
                 msg_texts.append(ticon.draw(fs.tick))
                 msg_texts.append(message_text('\n---\n'.join(msgs)))
 
     visible_timing_count = 3 if msg_texts else 4
 
-    for train in s['trains']:
-        if not train['timings']:
+    for train in s.trains:
+        if not train.timings:
             next_train_times = ['--', '--']
         else:
-            next_train_times = [round(t['next_in']) for t in train['timings'][:visible_timing_count]]
-        ticon = metro_status_icon(train['line'], issues=train['information']['issues'])
+            next_train_times = [round(t.next_in) for t in train.timings[:visible_timing_count]]
+        ticon = metro_status_icon(train.line, issues=train.information.issues)
         timings = stack_horizontal([timing_text(t) for t in next_train_times], gap=3)
         time_table = stack_horizontal([ticon.draw(fs.tick), timings], gap=3)
         train_times.append(time_table)

@@ -30,3 +30,6 @@ def get_dict(key: str, default: dict = {}) -> dict:
 def set_dict(key: str, payload: dict):
     data = json.dumps(payload)
     db.set(key, data)
+
+def set_json(key: str, payload: dict):
+    db.set(key, payload)
