@@ -8,19 +8,10 @@ from .redis import get_dict, rkeys
 from .components.layouts import stack_horizontal, stack_vertical, composite_at
 from .utils.func import throttle
 from .data_structures import FrameState
+from .drat.app_states import CursorStateManager
 
 from . import config, screens
 
-
-pos_x = 120
-pos_y = 42
-
-@throttle(40)
-def get_remotes_action():
-    return {
-        'enki': get_dict(rkeys['ha_enki_rmt']).get('action'),
-        'ikea': get_dict(rkeys['ha_ikea_rmt_0x01']).get('action'),
-    }
 
 @throttle(500)
 def should_turn_on_display() -> bool:
@@ -52,27 +43,15 @@ def should_turn_on_display() -> bool:
     return any(motion_states)
 
 
+@throttle(40)
+def get_cursor_state(fs: FrameState):
+    return CursorStateManager().get_state(fs)
+
 
 def draw_btn_test(image, fs: FrameState):
-    global pos_x, pos_y
-    a0 = fs.rmt0_action
-    a1 = fs.rmt1_action
-
-    if a0 == 'color_saturation_step_up' or a1 == 'brightness_up_click':
-        pos_y -= 1
-    if a0 == 'color_saturation_step_down' or a1 == 'brightness_down_click':
-        pos_y += 1
-    if a0 == 'color_hue_step_up' or a1 == 'arrow_right_click':
-        pos_x += 1
-    if a0 == 'color_hue_step_down' or a1 == 'arrow_left_click':
-        pos_x -= 1
-
-    pos_x %= config.matrix_w
-    pos_y %= config.matrix_h
-
+    s = get_cursor_state(fs)
     icon = render_icon(cursor)
-
-    image.alpha_composite(icon, (pos_x, pos_y))
+    image.alpha_composite(icon, (s.x, s.y))
     return image
 
 
@@ -82,11 +61,6 @@ def compose_frame(fs: FrameState):
     if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
-
-    # While not ideal, this allows us to avoid fetching state multiple times.
-    rmt_action = get_remotes_action()
-    fs.rmt0_action = rmt_action['enki']
-    fs.rmt1_action = rmt_action['ikea']
 
     composite_at(screens.demo.draw(fs), image, 'mm')
 

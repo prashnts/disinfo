@@ -6,6 +6,7 @@ from typing import Optional
 
 from . import idfm
 from .data_service import get_metro_info
+from .. import config
 from ..redis import set_dict, get_dict, set_json, rkeys
 from ..data_structures import FrameState
 from ..utils.time import is_expired
@@ -19,6 +20,11 @@ class MetroAppState(BaseModel):
     data: Optional[idfm.MetroData] = None
 
 
+class CursorState(BaseModel):
+    x: int = 120
+    y: int = 42
+
+
 class MetroInfoStateManager:
     name = 'di.state.metroinfo'
     value: MetroAppState
@@ -30,14 +36,14 @@ class MetroInfoStateManager:
         # Executed in ha process!
         if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
             if msg['action'] in ['scene_2', 'toggle']:
-                visible = self.value.show
-                if not is_expired(self.value.toggled_at, seconds=25):
-                    visible = not visible
+                show = self.value.show
+                if is_expired(self.value.toggled_at, seconds=25):
+                    show = True
                 else:
-                    visible = True
+                    show = not show
 
-                self.set_state(show=visible, toggled_at=pendulum.now())
-                if visible:
+                self.set_state(show=show, toggled_at=pendulum.now())
+                if show:
                     # it was previously not visible, so we refresh.
                     get_metro_info(force=True)
 
@@ -57,5 +63,32 @@ class MetroInfoStateManager:
 
         return s
 
+class CursorStateManager:
+    name = 'di.state.cursor'
+    value: CursorState
 
-state_vars = [MetroInfoStateManager()]
+    def refresh(self):
+        self.value = CursorState(**get_dict(self.name))
+
+    def process_mqtt_message(self, topic: str, msg: dict):
+        v = self.value
+        if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
+            if msg['action'] in ['color_saturation_step_up', 'brightness_up_click']:
+                v.y -= 2
+            if msg['action'] in ['color_saturation_step_down', 'brightness_down_click']:
+                v.y += 2
+            if msg['action'] in ['color_hue_step_up', 'arrow_right_click']:
+                v.x += 2
+            if msg['action'] in ['color_hue_step_down', 'arrow_left_click']:
+                v.x -= 2
+            v.x %= config.matrix_w
+            v.y %= config.matrix_h
+            set_json(self.name, v.json())
+
+    def get_state(self, fs: FrameState, refresh: bool = True):
+        if refresh:
+            self.refresh()
+        return self.value
+
+
+state_vars = [MetroInfoStateManager(), CursorStateManager()]

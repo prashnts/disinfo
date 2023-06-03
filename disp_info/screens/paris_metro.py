@@ -64,12 +64,6 @@ def metro_status_icon(line_name: str, issues: bool):
     ]
     return FrameCycler(frames)
 
-
-@throttle(50)
-def get_state(fs: FrameState):
-    return MetroInfoStateManager().get_state(fs)
-
-
 @cache
 def timing_text(value: int) -> Text:
     return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a57a05')
@@ -85,10 +79,13 @@ def message_text(value: str) -> MultiLineText:
         outline_color='#181818'
     )
 
-
 @cache
 def loading_screen():
     return add_background(metro_paris_banner, fill='#051534e2', radius=2, padding=10)
+
+@throttle(50)
+def get_state(fs: FrameState):
+    return MetroInfoStateManager().get_state(fs)
 
 
 def composer(fs: FrameState):
