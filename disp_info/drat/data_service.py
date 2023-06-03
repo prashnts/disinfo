@@ -6,7 +6,7 @@ from traceback import format_exc
 from schedule import Scheduler
 
 from .. import config
-from ..redis import rkeys, set_dict
+from ..redis import rkeys, set_dict, set_json
 from . import idfm
 
 
@@ -70,7 +70,7 @@ def get_metro_info(force: bool = False):
     try:
         print('[i] [fetch] metro timing')
         data = idfm.fetch_state()
-        set_dict(rkeys['metro_timing'], data)
+        set_json(rkeys['metro_timing'], data.json())
     except Exception as e:
         print('[e] metro_info', e)
 

@@ -3,8 +3,10 @@ import aiohttp
 import random
 import pendulum
 
+from datetime import datetime
 from idfm_api import IDFMApi
 from idfm_api.models import TransportType, LineData, StopData, TrafficData, InfoData
+from pydantic import BaseModel
 from functools import cache
 from dataclasses import dataclass
 
@@ -42,10 +44,33 @@ line_infos = [
 ]
 
 
-@dataclass
-class MetroTrafficData:
-    traffic: TrafficData
-    info: InfoData
+class TrainTiming(BaseModel):
+    next_in: float
+    retarded: bool
+
+class TrainInformation(BaseModel):
+    messages: list[str]
+    issues: bool
+
+class MetroTrain(BaseModel):
+    line: str
+    line_id: str
+    stop: str
+    stop_id: str
+    direction: str
+    timings: list[TrainTiming]
+    information: TrainInformation
+
+class MetroInformation(BaseModel):
+    line: str
+    line_id: str
+    messages: list[str]
+    issues: bool
+
+class MetroData(BaseModel):
+    trains: list[MetroTrain]
+    information: list[MetroInformation]
+    timestamp: datetime
 
 
 async def get_stop(line_name: str, stop_name: str = None) -> tuple[LineData, StopData]:
@@ -135,9 +160,4 @@ def fetch_state():
         information = collate_info(info)
         infos.append({**s, **information})
 
-
-    return {
-        'trains': trains,
-        'information': infos,
-        'timestamp': pendulum.now().isoformat(),
-    }
+    return MetroData(trains=trains, information=infos, timestamp=pendulum.now())

@@ -16,7 +16,7 @@ from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
-from ..drat.app_states import MetroInfoState
+from ..drat.app_states import MetroInfoStateManager
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -67,7 +67,7 @@ def metro_status_icon(line_name: str, issues: bool):
 
 @throttle(50)
 def get_state(fs: FrameState):
-    return MetroInfoState().get_state(fs)
+    return MetroInfoStateManager().get_state(fs)
 
 
 @cache
