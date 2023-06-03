@@ -71,10 +71,9 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload)
         ttl = config.mqtt_btn_latch_t
         if payload['action']:
+            db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
             if payload['action'] == 'toggle':
                 get_metro_info(force=True)
-            db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
-
 
 if __name__ == '__main__':
     client = mqtt.Client()

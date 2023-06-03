@@ -1,3 +1,4 @@
+from typing import Any
 import pendulum
 
 from functools import cache
@@ -61,16 +62,38 @@ def metro_status_icon(line_name: str, issues: bool):
     ]
     return FrameCycler(frames)
 
+class StateVar:
+    def __init__(self, value: dict = {}):
+        self.value = value
+
+    def set_state(self, **kwargs):
+        if self.value != kwargs:
+            self.value = kwargs
+
+    def __getattribute__(self, name: str) -> Any:
+        try:
+            return self.value[name]
+        except KeyError:
+            return None
+
+latch_state = StateVar()
+
 
 @throttle(400)
 def get_state(fs: FrameState):
     payload = get_dict(rkeys['metro_timing'])
     last_updated = pendulum.parse(payload['timestamp'])
-    visible = last_updated.add(minutes=1, seconds=20) > fs.now
+    valid_info = last_updated.add(minutes=1, seconds=20) > fs.now
+
+    if fs.rmt0_action == 'toggle':
+        latch_state.set_state(toggle_at=fs.now, loading=not valid_info)
+
+    latched = latch_state.toggle_at.add(seconds=15) > fs.now if latch_state.toggle_at else False
 
     return {
-        'is_visible': visible,
+        'is_visible': (valid_info or latched),
         **payload,
+        **latch_state.value,
     }
 
 @cache
