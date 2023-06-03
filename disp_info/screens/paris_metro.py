@@ -70,7 +70,7 @@ class StateVar:
         if self.value != kwargs:
             self.value = kwargs
 
-    def __getattribute__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> Any:
         try:
             return self.value[name]
         except KeyError:
