@@ -31,12 +31,12 @@ class MetroInfoStateManager:
         if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
             if msg['action'] in ['scene_2', 'toggle']:
                 visible = self.value.show
-                if is_expired(self.value.toggled_at, seconds=25):
+                if not is_expired(self.value.toggled_at, seconds=25):
                     visible = not visible
                 else:
                     visible = True
 
-                self.set_state(show=visible, toggled_at=pendulum.now().isoformat())
+                self.set_state(show=visible, toggled_at=pendulum.now())
                 if visible:
                     # it was previously not visible, so we refresh.
                     get_metro_info(force=True)
