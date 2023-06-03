@@ -20,12 +20,12 @@ rkeys = {
 
 db = redis.Redis(host='localhost', port=6379, db=0)
 
-def get_dict(key: str) -> dict:
+def get_dict(key: str, default: dict = {}) -> dict:
     value = db.get(key)
     try:
         return json.loads(value)
     except TypeError:
-        return {}
+        return default
 
 def set_dict(key: str, payload: dict):
     data = json.dumps(payload)

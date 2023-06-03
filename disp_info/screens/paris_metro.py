@@ -16,6 +16,7 @@ from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
+from ..drat.app_states import MetroInfoState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -63,41 +64,16 @@ def metro_status_icon(line_name: str, issues: bool):
     ]
     return FrameCycler(frames)
 
-class StateVar:
-    def __init__(self, value: dict = {}):
-        self.value = value
 
-    def set_state(self, **kwargs):
-        if self.value != kwargs:
-            self.value = kwargs
-
-    def __getattr__(self, name: str) -> Any:
-        try:
-            return self.value[name]
-        except KeyError:
-            return None
-
-pstate = StateVar(dict(show=False))
-
-
-@throttle(400)
+@throttle(50)
 def get_state(fs: FrameState):
     payload = get_dict(rkeys['metro_timing'])
+    appstate = MetroInfoState().get_state()
     last_updated = pendulum.parse(payload['timestamp'])
-    valid_info = last_updated.add(minutes=0, seconds=20) > fs.now
-
-    if fs.rmt0_action == 'scene_2':
-        pstate.set_state(show=not pstate.show, last_toggle=fs.now)
-
-    toggle_timeout = pstate.last_toggle.add(seconds=15) > fs.now if pstate.last_toggle else False
-    # latch_state.set_state(show=latched)
-    if toggle_timeout:
-        visible = pstate.show
-    else:
-        visible = valid_info
+    valid_info = last_updated.add(minutes=1, seconds=20) > fs.now
 
     return {
-        'is_visible': visible,
+        'is_visible': appstate['visible'],
         'is_valid': valid_info,
         **payload,
     }

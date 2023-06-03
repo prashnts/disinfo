@@ -3,8 +3,9 @@ import json
 import arrow
 
 from .. import config
-from ..redis import set_dict, rkeys, db
+from ..redis import set_dict, rkeys, db, get_dict
 from .data_service import get_metro_info
+from .app_states import state_vars
 
 pir_topic_map = {
     'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
@@ -30,11 +31,18 @@ def on_connect(client, userdata, flags, rc):
         # subscribe to PIR sensor states
         client.subscribe(topic)
 
+    for var in state_vars:
+        var.refresh()
+
 def on_message(client, userdata, msg):
-    # print(msg.topic, str(msg.payload))
+    try:
+        payload = json.loads(msg.payload)
+    except TypeError:
+        print(f'Got non-json payload. topic={msg.topic}, payload={msg.payload}')
+        return
+
     if msg.topic == 'ha_root':
         # filter.
-        payload = json.loads(msg.payload)
         if payload['event_type'] == 'state_changed':
             event = payload['event_data']
             event['_timestamp'] = arrow.now().isoformat()
@@ -45,35 +53,29 @@ def on_message(client, userdata, msg):
             if event['entity_id'] == 'sensor.driplant_soil_cap':
                 set_dict(rkeys['ha_driplant_volts'], event)
     if msg.topic == 'octoPrint/hass/printing':
-        payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_printing'], payload)
     if msg.topic == 'octoPrint/temperature/bed':
-        payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_bedt'], payload)
     if msg.topic == 'octoPrint/temperature/tool0':
-        payload = json.loads(msg.payload)
         set_dict(rkeys['octoprint_toolt'], payload)
     if msg.topic in pir_topic_map:
-        payload = json.loads(msg.payload)
         payload['timestamp'] = arrow.now().isoformat()
         set_dict(rkeys[pir_topic_map[msg.topic]], payload)
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
-        payload = json.loads(msg.payload)
         if payload['action']:
             ttl = config.mqtt_btn_latch_t
             if payload['action'] in latch_timing:
                 ttl = latch_timing[payload['action']]
             db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
-            if payload['action'] == 'scene_2':
-                get_metro_info(force=True)
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
-        payload = json.loads(msg.payload)
         ttl = config.mqtt_btn_latch_t
         if payload['action']:
             db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
-            if payload['action'] == 'toggle':
-                get_metro_info(force=True)
+
+    for var in state_vars:
+        var.process_mqtt_message(msg.topic, payload)
+
 
 if __name__ == '__main__':
     client = mqtt.Client()
