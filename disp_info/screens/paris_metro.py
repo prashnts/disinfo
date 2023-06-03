@@ -20,7 +20,7 @@ from ..drat.app_states import MetroInfoState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
-metro_paris_icon = StillImage('assets/raster/metro-paris-16x16.png')
+metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
 
@@ -68,7 +68,7 @@ def metro_status_icon(line_name: str, issues: bool):
 @throttle(50)
 def get_state(fs: FrameState):
     payload = get_dict(rkeys['metro_timing'])
-    appstate = MetroInfoState().get_state()
+    appstate = MetroInfoState().get_state(fs)
     last_updated = pendulum.parse(payload['timestamp'])
     valid_info = last_updated.add(minutes=1, seconds=20) > fs.now
 
@@ -96,7 +96,7 @@ def message_text(value: str) -> MultiLineText:
 
 @cache
 def loading_screen():
-    return add_background(metro_paris_icon, fill='#051534e2', radius=2, padding=10)
+    return add_background(metro_paris_banner, fill='#051534e2', radius=2, padding=10)
 
 
 def composer(fs: FrameState):
