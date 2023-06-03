@@ -31,7 +31,7 @@ class MetroInfoState:
         if refresh:
             self.refresh()
         state = self.value
-        toggle_time = state['toggle_time']
+        toggle_time = state.get('toggle_time')
         shown = state['show'] and (pendulum.parse(toggle_time).add(seconds=25) > fs.now if toggle_time else False)
         state['visible'] = idfm.is_active() or shown
 
