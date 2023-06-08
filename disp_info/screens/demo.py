@@ -1,10 +1,10 @@
 import random
-import time
 
+from statistics import mode
+from itertools import cycle, product
+from collections import defaultdict
 from colour import Color
 from PIL import Image, ImageDraw
-from statistics import mode
-from itertools import cycle
 
 from .screen import composer_thread
 from .. import config
@@ -15,6 +15,8 @@ from ..utils.palettes import funkyfuture8, paper8, kirokazegb
 
 
 class GameOfLife:
+    '''A multi-color implementation of Conway's Game of Life.'''
+
     def __init__(self,
         w: int = 32,
         h: int = 32,
@@ -33,7 +35,8 @@ class GameOfLife:
         self.reinit_board()
         self.frame = self.draw_board()
 
-    def _get_palette(self, palette: list[str]):
+    def _get_palette(self):
+        palette = random.choice([funkyfuture8, paper8, kirokazegb])
         game_colors = []
         for c in palette:
             color = Color(c)
@@ -43,46 +46,28 @@ class GameOfLife:
         return game_colors
 
     def reinit_board(self):
-        self.board = [[0 for x in range(self.w)] for y in range(self.h)]
-        self.game_colors = self._get_palette(random.choice([funkyfuture8, paper8, kirokazegb]))
+        self.board = {coord: 0 for coord in product(range(self.w + 1), range(self.h + 1))}
+        self.game_colors = self._get_palette()
         self.game_color_seq = cycle(self.game_colors)
         for _ in range(2):
             self.seed_cells()
 
-    def draw_board(self):
-        img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
-        d = ImageDraw.Draw(img)
-
-        for x, row in enumerate(self.board):
-            for y, cell in enumerate(row):
-                if cell:
-                    color = self.game_colors[cell - 1]
-                    d.point((y, x), color.hex)
-
-        return Frame(img)
-
     def neighbors(self, x: int, y: int):
-        dirns = [
+        '''Iterates Moore neighbourhood around (x, y) with wrap around the edges.'''
+        coords = [
+            (    x, y - 1),
+            (    x, y + 1),
+            (x - 1,     y),
             (x - 1, y - 1),
-            (x, y - 1),
-            (x + 1, y - 1),
-            (x - 1, y),
-            (x + 1, y),
             (x - 1, y + 1),
-            (x, y + 1),
+            (x + 1,     y),
+            (x + 1, y - 1),
             (x + 1, y + 1),
         ]
-        for dx, dy in dirns:
-            # wraparound.
-            if dx < 0:
-                dx = self.h - 1
-            elif dx > self.h - 1:
-                dx = 0
-            if dy < 0:
-                dy = self.w - 1
-            elif dy > self.w - 1:
-                dy = 0
-            yield self.board[dx][dy]
+        for dx, dy in coords:
+            dx %= self.w
+            dy %= self.h
+            yield self.board[(dx, dy)]
 
     def _tick(self, tick: float):
         if tick - self.last_tick >= self.speed:
@@ -96,43 +81,60 @@ class GameOfLife:
             self.last_reset = tick
 
     def seed_cells(self):
-        # add n points within a region.
-        # we generate a random point within the board
-        # grab a n x n region
+        '''Seeds the board with new cells distributed randomly.
+        - The cells are random points generated in a n x n region, n being a random
+          number between [3, 6].
+        - A random color is assigned to the cell.
+        '''
         color = self.game_colors.index(next(self.game_color_seq))
         npts = random.randint(3, 6)
-        s_x = random.randint(0, self.h - npts - 1)
-        s_y = random.randint(0, self.w - npts - 1)
-        for dx in range(npts):
-            for dy in range(npts):
-                self.board[s_x + dx][s_y + dy] = color if random.random() > 0.6 else 0
-
+        seed_x = random.randint(0, self.w - npts - 1)
+        seed_y = random.randint(0, self.h - npts - 1)
+        x_coords = [seed_x + x for x in range(npts)]
+        y_coords = [seed_y + y for y in range(npts)]
+        for c in product(x_coords, y_coords):
+            self.board[c] = color if random.random() > 0.6 else 0
 
     def next_generation(self):
-        # copy the board
-        b = [row[:] for row in self.board]
+        b = self.board.copy()
         changed = False
         any_alive = False
-        for x, row in enumerate(self.board):
-            for y, cell in enumerate(row):
-                neighbors = [n for n in self.neighbors(x, y) if n > 0]
-                n_alive = len(neighbors)
-                if cell and n_alive < 2:
-                    b[x][y] = 0
+
+        for coord, cell in self.board.items():
+            neighbors = [n for n in self.neighbors(*coord) if n > 0]
+            n_alive = len(neighbors)
+            if cell:
+                if n_alive < 2 or n_alive > 3:
+                    b[coord] = 0
                     changed = True
-                elif cell and n_alive > 3:
-                    b[x][y] = 0
+                any_alive = True
+            else:
+                if n_alive == 3:
+                    b[coord] = mode(neighbors)
                     changed = True
-                if not cell and n_alive == 3:
-                    b[x][y] = mode(neighbors)
-                    changed = True
-                if cell:
-                    any_alive = True
 
         if changed:
             self.board = b
             self.frame = self.draw_board()
         return changed, any_alive
+
+    def draw_board(self):
+        img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+
+        # We collect the similarly colored cells together. This lets us draw
+        # multiple points in a single draw call.
+        pts = defaultdict(list)
+
+        for coord, cell in self.board.items():
+            pts[cell].append(coord[::-1])
+
+        for cell, coords in pts.items():
+            if not cell:
+                continue
+            d.point(coords, self.game_colors[cell - 1].hex)
+
+        return Frame(img)
 
     def draw(self, tick: float):
         self._tick(tick)
