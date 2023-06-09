@@ -69,17 +69,6 @@ class GameOfLife:
             dy %= self.h
             yield self.board[(dx, dy)]
 
-    def _tick(self, tick: float):
-        if tick - self.last_tick >= self.speed:
-            self.next_generation()
-            self.last_tick = tick
-        if tick - self.last_seed >= self.seed_interval:
-            self.seed_cells()
-            self.last_seed = tick
-        if tick - self.last_reset >= self.reset_after:
-            self.reinit_board()
-            self.last_reset = tick
-
     def seed_cells(self):
         '''Seeds the board with new cells distributed randomly.
         - The cells are random points generated in a n x n region, n being a random
@@ -136,8 +125,19 @@ class GameOfLife:
 
         return Frame(img)
 
+    def advance(self, tick: float):
+        if tick - self.last_tick >= self.speed:
+            self.next_generation()
+            self.last_tick = tick
+        if tick - self.last_seed >= self.seed_interval:
+            self.seed_cells()
+            self.last_seed = tick
+        if tick - self.last_reset >= self.reset_after:
+            self.reinit_board()
+            self.last_reset = tick
+
     def draw(self, tick: float):
-        self._tick(tick)
+        self.advance(tick)
         return self.frame
 
 
