@@ -2,10 +2,29 @@
 
 ![Simulated Info Demo](assets/disinfo-export.gif)
 
+Note that this repo is actively being developed over various weekends. It may be drastically different tomorrow.
+
+Lots of things are currently undocumented and unstable.
+
+Connections:
+
+- Homeassistant (over MQTT)
+- Pirate Weather
+- Numbers API
+- IDFM (Paris Metro)
+
+Hardware:
+
+- 2x HUB75 RGB LED Matrix 64x64
+- Raspberry Pi (3B+ or better)
+- Interface to connect the matrix to GPIOs
+- Power Supply
+
+Refer to rgb-led-matrix library for details.
+
 Notes:
 
 - Upgrade pillow (apt is too old) via `pip install --upgrade pillow`
-
 
 
 Licenses:
@@ -13,6 +32,8 @@ Licenses:
 - Tamzen
 - Scientifica
 - Pixel Operator
+
+(todo: Attributions)
 
 
 HUB75 Connections to Pi
