@@ -1,18 +1,14 @@
-from typing import Any
-import pendulum
-
 from functools import cache
 from PIL import Image, ImageDraw
 
 from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text, MultiLineText
+from ..components.text import Text, MultiLineText, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical, tile_copies
 from ..components.layers import add_background
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
-from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
@@ -66,17 +62,20 @@ def metro_status_icon(line_name: str, issues: bool):
 
 @cache
 def timing_text(value: int) -> Text:
-    return Text(f'{value}'.rjust(2), fonts.bitocra, fill='#a57a05')
+    return Text(f'{value}'.rjust(2), style=TextStyle(font=fonts.bitocra, color='#a57a05'))
 
 @cache
 def message_text(value: str) -> MultiLineText:
     return MultiLineText(
         value,
-        font=fonts.tamzen__rs,
-        fill='#b9b9b9',
-        line_width=12,
-        outline=1,
-        outline_color='#181818'
+        style=TextStyle(
+            font=fonts.tamzen__rs,
+            color='#b9b9b9',
+            outline=1,
+            outline_color='#181818',
+            spacing=10,
+            line_width=12,
+        ),
     )
 
 @cache

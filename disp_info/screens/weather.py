@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
@@ -25,10 +25,10 @@ color_temp = '#9a9ba2'
 color_deg_c = '#6E7078'
 color_condition = '#5b5e64'
 
-text_temperature_value = Text(font=fonts.px_op__l, fill=color_temp)
-text_temperature_degree = Text('°', font=fonts.px_op__r, fill=color_deg_c)
-text_condition = Text(font=fonts.tamzen__rs, fill=color_condition)
-text_sunset_time = Text(font=fonts.bitocra, fill=color_condition)
+text_temperature_value  = Text(style=TextStyle(font=fonts.px_op__l, color=color_temp))
+text_temperature_degree = Text('°', style=TextStyle(font=fonts.px_op__r, color=color_deg_c))
+text_condition          = Text(style=TextStyle(font=fonts.tamzen__rs, color=color_condition))
+text_sunset_time        = Text(style=TextStyle(font=fonts.bitocra, color=color_condition))
 
 
 @cache
@@ -42,8 +42,8 @@ def draw_temp_range(
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
 
-    text_high = Text(f'{round(t_high)}°', font, color_high.hex)
-    text_low = Text(f'{round(t_low)}°', font, color_low.hex)
+    text_high = Text(f'{round(t_high)}°', style=TextStyle(font=font, color=color_high.hex))
+    text_low = Text(f'{round(t_low)}°', style=TextStyle(font=font, color=color_low.hex))
     span = text_high.height + text_low.height + 1
 
     # Draw the range graph.

@@ -1,16 +1,17 @@
 from .screen import composer_thread
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..components.layouts import stack_vertical
 from ..components.layers import add_background
 from ..components import fonts
 from ..utils.func import throttle
 from ..data_structures import FrameState
 
+debug_textstyle = TextStyle()
 
-text_brightness = Text(font=fonts.tamzen__rs, fill='#fff')
-text_lux = Text(font=fonts.tamzen__rs, fill='#fff')
-text_draw_time = Text(font=fonts.tamzen__rs, fill='#fff')
-text_sys_temp = Text(font=fonts.tamzen__rs, fill='#fff')
+text_brightness = Text(style=debug_textstyle)
+text_lux = Text(style=debug_textstyle)
+text_draw_time = Text(style=debug_textstyle)
+text_sys_temp = Text(style=debug_textstyle)
 
 
 @throttle(40)

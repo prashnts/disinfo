@@ -10,7 +10,7 @@ from .screen import composer_thread
 from .. import config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical, composite_at
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
@@ -24,7 +24,7 @@ play_icon = StillImage('assets/raster/play-5x5.png')
 pause_icon = StillImage('assets/raster/pause-5x5.png')
 spotify_icon = StillImage('assets/raster/spotify-5x5.png')
 
-text_music_info = Text(font=fonts.bitocra, fill='#a1a9b0')
+text_music_info = Text(style=TextStyle(font=fonts.bitocra, color='#a1a9b0'))
 
 
 @throttle(1033)

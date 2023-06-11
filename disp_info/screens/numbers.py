@@ -1,7 +1,7 @@
 from .screen import composer_thread
 from .. import config
 from ..components import fonts
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..components.layers import add_background
 from ..redis import rkeys, get_dict
@@ -9,13 +9,13 @@ from ..components.scroller import HScroller
 from ..utils.func import throttle
 from ..data_structures import FrameState
 
-text_info = Text('i', font=fonts.tamzen__rs, fill='#fff')
+text_info = Text('i', style=TextStyle(font=fonts.tamzen__rs, color='#fff'))
 
 hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=1, speed=0.02)
 hscroller_num = HScroller(size=40, delta=1, speed=0.02, pause_at_loop=True)
 
-text_number_info = Text('', font=fonts.px_op__r, fill='#12cce1')
-text_number = Text('', font=fonts.px_op__r, fill='#9bb10d')
+text_number_info = Text('', style=TextStyle(font=fonts.px_op__r, color='#12cce1'))
+text_number = Text('', style=TextStyle(font=fonts.px_op__r, color='#9bb10d'))
 
 
 @throttle(1163)

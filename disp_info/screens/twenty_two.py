@@ -6,11 +6,11 @@ from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..data_structures import FrameState
 from .. import config
 
-text_timestr = Text(outline=1)
+text_timestr = Text(style=TextStyle(outline=1))
 
 
 def composer(fs: FrameState):
@@ -38,8 +38,7 @@ def composer(fs: FrameState):
 
     text_timestr.update(
         value=t.strftime('%H:%M'),
-        font=font,
-        fill=fill)
+        style=TextStyle(font=font, color=fill))
 
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)

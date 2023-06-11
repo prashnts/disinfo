@@ -4,7 +4,7 @@ from datetime import timedelta
 from pydash import py_
 
 from .screen import composer_thread
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
 from ..components.layouts import stack_vertical, stack_horizontal
 from ..components.layers import add_background
@@ -21,15 +21,18 @@ file_icon = StillImage('assets/raster/fileicon-5x5.png')
 toolt_icon = StillImage('assets/raster/nozzle-5x5.png')
 bedt_icon = StillImage('assets/raster/printerbed-5x5.png')
 
-tail_arrow_left = Text(f'⤙', font=fonts.scientifica__r, fill='#8c5b3e')
-tail_arrow_right = Text(f'⤚', font=fonts.scientifica__r, fill='#8c5b3e')
-text_time_left = Text(font=fonts.bitocra, fill='#888888')
-text_completion_time = Text(font=fonts.bitocra, fill='#e88a36')
-text_progress = Text(font=fonts.scientifica__b, fill='#888888')
-text_percent_sign = Text('%', font=fonts.tamzen__rs, fill='#888')
-text_file_name = Text(font=fonts.bitocra, fill='#888888')
-text_toolt_current = Text(font=fonts.bitocra, fill='#888888')
-text_bedt_current = Text(font=fonts.bitocra, fill='#888888')
+tail_arrow_style = TextStyle(font=fonts.scientifica__r, color='#8c5b3e')
+muted_small_style = TextStyle(font=fonts.bitocra, color='#888888')
+
+tail_arrow_left         = Text(f'⤙', style=tail_arrow_style)
+tail_arrow_right        = Text(f'⤚', style=tail_arrow_style)
+text_time_left          = Text(style=muted_small_style)
+text_completion_time    = Text(style=TextStyle(font=fonts.bitocra, color='#e88a36'))
+text_progress           = Text(style=TextStyle(font=fonts.scientifica__b, color='#888888'))
+text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
+text_file_name          = Text(style=muted_small_style)
+text_toolt_current      = Text(style=muted_small_style)
+text_bedt_current       = Text(style=muted_small_style)
 
 hscroller_fname = HScroller(size=22, pause_at_loop=True)
 

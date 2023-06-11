@@ -1,23 +1,25 @@
+import dataclasses
+
 from .screen import composer_thread
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import add_background
 from ..components.layouts import stack_horizontal, stack_vertical
-from ..components.text import Text
+from ..components.text import Text, TextStyle
 
 colors_time = ['#1ba2ab', '#185e86']
 color_date = '#6d7682'
 
-text_time = Text(font=fonts.bitocra, fill=colors_time[0])
-text_day = Text(font=fonts.bitocra, fill=color_date)
-text_date = Text(font=fonts.bitocra, fill=color_date)
+text_time = Text(style=TextStyle(color=colors_time[0], font=fonts.bitocra))
+text_day = Text(style=TextStyle(color=color_date, font=fonts.bitocra))
+text_date = Text(style=TextStyle(color=color_date, font=fonts.bitocra))
 
 def composer(fs: FrameState):
     t = fs.now
 
     text_time.update(
         value=t.strftime('%H:%M:%S'),
-        fill=colors_time[t.second % 2 == 0])
+        style=dataclasses.replace(text_time.style, color=colors_time[t.second % 2 == 0]))
     text_day.update(value=t.strftime('%a'))
     text_date.update(value=t.strftime('%d/%m'))
 
