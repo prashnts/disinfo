@@ -1,32 +1,33 @@
+from dataclasses import dataclass
+from textwrap import wrap
+from typing import Optional
+
 from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
-from typing import TypedDict, Optional
-from typing_extensions import Unpack
-from textwrap import wrap
 
 from .elements import Frame
-from . import fonts
+from .fonts import tamzen__rs
 
+@dataclass
+class TextStyle:
+    color: str = '#fff'
+    outline: int = 0
+    outline_color: str = '#000'
+    font: FreeTypeFont = tamzen__rs
 
-class TextVars(TypedDict):
-    value: Optional[str]
-    fill: Optional[str]
-    font: Optional[FreeTypeFont]
+    # Following are applicable to mutliline text.
+    spacing: int = 1
+    line_width: int = 20
+
 
 class Text(Frame):
     def __init__(
         self,
         value: Optional[str] = None,
-        font: FreeTypeFont = fonts.tamzen__rs,
-        fill: str = '#fff',
-        outline: int = 0,
-        outline_color: str = '#000',
+        style: TextStyle = TextStyle(),
     ):
-        self.font = font
-        self.fill = fill
         self.value = value
-        self.outline = outline
-        self.outline_color = outline_color
+        self.style = style
 
         self._init_str()
 
@@ -35,35 +36,36 @@ class Text(Frame):
         if not value:
             return
 
-        o = self.outline
+        o = self.style.outline
         # If the text has outline the bounding box needs to be adjusted
         # in both axes. This is because the font has no way of knowing that
         # an outline will be applied while drawing.
-        _, _, w, h = self.font.getbbox(value, anchor='lt')
+        _, _, w, h = self.style.font.getbbox(value, anchor='lt')
         im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.text(
             (o, o),
             value,
-            fill=self.fill,
-            font=self.font,
+            fill=self.style.color,
+            font=self.style.font,
             anchor='lt',
-            stroke_width=self.outline,
-            stroke_fill=self.outline_color,
+            stroke_width=self.style.outline,
+            stroke_fill=self.style.outline_color,
         )
         self.image = im
         self.width = im.width
         self.height = im.height
 
-    def update(self, **kwargs: Unpack[TextVars]) -> bool:
+    def update(self, value: Optional[str] = None, style: Optional[TextStyle] = None) -> bool:
         dirty = False
 
-        for prop in ['value', 'fill', 'font']:
-            if new_value := kwargs.get(prop):
-                prev_value = getattr(self, prop)
-                if new_value != prev_value:
-                    setattr(self, prop, new_value)
-                    dirty = True
+        if value and self.value != value:
+            self.value = value
+            dirty = True
+
+        if style and self.style != style:
+            self.style = style
+            dirty = True
 
         if dirty:
             self._init_str()
@@ -71,15 +73,11 @@ class Text(Frame):
         return dirty
 
 class MultiLineText(Text):
-    def __init__(self, *args, line_width: int, **kwargs):
-        self.line_width = line_width
-        super().__init__(*args, **kwargs)
-
     def _init_str(self):
         if not self.value:
             return
         # Wrap the string to fit in the container.
-        wrap_paragraph = lambda x: '\n'.join(wrap(x, self.line_width))
+        wrap_paragraph = lambda x: '\n'.join(wrap(x, self.style.line_width))
         value = '\n'.join([wrap_paragraph(l) for l in self.value.splitlines()])
 
         # create a dummy draw instance in order to get the bbox.
@@ -87,9 +85,9 @@ class MultiLineText(Text):
         l, t, r, b = _dd.multiline_textbbox(
             (0, 0),
             value,
-            font=self.font,
-            spacing=1,
-            stroke_width=self.outline,
+            font=self.style.font,
+            spacing=self.style.spacing,
+            stroke_width=self.style.outline,
         )
         # TODO: add anchor.
         w = r + l
@@ -99,11 +97,11 @@ class MultiLineText(Text):
         d.multiline_text(
             (0, 0),
             value,
-            fill=self.fill,
-            font=self.font,
-            spacing=1,
-            stroke_width=self.outline,
-            stroke_fill=self.outline_color,
+            fill=self.style.color,
+            font=self.style.font,
+            spacing=self.style.spacing,
+            stroke_width=self.style.outline,
+            stroke_fill=self.style.outline_color,
         )
         self.image = im
         self.width = w
