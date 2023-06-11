@@ -10,14 +10,14 @@ from .fonts import tamzen__rs
 
 @dataclass
 class TextStyle:
-    color: str = '#fff'
-    outline: int = 0
-    outline_color: str = '#000'
-    font: FreeTypeFont = tamzen__rs
+    color: str          = '#fff'
+    outline: int        = 0
+    outline_color: str  = '#000'
+    font: FreeTypeFont  = tamzen__rs
 
     # Following are applicable to mutliline text.
-    spacing: int = 1
-    line_width: int = 20
+    spacing: int        = 1
+    line_width: int     = 20
 
 
 class Text(Frame):
@@ -29,9 +29,9 @@ class Text(Frame):
         self.value = value
         self.style = style
 
-        self._init_str()
+        self.draw_text()
 
-    def _init_str(self):
+    def draw_text(self):
         value = self.value
         if not value:
             return
@@ -68,12 +68,16 @@ class Text(Frame):
             dirty = True
 
         if dirty:
-            self._init_str()
+            self.draw_text()
 
         return dirty
 
+    def __hash__(self):
+        return hash([self.value, self.style])
+
+
 class MultiLineText(Text):
-    def _init_str(self):
+    def draw_text(self):
         if not self.value:
             return
         # Wrap the string to fit in the container.
