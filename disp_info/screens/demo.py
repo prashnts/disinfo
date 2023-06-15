@@ -53,7 +53,10 @@ class GameOfLife:
             self.seed_cells()
 
     def neighbors(self, x: int, y: int):
-        '''Iterates Moore neighbourhood around (x, y) with wrap around the edges.'''
+        '''
+        Iterates Moore neighbourhood around (x, y) with wrap around the edges.
+        Yield alive cells.
+        '''
         coords = [
             (    x, y - 1),
             (    x, y + 1),
@@ -65,7 +68,8 @@ class GameOfLife:
             (x + 1, y + 1),
         ]
         for dx, dy in coords:
-            yield self.board[(dx % self.w, dy % self.h)]
+            if cell := self.board[(dx % self.w, dy % self.h)]:
+                yield cell
 
     def seed_cells(self):
         '''
@@ -86,25 +90,22 @@ class GameOfLife:
     def next_generation(self):
         b = self.board.copy()
         changed = False
-        any_alive = False
 
         for coord, cell in self.board.items():
-            neighbors = [n for n in self.neighbors(*coord) if n > 0]
+            neighbors = list(self.neighbors(*coord))
             n_alive = len(neighbors)
             if cell:
-                if n_alive < 2 or n_alive > 3:
+                if n_alive not in [2, 3]:
                     b[coord] = 0
                     changed = True
-                any_alive = True
-            else:
-                if n_alive == 3:
-                    b[coord] = mode(neighbors)
-                    changed = True
+            elif n_alive == 3:
+                b[coord] = mode(neighbors)
+                changed = True
 
         if changed:
             self.board = b
             self.frame = self.draw_board()
-        return changed, any_alive
+        return changed
 
     def draw_board(self):
         img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
@@ -139,6 +140,7 @@ class GameOfLife:
         self.advance(tick)
         return self.frame
 
+random.seed(1)
 
 gol = GameOfLife(w=28, h=22, speed=0.1)
 
