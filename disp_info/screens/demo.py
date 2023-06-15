@@ -140,7 +140,6 @@ class GameOfLife:
         self.advance(tick)
         return self.frame
 
-random.seed(1)
 
 gol = GameOfLife(w=28, h=22, speed=0.1)
 
