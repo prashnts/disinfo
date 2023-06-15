@@ -19,6 +19,8 @@ class TextStyle:
     spacing: int        = 1
     line_width: int     = 20
 
+# Used as a fallback image when the text value is missing.
+EmptyTextFallback = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
 
 class Text(Frame):
     def __init__(
@@ -31,10 +33,15 @@ class Text(Frame):
 
         self.draw_text()
 
+    def populate_frame(self, im: Image.Image):
+        self.image = im
+        self.width = im.width
+        self.height = im.height
+
     def draw_text(self):
         value = self.value
         if not value:
-            return
+            return self.populate_frame(EmptyTextFallback)
 
         o = self.style.outline
         # If the text has outline the bounding box needs to be adjusted
@@ -52,9 +59,7 @@ class Text(Frame):
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
         )
-        self.image = im
-        self.width = im.width
-        self.height = im.height
+        self.populate_frame(im)
 
     def update(self, value: Optional[str] = None, style: Optional[TextStyle] = None) -> bool:
         dirty = False
@@ -79,7 +84,7 @@ class Text(Frame):
 class MultiLineText(Text):
     def draw_text(self):
         if not self.value:
-            return
+            return self.populate_frame(EmptyTextFallback)
         # Wrap the string to fit in the container.
         wrap_paragraph = lambda x: '\n'.join(wrap(x, self.style.line_width))
         value = '\n'.join([wrap_paragraph(l) for l in self.value.splitlines()])
@@ -107,6 +112,4 @@ class MultiLineText(Text):
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
         )
-        self.image = im
-        self.width = w
-        self.height = h
+        self.populate_frame(im)

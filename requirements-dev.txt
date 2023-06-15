@@ -1,3 +1,4 @@
 libsixel-python
 ipython
 snakeviz
+RGBMatrixEmulator>=0.9.0

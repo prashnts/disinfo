@@ -65,12 +65,11 @@ class GameOfLife:
             (x + 1, y + 1),
         ]
         for dx, dy in coords:
-            dx %= self.w
-            dy %= self.h
-            yield self.board[(dx, dy)]
+            yield self.board[(dx % self.w, dy % self.h)]
 
     def seed_cells(self):
-        '''Seeds the board with new cells distributed randomly.
+        '''
+        Seeds the board with new cells distributed randomly.
         - The cells are random points generated in a n x n region, n being a random
           number between [3, 6].
         - A random color is assigned to the cell.

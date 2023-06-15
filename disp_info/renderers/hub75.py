@@ -15,7 +15,11 @@ Chain Length: 2
 import time
 import typer
 
-from rgbmatrix import RGBMatrix, RGBMatrixOptions  # type: ignore
+try:
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
+except ImportError:
+    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+
 from scipy.interpolate import interp1d
 
 from ..compositor import compose_frame
