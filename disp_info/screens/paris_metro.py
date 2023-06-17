@@ -6,7 +6,7 @@ from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical, tile_copies
-from ..components.layers import add_background, DivStyle
+from ..components.layers import div, DivStyle
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
 from ..utils.func import throttle
@@ -80,7 +80,7 @@ def message_text(value: str) -> MultiLineText:
 
 @cache
 def loading_screen():
-    return add_background(metro_paris_banner, fill='#051534e2', radius=2, padding=10)
+    return div(metro_paris_banner, fill='#051534e2', radius=2, padding=10)
 
 @throttle(50)
 def get_state(fs: FrameState):
@@ -141,7 +141,7 @@ def composer(fs: FrameState):
     if msg_texts:
         msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
         msg_box = stack_horizontal([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
-        main_view.append(add_background(
+        main_view.append(div(
             msg_box,
             style=DivStyle(
                 background='#242424',
@@ -151,7 +151,7 @@ def composer(fs: FrameState):
             ),
         ))
 
-    return add_background(
+    return div(
         stack_horizontal(main_view, gap=2),
         style=DivStyle(
             background='#051534e2',

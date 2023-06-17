@@ -12,7 +12,7 @@ from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical, composite_at
-from ..components.layers import add_background, DivStyle
+from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
@@ -110,7 +110,7 @@ def composer(fs: FrameState):
     if art:
         music_elements.append(art)
 
-    return add_background(
+    return div(
         stack_vertical(music_elements, gap=1, align='right'),
         style=DivStyle(
             background='#2c2e31',

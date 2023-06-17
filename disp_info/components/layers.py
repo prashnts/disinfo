@@ -17,7 +17,7 @@ class DivStyle:
     border_color: str = '#000'
 
 
-def add_background(
+def div(
     frame: Frame,
     style: DivStyle = DivStyle(),
 ) -> Frame:

@@ -3,7 +3,7 @@ from .. import config
 from ..components import fonts
 from ..components.text import Text, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical
-from ..components.layers import add_background, DivStyle
+from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
@@ -39,8 +39,8 @@ def composer(fs: FrameState):
     ], gap=2, align='center')
 
     return stack_vertical([
-        add_background(hscroller_num.draw(fs.tick), style=DivStyle(background='#0131176c', padding=1, radius=2, corners=[0, 1, 0, 0])),
-        add_background(info_ticker, style=DivStyle(background='#010a298c', padding=1)),
+        div(hscroller_num.draw(fs.tick), style=DivStyle(background='#0131176c', padding=1, radius=2, corners=[0, 1, 0, 0])),
+        div(info_ticker, style=DivStyle(background='#010a298c', padding=1)),
     ], gap=0, align='left')
 
 

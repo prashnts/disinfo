@@ -7,7 +7,7 @@ from .screen import composer_thread
 from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
 from ..components.layouts import stack_vertical, stack_horizontal
-from ..components.layers import add_background, DivStyle
+from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
 from ..components.spriteim import SpriteIcon
 from ..components import fonts
@@ -142,7 +142,7 @@ def composer(fs: FrameState):
         detail_elem,
     ]
 
-    return add_background(stack_vertical(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
+    return div(stack_vertical(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
 
 
 draw = composer_thread(composer, sleepms=10)
