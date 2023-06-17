@@ -6,7 +6,7 @@ from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle
 from ..components.layouts import stack_horizontal, stack_vertical, tile_copies
-from ..components.layers import add_background
+from ..components.layers import add_background, DivStyle
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
 from ..utils.func import throttle
@@ -143,18 +143,22 @@ def composer(fs: FrameState):
         msg_box = stack_horizontal([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
         main_view.append(add_background(
             msg_box,
-            fill='#242424',
-            padding=1,
-            radius=2,
-            corners=[0, 1, 1, 0],
+            style=DivStyle(
+                background='#242424',
+                padding=1,
+                radius=2,
+                corners=[0, 1, 1, 0],
+            ),
         ))
 
     return add_background(
         stack_horizontal(main_view, gap=2),
-        fill='#051534e2',
-        radius=2,
-        padding=2,
-        corners=[1, 1, 0, 0],
+        style=DivStyle(
+            background='#051534e2',
+            radius=2,
+            padding=2,
+            corners=[1, 1, 0, 0],
+        ),
     )
 
 draw = composer_thread(composer)

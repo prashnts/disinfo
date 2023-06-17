@@ -3,7 +3,7 @@ import dataclasses
 from .screen import composer_thread
 from ..data_structures import FrameState
 from ..components import fonts
-from ..components.layers import add_background
+from ..components.layers import add_background, DivStyle
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..components.text import Text, TextStyle
 
@@ -27,6 +27,6 @@ def composer(fs: FrameState):
         text_time,
         stack_horizontal([text_day, text_date], gap=2, align='center'),
     ], gap=0, align='right')
-    return add_background(view, fill='#000000ac')
+    return add_background(view, style=DivStyle(background='#000000ac'))
 
 draw = composer_thread(composer, sleepms=200)

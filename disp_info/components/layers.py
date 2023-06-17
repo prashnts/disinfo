@@ -1,13 +1,25 @@
+from dataclasses import dataclass, field
 from PIL import Image, ImageColor, ImageDraw
+
+from typing import Union
 
 from .elements import Frame
 
+
+@dataclass
+class DivStyle:
+    padding: int = 0
+    radius: int = 0
+    margin: int = 0
+    corners: list[int] = field(default_factory=lambda: [1, 1, 1, 1])
+    background: str = '#00000000'
+    border: int = 0
+    border_color: str = '#000'
+
+
 def add_background(
     frame: Frame,
-    fill: str,
-    padding: int = 0,
-    radius: int = 0,
-    corners: list[int] = [1, 1, 1, 1],
+    style: DivStyle = DivStyle(),
 ) -> Frame:
     '''Adds a background to given Frame.
 
@@ -19,17 +31,17 @@ def add_background(
 
     Note that this is much faster with radius=0 as we don't need to draw.
     '''
-    w = frame.width + (2 * padding)
-    h = frame.height + (2 * padding)
+    w = frame.width + (2 * style.padding)
+    h = frame.height + (2 * style.padding)
 
-    color = ImageColor.getrgb(fill)
+    background = ImageColor.getrgb(style.background)
 
-    if radius == 0:
-        i = Image.new('RGBA', (w, h), color)
+    if style.radius == 0:
+        i = Image.new('RGBA', (w, h), background)
     else:
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(i)
-        d.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=color)
+        d.rounded_rectangle((0, 0, w - 1, h - 1), radius=style.radius, fill=background)
 
         # Draw rounded corners where specified.
         # Selectively fills the corners set to 0. We do this because the
@@ -38,14 +50,14 @@ def add_background(
         # rounded corners.
         coords = [
             (0, 0),                     # top left corner
-            (w - radius, 0),            # top right
-            (w - radius, h - radius),   # bottom right
-            (0, h - radius),            # bottom left
+            (w - style.radius, 0),            # top right
+            (w - style.radius, h - style.radius),   # bottom right
+            (0, h - style.radius),            # bottom left
         ]
-        for corner, box in zip(corners, coords):
+        for corner, box in zip(style.corners, coords):
             if not corner:
                 x0, y0 = box
-                d.rectangle((x0, y0, x0 + radius - 1, y0 + radius - 1), fill=color)
+                d.rectangle((x0, y0, x0 + style.radius - 1, y0 + style.radius - 1), fill=background)
 
-    i.alpha_composite(frame.image, (padding, padding))
+    i.alpha_composite(frame.image, (style.padding, style.padding))
     return Frame(i)

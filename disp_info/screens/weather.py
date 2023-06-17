@@ -8,7 +8,7 @@ from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
-from ..components.layers import add_background
+from ..components.layers import add_background, DivStyle
 from ..components.layouts import stack_horizontal, stack_vertical
 from ..redis import rkeys, get_dict
 from ..components.spriteim import SpriteIcon
@@ -146,11 +146,11 @@ def composer(fs: FrameState):
     weather_info = stack_vertical([
         add_background(
             stack_horizontal(main_info, gap=2, align='top'),
-            fill='#000000ac',
+            style=DivStyle(background='#000000ac'),
         ),
         add_background(
             stack_horizontal(condition_info, gap=2, align='center'),
-            fill='#000000ac',
+            style=DivStyle(background='#000000ac'),
         ),
     ], gap=1, align='left')
 

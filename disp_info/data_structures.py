@@ -2,7 +2,9 @@ import pendulum
 import time
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Protocol
+from PIL import Image
+
 
 @dataclass
 class FrameState:
@@ -18,3 +20,8 @@ class FrameState:
     @classmethod
     def create(cls):
         return cls(tick=time.time(), now=pendulum.now())
+
+
+class Drawable(Protocol):
+    def draw(self, fs: FrameState) -> Image.Image:
+        ...
