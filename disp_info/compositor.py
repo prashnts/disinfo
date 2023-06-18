@@ -56,7 +56,7 @@ def draw_btn_test(image, fs: FrameState):
 
 
 def compose_frame(fs: FrameState):
-    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
+    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 255))
 
     if not should_turn_on_display():
         # do not draw if nobody is there.
