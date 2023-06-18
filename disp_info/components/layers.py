@@ -9,6 +9,10 @@ from .elements import Frame
 
 @dataclass
 class DivStyle:
+    '''
+    The radius is ordered on top-right, bottom-right, bottom-left, and top-left corners.
+    The margin and padding are ordered top, right, bottom, and left edges.
+    '''
     padding: Union[int, tuple[int]] = 0
     radius: Union[int, tuple[int]] = 0
     margin: Union[int, tuple[int]] = 0
@@ -25,12 +29,13 @@ def rounded_rectangle(
         fill: str,
         border: int,
         border_color: str,
-        scaleup: int = 2,
+        scaleup: int = 3,
 ) -> Image.Image:
     '''
     Creates an Image patch of a rectangle with rounded corners.
 
     Each corner may have different radius, and optionally a border.
+    It is antialiased.
     '''
     w = width * scaleup  # Scale up
     h = height * scaleup
@@ -77,8 +82,6 @@ def div(
 
     Padding and margin can be added to each edge, as well as the corner
     radius.
-    The radius corners are top-right, bottom-right, bottom-left, and top-left.
-    The margin and padding are ordered top, right, bottom, and left edges.
 
     Returns a new Frame.
     '''
