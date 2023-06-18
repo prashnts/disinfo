@@ -11,7 +11,7 @@ from .. import config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
-from ..components.layouts import hstack, stack_vertical, composite_at
+from ..components.layouts import hstack, vstack, composite_at
 from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
@@ -111,7 +111,7 @@ def composer(fs: FrameState):
         music_elements.append(art)
 
     return div(
-        stack_vertical(music_elements, gap=1, align='right'),
+        vstack(music_elements, gap=1, align='right'),
         style=DivStyle(
             background='#2c2e31',
             padding=2,

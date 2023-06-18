@@ -55,7 +55,7 @@ def hstack(
 
     return Frame(img)
 
-def stack_vertical(
+def vstack(
     elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: HorizontalAlignment = 'left',

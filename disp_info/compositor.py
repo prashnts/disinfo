@@ -5,7 +5,7 @@ from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
-from .components.layouts import hstack, stack_vertical, composite_at
+from .components.layouts import hstack, vstack, composite_at
 from .utils.func import throttle
 from .data_structures import FrameState
 from .drat.app_states import CursorStateManager
@@ -67,8 +67,8 @@ def compose_frame(fs: FrameState):
     octoprint_info = screens.octoprint.draw(fs)
 
     composite_at(
-        stack_vertical([
-            stack_vertical([
+        vstack([
+            vstack([
                 screens.date_time.draw(fs),
                 screens.plant.draw(fs),
             ], gap=2, align='right'),

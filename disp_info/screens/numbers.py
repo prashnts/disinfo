@@ -2,7 +2,7 @@ from .screen import composer_thread
 from .. import config
 from ..components import fonts
 from ..components.text import Text, TextStyle
-from ..components.layouts import hstack, stack_vertical
+from ..components.layouts import hstack, vstack
 from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
@@ -38,7 +38,7 @@ def composer(fs: FrameState):
         hscroller_main.draw(fs.tick),
     ], gap=2, align='center')
 
-    return stack_vertical([
+    return vstack([
         div(
             hscroller_num.draw(fs.tick),
             style=DivStyle(

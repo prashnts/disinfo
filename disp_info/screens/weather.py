@@ -9,7 +9,7 @@ from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
 from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, stack_vertical
+from ..components.layouts import hstack, vstack
 from ..redis import rkeys, get_dict
 from ..components.spriteim import SpriteIcon
 from ..utils.func import throttle
@@ -85,7 +85,7 @@ def draw_temp_range(
 
     return hstack([
         Frame(range_graph),
-        stack_vertical([text_high, text_low], gap=1, align='left'),
+        vstack([text_high, text_low], gap=1, align='left'),
     ], gap=1, align='center')
 
 @throttle(1123)
@@ -143,7 +143,7 @@ def composer(fs: FrameState):
         ], gap=1, align='center')
         main_info.append(sunset_info)
 
-    weather_info = stack_vertical([
+    weather_info = vstack([
         div(
             hstack(main_info, gap=2, align='top'),
             style=DivStyle(background='#000000ac'),
@@ -156,7 +156,7 @@ def composer(fs: FrameState):
 
     weather_stack = [weather_info]
 
-    return stack_vertical(weather_stack, gap=1, align='left')
+    return vstack(weather_stack, gap=1, align='left')
 
 
 draw = composer_thread(composer, sleepms=100)

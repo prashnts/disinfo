@@ -6,7 +6,7 @@ from pydash import py_
 from .screen import composer_thread
 from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
-from ..components.layouts import stack_vertical, hstack
+from ..components.layouts import vstack, hstack
 from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
 from ..components.spriteim import SpriteIcon
@@ -142,7 +142,7 @@ def composer(fs: FrameState):
         detail_elem,
     ]
 
-    return div(stack_vertical(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
+    return div(vstack(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
 
 
 draw = composer_thread(composer, sleepms=10)

@@ -1,6 +1,6 @@
 from .screen import composer_thread
 from ..components.text import Text, TextStyle
-from ..components.layouts import stack_vertical
+from ..components.layouts import vstack
 from ..components.layers import div, DivStyle
 from ..components import fonts
 from ..utils.func import throttle
@@ -45,7 +45,7 @@ def composer(fs: FrameState):
     text_draw_time.update(value=f"Tdr: {s['draw_time']:0.4f}")
     text_sys_temp.update(value=f"t_s: {s['sys_temp']():0.1f}°")
 
-    debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time, text_sys_temp], gap=2)
+    debuginfo = vstack([text_brightness, text_lux, text_draw_time, text_sys_temp], gap=2)
 
     return div(
         debuginfo,
