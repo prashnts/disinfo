@@ -50,10 +50,12 @@ def composer(fs: FrameState):
     return div(
         debuginfo,
         style=DivStyle(
-            background='#044a18b6',
-            padding=(2, 0, 0, 0),
-            margin=(4, 1, 1, 1),
-            radius=(1, 3, 3, 5),
+            background='#032b0e',
+            padding=3,
+            margin=0,
+            radius=(3, 5, 3, 0),
+            border=1,
+            border_color='#b196ce'
         ),
     )
 

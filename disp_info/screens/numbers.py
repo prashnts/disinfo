@@ -25,7 +25,7 @@ def get_state():
 
 def composer(fs: FrameState):
     numbers = get_state()
-    num_str = f'#{numbers["number"]}'
+    num_str = f'#{num}' if (num := numbers['number']) else ' (*_*)'
 
     info_changed = text_number_info.update(value=numbers['text'])
     number_changed = text_number.update(value=num_str)
@@ -39,8 +39,17 @@ def composer(fs: FrameState):
     ], gap=2, align='center')
 
     return stack_vertical([
-        div(hscroller_num.draw(fs.tick), style=DivStyle(background='#0131176c', padding=1, radius=(0, 2, 0, 0))),
-        div(info_ticker, style=DivStyle(background='#010a298c', padding=1)),
+        div(
+            hscroller_num.draw(fs.tick),
+            style=DivStyle(
+                background='#013117',
+                padding=2,
+                radius=(2, 0, 0, 0),
+                border=1,
+                border_color='#7fce47',
+            ),
+        ),
+        div(info_ticker, style=DivStyle(background='#081542', padding=1)),
     ], gap=0, align='left')
 
 
