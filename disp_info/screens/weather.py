@@ -9,7 +9,7 @@ from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
 from ..components.layers import div, DivStyle
-from ..components.layouts import stack_horizontal, stack_vertical
+from ..components.layouts import hstack, stack_vertical
 from ..redis import rkeys, get_dict
 from ..components.spriteim import SpriteIcon
 from ..utils.func import throttle
@@ -83,7 +83,7 @@ def draw_temp_range(
         (0, cp + 1),
     ], fill=color_current.hex)
 
-    return stack_horizontal([
+    return hstack([
         Frame(range_graph),
         stack_vertical([text_high, text_low], gap=1, align='left'),
     ], gap=1, align='center')
@@ -117,7 +117,7 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s["icon_name"]}.png')
 
-    temp_text = stack_horizontal([
+    temp_text = hstack([
         text_temperature_value,
         text_temperature_degree,
     ], gap=0, align='top')
@@ -129,7 +129,7 @@ def composer(fs: FrameState):
         condition_info.insert(0, warning_icon)
 
     main_info = [
-        stack_horizontal([
+        hstack([
             weather_icon.draw(fs.tick),
             temp_text,
             temp_range,
@@ -137,7 +137,7 @@ def composer(fs: FrameState):
     ]
 
     if should_show_sunset:
-        sunset_info = stack_horizontal([
+        sunset_info = hstack([
             sunset_icon,
             text_sunset_time,
         ], gap=1, align='center')
@@ -145,11 +145,11 @@ def composer(fs: FrameState):
 
     weather_info = stack_vertical([
         div(
-            stack_horizontal(main_info, gap=2, align='top'),
+            hstack(main_info, gap=2, align='top'),
             style=DivStyle(background='#000000ac'),
         ),
         div(
-            stack_horizontal(condition_info, gap=2, align='center'),
+            hstack(condition_info, gap=2, align='center'),
             style=DivStyle(background='#000000ac'),
         ),
     ], gap=1, align='left')

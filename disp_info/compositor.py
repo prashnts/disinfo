@@ -5,7 +5,7 @@ from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor
 from .redis import get_dict, rkeys
-from .components.layouts import stack_horizontal, stack_vertical, composite_at
+from .components.layouts import hstack, stack_vertical, composite_at
 from .utils.func import throttle
 from .data_structures import FrameState
 from .drat.app_states import CursorStateManager

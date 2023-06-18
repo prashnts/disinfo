@@ -5,8 +5,8 @@ from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle
-from ..components.layouts import stack_horizontal, stack_vertical, tile_copies
-from ..components.layers import div, DivStyle
+from ..components.layouts import hstack, stack_vertical, tile_copies
+from ..components.layers import div, DivStyle, styled_div
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
 from ..utils.func import throttle
@@ -121,8 +121,8 @@ def composer(fs: FrameState):
         else:
             next_train_times = [round(t.next_in) for t in train.timings[:visible_timing_count]]
         ticon = metro_status_icon(train.line, issues=train.information.issues)
-        timings = stack_horizontal([timing_text(t) for t in next_train_times], gap=3)
-        time_table = stack_horizontal([ticon.draw(fs.tick), timings], gap=3)
+        timings = hstack([timing_text(t) for t in next_train_times], gap=3)
+        time_table = hstack([ticon.draw(fs.tick), timings], gap=3)
         train_times.append(time_table)
 
     if not (train_times or status_icons):
@@ -130,8 +130,8 @@ def composer(fs: FrameState):
 
     list_view = [stack_vertical(train_times, gap=1, align='left')]
     if status_icons:
-        status_hscroll.set_frame(stack_horizontal(status_icons, gap=2), reset=False)
-        list_view.append(stack_horizontal([
+        status_hscroll.set_frame(hstack(status_icons, gap=2), reset=False)
+        list_view.append(hstack([
             metro_issue_icon,
             status_hscroll.draw(fs.tick),
         ], gap=1))
@@ -140,7 +140,7 @@ def composer(fs: FrameState):
 
     if msg_texts:
         msg_vscroll.set_frame(stack_vertical(msg_texts, gap=4), False)
-        msg_box = stack_horizontal([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
+        msg_box = hstack([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
         main_view.append(div(
             msg_box,
             style=DivStyle(
@@ -151,7 +151,7 @@ def composer(fs: FrameState):
         ))
 
     return div(
-        stack_horizontal(main_view, gap=2),
+        hstack(main_view, gap=2),
         style=DivStyle(
             background='#051534e2',
             padding=2,

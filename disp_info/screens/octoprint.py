@@ -6,7 +6,7 @@ from pydash import py_
 from .screen import composer_thread
 from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
-from ..components.layouts import stack_vertical, stack_horizontal
+from ..components.layouts import stack_vertical, hstack
 from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
 from ..components.spriteim import SpriteIcon
@@ -109,29 +109,29 @@ def composer(fs: FrameState):
     else:
         text_time_left.update(value='Done!')
 
-    completion_text = stack_horizontal(completion_info, gap=2, align='center')
+    completion_text = hstack(completion_info, gap=2, align='center')
 
-    info_text = stack_horizontal([
+    info_text = hstack([
         text_progress,
         text_percent_sign,
     ], align='top')
 
-    info_elem = stack_horizontal([
+    info_elem = hstack([
         threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
         info_text,
     ], gap=4)
 
-    filename_elem = stack_horizontal([
+    filename_elem = hstack([
         file_icon,
         hscroller_fname.draw(fs.tick)
     ], gap=1)
 
-    temp_elem = stack_horizontal([
-        stack_horizontal([toolt_icon, text_toolt_current], gap=1),
-        stack_horizontal([bedt_icon, text_bedt_current], gap=1),
+    temp_elem = hstack([
+        hstack([toolt_icon, text_toolt_current], gap=1),
+        hstack([bedt_icon, text_bedt_current], gap=1),
     ], gap=2)
 
-    detail_elem = stack_horizontal([
+    detail_elem = hstack([
         filename_elem,
         temp_elem,
     ], gap=2)

@@ -15,7 +15,7 @@ HorizontalAlignment = Literal['center', 'left', 'right']
 ComposeAnchor = Literal['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
 
 
-def stack_horizontal(
+def hstack(
     elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: VerticalAlignment = 'center',

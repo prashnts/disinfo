@@ -2,7 +2,7 @@ from .screen import composer_thread
 from .. import config
 from ..components import fonts
 from ..components.text import Text, TextStyle
-from ..components.layouts import stack_horizontal, stack_vertical
+from ..components.layouts import hstack, stack_vertical
 from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
@@ -33,7 +33,7 @@ def composer(fs: FrameState):
     hscroller_main.set_frame(text_number_info, info_changed)
     hscroller_num.set_frame(text_number, number_changed)
 
-    info_ticker = stack_horizontal([
+    info_ticker = hstack([
         text_info,
         hscroller_main.draw(fs.tick),
     ], gap=2, align='center')

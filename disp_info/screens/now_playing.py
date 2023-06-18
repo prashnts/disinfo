@@ -11,7 +11,7 @@ from .. import config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
-from ..components.layouts import stack_horizontal, stack_vertical, composite_at
+from ..components.layouts import hstack, stack_vertical, composite_at
 from ..components.layers import div, DivStyle
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
@@ -101,7 +101,7 @@ def composer(fs: FrameState):
     hscroller.set_frame(text_music_info, changed)
 
     music_elements = [
-        stack_horizontal([
+        hstack([
             act_icon,
             hscroller.draw(fs.tick),
         ], gap=0)

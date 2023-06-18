@@ -4,7 +4,7 @@ from .screen import composer_thread
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle
-from ..components.layouts import stack_horizontal, stack_vertical
+from ..components.layouts import hstack, stack_vertical
 from ..components.text import Text, TextStyle
 
 colors_time = ['#1ba2ab', '#185e86']
@@ -25,7 +25,7 @@ def composer(fs: FrameState):
 
     view = stack_vertical([
         text_time,
-        stack_horizontal([text_day, text_date], gap=2, align='center'),
+        hstack([text_day, text_date], gap=2, align='center'),
     ], gap=0, align='right')
     return div(view, style=DivStyle(background='#000000ac'))
 
