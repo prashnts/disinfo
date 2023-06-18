@@ -3,7 +3,7 @@ import arrow
 from datetime import timedelta
 from pydash import py_
 
-from .screen import composer_thread
+from .screen import draw_loop
 from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
 from ..components.layouts import vstack, hstack
@@ -111,29 +111,20 @@ def composer(fs: FrameState):
 
     completion_text = hstack(completion_info, gap=2, align='center')
 
-    info_text = hstack([
-        text_progress,
-        text_percent_sign,
-    ], align='top')
-
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
-        info_text,
+        hstack([text_progress, text_percent_sign], align='top'),
     ], gap=4)
 
-    filename_elem = hstack([
-        file_icon,
-        hscroller_fname.draw(fs.tick)
-    ], gap=1)
-
-    temp_elem = hstack([
-        hstack([toolt_icon, text_toolt_current], gap=1),
-        hstack([bedt_icon, text_bedt_current], gap=1),
-    ], gap=2)
-
     detail_elem = hstack([
-        filename_elem,
-        temp_elem,
+        hstack([
+            file_icon,
+            hscroller_fname.draw(fs.tick),
+        ], gap=1),
+        hstack([
+            hstack([toolt_icon, text_toolt_current], gap=1),
+            hstack([bedt_icon, text_bedt_current], gap=1),
+        ], gap=2),
     ], gap=2)
 
     elements = [
@@ -145,4 +136,4 @@ def composer(fs: FrameState):
     return div(vstack(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
 
 
-draw = composer_thread(composer, sleepms=10)
+draw = draw_loop(composer, sleepms=10)

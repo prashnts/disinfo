@@ -1,6 +1,6 @@
 import dataclasses
 
-from .screen import composer_thread
+from .screen import draw_loop
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle
@@ -29,4 +29,4 @@ def composer(fs: FrameState):
     ], gap=0, align='right')
     return div(view, style=DivStyle(background='#000000ac'))
 
-draw = composer_thread(composer, sleepms=200)
+draw = draw_loop(composer, sleepms=200)

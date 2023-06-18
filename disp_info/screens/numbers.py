@@ -1,4 +1,4 @@
-from .screen import composer_thread
+from .screen import draw_loop
 from .. import config
 from ..components import fonts
 from ..components.text import Text, TextStyle
@@ -53,4 +53,4 @@ def composer(fs: FrameState):
     ], gap=0, align='left')
 
 
-draw = composer_thread(composer, sleepms=10)
+draw = draw_loop(composer, sleepms=10)

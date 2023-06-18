@@ -6,7 +6,7 @@ from collections import defaultdict
 from colour import Color
 from PIL import Image, ImageDraw
 
-from .screen import composer_thread
+from .screen import draw_loop
 from .. import config
 from ..data_structures import FrameState
 from ..components.elements import Frame
@@ -151,4 +151,4 @@ def composer(fs: FrameState):
     )
 
 
-draw = composer_thread(composer, sleepms=100, use_threads=True)
+draw = draw_loop(composer, sleepms=100, use_threads=True)

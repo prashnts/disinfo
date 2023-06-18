@@ -6,7 +6,7 @@ from PIL import Image
 from functools import cache
 from datetime import timedelta
 
-from .screen import composer_thread
+from .screen import draw_loop
 from .. import config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
@@ -119,4 +119,4 @@ def composer(fs: FrameState):
         ),
     )
 
-draw = composer_thread(composer, sleepms=10)
+draw = draw_loop(composer, sleepms=10)

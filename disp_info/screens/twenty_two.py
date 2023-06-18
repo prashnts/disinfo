@@ -2,7 +2,7 @@ import random
 
 from PIL import Image, ImageDraw
 
-from .screen import composer_thread
+from .screen import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
@@ -98,4 +98,4 @@ def composer(fs: FrameState):
     return Frame(image)
 
 
-draw = composer_thread(composer, sleepms=50)
+draw = draw_loop(composer, sleepms=50)

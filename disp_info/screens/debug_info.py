@@ -1,4 +1,4 @@
-from .screen import composer_thread
+from .screen import draw_loop
 from ..components.text import Text, TextStyle
 from ..components.layouts import vstack
 from ..components.layers import div, DivStyle
@@ -60,4 +60,4 @@ def composer(fs: FrameState):
     )
 
 
-draw = composer_thread(composer, sleepms=100, use_threads=True)
+draw = draw_loop(composer, sleepms=100, use_threads=True)

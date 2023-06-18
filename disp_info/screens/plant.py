@@ -2,7 +2,7 @@ import arrow
 
 from datetime import timedelta
 
-from .screen import composer_thread
+from .screen import draw_loop
 from ..components.elements import StillImage
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
@@ -38,4 +38,4 @@ def composer(fs: FrameState):
     if s['is_visible']:
         return plant_icon
 
-draw = composer_thread(composer, sleepms=1000)
+draw = draw_loop(composer, sleepms=1000)

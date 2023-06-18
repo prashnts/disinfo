@@ -4,7 +4,7 @@ from colour import Color
 from functools import cache
 from PIL import Image, ImageDraw, ImageFont
 
-from .screen import composer_thread
+from .screen import draw_loop
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
@@ -159,4 +159,4 @@ def composer(fs: FrameState):
     return vstack(weather_stack, gap=1, align='left')
 
 
-draw = composer_thread(composer, sleepms=100)
+draw = draw_loop(composer, sleepms=100)
