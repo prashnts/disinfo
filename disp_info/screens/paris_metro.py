@@ -5,7 +5,7 @@ from .screen import composer_thread
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle
-from ..components.layouts import hstack, vstack, tile_copies
+from ..components.layouts import hstack, vstack, mosaic
 from ..components.layers import div, DivStyle, styled_div
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
@@ -20,7 +20,7 @@ metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
 
-warning_line = tile_copies(
+warning_line = mosaic(
     warning_tile,
     nx=1,
     ny=msg_vscroll.size // warning_tile.height,

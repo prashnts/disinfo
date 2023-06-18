@@ -148,7 +148,7 @@ def composite_at(
     dest.alpha_composite(frame.image, (left, top))
     return dest
 
-def tile_copies(
+def mosaic(
     frame: Frame,
     nx: int = 2,
     ny: int = 2,

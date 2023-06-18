@@ -10,7 +10,7 @@ from .screen import composer_thread
 from .. import config
 from ..data_structures import FrameState
 from ..components.elements import Frame
-from ..components.layouts import tile_copies
+from ..components.layouts import mosaic
 from ..utils.palettes import funkyfuture8, paper8, kirokazegb
 
 
@@ -144,7 +144,7 @@ class GameOfLife:
 gol = GameOfLife(w=28, h=22, speed=0.1)
 
 def composer(fs: FrameState):
-    return tile_copies(
+    return mosaic(
         gol.draw(fs.tick),
         nx=round(config.matrix_w / gol.w + 1),
         ny=round(config.matrix_h / gol.h + 1),
