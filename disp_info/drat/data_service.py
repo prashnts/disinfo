@@ -83,9 +83,9 @@ scheduler.every(1).minutes.do(get_metro_info)
 
 if __name__ == '__main__':
     print('[Data Service] Scheduler Started')
-    get_weather()
-    get_random_text()
-    get_metro_info()
+
+    # Run all the jobs to begin, and then continue with schedule.
+    scheduler.run_all(1)
     while True:
         scheduler.run_pending()
         time.sleep(1)
