@@ -14,37 +14,50 @@ class DivStyle:
     margin: Union[int, tuple[int]] = 0
     background: str = '#00000000'
     border: int = 0
-    border_color: str = '#000'
+    border_color: str = '#00000000'
 
 
 @cache
-def rounded_rectangle(w: int, h: int, r: list[int], fill: str, border: int, border_color: str) -> Image.Image:
+def rounded_rectangle(
+        width: int,
+        height: int,
+        radius: list[int],
+        fill: str,
+        border: int,
+        border_color: str,
+        scaleup: int = 2,
+) -> Image.Image:
     '''
     Creates an Image patch of a rectangle with rounded corners.
 
     Each corner may have different radius, and optionally a border.
     '''
-    i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(i)
+    w = width * scaleup  # Scale up
+    h = height * scaleup
+    r = tuple(i * scaleup for i in radius)
+
+    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
     diam = [i * 2 for i in r]
     xmax = w - 1
     ymax = h - 1
 
     arc_params = [
-        ((             0,              0), diam[0], (180, 270)),
-        ((xmax - diam[1],              0), diam[1], (270,  0)),
-        ((xmax - diam[2], ymax - diam[2]), diam[2], (  0,  90)),
-        ((             0, ymax - diam[3]), diam[3], ( 90, 180)),
+        ((             0,              0), diam[3], (180, 270)),
+        ((xmax - diam[0],              0), diam[0], (270,  0)),
+        ((xmax - diam[1], ymax - diam[1]), diam[1], (  0,  90)),
+        ((             0, ymax - diam[2]), diam[2], ( 90, 180)),
     ]
     polygon_coords = [
-        (       r[0],           0),
-        (xmax - r[1],           0),
-        (       xmax,        r[1]),
-        (       xmax, ymax - r[2]),
-        (xmax - r[2],        ymax),
-        (       r[3],        ymax),
-        (          0, ymax - r[3]),
-        (          0,        r[1]),
+        (       r[3],           0),
+        (xmax - r[0],           0),
+        (       xmax,        r[0]),
+        (       xmax, ymax - r[1]),
+        (xmax - r[1],        ymax),
+        (       r[2],        ymax),
+        (          0, ymax - r[2]),
+        (          0,        r[3]),
+        (       r[3],           0),
     ]
     d.polygon(polygon_coords, fill=fill, outline=border_color, width=border)
 
@@ -52,7 +65,7 @@ def rounded_rectangle(w: int, h: int, r: list[int], fill: str, border: int, bord
         d.pieslice((ax, ay, ax + dim, ay + dim), start=start, end=end, fill=fill)
         d.arc((ax, ay, ax + dim, ay + dim), start=start, end=end, width=border, fill=border_color)
 
-    return i
+    return img.resize((width, height), resample=Image.LANCZOS)
 
 
 def div(
@@ -62,13 +75,12 @@ def div(
     '''
     Acts as a container for other frames.
 
-    Padding can be added uniformly to each edge, and a corner
-    radius can be specified to get rounded corners in the background.
-    It is possible to only have rounded corners on specified corners,
-    via `corners` argument. The corners are top-left, top-right,
-    bottom-right, and bottom-left (in this order).
+    Padding and margin can be added to each edge, as well as the corner
+    radius.
+    The radius corners are top-right, bottom-right, bottom-left, and top-left.
+    The margin and padding are ordered top, right, bottom, and left edges.
 
-    Note that this is much faster with radius=0 as we don't need to draw.
+    Returns a new Frame.
     '''
     if isinstance(style.padding, int):
         style.padding = (style.padding,) * 4
@@ -94,9 +106,9 @@ def div(
     else:
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         bg = rounded_rectangle(
-            w_inner,
-            h_inner,
-            r=radius,
+            width=w_inner,
+            height=h_inner,
+            radius=radius,
             fill=style.background,
             border=style.border,
             border_color=style.border_color)
@@ -104,3 +116,9 @@ def div(
 
     i.alpha_composite(frame.image, (o_x, o_y))
     return Frame(i)
+
+def styled_div(**kwargs):
+    style = DivStyle(**kwargs)
+    def div_(frame: Frame):
+        return div(frame, style)
+    return div_
