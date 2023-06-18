@@ -39,7 +39,7 @@ def composer(fs: FrameState):
     ], gap=2, align='center')
 
     return stack_vertical([
-        div(hscroller_num.draw(fs.tick), style=DivStyle(background='#0131176c', padding=1, radius=2, corners=[0, 1, 0, 0])),
+        div(hscroller_num.draw(fs.tick), style=DivStyle(background='#0131176c', padding=1, radius=(0, 2, 0, 0))),
         div(info_ticker, style=DivStyle(background='#010a298c', padding=1)),
     ], gap=0, align='left')
 

@@ -47,7 +47,15 @@ def composer(fs: FrameState):
 
     debuginfo = stack_vertical([text_brightness, text_lux, text_draw_time, text_sys_temp], gap=2)
 
-    return div(debuginfo, style=DivStyle(background='#044a18b6', padding=3, radius=2))
+    return div(
+        debuginfo,
+        style=DivStyle(
+            background='#044a18b6',
+            padding=(2, 0, 0, 0),
+            margin=(4, 1, 1, 1),
+            radius=(1, 3, 3, 5),
+        ),
+    )
 
 
 draw = composer_thread(composer, sleepms=100, use_threads=True)

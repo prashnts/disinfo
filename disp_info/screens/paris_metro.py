@@ -80,7 +80,7 @@ def message_text(value: str) -> MultiLineText:
 
 @cache
 def loading_screen():
-    return div(metro_paris_banner, fill='#051534e2', radius=2, padding=10)
+    return div(metro_paris_banner, style=DivStyle(background='#051534e2', radius=2, padding=10))
 
 @throttle(50)
 def get_state(fs: FrameState):
@@ -146,8 +146,7 @@ def composer(fs: FrameState):
             style=DivStyle(
                 background='#242424',
                 padding=1,
-                radius=2,
-                corners=[0, 1, 1, 0],
+                radius=(0, 2, 2, 0),
             ),
         ))
 
@@ -155,9 +154,8 @@ def composer(fs: FrameState):
         stack_horizontal(main_view, gap=2),
         style=DivStyle(
             background='#051534e2',
-            radius=2,
             padding=2,
-            corners=[1, 1, 0, 0],
+            radius=(2, 2, 0, 0),
         ),
     )
 

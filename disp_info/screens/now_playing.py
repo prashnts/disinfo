@@ -114,9 +114,8 @@ def composer(fs: FrameState):
         stack_vertical(music_elements, gap=1, align='right'),
         style=DivStyle(
             background='#2c2e31',
-            radius=2,
             padding=2,
-            corners=[1, 0, 0, 1]
+            radius=(2, 0, 0, 2),
         ),
     )
 
