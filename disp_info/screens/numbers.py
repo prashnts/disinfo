@@ -44,7 +44,7 @@ def composer(fs: FrameState):
             style=DivStyle(
                 background='#013117',
                 padding=2,
-                radius=(2, 0, 0, 0),
+                radius=(3, 0, 0, 0),
                 border=1,
                 border_color='#7fce47',
             ),

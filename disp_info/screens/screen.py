@@ -20,9 +20,6 @@ def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False)
     some outdated frames are rendered.
 
     Returns a function which returns the latest frame.
-
-    NOTE: I've disabled the threads for the time being. I notice similar performance
-    (if not better)
     '''
     current_state: Optional[FrameState] = None
     previous_state: Optional[FrameState] = None

@@ -64,11 +64,11 @@ def rounded_rectangle(
         (          0,        r[3]),
         (       r[3],           0),
     ]
-    d.polygon(polygon_coords, fill=fill, outline=border_color, width=border)
+    d.polygon(polygon_coords, fill=fill, outline=border_color, width=border * scaleup)
 
     for ((ax, ay), dim, (start, end)) in arc_params:
         d.pieslice((ax, ay, ax + dim, ay + dim), start=start, end=end, fill=fill)
-        d.arc((ax, ay, ax + dim, ay + dim), start=start, end=end, width=border, fill=border_color)
+        d.arc((ax, ay, ax + dim, ay + dim), start=start, end=end, width=border * scaleup, fill=border_color)
 
     return img.resize((width, height), resample=Image.LANCZOS)
 
