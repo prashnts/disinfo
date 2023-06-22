@@ -43,11 +43,12 @@ class SpriteIcon:
 
     def set_icon(self, filename: str):
         if filename == self.filename:
-            return
+            return self
 
         self.init_sprite(filename)
         self.current_frame = 0
         self.last_step = 0
+        return self
 
     def draw(self, step: float) -> Frame:
         if (step - self.last_step) >= self.step_time:

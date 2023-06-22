@@ -6,11 +6,9 @@ from .screen import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
-from ..components.text import Text, TextStyle
+from ..components.text import TextStyle, text
 from ..data_structures import FrameState
 from .. import config
-
-text_timestr = Text(style=TextStyle(outline=1))
 
 
 def composer(fs: FrameState):
@@ -36,9 +34,7 @@ def composer(fs: FrameState):
     if all_equal:
         fill = '#CF3F13'
 
-    text_timestr.update(
-        value=t.strftime('%H:%M'),
-        style=TextStyle(font=font, color=fill))
+    text_timestr = text(t.strftime('%H:%M'), style=TextStyle(font=font, color=fill, outline=1))
 
     image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)

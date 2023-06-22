@@ -40,7 +40,7 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
     draw.rounded_rectangle(
         [0, 0, size, size - 1],
         fill=background,
-        radius=2,
+        radius=1,
         outline=outline_color,
         width=outline_width)
     draw.text(
@@ -73,7 +73,7 @@ def message_text(value: str) -> MultiLineText:
             color='#b9b9b9',
             outline=1,
             outline_color='#181818',
-            spacing=10,
+            spacing=1,
             line_width=12,
         ),
     )
@@ -130,10 +130,13 @@ def composer(fs: FrameState):
 
     list_view = [vstack(train_times, gap=1, align='left')]
     if status_icons:
-        status_hscroll.set_frame(hstack(status_icons, gap=2), reset=False)
+        status_icon_ticker = (status_hscroll
+            .set_frame(hstack(status_icons, gap=2), reset=False)
+            .set_size(visible_timing_count * 10)
+            .draw(fs.tick))
         list_view.append(hstack([
             metro_issue_icon,
-            status_hscroll.draw(fs.tick),
+            status_icon_ticker,
         ], gap=1))
 
     main_view = [vstack(list_view, gap=2)]

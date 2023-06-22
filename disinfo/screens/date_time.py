@@ -1,32 +1,30 @@
-import dataclasses
-
 from .screen import draw_loop
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
-from ..components.text import Text, TextStyle
+from ..components.text import TextStyle, text
 
-colors_time = ['#1ba2ab', '#185e86']
-color_date = '#6d7682'
 
-text_time = Text(style=TextStyle(color=colors_time[0], font=fonts.bitocra))
-text_day = Text(style=TextStyle(color=color_date, font=fonts.bitocra))
-text_date = Text(style=TextStyle(color=color_date, font=fonts.bitocra))
+s_time = [
+    TextStyle(color='#1ba2ab', font=fonts.bitocra),
+    TextStyle(color='#185e86', font=fonts.bitocra),
+]
+s_label = TextStyle(color='#6d7682', font=fonts.bitocra)
+
 
 def composer(fs: FrameState):
     t = fs.now
+    style = s_time[t.second % 2 == 0]
 
-    text_time.update(
-        value=t.strftime('%H:%M:%S'),
-        style=dataclasses.replace(text_time.style, color=colors_time[t.second % 2 == 0]))
-    text_day.update(value=t.strftime('%a'))
-    text_date.update(value=t.strftime('%d/%m'))
-
-    view = vstack([
-        text_time,
-        hstack([text_day, text_date], gap=2, align='center'),
-    ], gap=0, align='right')
-    return div(view, style=DivStyle(background='#000000ac'))
+    return div(
+        vstack([
+            text(t.strftime('%H:%M:%S'), style),
+            hstack([
+                text(t.strftime('%a'), s_label),
+                text(t.strftime('%d/%m'), s_label),
+            ], gap=2, align='center'),
+        ], gap=0, align='right'),
+        style=DivStyle(background='#000000ac'))
 
 draw = draw_loop(composer, sleepms=200)

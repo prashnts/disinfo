@@ -7,7 +7,7 @@ from typing import Union
 from .elements import Frame
 
 
-@dataclass
+@dataclass(frozen=True)
 class DivStyle:
     '''
     The radius is ordered on top-right, bottom-right, bottom-left, and top-left corners.
@@ -85,16 +85,16 @@ def div(
 
     Returns a new Frame.
     '''
-    if isinstance(style.padding, int):
-        style.padding = (style.padding,) * 4
-    if isinstance(style.margin, int):
-        style.margin = (style.margin,) * 4
-    if isinstance(style.radius, int):
-        style.radius = (style.radius,) * 4
-
     pad = style.padding
     margin = style.margin
     radius = style.radius
+
+    if isinstance(style.padding, int):
+        pad = (style.padding,) * 4
+    if isinstance(style.margin, int):
+        margin = (style.margin,) * 4
+    if isinstance(style.radius, int):
+        radius = (style.radius,) * 4
 
     w = frame.width + (pad[1] + pad[3]) + (margin[1] + margin[3])
     h = frame.height + (pad[0] + pad[2]) + (margin[0] + margin[2])

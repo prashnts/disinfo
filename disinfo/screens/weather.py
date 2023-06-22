@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .screen import draw_loop
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text, TextStyle
+from ..components.text import TextStyle, text
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..redis import rkeys, get_dict
@@ -21,14 +21,10 @@ sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 warning_icon = StillImage('assets/sync.png')
 sunset_icon = StillImage('assets/raster/sunset-11x5.png')
 
-color_temp = '#9a9ba2'
-color_deg_c = '#6E7078'
-color_condition = '#5b5e64'
-
-text_temperature_value  = Text(style=TextStyle(font=fonts.px_op__l, color=color_temp))
-text_temperature_degree = Text('°', style=TextStyle(font=fonts.px_op__r, color=color_deg_c))
-text_condition          = Text(style=TextStyle(font=fonts.tamzen__rs, color=color_condition))
-text_sunset_time        = Text(style=TextStyle(font=fonts.bitocra, color=color_condition))
+s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
+s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
+s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
+s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 
 @cache
@@ -42,8 +38,8 @@ def draw_temp_range(
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
 
-    text_high = Text(f'{round(t_high)}°', style=TextStyle(font=font, color=color_high.hex))
-    text_low = Text(f'{round(t_low)}°', style=TextStyle(font=font, color=color_low.hex))
+    text_high = text(f'{round(t_high)}°', style=TextStyle(font=font, color=color_high.hex))
+    text_low = text(f'{round(t_low)}°', style=TextStyle(font=font, color=color_low.hex))
     span = text_high.height + text_low.height + 1
 
     # Draw the range graph.
@@ -110,36 +106,28 @@ def composer(fs: FrameState):
     should_show_sunset = s['sunset_time'] > fs.now and (s['sunset_time'] - fs.now).total_seconds() < 2 * 60 * 60
     is_outdated = (fs.now - s['update_time']).total_seconds() > 30 * 60  # 30 mins.
 
-    # update values
-    text_temperature_value.update(value=f'{round(s["temperature"])}')
-    text_condition.update(value=s['condition'])
-    text_sunset_time.update(value=s['sunset_time'].strftime('%H:%M'))
-
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s["icon_name"]}.png')
 
-    temp_text = hstack([
-        text_temperature_value,
-        text_temperature_degree,
-    ], gap=0, align='top')
-    temp_range = draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs)
-
-    condition_info = [text_condition]
-
-    if is_outdated:
-        condition_info.insert(0, warning_icon)
+    condition_info = [
+        warning_icon if is_outdated else None,
+        text(s['condition'], style=s_condition),
+    ]
 
     main_info = [
         hstack([
             weather_icon.draw(fs.tick),
-            temp_text,
-            temp_range,
+            hstack([
+                text(f'{round(s["temperature"])}', style=s_temp_value),
+                text('°', style=s_deg_c),
+            ], gap=0, align='top'),
+            draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs),
         ], gap=1, align='center'),
     ]
 
     if should_show_sunset:
         sunset_info = hstack([
             sunset_icon,
-            text_sunset_time,
+            text(s['sunset_time'].strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         main_info.append(sunset_info)
 
