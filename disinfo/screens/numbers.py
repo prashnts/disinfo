@@ -46,7 +46,7 @@ def composer(fs: FrameState):
                 padding=2,
                 radius=(3, 0, 0, 0),
                 border=1,
-                border_color='#7fce47',
+                border_color='#25470e',
             ),
         ),
         div(info_ticker, style=DivStyle(background='#081542', padding=1)),

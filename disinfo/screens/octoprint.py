@@ -28,7 +28,7 @@ tail_arrow_left         = Text(f'⤙', style=tail_arrow_style)
 tail_arrow_right        = Text(f'⤚', style=tail_arrow_style)
 text_time_left          = Text(style=muted_small_style)
 text_completion_time    = Text(style=TextStyle(font=fonts.bitocra, color='#e88a36'))
-text_progress           = Text(style=TextStyle(font=fonts.scientifica__b, color='#888888'))
+text_progress           = Text(style=TextStyle(font=fonts.cozette, color='#888888'))
 text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
 text_file_name          = Text(style=muted_small_style)
 text_toolt_current      = Text(style=muted_small_style)
@@ -113,7 +113,7 @@ def composer(fs: FrameState):
 
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
-        hstack([text_progress, text_percent_sign], align='top'),
+        hstack([text_progress, text_percent_sign], gap=1, align='top'),
     ], gap=4)
 
     detail_elem = hstack([

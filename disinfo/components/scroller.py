@@ -29,14 +29,13 @@ class _Scroller:
         return self
 
     def set_size(self, size: int):
-        if self.size != size:
-            self.size = size
+        if self.size == size:
+            return self
+
+        self.size = size
+        if self.frame:
             self._init_scroller(self.frame, reset=True)
         return self
-
-    def update(self, **kwargs):
-        # Todo
-        pass
 
     def reset_position(self):
         self.pos = 0
