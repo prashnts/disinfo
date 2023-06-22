@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from textwrap import wrap
 from typing import Optional
+from functools import cache
 
 from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
@@ -8,7 +9,7 @@ from PIL.ImageFont import FreeTypeFont
 from .elements import Frame
 from .fonts import tamzen__rs
 
-@dataclass
+@dataclass(frozen=True)
 class TextStyle:
     color: str          = '#fff'
     outline: int        = 0
@@ -113,3 +114,10 @@ class MultiLineText(Text):
             stroke_fill=self.style.outline_color,
         )
         self.populate_frame(im)
+
+
+@cache
+def text(value: str, style: Optional[TextStyle] = None, multiline: bool = False) -> Text:
+    if multiline:
+        return MultiLineText(value, style)
+    return Text(value, style)
