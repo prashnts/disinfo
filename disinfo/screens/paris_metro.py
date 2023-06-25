@@ -1,24 +1,27 @@
 from functools import cache
-from PIL import Image, ImageDraw
+from PIL import ImageDraw
 
 from .screen import draw_loop
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle
 from ..components.layouts import hstack, vstack, mosaic
-from ..components.layers import div, DivStyle, styled_div
+from ..components.layers import div, DivStyle, rounded_rectangle
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
+from ..components.transitions import SlideInOut
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
-from ..drat.app_states import MetroInfoStateManager
+from ..drat.app_states import MetroInfoStateManager, MetroAppState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
+t_slide = SlideInOut(edge='bottom')
+
 
 warning_line = mosaic(
     warning_tile,
@@ -32,17 +35,16 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
     size = 9
     start_x = 0 if len(line_name) > 1 else 1
     background, text_color = metro_colors.get(line_name, ['#C6C6C6', '#000'])
-    outline_color = '#ba1c11' if has_problems else '#000'
-    outline_width = 1 if outline else 0
 
-    img = Image.new('RGBA', (size + 1, size))
-    draw = ImageDraw.Draw(img)
-    draw.rounded_rectangle(
-        [0, 0, size, size - 1],
+    img = rounded_rectangle(
+        width=size + 1,
+        height=size,
+        radius=(5,) * 4,
         fill=background,
-        radius=1,
-        outline=outline_color,
-        width=outline_width)
+        border=1 if outline else 0,
+        border_color='#ba1c11' if has_problems else '#000')
+
+    draw = ImageDraw.Draw(img)
     draw.text(
         ((size / 2) + start_x, size / 2),
         line_name,
@@ -87,13 +89,7 @@ def get_state(fs: FrameState):
     return MetroInfoStateManager().get_state(fs)
 
 
-def composer(fs: FrameState):
-    state = get_state(fs)
-
-    if not state.visible:
-        msg_vscroll.reset_position()
-        return
-
+def metro_view(fs: FrameState, state: MetroAppState):
     if not state.valid:
         return loading_screen()
 
@@ -149,17 +145,25 @@ def composer(fs: FrameState):
             style=DivStyle(
                 background='#242424',
                 padding=1,
-                radius=(0, 2, 2, 0),
+                radius=(2, 2, 0, 0),
             ),
         ))
 
     return div(
         hstack(main_view, gap=2),
         style=DivStyle(
-            background='#051534e2',
+            background='#051534',
             padding=2,
-            radius=(2, 2, 0, 0),
+            radius=(2, 0, 0, 2),
+            border=1,
+            border_color='#064a6e',
         ),
     )
+
+
+def composer(fs: FrameState):
+    state = get_state(fs)
+
+    return t_slide.set_frame(metro_view(fs, state)).visibility(state.visible).draw(fs.tick)
 
 draw = draw_loop(composer)
