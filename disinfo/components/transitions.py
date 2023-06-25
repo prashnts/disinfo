@@ -4,11 +4,30 @@ from typing import Literal, Optional
 from .elements import Frame
 
 
-SlideEdges = Literal['top', 'bottom', 'left', 'right']
+Edges = Literal['top', 'bottom', 'left', 'right']
 
 
 class SlideInOut:
-    def __init__(self, frame: Optional[Frame] = None, edge: SlideEdges = 'bottom', duration: float = 0.5):
+    '''
+    Visibility state manager with slide transition.
+
+    This wrapper can be used to transition in or out a Frame.
+    Pick one of the four edges and a duration.
+    Live frames are supported.
+    Frames that change dimensions are generally supported but support is
+    currenlty buggy.
+
+    Usage:
+
+    Initialize a static manager:
+    >>> slider = SlideInOut(edge='top')
+
+    In the draw method, use this class chain.
+    >>> slider.set_frame(frame).visibility(True).draw(fs)
+
+    When visibility sets to False, slide out effect occurs.
+    '''
+    def __init__(self, frame: Optional[Frame] = None, edge: Edges = 'bottom', duration: float = 0.5):
         self.frame = frame
         self.pos = 0
         self.visible = True

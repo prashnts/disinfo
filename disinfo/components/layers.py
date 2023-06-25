@@ -23,13 +23,13 @@ class DivStyle:
 
 @cache
 def rounded_rectangle(
-        width: int,
-        height: int,
-        radius: list[int],
-        fill: str,
-        border: int,
-        border_color: str,
-        scaleup: int = 3,
+    width: int,
+    height: int,
+    radius: list[int],
+    fill: str,
+    border: int,
+    border_color: str,
+    scaleup: int = 3,
 ) -> Image.Image:
     '''
     Creates an Image patch of a rectangle with rounded corners.
@@ -49,7 +49,7 @@ def rounded_rectangle(
 
     arc_params = [
         ((             0,              0), diam[3], (180, 270)),
-        ((xmax - diam[0],              0), diam[0], (270,  0)),
+        ((xmax - diam[0],              0), diam[0], (270,   0)),
         ((xmax - diam[1], ymax - diam[1]), diam[1], (  0,  90)),
         ((             0, ymax - diam[2]), diam[2], ( 90, 180)),
     ]
