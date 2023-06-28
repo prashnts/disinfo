@@ -9,7 +9,7 @@ from ..components.layouts import hstack, vstack, mosaic
 from ..components.layers import div, DivStyle, rounded_rectangle
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
-from ..components.transitions import SlideInOut
+from ..components.transitions import VisibilitySlider
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
@@ -20,8 +20,7 @@ metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
-t_slide = SlideInOut(edge='bottom')
-
+visibility_slider = VisibilitySlider(edge='bottom', duration=1)
 
 warning_line = mosaic(
     warning_tile,
@@ -39,7 +38,7 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
     img = rounded_rectangle(
         width=size + 1,
         height=size,
-        radius=(5,) * 4,
+        radius=(4,) * 4,
         fill=background,
         border=1 if outline else 0,
         border_color='#ba1c11' if has_problems else '#000')
@@ -164,6 +163,9 @@ def metro_view(fs: FrameState, state: MetroAppState):
 def composer(fs: FrameState):
     state = get_state(fs)
 
-    return t_slide.set_frame(metro_view(fs, state)).visibility(state.visible).draw(fs.tick)
+    return (visibility_slider
+        .set_frame(metro_view(fs, state))
+        .visibility(state.visible)
+        .draw(fs.tick))
 
 draw = draw_loop(composer)

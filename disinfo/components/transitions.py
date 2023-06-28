@@ -7,7 +7,7 @@ from .elements import Frame
 Edges = Literal['top', 'bottom', 'left', 'right']
 
 
-class SlideInOut:
+class VisibilitySlider:
     '''
     Visibility state manager with slide transition.
 
@@ -20,20 +20,21 @@ class SlideInOut:
     Usage:
 
     Initialize a static manager:
-    >>> slider = SlideInOut(edge='top')
+    >>> slider = VisibilitySlider(edge='top')
 
-    In the draw method, use this class chain.
+    In the draw function, use this call chain.
     >>> slider.set_frame(frame).visibility(True).draw(fs)
 
     When visibility sets to False, slide out effect occurs.
     '''
     def __init__(self, frame: Optional[Frame] = None, edge: Edges = 'bottom', duration: float = 0.5):
         self.frame = frame
+        self.edge = edge
+        self.duration = duration
+
         self.pos = 0
         self.visible = True
         self.last_step = 0
-        self.duration = duration
-        self.edge = edge
         self.direction = 1
 
     def visibility(self, visible: bool):
@@ -44,6 +45,8 @@ class SlideInOut:
 
     def set_frame(self, frame: Frame):
         self.frame = frame
+        if self.direction > 0 and self.pos > self._max_pos:
+            self.pos = self._max_pos
         return self
 
     def _get_crop_rect(self):
