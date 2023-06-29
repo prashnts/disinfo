@@ -13,7 +13,7 @@ from ..components.transitions import VisibilitySlider
 from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
-from ..drat.app_states import MetroInfoStateManager, MetroAppState
+from ..drat.app_states import MetroAppStateManager, MetroAppState
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -83,7 +83,7 @@ def message_text(value: str) -> MultiLineText:
 def loading_screen():
     return div(metro_paris_banner, style=DivStyle(background='#051534e2', radius=2, padding=10))
 
-sm = MetroInfoStateManager()
+sm = MetroAppStateManager()
 
 @throttle(50)
 def get_state(fs: FrameState):

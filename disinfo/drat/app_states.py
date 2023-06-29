@@ -19,7 +19,7 @@ import json
 
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional, Generic, TypeVar
+from typing import Optional, Generic, TypeVar, Callable
 
 from . import idfm
 from .data_service import get_metro_info
@@ -58,23 +58,18 @@ class BaseStateManager(Generic[StateModel]):
         value = self.model(**{**self.value.dict(), **kwargs})
         set_json(self.name, value.json())
 
-class MetroInfoStateManager(BaseStateManager[MetroAppState]):
-    name = 'di.state.metroinfo'
-    model = MetroAppState
-    update_channel = 'di.pubsub.metro'
+class PubSubStateManager(Generic[StateModel]):
+    model: StateModel
+    update_channel: str
 
     def __init__(self):
         self.pubsub = db.pubsub()
         self.pubsub.subscribe(**{self.update_channel: self.process_message})
         self.pubsub.run_in_thread(sleep_time=0.01, daemon=True)
-        self.state = self.model()
+        self.state = self.initial_state()
 
-    @property
-    def update_routes(self):
-        return {
-            'update': self.update_data,
-            'toggle': self.toggle,
-        }
+    def initial_state(self) -> StateModel:
+        return self.model()
 
     def process_message(self, message):
         if not message or message['type'] != 'message':
@@ -85,6 +80,26 @@ class MetroInfoStateManager(BaseStateManager[MetroAppState]):
             self.update_routes[data]()
         except KeyError:
             pass
+
+    @property
+    def update_routes(self) -> dict[str, Callable]:
+        raise NotImplemented
+
+    def get_state(self) -> StateModel:
+        return self.state
+
+class MetroAppStateManager(PubSubStateManager[MetroAppState]):
+    model = MetroAppState
+    update_channel = 'di.pubsub.metro'
+
+    # TODO support intializing the inner states.
+
+    @property
+    def update_routes(self):
+        return {
+            'update': self.update_data,
+            'toggle': self.toggle,
+        }
 
     # def process_mqtt_message(self, topic: str, msg: dict):
     #     # Executed in ha process!
