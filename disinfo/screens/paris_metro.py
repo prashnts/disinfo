@@ -83,9 +83,11 @@ def message_text(value: str) -> MultiLineText:
 def loading_screen():
     return div(metro_paris_banner, style=DivStyle(background='#051534e2', radius=2, padding=10))
 
+sm = MetroInfoStateManager()
+
 @throttle(50)
 def get_state(fs: FrameState):
-    return MetroInfoStateManager().get_state(fs)
+    return sm.get_state(fs)
 
 
 def metro_view(fs: FrameState, state: MetroAppState):

@@ -1,4 +1,21 @@
+'''
+State managers
+
+Data Source: A place where we fetch or receive certain data.
+Sources: Periodic / On demand HTTP Requests, MQTT
+State Store: Redis is used to cache the states. Also used to connect multiple processes together.
+Application State
+
+Need: PubSub
+
+A subscriber thread is created. The thread hold a slot for state variable and updates it in background.
+
+
+
+'''
+
 import pendulum
+import json
 
 from datetime import datetime
 from pydantic import BaseModel
@@ -28,7 +45,7 @@ class CursorState(BaseModel):
 
 class BaseStateManager(Generic[StateModel]):
     name: str
-    model: BaseModel
+    model: StateModel
 
     @property
     def value(self) -> StateModel:
@@ -44,33 +61,59 @@ class BaseStateManager(Generic[StateModel]):
 class MetroInfoStateManager(BaseStateManager[MetroAppState]):
     name = 'di.state.metroinfo'
     model = MetroAppState
+    update_channel = 'di.pubsub.metro'
 
-    def process_mqtt_message(self, topic: str, msg: dict):
-        # Executed in ha process!
-        if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
-            if msg['action'] in ['scene_2', 'toggle']:
-                self.manual_trigger()
+    def __init__(self):
+        self.pubsub = db.pubsub()
+        self.pubsub.subscribe(**{self.update_channel: self.process_message})
+        self.pubsub.run_in_thread(sleep_time=0.01, daemon=True)
+        self.state = self.model()
 
-    def manual_trigger(self):
-        s = self.value
+    @property
+    def update_routes(self):
+        return {
+            'update': self.update_data,
+            'toggle': self.toggle,
+        }
+
+    def process_message(self, message):
+        if not message or message['type'] != 'message':
+            return
+
+        data = message['data'].decode()
+        try:
+            self.update_routes[data]()
+        except KeyError:
+            pass
+
+    # def process_mqtt_message(self, topic: str, msg: dict):
+    #     # Executed in ha process!
+    #     if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
+    #         if msg['action'] in ['scene_2', 'toggle']:
+    #             self.manual_trigger()
+
+    def toggle(self):
+        s = self.state
         show = s.show
         if is_expired(s.toggled_at, seconds=25):
             show = True
         else:
             show = not show
+        self.state.show = show
+        self.state.toggled_at = pendulum.now()
 
-        self.set_state(show=show, toggled_at=pendulum.now())
-        if show:
-            # it was previously not visible, so we refresh.
-            get_metro_info(force=True)
+    def update_data(self):
+        self.state.data = idfm.MetroData(**get_dict(rkeys['metro_timing']))
 
     def get_state(self, fs: FrameState):
-        s = self.value
-        s.data = idfm.MetroData(**get_dict(rkeys['metro_timing']))
-
-        shown = s.show and not is_expired(s.toggled_at, seconds=25, now=fs.now)
-        s.visible = idfm.is_active() or shown
-        s.valid = not is_expired(s.data.timestamp, minutes=1, seconds=20, now=fs.now)
+        s = self.state
+        if not s.data:
+            s.visible = False
+            s.valid = False
+        else:
+            shown = s.show and not is_expired(s.toggled_at, seconds=25, now=fs.now)
+            s.visible = idfm.is_active() or shown
+            s.valid = not is_expired(s.data.timestamp, minutes=1, seconds=20, now=fs.now)
 
         return s
 
@@ -109,4 +152,4 @@ class CursorStateManager(BaseStateManager[CursorState]):
             set_json(self.name, v.json())
 
 
-state_vars = [MetroInfoStateManager(), CursorStateManager()]
+state_vars = [CursorStateManager()]
