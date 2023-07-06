@@ -12,12 +12,6 @@ from .drat.app_states import CursorStateManager
 
 from . import config, screens
 
-@throttle(40)
-def get_remotes_action():
-    return {
-        'enki': get_dict(rkeys['ha_enki_rmt']).get('action'),
-        'ikea': get_dict(rkeys['ha_ikea_rmt_0x01']).get('action'),
-    }
 
 @throttle(500)
 def should_turn_on_display() -> bool:
@@ -49,13 +43,8 @@ def should_turn_on_display() -> bool:
     return any(motion_states)
 
 
-@throttle(40)
-def get_cursor_state(fs: FrameState):
-    return CursorStateManager().get_state(fs)
-
-
 def draw_btn_test(image, fs: FrameState):
-    s = get_cursor_state(fs)
+    s = CursorStateManager().get_state(fs)
     icon = render_icon(cursor)
     image.alpha_composite(icon, (s.x, s.y))
     return image
@@ -67,11 +56,6 @@ def compose_frame(fs: FrameState):
     if not should_turn_on_display():
         # do not draw if nobody is there.
         return image
-
-    # While not ideal, this allows us to avoid fetching state multiple times.
-    rmt_action = get_remotes_action()
-    fs.rmt0_action = rmt_action['enki']
-    fs.rmt1_action = rmt_action['ikea']
 
     composite_at(screens.demo.draw(fs), image, 'mm')
 

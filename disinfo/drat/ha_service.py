@@ -3,9 +3,7 @@ import json
 import arrow
 
 from .. import config
-from ..redis import set_dict, rkeys, db, get_dict
-from .data_service import get_metro_info
-from .app_states import state_vars
+from ..redis import set_dict, rkeys, db, get_dict, publish
 
 pir_topic_map = {
     'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
@@ -16,6 +14,24 @@ latch_timing = {
     'scene_1': 1_000,
     'scene_3': 10_000,
 }
+
+rmt_enki_keymap = {
+    'color_saturation_step_up': 'up',
+    'color_saturation_step_down': 'down',
+    'color_hue_step_up': 'right',
+    'color_hue_step_down': 'left',
+    'scene_1': 'btn_metro',
+    'scene_2': 'btn_twentytwo',
+    'scene_3': 'btn_debug',
+}
+rmt_ikea_keymap = {
+    'brightness_up_click': 'up',
+    'brightness_down_click': 'down',
+    'arrow_right_click': 'right',
+    'arrow_left_click': 'left',
+    'toggle': 'btn_metro',
+}
+
 
 def on_connect(client, userdata, flags, rc):
     print('connected!')
@@ -30,9 +46,6 @@ def on_connect(client, userdata, flags, rc):
     for topic in pir_topic_map.keys():
         # subscribe to PIR sensor states
         client.subscribe(topic)
-
-    for var in state_vars:
-        var.refresh()
 
 def on_message(client, userdata, msg):
     try:
@@ -64,17 +77,17 @@ def on_message(client, userdata, msg):
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:
-            ttl = config.mqtt_btn_latch_t
-            if payload['action'] in latch_timing:
-                ttl = latch_timing[payload['action']]
-            db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
+            # ttl = config.mqtt_btn_latch_t
+            # if payload['action'] in latch_timing:
+            #     ttl = latch_timing[payload['action']]
+            # db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
+            publish('di.pubsub.remote', dict(action=rmt_enki_keymap.get(payload['action'], 'unknown')))
+
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
         ttl = config.mqtt_btn_latch_t
         if payload['action']:
-            db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
-
-    for var in state_vars:
-        var.process_mqtt_message(msg.topic, payload)
+            # db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
+            publish('di.pubsub.remote', dict(action=rmt_ikea_keymap.get(payload['action'], 'unknown')))
 
 
 if __name__ == '__main__':

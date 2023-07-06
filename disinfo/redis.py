@@ -33,3 +33,6 @@ def set_dict(key: str, payload: dict):
 
 def set_json(key: str, payload: dict):
     db.set(key, payload)
+
+def publish(channel: str, payload: dict):
+    db.publish(channel, json.dumps(payload))

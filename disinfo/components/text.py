@@ -117,7 +117,7 @@ class MultiLineText(Text):
 
 
 @cache
-def text(value: str, style: Optional[TextStyle] = None, multiline: bool = False) -> Text:
+def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False) -> Text:
     if multiline:
         return MultiLineText(value, style)
     return Text(value, style)

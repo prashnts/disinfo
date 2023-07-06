@@ -24,9 +24,10 @@ def is_expired(
     dt: Union[str, pendulum.DateTime, datetime, None],
     seconds: int = 0,
     minutes: int = 0,
+    microseconds: int = 0,
     now: Optional[pendulum.DateTime] = None,
 ):
-    '''Checks if the given datetime has expired.'''
+    '''Checks if the given datetime has expired. Returns true if dt + delta <= now => dt has expired.'''
     if not dt:
         return False
     if not now:
@@ -35,4 +36,4 @@ def is_expired(
         dt = pendulum.parse(dt)
     if isinstance(dt, datetime):
         dt = pendulum.instance(dt)
-    return dt.add(seconds=seconds, minutes=minutes) <= now
+    return dt.add(seconds=seconds, minutes=minutes, microseconds=microseconds) <= now

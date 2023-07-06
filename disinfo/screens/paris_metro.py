@@ -10,7 +10,6 @@ from ..components.layers import div, DivStyle, rounded_rectangle
 from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
 from ..components.transitions import VisibilitySlider
-from ..utils.func import throttle
 from ..utils.palettes import metro_colors
 from ..data_structures import FrameState
 from ..drat.app_states import MetroAppStateManager, MetroAppState
@@ -79,21 +78,8 @@ def message_text(value: str) -> MultiLineText:
         ),
     )
 
-@cache
-def loading_screen():
-    return div(metro_paris_banner, style=DivStyle(background='#051534e2', radius=2, padding=10))
 
-sm = MetroAppStateManager()
-
-@throttle(50)
-def get_state(fs: FrameState):
-    return sm.get_state(fs)
-
-
-def metro_view(fs: FrameState, state: MetroAppState):
-    if not state.valid:
-        return loading_screen()
-
+def render_metro_info(fs: FrameState, state: MetroAppState):
     s = state.data
 
     train_times = []
@@ -150,8 +136,17 @@ def metro_view(fs: FrameState, state: MetroAppState):
             ),
         ))
 
+    return hstack(main_view, gap=2)
+
+
+def metro_view(fs: FrameState, state: MetroAppState):
+    if state.valid:
+        content = render_metro_info(fs, state)
+    else:
+        content = div(metro_paris_banner, style=DivStyle(padding=10))
+
     return div(
-        hstack(main_view, gap=2),
+        content,
         style=DivStyle(
             background='#051534',
             padding=2,
@@ -163,7 +158,7 @@ def metro_view(fs: FrameState, state: MetroAppState):
 
 
 def composer(fs: FrameState):
-    state = get_state(fs)
+    state = MetroAppStateManager().get_state(fs)
 
     return (visibility_slider
         .set_frame(metro_view(fs, state))

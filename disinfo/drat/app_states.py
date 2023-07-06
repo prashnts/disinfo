@@ -19,16 +19,58 @@ import json
 
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional, Generic, TypeVar, Callable
+from typing import Optional, Generic, TypeVar, Callable, Union
+from disinfo.data_structures import FrameState
+
 
 from . import idfm
-from .data_service import get_metro_info
 from .. import config
-from ..redis import set_dict, get_dict, set_json, rkeys, db
+from ..redis import get_dict, rkeys, db
 from ..data_structures import FrameState
 from ..utils.time import is_expired
 
 StateModel = TypeVar('StateModel')
+class PubSubMessage(BaseModel):
+    action: str
+    payload: Optional[dict]
+
+
+class StateManagerSingleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
+    model: StateModel
+    channels: tuple[str]
+
+    def __init__(self):
+        self.pubsub = db.pubsub()
+        self.pubsub.subscribe(**{c: self.unpack_message for c in self.channels})
+        self.pubsub.run_in_thread(sleep_time=0.01, daemon=True)
+        self.state = self.initial_state()
+
+    def initial_state(self) -> StateModel:
+        return self.model()
+
+    def unpack_message(self, message):
+        if not message or message['type'] != 'message':
+            return
+        try:
+            data = json.loads(message['data'].decode())
+            self.process_message(message['channel'].decode(), PubSubMessage(**data))
+        except KeyError:
+            pass
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        raise NotImplemented
+
+    def get_state(self, fs: Optional[FrameState] = None) -> StateModel:
+        return self.state
 
 class MetroAppState(BaseModel):
     show: bool = False
@@ -37,75 +79,24 @@ class MetroAppState(BaseModel):
     toggled_at: Optional[datetime] = None
     data: Optional[idfm.MetroData] = None
 
-
-class CursorState(BaseModel):
-    x: int = 120
-    y: int = 42
-
-
-class BaseStateManager(Generic[StateModel]):
-    name: str
-    model: StateModel
-
-    @property
-    def value(self) -> StateModel:
-        return self.model(**get_dict(self.name))
-
-    def get_state(self, fs: FrameState) -> StateModel:
-        return self.value
-
-    def set_state(self, **kwargs):
-        value = self.model(**{**self.value.dict(), **kwargs})
-        set_json(self.name, value.json())
-
-class PubSubStateManager(Generic[StateModel]):
-    model: StateModel
-    update_channel: str
-
-    def __init__(self):
-        self.pubsub = db.pubsub()
-        self.pubsub.subscribe(**{self.update_channel: self.process_message})
-        self.pubsub.run_in_thread(sleep_time=0.01, daemon=True)
-        self.state = self.initial_state()
-
-    def initial_state(self) -> StateModel:
-        return self.model()
-
-    def process_message(self, message):
-        if not message or message['type'] != 'message':
-            return
-
-        data = message['data'].decode()
-        try:
-            self.update_routes[data]()
-        except KeyError:
-            pass
-
-    @property
-    def update_routes(self) -> dict[str, Callable]:
-        raise NotImplemented
-
-    def get_state(self) -> StateModel:
-        return self.state
-
 class MetroAppStateManager(PubSubStateManager[MetroAppState]):
     model = MetroAppState
-    update_channel = 'di.pubsub.metro'
+    channels = ('di.pubsub.metro', 'di.pubsub.remote')
 
     # TODO support intializing the inner states.
 
-    @property
-    def update_routes(self):
-        return {
-            'update': self.update_data,
-            'toggle': self.toggle,
-        }
+    def process_message(self, channel: str, data: PubSubMessage):
+        if channel.endswith('.metro'):
+            if data.action == 'update':
+                self.update_data()
+            if data.action == 'toggle':
+                self.toggle()
+        if channel.endswith('.remote'):
+            if data.action == 'btn_metro':
+                self.toggle()
 
-    # def process_mqtt_message(self, topic: str, msg: dict):
-    #     # Executed in ha process!
-    #     if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
-    #         if msg['action'] in ['scene_2', 'toggle']:
-    #             self.manual_trigger()
+    def initial_state(self) -> MetroAppState:
+        return MetroAppState(data=self.load_timing())
 
     def toggle(self):
         s = self.state
@@ -117,8 +108,11 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         self.state.show = show
         self.state.toggled_at = pendulum.now()
 
+    def load_timing(self):
+        return idfm.MetroData(**get_dict(rkeys['metro_timing']))
+
     def update_data(self):
-        self.state.data = idfm.MetroData(**get_dict(rkeys['metro_timing']))
+        self.state.data = self.load_timing()
 
     def get_state(self, fs: FrameState):
         s = self.state
@@ -133,38 +127,43 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         return s
 
 
-class RemoteState(BaseModel):
-    action: str = ''
+class CursorState(BaseModel):
+    x: int = 120
+    y: int = 42
 
-class RemoteStateManager(BaseStateManager[RemoteState]):
-    model = RemoteState
-
-    def __init__(self, name: str, topic: str):
-        self.name = name
-        self.topic = topic
-
-    def process_mqtt_message(self, topic: str, msg: dict):
-        # if topic == self.topic:
-            # self.set_state()
-        ...
-class CursorStateManager(BaseStateManager[CursorState]):
-    name = 'di.state.cursor'
+class CursorStateManager(PubSubStateManager[CursorState]):
     model = CursorState
+    channels = ('di.pubsub.remote',)
 
-    def process_mqtt_message(self, topic: str, msg: dict):
-        v = self.value
-        if topic in ['zigbee2mqtt/enki.rmt.0x03', 'zigbee2mqtt/ikea.rmt.0x01']:
-            if msg['action'] in ['color_saturation_step_up', 'brightness_up_click']:
-                v.y -= 2
-            if msg['action'] in ['color_saturation_step_down', 'brightness_down_click']:
-                v.y += 2
-            if msg['action'] in ['color_hue_step_up', 'arrow_right_click']:
-                v.x += 2
-            if msg['action'] in ['color_hue_step_down', 'arrow_left_click']:
-                v.x -= 2
-            v.x %= config.matrix_w
-            v.y %= config.matrix_h
-            set_json(self.name, v.json())
+    # TODO: acceleration
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'up':
+            self.state.y -= 1
+        if data.action == 'down':
+            self.state.y += 1
+        if data.action == 'left':
+            self.state.x -= 1
+        if data.action == 'right':
+            self.state.x += 1
+        self.state.x %= config.matrix_w
+        self.state.y %= config.matrix_h
 
 
-state_vars = [CursorStateManager()]
+class RemoteState(BaseModel):
+    action: str = 'unknown'
+    pressed_at: Optional[datetime]
+
+class RemoteStateManager(PubSubStateManager[RemoteState]):
+    model = RemoteState
+    channels = ('di.pubsub.remote',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        self.state.action = data.action
+        self.state.pressed_at = pendulum.now()
+
+    def get_state(self, fs: FrameState) -> RemoteState:
+        s = self.state
+        if is_expired(s.pressed_at, seconds=1, now=fs.now):
+            return RemoteState(action='unknown')
+        return s

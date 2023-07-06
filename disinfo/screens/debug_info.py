@@ -4,7 +4,7 @@ from ..components.layouts import vstack
 from ..components.layers import div, DivStyle
 from ..utils.func import throttle
 from ..data_structures import FrameState
-
+from ..drat.app_states import RemoteStateManager
 
 @throttle(40)
 def get_state(fs: FrameState):
@@ -21,7 +21,7 @@ def get_state(fs: FrameState):
         except FileNotFoundError:
             return -1
     return {
-        'is_visible': fs.rmt0_action == 'scene_3',
+        'is_visible': RemoteStateManager().get_state(fs).action == 'btn_debug',
         'sys_temp': _get_temp,
         **stateinfo,
     }

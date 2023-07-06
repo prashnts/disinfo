@@ -1,7 +1,7 @@
 import typer
 import pendulum
 
-from ..redis import set_dict, db
+from ..redis import set_dict, db, publish
 # from .app_states import MetroInfoStateManager
 from .data_service import get_weather, get_random_text, get_metro_info
 
@@ -17,7 +17,7 @@ def trigger_metro():
     # mgr = MetroInfoStateManager()
     # mgr.manual_trigger()
     get_metro_info(force=True)
-    db.publish('di.pubsub.metro', 'toggle'.encode())
+    publish('di.pubsub.metro', dict(action='toggle'))
 
 @trigger_app.command(name='twentytwo')
 def trigger_twenty_two():
