@@ -150,8 +150,8 @@ def metro_view(fs: FrameState, state: MetroAppState):
         style=DivStyle(
             background='#051534',
             padding=2,
-            radius=(2, 0, 0, 2),
-            border=2,
+            radius=(3, 0, 0, 3),
+            border=1,
             border_color='#064a6e',
         ),
     )
