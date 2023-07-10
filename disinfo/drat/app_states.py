@@ -44,14 +44,38 @@ class StateManagerSingleton(type):
         return cls._instances[cls]
 
 
+class PubSubManager(metaclass=StateManagerSingleton):
+    def __init__(self):
+        self.pubsub = db.pubsub()
+        self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
+        self.pubsub.run_in_thread(sleep_time=0.0001, daemon=True)
+        self.subscribers = {}
+
+    def handle_message(self, message):
+        if not message or message['type'] != 'pmessage':
+            return
+
+        channel_name = message['channel'].decode()
+        try:
+            msg = PubSubMessage(**json.loads(message['data'].decode()))
+        except KeyError:
+            return
+
+        for channels, callback in self.subscribers.values():
+            if channel_name in channels:
+                callback(channel_name, msg)
+
+    def attach(self, uid: str, channels: tuple[str], callback: Callable):
+        if uid not in self.subscribers:
+            self.subscribers[uid] = (channels, callback)
+        return self
+
 class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
     model: StateModel
     channels: tuple[str]
 
     def __init__(self):
-        self.pubsub = db.pubsub()
-        self.pubsub.subscribe(**{c: self.unpack_message for c in self.channels})
-        self.pubsub.run_in_thread(sleep_time=0.01, daemon=True)
+        PubSubManager().attach(self.__class__.__name__, self.channels, self.process_message)
         self.state = self.initial_state()
 
     def initial_state(self) -> StateModel:

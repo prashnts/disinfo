@@ -77,14 +77,9 @@ def on_message(client, userdata, msg):
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:
-            # ttl = config.mqtt_btn_latch_t
-            # if payload['action'] in latch_timing:
-            #     ttl = latch_timing[payload['action']]
-            # db.set(rkeys['ha_enki_rmt'], msg.payload, px=ttl)
             publish('di.pubsub.remote', dict(action=rmt_enki_keymap.get(payload['action'], 'unknown')))
 
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
-        ttl = config.mqtt_btn_latch_t
         if payload['action']:
             # db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
             publish('di.pubsub.remote', dict(action=rmt_ikea_keymap.get(payload['action'], 'unknown')))
