@@ -73,7 +73,7 @@ def get_metro_info(force: bool = False):
         print('[i] [fetch] metro timing')
         data = idfm.fetch_state()
         set_json(rkeys['metro_timing'], data.json())
-        publish('di.pubsub.metro', action='update')
+        publish('di.pubsub.metro', dict(action='update'))
     except Exception as e:
         print('[e] metro_info', e)
 
