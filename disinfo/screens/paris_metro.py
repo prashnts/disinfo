@@ -19,7 +19,7 @@ metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
 msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
 status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
-visibility_slider = VisibilitySlider(edge='bottom', duration=0.5)
+visibility_slider = VisibilitySlider(edge='bottom', duration=0.1)
 
 warning_line = mosaic(
     warning_tile,
