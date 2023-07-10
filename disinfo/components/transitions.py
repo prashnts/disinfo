@@ -188,16 +188,16 @@ class VisibilitySlider:
         ssize = max_pos / (self.duration / (step - self.last_step))
         ssize = int(ssize)
 
-        if step - self.last_step >= (self.duration / max_pos):
-            if 0 <= self.pos <= max_pos:
-                if self.direction > 0:
-                    self.pos += ssize
-                else:
-                    self.pos -= ssize
-                # Bounds check.
-                self.pos = max(min(max_pos, self.pos), 0)
+        # if step - self.last_step >= (self.duration / max_pos):
+        if 0 <= self.pos <= max_pos:
+            if self.direction > 0:
+                self.pos += ssize
+            else:
+                self.pos -= ssize
+            # Bounds check.
+            self.pos = max(min(max_pos, self.pos), 0)
 
-            self.last_step = step
+        self.last_step = step
 
     def draw(self, step: float) -> Optional[Frame]:
         if not self.frame:
