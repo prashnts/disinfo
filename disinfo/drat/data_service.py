@@ -8,6 +8,7 @@ from schedule import Scheduler
 
 from .. import config
 from ..redis import rkeys, set_dict, set_json, db, publish
+from .app_states import PubSubManager, PubSubMessage
 from . import idfm
 
 
@@ -77,6 +78,11 @@ def get_metro_info(force: bool = False):
         print('[e] metro_info', e)
 
 
+def on_pubsub(channel_name: str, message: PubSubMessage):
+    if message.action == 'fetch_metro':
+        get_metro_info(force=True)
+
+
 scheduler = SafeScheduler()
 
 scheduler.every(15).minutes.do(get_weather)
@@ -85,6 +91,9 @@ scheduler.every(1).minutes.do(get_metro_info)
 
 if __name__ == '__main__':
     print('[Data Service] Scheduler Started')
+
+    pubsub = PubSubManager()
+    pubsub.attach('data_service', ('di.pubsub.dataservice',), on_pubsub)
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)

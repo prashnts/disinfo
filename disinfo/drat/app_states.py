@@ -25,7 +25,7 @@ from disinfo.data_structures import FrameState
 
 from . import idfm
 from .. import config
-from ..redis import get_dict, rkeys, db
+from ..redis import get_dict, rkeys, db, publish
 from ..data_structures import FrameState
 from ..utils.time import is_expired
 
@@ -129,6 +129,8 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
             show = True
         else:
             show = not show
+        if show:
+            publish('di.pubsub.dataservice', action='fetch_metro')
         self.state.show = show
         self.state.toggled_at = pendulum.now()
 
