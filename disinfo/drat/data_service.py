@@ -79,6 +79,7 @@ def get_metro_info(force: bool = False):
 
 
 def on_pubsub(channel_name: str, message: PubSubMessage):
+    print("hello")
     if message.action == 'fetch_metro':
         get_metro_info(force=True)
 

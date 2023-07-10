@@ -130,7 +130,7 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         else:
             show = not show
         if show:
-            publish('di.pubsub.dataservice', action='fetch_metro')
+            publish('di.pubsub.dataservice', action='fetch_metro', payload={'force': True})
         self.state.show = show
         self.state.toggled_at = pendulum.now()
 
