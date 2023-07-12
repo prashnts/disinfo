@@ -92,61 +92,6 @@ class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
     def get_state(self, fs: Optional[FrameState] = None) -> StateModel:
         return self.state
 
-class MetroAppState(BaseModel):
-    show: bool = False
-    visible: bool = False
-    valid: bool = False
-    toggled_at: Optional[datetime] = None
-    data: Optional[idfm.MetroData] = None
-
-class MetroAppStateManager(PubSubStateManager[MetroAppState]):
-    model = MetroAppState
-    channels = ('di.pubsub.metro', 'di.pubsub.remote')
-
-    # TODO support intializing the inner states.
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        if channel.endswith('.metro'):
-            if data.action == 'update':
-                self.update_data()
-            if data.action == 'toggle':
-                self.toggle()
-        if channel.endswith('.remote'):
-            if data.action == 'btn_metro':
-                self.toggle()
-
-    def initial_state(self) -> MetroAppState:
-        return MetroAppState(data=self.load_timing())
-
-    def toggle(self):
-        s = self.state
-        show = s.show
-        if is_expired(s.toggled_at, seconds=25):
-            show = True
-        else:
-            show = not show
-        if show:
-            publish('di.pubsub.dataservice', action='fetch_metro')
-        self.state.show = show
-        self.state.toggled_at = pendulum.now()
-
-    def load_timing(self):
-        return idfm.MetroData(**get_dict(rkeys['metro_timing']))
-
-    def update_data(self):
-        self.state.data = self.load_timing()
-
-    def get_state(self, fs: FrameState):
-        s = self.state
-        if not s.data:
-            s.visible = False
-            s.valid = False
-        else:
-            shown = s.show and not is_expired(s.toggled_at, seconds=25, now=fs.now)
-            s.visible = idfm.is_active() or shown
-            s.valid = not is_expired(s.data.timestamp, minutes=1, seconds=20, now=fs.now)
-
-        return s
 
 
 class CursorState(BaseModel):

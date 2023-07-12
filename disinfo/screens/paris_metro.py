@@ -1,5 +1,10 @@
+import pendulum
+
+from datetime import datetime
 from functools import cache
+from typing import Optional
 from PIL import ImageDraw
+from pydantic import BaseModel
 
 from .screen import draw_loop
 from ..components import fonts
@@ -11,8 +16,11 @@ from ..components.frame_cycler import FrameCycler
 from ..components.scroller import VScroller, HScroller
 from ..components.transitions import VisibilitySlider
 from ..utils.palettes import metro_colors
+from ..utils.time import is_expired
 from ..data_structures import FrameState
-from ..drat.app_states import MetroAppStateManager, MetroAppState
+from ..drat.app_states import PubSubStateManager, PubSubMessage
+from ..drat import idfm
+from ..redis import get_dict, publish, rkeys
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -26,6 +34,63 @@ warning_line = mosaic(
     nx=1,
     ny=msg_vscroll.size // warning_tile.height,
     seamless=False)
+
+
+class MetroAppState(BaseModel):
+    show: bool = False
+    visible: bool = False
+    valid: bool = False
+    toggled_at: Optional[datetime] = None
+    data: Optional[idfm.MetroData] = None
+
+class MetroAppStateManager(PubSubStateManager[MetroAppState]):
+    model = MetroAppState
+    channels = ('di.pubsub.metro', 'di.pubsub.remote')
+
+    # TODO support intializing the inner states.
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if channel.endswith('.metro'):
+            if data.action == 'update':
+                self.update_data()
+            if data.action == 'toggle':
+                self.toggle()
+        if channel.endswith('.remote'):
+            if data.action == 'btn_metro':
+                self.toggle()
+
+    def initial_state(self) -> MetroAppState:
+        return MetroAppState(data=self.load_timing())
+
+    def toggle(self):
+        s = self.state
+        show = s.show
+        if is_expired(s.toggled_at, seconds=25):
+            show = True
+        else:
+            show = not show
+        if show:
+            publish('di.pubsub.dataservice', action='fetch_metro')
+        self.state.show = show
+        self.state.toggled_at = pendulum.now()
+
+    def load_timing(self):
+        return idfm.MetroData(**get_dict(rkeys['metro_timing']))
+
+    def update_data(self):
+        self.state.data = self.load_timing()
+
+    def get_state(self, fs: FrameState):
+        s = self.state
+        if not s.data:
+            s.visible = False
+            s.valid = False
+        else:
+            shown = s.show and not is_expired(s.toggled_at, seconds=25, now=fs.now)
+            s.visible = idfm.is_active() or shown
+            s.valid = not is_expired(s.data.timestamp, minutes=1, seconds=20, now=fs.now)
+
+        return s
 
 
 @cache
