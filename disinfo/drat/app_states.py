@@ -216,7 +216,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
         forecast = get_dict(rkeys['weather_data'])
         _today = forecast['daily']['data'][0]
 
-        return dict(
+        return WeatherState(
             temperature=forecast['currently']['apparentTemperature'],
             update_time=arrow.get(forecast['currently']['time'], tzinfo='local'),
             condition=forecast['currently']['summary'],
