@@ -31,7 +31,7 @@ s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
 s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 
-fetch_on_start = once(lambda: publish('di.pubsub.dataservice', {'action': 'fetch_weather'}))
+fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
 
 class WeatherData(BaseModel):
     temperature: float = 25.0
