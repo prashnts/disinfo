@@ -16,12 +16,12 @@ A subscriber thread is created. The thread hold a slot for state variable and up
 
 import pendulum
 import json
+import time
 
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, Generic, TypeVar, Callable, Union
 from disinfo.data_structures import FrameState
-
 
 from . import idfm
 from .. import config
@@ -39,9 +39,10 @@ class StateManagerSingleton(type):
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
+        key = (cls, args, tuple(kwargs.items()))
+        if key not in cls._instances:
+            cls._instances[key] = super().__call__(*args, **kwargs)
+        return cls._instances[key]
 
 
 class PubSubManager(metaclass=StateManagerSingleton):
@@ -57,7 +58,11 @@ class PubSubManager(metaclass=StateManagerSingleton):
 
         channel_name = message['channel'].decode()
         try:
-            msg = PubSubMessage(**json.loads(message['data'].decode()))
+            data = json.loads(message['data'].decode())
+            action = data['_action']
+            del data['_action']
+            payload = data
+            msg = PubSubMessage(action=action, payload=payload)
         except KeyError:
             return
 
@@ -80,15 +85,6 @@ class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
 
     def initial_state(self) -> StateModel:
         return self.model()
-
-    def unpack_message(self, message):
-        if not message or message['type'] != 'message':
-            return
-        try:
-            data = json.loads(message['data'].decode())
-            self.process_message(message['channel'].decode(), PubSubMessage(**data))
-        except KeyError:
-            pass
 
     def process_message(self, channel: str, data: PubSubMessage):
         raise NotImplemented
@@ -130,7 +126,7 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         else:
             show = not show
         if show:
-            publish('di.pubsub.dataservice', dict(action='fetch_metro'))
+            publish('di.pubsub.dataservice', action='fetch_metro')
         self.state.show = show
         self.state.toggled_at = pendulum.now()
 
@@ -193,3 +189,78 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
         if is_expired(s.pressed_at, seconds=1, now=fs.now):
             return RemoteState(action='unknown')
         return s
+
+
+class WeatherState(BaseModel):
+    temperature: float = 25.0
+    condition: str = 'Sunny'
+    icon_name: str = 'clear-day'
+    t_high: float = 30.0
+    t_low: float = 20.0
+    sunset_time: Optional[datetime]
+    updated_at: Optional[datetime]
+
+
+class WeatherStateManager(PubSubStateManager[WeatherState]):
+    model = WeatherState
+    channels = ('di.pubsub.weather',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        self.state.data = get_dict(rkeys['weather_data'])
+        self.state.valid = True
+
+    def get_state(self, fs: FrameState) -> WeatherState:
+        ...
+
+    def load_weather(self):
+        forecast = get_dict(rkeys['weather_data'])
+        _today = forecast['daily']['data'][0]
+
+        return dict(
+            temperature=forecast['currently']['apparentTemperature'],
+            update_time=arrow.get(forecast['currently']['time'], tzinfo='local'),
+            condition=forecast['currently']['summary'],
+            icon_name=forecast['currently']['icon'],
+            t_high=_today['temperatureHigh'],
+            t_low=_today['temperatureLow'],
+            sunset_time=arrow.get(_today['sunsetTime'], tzinfo='local'),
+        )
+
+        s = self.state
+        if not s.data:
+            s.valid = False
+        else:
+            s.valid = not is_expired
+
+
+class MotionSensorState(BaseModel):
+    detected: bool = True
+    detected_at: Optional[datetime] = None
+
+class MotionSensorStateManager(PubSubStateManager[MotionSensorState]):
+    model = MotionSensorState
+    channels = ('di.pubsub.pir',)
+
+    def __init__(self, entity_id: str):
+        self.entity_id = entity_id
+        super().__init__()
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'update' and data.payload['sensor'] == self.entity_id:
+            payload = data.payload
+            occupied = payload['occupancy']
+            s = self.state
+            if occupied:
+                # when motion is detected, it's on.
+                s.detected = True
+            else:
+                # When motion is NOT detected, we want to keep the display on
+                # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
+                # this time is in local timezone.
+                last_change = pendulum.parse(payload['timestamp'])
+                now = pendulum.now()
+                delay = 30 if 8 <= now.hour < 23 else 5
+                delta = (now - last_change).total_seconds()
+                s.detected = delta <= 60 * delay
+            s.detected_at = pendulum.now()
+            self.state = s

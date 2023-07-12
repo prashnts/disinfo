@@ -50,6 +50,7 @@ def get_weather():
         data = r.json()
         # write out the forecast.
         set_dict(rkeys['weather_data'], data)
+        publish('di.pubsub.weather', action='update', payload=data)
     except requests.exceptions.RequestException as e:
         print('[e] weather', e)
 
@@ -61,6 +62,7 @@ def get_random_text():
         r.raise_for_status()
         data = r.json()
         set_dict(rkeys['random_msg'], data)
+        publish('di.pubsub.numbers', action='update', payload=data)
     except requests.exceptions.RequestException as e:
         print('[e] numbers', e)
 
@@ -73,7 +75,7 @@ def get_metro_info(force: bool = False):
         print('[i] [fetch] metro timing')
         data = idfm.fetch_state()
         set_json(rkeys['metro_timing'], data.json())
-        publish('di.pubsub.metro', dict(action='update'))
+        publish('di.pubsub.metro', action='update')
     except Exception as e:
         print('[e] metro_info', e)
 
@@ -81,6 +83,10 @@ def get_metro_info(force: bool = False):
 def on_pubsub(channel_name: str, message: PubSubMessage):
     if message.action == 'fetch_metro':
         get_metro_info(force=True)
+    if message.action == 'fetch_weather':
+        get_weather()
+    if message.action == 'fetch_numbers':
+        get_random_text()
 
 
 scheduler = SafeScheduler()

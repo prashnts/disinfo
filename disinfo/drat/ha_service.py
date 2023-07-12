@@ -74,15 +74,16 @@ def on_message(client, userdata, msg):
     if msg.topic in pir_topic_map:
         payload['timestamp'] = arrow.now().isoformat()
         set_dict(rkeys[pir_topic_map[msg.topic]], payload)
+        publish('di.pubsub.pir', action='update', payload=dict(sensor=pir_topic_map[msg.topic], **payload))
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:
-            publish('di.pubsub.remote', dict(action=rmt_enki_keymap.get(payload['action'], 'unknown')))
+            publish('di.pubsub.remote', action=rmt_enki_keymap.get(payload['action'], 'unknown'))
 
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
         if payload['action']:
             # db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
-            publish('di.pubsub.remote', dict(action=rmt_ikea_keymap.get(payload['action'], 'unknown')))
+            publish('di.pubsub.remote', action=rmt_ikea_keymap.get(payload['action'], 'unknown'))
 
 
 if __name__ == '__main__':

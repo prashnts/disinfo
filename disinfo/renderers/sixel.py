@@ -16,7 +16,9 @@ from ..utils.imops import enlarge_pixels
 def encode_sixels(img: Image.Image, optimize: bool = False, scale=4, gap=1) -> str:
     '''Encodes given image to a sixel string.'''
     if optimize:
-        img = enlarge_pixels(img, scale, gap)
+        img = enlarge_pixels(img, scale * 2, gap)
+        img = img.resize((img.width // 2, img.height // 2), Image.LANCZOS)
+
     buf = BytesIO()
     data = img.convert('RGB').tobytes()
     width = img.width
