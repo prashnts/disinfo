@@ -190,49 +190,6 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
             return RemoteState(action='unknown')
         return s
 
-
-class WeatherState(BaseModel):
-    temperature: float = 25.0
-    condition: str = 'Sunny'
-    icon_name: str = 'clear-day'
-    t_high: float = 30.0
-    t_low: float = 20.0
-    sunset_time: Optional[datetime]
-    updated_at: Optional[datetime]
-
-
-class WeatherStateManager(PubSubStateManager[WeatherState]):
-    model = WeatherState
-    channels = ('di.pubsub.weather',)
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        self.state.data = get_dict(rkeys['weather_data'])
-        self.state.valid = True
-
-    def get_state(self, fs: FrameState) -> WeatherState:
-        ...
-
-    def load_weather(self):
-        forecast = get_dict(rkeys['weather_data'])
-        _today = forecast['daily']['data'][0]
-
-        return WeatherState(
-            temperature=forecast['currently']['apparentTemperature'],
-            update_time=arrow.get(forecast['currently']['time'], tzinfo='local'),
-            condition=forecast['currently']['summary'],
-            icon_name=forecast['currently']['icon'],
-            t_high=_today['temperatureHigh'],
-            t_low=_today['temperatureLow'],
-            sunset_time=arrow.get(_today['sunsetTime'], tzinfo='local'),
-        )
-
-        s = self.state
-        if not s.data:
-            s.valid = False
-        else:
-            s.valid = not is_expired
-
-
 class MotionSensorState(BaseModel):
     detected: bool = True
     detected_at: Optional[datetime] = None

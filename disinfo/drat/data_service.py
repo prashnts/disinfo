@@ -49,7 +49,6 @@ def get_weather():
         r.raise_for_status()
         data = r.json()
         # write out the forecast.
-        set_dict(rkeys['weather_data'], data)
         publish('di.pubsub.weather', action='update', payload=data)
     except requests.exceptions.RequestException as e:
         print('[e] weather', e)

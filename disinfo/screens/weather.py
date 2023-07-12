@@ -1,7 +1,10 @@
-import arrow
+import pendulum
 
 from colour import Color
 from functools import cache
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 from .screen import draw_loop
@@ -10,10 +13,9 @@ from ..components.elements import Frame, StillImage
 from ..components.text import TextStyle, text
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
-from ..redis import rkeys, get_dict
 from ..components.spriteim import SpriteIcon
-from ..utils.func import throttle
 from ..data_structures import FrameState
+from ..drat.app_states import PubSubStateManager, PubSubMessage
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -25,6 +27,51 @@ s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
 s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
+
+
+
+class WeatherData(BaseModel):
+    temperature: float = 25.0
+    condition: str = 'Sunny'
+    icon_name: str = 'clear-day'
+    t_high: float = 30.0
+    t_low: float = 20.0
+    sunset_time: Optional[datetime]
+    updated_at: Optional[datetime]
+
+class WeatherState(BaseModel):
+    data: WeatherData = WeatherData()
+    valid: bool = False
+    should_show_sunset: bool = False
+    is_outdated: bool = True
+
+class WeatherStateManager(PubSubStateManager[WeatherState]):
+    model = WeatherState
+    channels = ('di.pubsub.weather',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'update':
+            forecast = data.payload
+            _today = forecast['daily']['data'][0]
+            self.state.data = WeatherData(
+                temperature=forecast['currently']['apparentTemperature'],
+                condition=forecast['currently']['summary'],
+                icon_name=forecast['currently']['icon'],
+                t_high=_today['temperatureHigh'],
+                t_low=_today['temperatureLow'],
+                sunset_time=pendulum.from_timestamp(_today['sunsetTime'], tz='local'),
+                updated_at=pendulum.from_timestamp(forecast['currently']['time'], tz='local'),
+            )
+            self.state.valid = True
+
+    def get_state(self, fs: FrameState) -> WeatherState:
+        if not self.state.valid:
+            return self.state
+        s = self.state.data
+        self.state.should_show_sunset = s.sunset_time > fs.now and (s.sunset_time - fs.now).total_seconds() < 2 * 60 * 60
+        self.state.is_outdated = (fs.now - s.updated_at).total_seconds() > 30 * 60  # 30 mins.
+        return self.state
+
 
 
 @cache
@@ -84,50 +131,33 @@ def draw_temp_range(
         vstack([text_high, text_low], gap=1, align='left'),
     ], gap=1, align='center')
 
-@throttle(1123)
-def get_state():
-    forecast = get_dict(rkeys['weather_data'])
-    _today = forecast['daily']['data'][0]
-
-    return dict(
-        temperature=forecast['currently']['apparentTemperature'],
-        update_time=arrow.get(forecast['currently']['time'], tzinfo='local'),
-        condition=forecast['currently']['summary'],
-        icon_name=forecast['currently']['icon'],
-        t_high=_today['temperatureHigh'],
-        t_low=_today['temperatureLow'],
-        sunset_time=arrow.get(_today['sunsetTime'], tzinfo='local'),
-    )
-
 
 def composer(fs: FrameState):
-    s = get_state()
+    state = WeatherStateManager().get_state(fs)
+    s = state.data
 
-    should_show_sunset = s['sunset_time'] > fs.now and (s['sunset_time'] - fs.now).total_seconds() < 2 * 60 * 60
-    is_outdated = (fs.now - s['update_time']).total_seconds() > 30 * 60  # 30 mins.
-
-    weather_icon.set_icon(f'assets/unicorn-weather-icons/{s["icon_name"]}.png')
+    weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
     condition_info = [
-        warning_icon if is_outdated else None,
-        text(s['condition'], style=s_condition),
+        warning_icon if state.is_outdated else None,
+        text(s.condition, style=s_condition),
     ]
 
     main_info = [
         hstack([
             weather_icon.draw(fs.tick),
             hstack([
-                text(f'{round(s["temperature"])}', style=s_temp_value),
+                text(f'{round(s.temperature)}', style=s_temp_value),
                 text('°', style=s_deg_c),
             ], gap=0, align='top'),
-            draw_temp_range(s['temperature'], s['t_high'], s['t_low'], fonts.tamzen__rs),
+            draw_temp_range(s.temperature, s.t_high, s.t_low, fonts.tamzen__rs),
         ], gap=1, align='center'),
     ]
 
-    if should_show_sunset:
+    if state.should_show_sunset:
         sunset_info = hstack([
             sunset_icon,
-            text(s['sunset_time'].strftime('%H:%M'), style=s_sunset_time),
+            text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         main_info.append(sunset_info)
 

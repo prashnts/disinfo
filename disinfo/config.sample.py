@@ -22,3 +22,5 @@ idfm_api_key = 'fill-me'
 # Represents combined panels
 matrix_w = 128
 matrix_h = 64
+
+timezone = 'Europe/Paris'
