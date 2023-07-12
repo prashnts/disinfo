@@ -4,6 +4,7 @@ from colour import Color
 from functools import cache
 from pydantic import BaseModel
 from typing import Optional
+from pydash import once
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
@@ -16,6 +17,7 @@ from ..components.layouts import hstack, vstack
 from ..components.spriteim import SpriteIcon
 from ..data_structures import FrameState
 from ..drat.app_states import PubSubStateManager, PubSubMessage
+from ..redis import publish
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -29,6 +31,7 @@ s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
 s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 
+fetch_on_start = once(lambda: publish('di.pubsub.dataservice', {'action': 'fetch_weather'}))
 
 class WeatherData(BaseModel):
     temperature: float = 25.0
@@ -133,6 +136,7 @@ def draw_temp_range(
 
 
 def composer(fs: FrameState):
+    fetch_on_start()
     state = WeatherStateManager().get_state(fs)
     s = state.data
 
