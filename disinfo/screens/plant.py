@@ -23,7 +23,10 @@ def get_state():
     last_updated = arrow.get(s['last_updated']).to('local')
     now = arrow.now()
 
-    state['volts'] = float(s['state'])
+    try:
+        state['volts'] = float(s['state'])
+    except ValueError:
+        state['volts'] = 0.0
 
     state['is_visible'] = all([
         state['volts'] >= WARNING_THRESHOLD,
