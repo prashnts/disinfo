@@ -16,7 +16,7 @@ from .state import WeatherStateManager
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
-moon_icon = StillImage('assets/moon/moon01.bmp', resize=(25, 25))
+moon_icon = StillImage('assets/moon/moon08.png', resize=(25, 25))
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 warning_icon = StillImage('assets/sync.png')
 sunset_icon = StillImage('assets/raster/sunset-11x5.png')
