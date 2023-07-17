@@ -49,7 +49,7 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
         t_a = time.monotonic()
         frame = compose_frame(fs)
         t_b = time.monotonic()
-        fsixel = encode_sixels(frame, optimize=True, scale=scale)
+        fsixel = encode_sixels(frame, optimize=True, scale=scale, gap=0)
 
         # Term Cursor Position x, y ; ref colorama
         if inline:

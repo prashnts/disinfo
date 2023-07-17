@@ -20,7 +20,7 @@ def main(filename: str = 'assets/disinfo-export.gif', nframe: int = 60, scale: i
         fs = FrameState.create()
         t_a = time.time()
         img = compose_frame(fs)
-        frames.append(enlarge_pixels(img, scale=scale).convert('RGB'))
+        frames.append(enlarge_pixels(img, scale=scale, outline_color='#00000055', gap=0).convert('RGB'))
         durations.append((time.time() - t_a) * 100)
 
     t_end = time.time()

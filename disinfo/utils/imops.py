@@ -1,9 +1,8 @@
 from PIL import Image, ImageDraw, ImageEnhance
 
 
-def enlarge_pixels(img: Image.Image, scale: int = 4, gap: int = 1):
+def enlarge_pixels(img: Image.Image, scale: int = 4, gap: int = 1, outline_color: str = '#000000'):
     # turn the img into a mosaic with gap between px.
-    outline_color = '#000000'
     w, h = img.width, img.height
     iw, ih = w * scale, h * scale
     i = Image.new('RGBA', (iw, ih))

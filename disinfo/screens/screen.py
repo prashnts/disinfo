@@ -11,7 +11,7 @@ DrawerFn = Callable[[FrameState], Optional[Frame]]
 ComposerFn = Callable[[FrameState], Optional[Frame]]
 
 
-def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False) -> DrawerFn:
+def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = True) -> DrawerFn:
     '''Creates a daemon thread to executer composer function.
 
     The goal is not to gain in performance that much, rather it is to ensure
@@ -37,9 +37,11 @@ def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False)
                     previous_state = current_state
 
     t = threading.Thread(target=painter, daemon=True)
-    t.start()
 
     def draw(fs: FrameState) -> Optional[Frame]:
+        if not t.is_alive():
+            t.start()
+
         nonlocal current_state
         current_state = fs
         return current_frame

@@ -1,23 +1,18 @@
-import pendulum
-
 from colour import Color
 from functools import cache
-from pydantic import BaseModel
-from typing import Optional
 from pydash import once
-from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
-from .screen import draw_loop
-from ..components import fonts
-from ..components.elements import Frame, StillImage
-from ..components.text import TextStyle, text
-from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, vstack
-from ..components.spriteim import SpriteIcon
-from ..data_structures import FrameState
-from ..drat.app_states import PubSubStateManager, PubSubMessage
-from ..redis import publish
+from disinfo.components import fonts
+from disinfo.components.elements import Frame, StillImage
+from disinfo.components.text import TextStyle, text
+from disinfo.components.layers import div, DivStyle
+from disinfo.components.layouts import hstack, vstack
+from disinfo.components.spriteim import SpriteIcon
+from disinfo.data_structures import FrameState
+from disinfo.redis import publish
+
+from .state import WeatherStateManager
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -32,48 +27,6 @@ s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 
 fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
-
-class WeatherData(BaseModel):
-    temperature: float = 25.0
-    condition: str = 'Sunny'
-    icon_name: str = 'clear-day'
-    t_high: float = 30.0
-    t_low: float = 20.0
-    sunset_time: Optional[datetime]
-    updated_at: Optional[datetime]
-
-class WeatherState(BaseModel):
-    data: WeatherData = WeatherData()
-    valid: bool = False
-    should_show_sunset: bool = False
-    is_outdated: bool = True
-
-class WeatherStateManager(PubSubStateManager[WeatherState]):
-    model = WeatherState
-    channels = ('di.pubsub.weather',)
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update':
-            forecast = data.payload
-            _today = forecast['daily']['data'][0]
-            self.state.data = WeatherData(
-                temperature=forecast['currently']['apparentTemperature'],
-                condition=forecast['currently']['summary'],
-                icon_name=forecast['currently']['icon'],
-                t_high=_today['temperatureHigh'],
-                t_low=_today['temperatureLow'],
-                sunset_time=pendulum.from_timestamp(_today['sunsetTime'], tz='local'),
-                updated_at=pendulum.from_timestamp(forecast['currently']['time'], tz='local'),
-            )
-            self.state.valid = True
-
-    def get_state(self, fs: FrameState) -> WeatherState:
-        if not self.state.valid:
-            return self.state
-        s = self.state.data
-        self.state.should_show_sunset = s.sunset_time > fs.now and (s.sunset_time - fs.now).total_seconds() < 2 * 60 * 60
-        self.state.is_outdated = (fs.now - s.updated_at).total_seconds() > 30 * 60  # 30 mins.
-        return self.state
 
 
 
@@ -179,6 +132,3 @@ def composer(fs: FrameState):
     weather_stack = [weather_info]
 
     return vstack(weather_stack, gap=1, align='left')
-
-
-draw = draw_loop(composer, sleepms=100)
