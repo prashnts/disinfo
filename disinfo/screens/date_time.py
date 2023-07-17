@@ -1,4 +1,4 @@
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle

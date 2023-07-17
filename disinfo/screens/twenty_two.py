@@ -2,7 +2,7 @@ import random
 
 from PIL import Image, ImageDraw
 
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at

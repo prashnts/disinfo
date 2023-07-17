@@ -1,4 +1,4 @@
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..components.text import text
 from ..components.layouts import vstack
 from ..components.layers import div, DivStyle

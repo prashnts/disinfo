@@ -6,7 +6,7 @@ from typing import Optional
 from PIL import ImageDraw
 from pydantic import BaseModel
 
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, MultiLineText, TextStyle

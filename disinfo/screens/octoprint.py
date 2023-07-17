@@ -3,7 +3,7 @@ import arrow
 from datetime import timedelta
 from pydash import py_
 
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..components.text import Text, TextStyle
 from ..components.elements import StillImage
 from ..components.layouts import vstack, hstack

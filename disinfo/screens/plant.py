@@ -2,7 +2,7 @@ import arrow
 
 from datetime import timedelta
 
-from .screen import draw_loop
+from .drawer import draw_loop
 from ..components.elements import StillImage
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
