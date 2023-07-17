@@ -16,6 +16,7 @@ class WeatherData(BaseModel):
     t_low: float = 20.0
     sunset_time: Optional[datetime]
     updated_at: Optional[datetime]
+    moon_phase: int = 50
 
 class WeatherState(BaseModel):
     data: WeatherData = WeatherData()
@@ -39,6 +40,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
                 t_low=_today['temperatureLow'],
                 sunset_time=pendulum.from_timestamp(_today['sunsetTime'], tz='local'),
                 updated_at=pendulum.from_timestamp(forecast['currently']['time'], tz='local'),
+                moon_phase=(_today['moonPhase'] * 100) % 100,
             )
             self.state.valid = True
 

@@ -30,6 +30,9 @@ s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
 
 
+@cache
+def moon_phase(phase: int):
+    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
 
 @cache
 def draw_temp_range(
@@ -130,6 +133,6 @@ def composer(fs: FrameState):
         ),
     ], gap=1, align='left')
 
-    weather_stack = [weather_info, moon_icon]
+    weather_stack = [weather_info, moon_phase(s.moon_phase)]
 
     return vstack(weather_stack, gap=1, align='left')
