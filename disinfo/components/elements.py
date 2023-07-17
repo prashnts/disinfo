@@ -19,5 +19,5 @@ class Frame(UIElement):
 
 class StillImage(Frame):
     def __init__(self, filename: str):
-        img = Image.open(filename)
+        img = Image.open(filename).convert('RGBA')
         super().__init__(img)
