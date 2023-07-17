@@ -18,6 +18,8 @@ class Frame(UIElement):
         self.height = image.height
 
 class StillImage(Frame):
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')
+        if resize:
+            img = img.resize(resize)
         super().__init__(img)
