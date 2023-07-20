@@ -19,7 +19,9 @@ weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.
 moon_icon = StillImage('assets/moon/moon08.png', resize=(25, 25))
 sunset_arrow = SpriteIcon('assets/sunset-arrow.png', step_time=.2)
 warning_icon = StillImage('assets/sync.png')
-sunset_icon = StillImage('assets/raster/sunset-11x5.png')
+# sunset_icon = StillImage('assets/raster/sunset-11x5.png')
+sunset_icon = StillImage('assets/raster/sunset-7x9.png')
+sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 
 s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
@@ -32,14 +34,24 @@ fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_wea
 
 @cache
 def moon_phase_image(phase: int) -> StillImage:
-    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
+    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(24, 24))
 
 
 def astronomical_info(state: WeatherState):
+    if not state.show_moon_phase:
+        return
     s = state.data
     phase_value = text(f'{s.moon_phase}%', style=s_moon_phase)
     infos = [phase_value]
-    if state.should_show_sunset:
+
+    if state.show_sunrise:
+        sunrise_info = hstack([
+            sunrise_icon,
+            text(s.sunrise_time.strftime('%H:%M'), style=s_sunset_time),
+        ], gap=1, align='center')
+        infos.append(sunrise_info)
+
+    if state.show_sunset:
         sunset_info = hstack([
             sunset_icon,
             text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
