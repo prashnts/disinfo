@@ -1,14 +1,13 @@
 import pendulum
 
-from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from disinfo.data_structures import FrameState
+from disinfo.data_structures import FrameState, AppBaseModel
 from disinfo.drat.app_states import PubSubStateManager, PubSubMessage
 
 
-class WeatherData(BaseModel):
+class WeatherData(AppBaseModel):
     temperature: float = 25.0
     condition: str = 'Sunny'
     icon_name: str = 'clear-day'
@@ -18,7 +17,7 @@ class WeatherData(BaseModel):
     updated_at: Optional[datetime]
     moon_phase: int = 50
 
-class WeatherState(BaseModel):
+class WeatherState(AppBaseModel):
     data: WeatherData = WeatherData()
     valid: bool = False
     should_show_sunset: bool = False

@@ -17,7 +17,7 @@ from ..components.scroller import VScroller, HScroller
 from ..components.transitions import VisibilitySlider
 from ..utils.palettes import metro_colors
 from ..utils.time import is_expired
-from ..data_structures import FrameState
+from ..data_structures import FrameState, AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..drat import idfm
 from ..redis import get_dict, publish, rkeys
@@ -36,7 +36,7 @@ warning_line = mosaic(
     seamless=False)
 
 
-class MetroAppState(BaseModel):
+class MetroAppState(AppBaseModel):
     show: bool = False
     visible: bool = False
     valid: bool = False

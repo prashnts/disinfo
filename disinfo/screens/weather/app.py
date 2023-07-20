@@ -12,7 +12,7 @@ from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
 from disinfo.redis import publish
 
-from .state import WeatherStateManager
+from .state import WeatherStateManager, WeatherState
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -32,10 +32,18 @@ fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_wea
 
 
 @cache
-def moon_phase(phase: int):
-    moon_image = StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
-    phase_value = text(f'{phase}%', style=s_moon_phase)
-    return composite_at(phase_value, moon_image, 'mm')
+def astronomical_info(state: WeatherState):
+    s = state.data
+    moon_image = StillImage(f'assets/moon/moon{s.moon_phase:02d}.png', resize=(25, 25))
+    phase_value = text(f'{s.moon_phase}%', style=s_moon_phase)
+    infos = [phase_value]
+    if state.should_show_sunset:
+        sunset_info = hstack([
+            sunset_icon,
+            text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
+        ], gap=1, align='center')
+        infos.append(sunset_info)
+    return hstack([moon_image, vstack(infos, gap=1)], gap=2, align='center')
 
 @cache
 def draw_temp_range(
@@ -118,13 +126,6 @@ def composer(fs: FrameState):
         ], gap=1, align='center'),
     ]
 
-    if state.should_show_sunset:
-        sunset_info = hstack([
-            sunset_icon,
-            text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
-        ], gap=1, align='center')
-        main_info.append(sunset_info)
-
     weather_info = vstack([
         div(
             hstack(main_info, gap=2, align='top'),
@@ -136,6 +137,6 @@ def composer(fs: FrameState):
         ),
     ], gap=1, align='left')
 
-    weather_stack = [weather_info, moon_phase(s.moon_phase)]
+    weather_stack = [weather_info, astronomical_info(state)]
 
     return vstack(weather_stack, gap=1, align='left')

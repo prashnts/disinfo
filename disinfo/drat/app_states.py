@@ -26,11 +26,11 @@ from disinfo.data_structures import FrameState
 from . import idfm
 from .. import config
 from ..redis import get_dict, rkeys, db, publish
-from ..data_structures import FrameState
+from ..data_structures import FrameState, AppBaseModel
 from ..utils.time import is_expired
 
 StateModel = TypeVar('StateModel')
-class PubSubMessage(BaseModel):
+class PubSubMessage(AppBaseModel):
     action: str
     payload: Optional[dict]
 
@@ -94,7 +94,7 @@ class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
 
 
 
-class CursorState(BaseModel):
+class CursorState(AppBaseModel):
     x: int = 120
     y: int = 42
 
@@ -117,7 +117,7 @@ class CursorStateManager(PubSubStateManager[CursorState]):
         self.state.y %= config.matrix_h
 
 
-class RemoteState(BaseModel):
+class RemoteState(AppBaseModel):
     action: str = 'unknown'
     pressed_at: Optional[datetime]
 
@@ -135,7 +135,7 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
             return RemoteState(action='unknown')
         return s
 
-class MotionSensorState(BaseModel):
+class MotionSensorState(AppBaseModel):
     detected: bool = True
     detected_at: Optional[datetime] = None
 
