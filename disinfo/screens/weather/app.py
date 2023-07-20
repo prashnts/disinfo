@@ -30,11 +30,13 @@ s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
 
-
 @cache
+def moon_phase_image(phase: int) -> StillImage:
+    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
+
+
 def astronomical_info(state: WeatherState):
     s = state.data
-    moon_image = StillImage(f'assets/moon/moon{s.moon_phase:02d}.png', resize=(25, 25))
     phase_value = text(f'{s.moon_phase}%', style=s_moon_phase)
     infos = [phase_value]
     if state.should_show_sunset:
@@ -43,7 +45,7 @@ def astronomical_info(state: WeatherState):
             text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         infos.append(sunset_info)
-    return hstack([moon_image, vstack(infos, gap=1)], gap=2, align='center')
+    return hstack([moon_phase_image(s.moon_phase), vstack(infos, gap=1)], gap=2, align='center')
 
 @cache
 def draw_temp_range(
@@ -110,31 +112,23 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
-    condition_info = [
+    condition_info = hstack([
         warning_icon if state.is_outdated else None,
         text(s.condition, style=s_condition),
-    ]
+    ], gap=2, align='center')
 
-    main_info = [
+    main_info = hstack([
+        weather_icon.draw(fs.tick),
         hstack([
-            weather_icon.draw(fs.tick),
-            hstack([
-                text(f'{round(s.temperature)}', style=s_temp_value),
-                text('°', style=s_deg_c),
-            ], gap=0, align='top'),
-            draw_temp_range(s.temperature, s.t_high, s.t_low, fonts.tamzen__rs),
-        ], gap=1, align='center'),
-    ]
+            text(f'{round(s.temperature)}', style=s_temp_value),
+            text('°', style=s_deg_c),
+        ], gap=0, align='top'),
+        draw_temp_range(s.temperature, s.t_high, s.t_low, fonts.tamzen__rs),
+    ], gap=1, align='center')
 
     weather_info = vstack([
-        div(
-            hstack(main_info, gap=2, align='top'),
-            style=DivStyle(background='#000000ac'),
-        ),
-        div(
-            hstack(condition_info, gap=2, align='center'),
-            style=DivStyle(background='#000000ac'),
-        ),
+        div(main_info, style=DivStyle(background='#000000ac')),
+        div(condition_info, style=DivStyle(background='#000000ac')),
     ], gap=1, align='left')
 
     weather_stack = [weather_info, astronomical_info(state)]
