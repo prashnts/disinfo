@@ -7,7 +7,7 @@ from disinfo.components import fonts
 from disinfo.components.elements import Frame, StillImage
 from disinfo.components.text import TextStyle, text
 from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack
+from disinfo.components.layouts import hstack, vstack, composite_at
 from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
 from disinfo.redis import publish
@@ -24,6 +24,7 @@ sunset_icon = StillImage('assets/raster/sunset-11x5.png')
 s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
+s_moon_phase = TextStyle(font=fonts.px_op__r, color='#58595c', outline=1, outline_color='#000000')
 s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 
 
@@ -32,7 +33,9 @@ fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_wea
 
 @cache
 def moon_phase(phase: int):
-    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
+    moon_image = StillImage(f'assets/moon/moon{phase:02d}.png', resize=(25, 25))
+    phase_value = text(f'{phase}%', style=s_moon_phase)
+    return composite_at(phase_value, moon_image, 'mm')
 
 @cache
 def draw_temp_range(

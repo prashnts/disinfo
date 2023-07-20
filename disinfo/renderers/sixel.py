@@ -37,7 +37,7 @@ def encode_sixels(img: Image.Image, optimize: bool = False, scale=4, gap=1) -> s
     return sixel
 
 
-def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool = True):
+def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool = True, dont_draw: bool = False):
     if not single_frame:
         # First we clear the screen.
         print('\033[2J')
@@ -56,7 +56,8 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
             print('\033[0;0H')
 
         # Print sixel at previous location.
-        print(fsixel)
+        if not dont_draw:
+            print(fsixel)
         t_c = time.monotonic()
 
         # Show various times to execute.

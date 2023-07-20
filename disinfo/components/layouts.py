@@ -101,9 +101,9 @@ def vstack(
 
 def composite_at(
     frame: Optional[Frame],
-    dest: Image.Image,
+    dest: Union[Image.Image, Frame],
     anchor: ComposeAnchor = 'tl',
-) -> Image.Image:
+) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
     Anchor positions with respect to `dest` are as follows:
@@ -114,10 +114,14 @@ def composite_at(
         │                  │
         │bl      bm      br│
         └──────────────────┘
-    It modifies the destination image.
+    It modifies the destination if it is an Image.
+    Returns a Frame.
     '''
     if not frame:
         return dest
+
+    if isinstance(dest, Frame):
+        dest = dest.image.copy()
 
     dw = dest.width
     dh = dest.height
@@ -146,7 +150,7 @@ def composite_at(
         raise ValueError('Wrong value for anchor.')
 
     dest.alpha_composite(frame.image, (left, top))
-    return dest
+    return Frame(dest)
 
 def mosaic(
     frame: Frame,
