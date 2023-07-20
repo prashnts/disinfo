@@ -151,4 +151,4 @@ def composer(fs: FrameState):
     )
 
 
-draw = draw_loop(composer, sleepms=100, use_threads=True)
+draw = draw_loop(composer, sleepms=80, use_threads=True)
