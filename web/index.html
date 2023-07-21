@@ -23,7 +23,7 @@
         img {
             width: 640px;
             image-rendering: pixelated;
-            filter: blur(.6px) brightness(1.5) contrast(1.4);
+            filter: blur(.6px) brightness(1.2) contrast(1.2) saturate(2);
             display: block;
             margin: auto;
             border-radius: 4px;
@@ -35,21 +35,41 @@
     <h1>disinfo!</h1>
     <img src='' id='screen'/>
     <script type="module">
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+        const WS_RETRY_DELAY = 2000;
+        const connect = function () {
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            let ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
-        ws.onmessage = function (event) {
-            document.getElementById('screen').src = `data:image/png;base64,${event.data}`;
-        };
+            ws.onmessage = function (event) {
+                document.getElementById('screen').src = `data:image/png;base64,${event.data}`;
+            };
 
-        ws.onopen = function (event) {
-            setInterval(function () {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send('next');
-                }
-            }, 100);
-        };
+            ws.onopen = function (event) {
+                const interval = setInterval(function () {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send('next');
+                    }
+                    if (ws.readyState === WebSocket.CLOSED) {
+                        clearInterval(interval);
+                    }
+                }, 100);
+            };
 
-    </script>
+            ws.onclose = function () {
+                // Handle retries by recreating the connection to websocket.
+                console.warn(`Disinfo connection lost. Retrying in ${WS_RETRY_DELAY / 1000}s.`)
+                setTimeout(function () {
+                    // We generate socket with a timeout to make sure server has time to recover.
+                    ws = connect();
+                }, WS_RETRY_DELAY);
+            }
+
+            ws.onerror = function () {
+                ws.close();
+            }
+        }
+        connect();
+
+        </script>
 </body>
 </html>
