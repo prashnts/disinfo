@@ -14,6 +14,7 @@ tamzen__rm = ImageFont.truetype('assets/fonts/Tamzen7x13r.ttf', 13)
 px_op__r        = ImageFont.truetype('assets/fonts/PixelOperator8.ttf', 8)
 px_op_mono_8    = ImageFont.truetype('assets/fonts/PixelOperatorMono8.ttf', 8)
 px_op__l        = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 16)
+px_op__lb       = ImageFont.truetype('assets/fonts/PixelOperator-Bold.ttf', 16)
 px_op__xl       = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 32)
 px_op__xxl      = ImageFont.truetype('assets/fonts/PixelOperator.ttf', 48)
 
@@ -33,3 +34,9 @@ bitocra = ImageFont.truetype('assets/fonts/bitocra7.bdf', 7)
 # > License   MIT
 # > Source    https://github.com/slavfox/Cozette
 cozette = ImageFont.truetype('assets/fonts/cozette.bdf', 13)
+
+
+# GREYBEARD
+# > License   MIT
+# > Source    https://github.com/flowchartsman/greybeard
+greybeard = ImageFont.truetype('assets/fonts/Greybeard-11px.ttf', 11)
