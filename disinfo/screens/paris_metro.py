@@ -217,7 +217,7 @@ def metro_view(fs: FrameState, state: MetroAppState):
             padding=2,
             radius=(3, 0, 0, 3),
             border=1,
-            border_color='#064a6e',
+            border_color='#333435',
         ),
     )
 
