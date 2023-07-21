@@ -6,21 +6,16 @@ from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
 
 
-s_time = [
-    TextStyle(color='#1ba2ab', font=fonts.px_op__l),
-    TextStyle(color='#185e86', font=fonts.px_op__l),
-]
+s_day       = TextStyle(color='#6d7682', font=fonts.tamzen__rs)
+s_date      = TextStyle(color='#50555a', font=fonts.px_op__r)
+s_hour      = TextStyle(color='#12a1c4', font=fonts.px_op__l)
+s_minute    = TextStyle(color='#2b91cd', font=fonts.px_op__l)
+s_seconds   = TextStyle(color='#0d6921', font=fonts.bitocra)
 s_day_box = DivStyle(radius=2, background='#5f1111', padding=[1, 2, 1, 2])
-s_day = TextStyle(color='#6d7682', font=fonts.tamzen__rs)
-s_date = TextStyle(color='#50555a', font=fonts.px_op__r)
-s_hour = TextStyle(color='#12a1c4', font=fonts.px_op__l)
-s_minute = TextStyle(color='#2b91cd', font=fonts.px_op__l)
-s_seconds = TextStyle(color='#6c4e12', font=fonts.bitocra)
 s_colon = [
     TextStyle(color='#71480e', font=fonts.bitocra),
     TextStyle(color='#291a05', font=fonts.bitocra),
 ]
-
 
 
 def composer(fs: FrameState):
@@ -30,7 +25,7 @@ def composer(fs: FrameState):
         vstack([
             hstack([
                 text(t.strftime('%H'), s_hour),
-                text(':', s_colon[t.second % 2]),
+                reposition(text(':', s_colon[t.second % 2]), x=1),
                 text(t.strftime('%M'), s_minute),
                 reposition(text(t.strftime('%S'), s_seconds), y=-1),
             ], gap=0, align='top'),
