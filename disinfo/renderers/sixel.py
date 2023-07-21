@@ -1,5 +1,6 @@
 import time
 import typer
+import base64
 
 from libsixel import (
     sixel_output_new, sixel_dither_new, sixel_dither_initialize,
@@ -11,6 +12,14 @@ from PIL import Image
 from ..compositor import compose_frame
 from ..data_structures import FrameState
 from ..utils.imops import enlarge_pixels
+from ..redis import publish
+
+def publish_frame(img):
+    with BytesIO() as buffer:
+        img.save(buffer, format='png')
+        encoded_img = base64.b64encode(buffer.getvalue()).decode()
+
+    publish('di.pubsub.frames', action='new-frame', payload=dict(img=encoded_img))
 
 
 def encode_sixels(img: Image.Image, optimize: bool = False, scale=4, gap=1) -> str:
@@ -59,6 +68,8 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
         if not dont_draw:
             print(fsixel)
         t_c = time.monotonic()
+
+        publish_frame(frame)
 
         # Show various times to execute.
 

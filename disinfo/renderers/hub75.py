@@ -13,6 +13,8 @@ P1: Matrix Parallel 1 (/3)
 Chain Length: 2
 '''
 import time
+import io
+import base64
 import typer
 
 try:
@@ -24,7 +26,7 @@ from scipy.interpolate import interp1d
 
 from ..compositor import compose_frame
 from ..utils.func import throttle
-from ..redis import rkeys, get_dict
+from ..redis import rkeys, get_dict, publish
 from ..data_structures import FrameState
 
 
@@ -74,6 +76,13 @@ def get_state():
         'brightness': int(brightness_interpolator(lux)),
     }
 
+def publish_frame(img):
+    with io.BytesIO() as buffer:
+        img.save(buffer, format='png')
+        encoded_img = base64.b64encode(buffer.getvalue()).decode()
+
+    publish('di.pubsub.frames', action='new-frame', payload=dict(img=encoded_img))
+
 
 def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     if show_refresh_rate:
@@ -99,6 +108,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
         matrix.brightness = state['brightness']
+        publish_frame(img)
         t_c = time.monotonic()
 
         t_draw = t_b - t_a
