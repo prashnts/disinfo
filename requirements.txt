@@ -13,3 +13,6 @@ idfm_api>=1.1.1
 pendulum>=2.1.2
 scipy>=1.10.1
 pydantic>=1.10.8
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.1
+websockets>=11.0.3
