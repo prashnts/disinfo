@@ -13,8 +13,8 @@ s_time = [
 s_day_box = DivStyle(radius=2, background='#5f1111', padding=[1, 2, 1, 2])
 s_day = TextStyle(color='#6d7682', font=fonts.tamzen__rs)
 s_date = TextStyle(color='#50555a', font=fonts.px_op__r)
-s_hour = TextStyle(color='#124671', font=fonts.px_op__l)
-s_minute = TextStyle(color='#124b6c', font=fonts.px_op__l)
+s_hour = TextStyle(color='#106a9b', font=fonts.px_op__l)
+s_minute = TextStyle(color='#136391', font=fonts.px_op__l)
 s_seconds = TextStyle(color='#6c4e12', font=fonts.bitocra)
 s_colon = [
     TextStyle(color='#71480e', font=fonts.bitocra),
