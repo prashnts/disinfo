@@ -53,7 +53,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
             return self.state
         s = self.state.data
         # Sunset time is shown 2 hours before sunset.
-        self.state.show_sunset = s.sunset_time > fs.now and (s.sunset_time - fs.now).total_seconds() < 2 * 60 * 60
+        self.state.show_sunset = s.sunset_time > fs.now and fs.now > s.sunset_time.subtract(hours=5)
 
         # Sunrise time is shown after sunset.
         self.state.show_sunrise = fs.now > s.sunset_time
