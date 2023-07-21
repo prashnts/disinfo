@@ -56,7 +56,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
         self.state.show_sunset = s.sunset_time > fs.now > s.sunset_time.subtract(hours=5)
 
         # Sunrise time is shown after sunset.
-        self.state.show_sunrise = s.sunrise_time > fs.now > s.sunset_time
+        self.state.show_sunrise = s.sunrise_time.subtract(hours=8) < fs.now
 
         # Moon Phase is when sunset is shown and until 3 hours after sunset.
         self.state.show_moon_phase = self.state.show_sunset or (fs.now - s.sunset_time).total_seconds() < 3 * 60 * 60
