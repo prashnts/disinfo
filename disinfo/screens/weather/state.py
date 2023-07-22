@@ -13,9 +13,9 @@ class WeatherData(AppBaseModel):
     icon_name: str = 'clear-day'
     t_high: float = 30.0
     t_low: float = 20.0
-    sunset_time: Optional[datetime]
-    sunrise_time: Optional[datetime]
-    updated_at: Optional[datetime]
+    sunset_time: Optional[datetime] = None
+    sunrise_time: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     moon_phase: int = 50
 
 class WeatherState(AppBaseModel):

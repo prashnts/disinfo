@@ -68,7 +68,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     while True:
         state = LightSensorStateManager().get_state()
         fs = FrameState.create()
-        fs.rendererdata = { **state.dict(), 'draw_time': last_draw_time }
+        fs.rendererdata = { **state.model_dump(), 'draw_time': last_draw_time }
 
         t_a = time.monotonic()
         img = compose_frame(fs)
