@@ -22,11 +22,9 @@ try:
 except ImportError:
     from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
 
-from scipy.interpolate import interp1d
-
 from ..compositor import compose_frame
-from ..utils.func import throttle
-from ..redis import rkeys, get_dict, publish
+from ..redis import publish
+from ..drat.app_states import LightSensorStateManager
 from ..data_structures import FrameState
 
 
@@ -45,36 +43,6 @@ options.gpio_slowdown = 5
 options.drop_privileges = True
 options.hardware_mapping = 'regular'
 
-
-brightness_min: float = 10
-brightness_max: float = 100
-brightness_curve = [
-    # LUX   BRIGHTNESS %
-    [0.2,   10],
-    [2,     20],
-    [5,     40],
-    [20,    60],
-    [50,    70],
-    [200,   95],
-    [400,  100],
-]
-brightness_interpolator = interp1d(
-    *zip(*brightness_curve),
-    bounds_error=False,
-    fill_value=(brightness_min, brightness_max),
-)
-
-@throttle(50)
-def get_state():
-    try:
-        s = get_dict(rkeys['ha_enviomental_lux'])
-        lux = float(s['new_state']['state'])
-    except (KeyError, TypeError, ValueError):
-        lux = 50
-    return {
-        'lux': lux,
-        'brightness': int(brightness_interpolator(lux)),
-    }
 
 def publish_frame(img):
     with io.BytesIO() as buffer:
@@ -98,17 +66,17 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     last_draw_time = 0
 
     while True:
-        state = get_state()
+        state = LightSensorStateManager().get_state()
         fs = FrameState.create()
-        fs.rendererdata = { **state, 'draw_time': last_draw_time }
+        fs.rendererdata = { **state.dict(), 'draw_time': last_draw_time }
 
         t_a = time.monotonic()
         img = compose_frame(fs)
+        publish_frame(img)
         t_b = time.monotonic()
         double_buffer.SetImage(img.convert('RGB'))
         double_buffer = matrix.SwapOnVSync(double_buffer)
-        matrix.brightness = state['brightness']
-        publish_frame(img)
+        matrix.brightness = state.brightness
         t_c = time.monotonic()
 
         t_draw = t_b - t_a

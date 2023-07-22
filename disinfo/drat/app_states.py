@@ -21,7 +21,7 @@ import time
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, Generic, TypeVar, Callable, Union
-from disinfo.data_structures import FrameState
+from scipy.interpolate import interp1d
 
 from . import idfm
 from .. import config
@@ -166,3 +166,37 @@ class MotionSensorStateManager(PubSubStateManager[MotionSensorState]):
                 s.detected = delta <= 60 * delay
             s.detected_at = pendulum.now()
             self.state = s
+
+
+brightness_min: float = 10
+brightness_max: float = 100
+brightness_curve = [
+    # LUX   BRIGHTNESS %
+    [0.2,   10],
+    [2,     20],
+    [5,     40],
+    [20,    60],
+    [50,    70],
+    [200,   95],
+    [400,  100],
+]
+brightness_interpolator = interp1d(
+    *zip(*brightness_curve),
+    bounds_error=False,
+    fill_value=(brightness_min, brightness_max),
+)
+
+class LightSensorState(AppBaseModel):
+    lux: float = 50.0
+
+    @property
+    def brightness(self) -> int:
+        return int(brightness_interpolator(self.lux))
+
+class LightSensorStateManager(PubSubStateManager[LightSensorState]):
+    model = LightSensorState
+    channels = ('di.pubsub.lux',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'update':
+            self.state.lux = float(data.payload['new_state']['state'])
