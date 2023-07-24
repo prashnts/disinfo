@@ -66,7 +66,7 @@ echo "=> Setting up rpi-rgb-matrix"
 cd ~
 git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
 cd rpi-rgb-led-matrix
-sudo apt-get install python3-dev python3-pillow -y
+sudo apt-get install python3-dev python3-pillow python3-pip -y
 make build-python PYTHON=$(command -v python3)
 sudo make install-python PYTHON=$(command -v python3)
 
@@ -78,7 +78,10 @@ sudo pip install -r requirements.txt
 echo "=> Installing services"
 sudo apt install supervisor -y
 
-sudo ln -s /home/pi/disinfo/config/*.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_haservice.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_dataservice.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_renderer.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_server.conf /etc/supervisor/conf.d
 
 sudo supervisorctl update
 sudo supervisorctl start didataservice
