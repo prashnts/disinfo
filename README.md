@@ -68,3 +68,43 @@ sudo wget -O /usr/share/keyrings/azlux-archive-keyring.gpg  https://azlux.fr/rep
 sudo apt update
 sudo apt install log2ram
 ```
+
+
+[notes] Setup RPI from scratch
+
+- Assuming a fresh minimal install.
+- Set `isolcpus=3` in cmdline.txt at the end.
+- Set `dtparam=audio=off` in config.txt
+
+
+- check disk speed with `sudo hdparm -Tt /dev/sda` (install hdparm first)
+- with dd `dd if=/dev/zero of=/tmp/output bs=8k count=10k; rm -f /tmp/output`
+
+Local git push helper:
+https://gist.github.com/noelboss/3fe13927025b89757f8fb12e9066f2fa
+
+```bash
+mkdir ~/disinfo  # Where we'd deploy the working copy
+git init --bare ~/_disinfo.git
+# Add git hook
+cat << 'EOF' > ~/_disinfo.git/hooks/post-receive
+#!/bin/bash
+TARGET="/home/pi/disinfo"
+GIT_DIR="/home/pi/_disinfo.git"
+BRANCH="master"
+
+while read oldrev newrev ref
+do
+	# only checking out the master (or whatever branch you would like to deploy)
+	if [ "$ref" = "refs/heads/$BRANCH" ];
+	then
+		echo "Ref $ref received. Deploying ${BRANCH} branch to production..."
+		git --work-tree=$TARGET --git-dir=$GIT_DIR checkout -f $BRANCH
+	else
+		echo "Ref $ref received. Doing nothing: only the ${BRANCH} branch may be deployed on this server."
+	fi
+done
+EOF
+chmod +x ~/_disinfo.git/hooks/post-receive
+
+```
