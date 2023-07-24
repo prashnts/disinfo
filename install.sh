@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt update
-sudo apt install git -y
+sudo apt install git redis -y
 
 # Setting up the repo
 
@@ -70,6 +70,14 @@ sudo apt-get install python3-dev python3-pillow python3-pip -y
 make build-python PYTHON=$(command -v python3)
 sudo make install-python PYTHON=$(command -v python3)
 
+echo "=> Disable onboard sound"
+
+cat <<EOF | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
+blacklist snd_bcm2835
+EOF
+
+sudo update-initramfs -u
+
 echo "=> Installing python dependencies"
 
 cd ~/disinfo
@@ -88,3 +96,5 @@ sudo supervisorctl start didataservice
 sudo supervisorctl start dihaservice
 sudo supervisorctl start direnderer
 sudo supervisorctl start diserver
+
+echo "=> Installation complete."

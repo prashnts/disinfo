@@ -75,7 +75,8 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         self.state.toggled_at = pendulum.now()
 
     def load_timing(self):
-        return idfm.MetroData(**get_dict(rkeys['metro_timing']))
+        if timing := get_dict(rkeys['metro_timing']):
+            return idfm.MetroData(**timing)
 
     def update_data(self):
         self.state.data = self.load_timing()
