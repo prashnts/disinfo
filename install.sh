@@ -83,6 +83,9 @@ echo "=> Installing python dependencies"
 cd ~/disinfo
 sudo pip install -r requirements.txt
 
+# Quirk, this does not upgrade pillow.
+sudo pip install --upgrade pillow
+
 echo "=> Installing services"
 sudo apt install supervisor -y
 
@@ -97,4 +100,13 @@ sudo supervisorctl start dihaservice
 sudo supervisorctl start direnderer
 sudo supervisorctl start diserver
 
-echo "=> Installation complete."
+echo "=> Installation complete. Adding extras"
+
+echo "deb [signed-by=/usr/share/keyrings/azlux-archive-keyring.gpg] http://packages.azlux.fr/debian/ bullseye main" | sudo tee /etc/apt/sources.list.d/azlux.list
+sudo wget -O /usr/share/keyrings/azlux-archive-keyring.gpg  https://azlux.fr/repo.gpg
+sudo apt update
+sudo apt install log2ram -y
+
+sudp apt install neovim zsh -y
+
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
