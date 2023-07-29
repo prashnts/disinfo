@@ -54,6 +54,7 @@ def on_disconnect(client, userdata, rc):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload)
+        print('payload')
     except TypeError:
         print(f'Got non-json payload. topic={msg.topic}, payload={msg.payload}')
         return
