@@ -1,5 +1,5 @@
 from .drawer import draw_loop
-from .colors import smoky_uniform
+from .colors import dark_gray, amber_red
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle, reposition
@@ -8,14 +8,14 @@ from ..components.text import TextStyle, text
 
 
 s_day       = TextStyle(color='#6d7682', font=fonts.tamzen__rs)
-s_date      = TextStyle(color='#50555a', font=fonts.px_op__r)
-s_hour      = TextStyle(color=smoky_uniform.hex, font=fonts.px_op__l)
-s_minute    = TextStyle(color=smoky_uniform.hex, font=fonts.px_op__l)
-s_seconds   = TextStyle(color=smoky_uniform.darken(.3).hex, font=fonts.bitocra)
-s_day_box = DivStyle(radius=2, background='#5f1111', padding=[1, 2, 1, 2])
+s_date      = TextStyle(color='#50555a', font=fonts.tamzen__rs)
+s_hour      = TextStyle(color=dark_gray.hex, font=fonts.px_op__l)
+s_minute    = TextStyle(color=dark_gray.hex, font=fonts.px_op__l)
+s_seconds   = TextStyle(color=dark_gray.darken(.3).hex, font=fonts.bitocra)
+s_day_box = DivStyle(radius=0, background='#5f1111', padding=[0, 2, 0, 2])
 s_colon = [
-    TextStyle(color='#71480e', font=fonts.bitocra),
-    TextStyle(color='#291a05', font=fonts.bitocra),
+    TextStyle(color=amber_red.darken(.5).hex, font=fonts.bitocra),
+    TextStyle(color=amber_red.hex, font=fonts.bitocra),
 ]
 
 
@@ -31,7 +31,7 @@ def composer(fs: FrameState):
                 reposition(text(t.strftime('%S'), s_seconds), y=-1),
             ], gap=0, align='top'),
             hstack([
-                # div(text(t.strftime('%a'), s_day), s_day_box),
+                div(text(t.strftime('%a'), s_day), s_day_box),
                 text(t.strftime('%d/%m'), s_date),
             ], gap=2, align='center'),
         ], gap=2, align='right'),

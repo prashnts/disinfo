@@ -11,9 +11,11 @@ class AppColor(Color):
         return self
 
     def darken(self, amount: float):
+        c = Color(self)
         luminance = self.luminance - amount
-        self.luminance = constrain(luminance)
-        return self
+        c.luminance = constrain(luminance)
+        return c
 
 
-smoky_uniform = AppColor('#9a9ba2')
+dark_gray = AppColor('#9a9ba2')
+amber_red = AppColor('#b21a1a')
