@@ -48,13 +48,11 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe(topic)
 
 def on_disconnect(client, userdata, rc):
-    if rc != 0:
-        print('Unexpected MQTT disconnection.')
+    print('Unexpected MQTT disconnection.')
 
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload)
-        print('payload', msg.payload)
     except TypeError:
         print(f'Got non-json payload. topic={msg.topic}, payload={msg.payload}')
         return
@@ -101,4 +99,3 @@ if __name__ == '__main__':
     client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
 
     client.loop_forever()
-    print("Exited")

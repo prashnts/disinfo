@@ -49,7 +49,7 @@ class PubSubManager(metaclass=StateManagerSingleton):
     def __init__(self):
         self.pubsub = db.pubsub()
         self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
-        self.pubsub.run_in_thread(sleep_time=0.0001, daemon=True)
+        self.pubsub.run_in_thread(sleep_time=0.001, daemon=True)
         self.subscribers = {}
 
     def handle_message(self, message):
@@ -68,7 +68,10 @@ class PubSubManager(metaclass=StateManagerSingleton):
 
         for channels, callback in self.subscribers.values():
             if channel_name in channels:
-                callback(channel_name, msg)
+                try:
+                    callback(channel_name, msg)
+                except Exception as e:
+                    print(f'[PubSub] Error in callback: {e}')
 
     def attach(self, uid: str, channels: tuple[str], callback: Callable):
         if uid not in self.subscribers:
