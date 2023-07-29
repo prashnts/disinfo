@@ -47,6 +47,10 @@ def on_connect(client, userdata, flags, rc):
         # subscribe to PIR sensor states
         client.subscribe(topic)
 
+def on_disconnect(client, userdata, rc):
+    if rc != 0:
+        print('Unexpected MQTT disconnection.')
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload)
@@ -90,6 +94,7 @@ if __name__ == '__main__':
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
+    client.on_disconnect = on_disconnect
 
     client.username_pw_set(config.ha_mqtt_username, config.ha_mqtt_password)
     client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
