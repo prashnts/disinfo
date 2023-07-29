@@ -100,3 +100,4 @@ if __name__ == '__main__':
     client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
 
     client.loop_forever()
+    print("Exited")
