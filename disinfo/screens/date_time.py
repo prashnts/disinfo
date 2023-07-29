@@ -1,4 +1,5 @@
 from .drawer import draw_loop
+from .colors import smoky_uniform
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle, reposition
@@ -8,9 +9,9 @@ from ..components.text import TextStyle, text
 
 s_day       = TextStyle(color='#6d7682', font=fonts.tamzen__rs)
 s_date      = TextStyle(color='#50555a', font=fonts.px_op__r)
-s_hour      = TextStyle(color='#12a1c4', font=fonts.px_op__l)
-s_minute    = TextStyle(color='#2b91cd', font=fonts.px_op__l)
-s_seconds   = TextStyle(color='#0d6921', font=fonts.bitocra)
+s_hour      = TextStyle(color=smoky_uniform.hex, font=fonts.px_op__l)
+s_minute    = TextStyle(color=smoky_uniform.hex, font=fonts.px_op__l)
+s_seconds   = TextStyle(color=smoky_uniform.darken(.3).hex, font=fonts.bitocra)
 s_day_box = DivStyle(radius=2, background='#5f1111', padding=[1, 2, 1, 2])
 s_colon = [
     TextStyle(color='#71480e', font=fonts.bitocra),
