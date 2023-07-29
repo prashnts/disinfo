@@ -12,7 +12,7 @@ s_date      = TextStyle(color='#50555a', font=fonts.tamzen__rs)
 s_hour      = TextStyle(color=dark_gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=dark_gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=dark_gray.darken(.3).hex, font=fonts.bitocra)
-s_day_box = DivStyle(radius=0, background='#5f1111', padding=[0, 2, 0, 2])
+s_day_box = DivStyle(radius=0, background='#5f1111', padding=[0, 1, 0, 1])
 s_colon = [
     TextStyle(color=amber_red.darken(.5).hex, font=fonts.bitocra),
     TextStyle(color=amber_red.hex, font=fonts.bitocra),
