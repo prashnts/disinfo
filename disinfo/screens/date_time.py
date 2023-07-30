@@ -27,7 +27,7 @@ s_colon = [
 
 def composer(fs: FrameState):
     t = fs.now
-    day_of_week = 'weekend' if t.day_of_week in (6, 0) else 'weekday'
+    day_of_week = 'weekend' if t.day_of_week in (6, 1) else 'weekday'
 
     return div(
         vstack([
