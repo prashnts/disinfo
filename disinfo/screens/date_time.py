@@ -16,7 +16,7 @@ s_day = {
     'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
 }
 s_day_box = {
-    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[0, 1, 0, 1]),
+    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[1, 1, 1, 1]),
     'weekday': DivStyle(radius=0, background=gray.hex, padding=[1, 1, 1, 1]),
 }
 s_colon = [
@@ -27,7 +27,7 @@ s_colon = [
 
 def composer(fs: FrameState):
     t = fs.now
-    day_of_week = 'weekend' if t.day_of_week in (6, 1) else 'weekday'
+    day_of_week = 'weekend' if t.day_of_week in (6, 0) else 'weekday'
 
     return div(
         vstack([
