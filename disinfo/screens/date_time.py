@@ -12,12 +12,14 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
 s_day = {
-    'weekend': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
-    'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
-}
-s_day_box = {
-    'weekend': DivStyle(radius=2, background=amber_red.darken(.1).hex, padding=[1, 0, 1, 1]),
-    'weekday': DivStyle(radius=2, background=gray.hex, padding=[1, 0, 1, 1]),
+    'weekend': {
+        'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
+        'div': DivStyle(radius=2, background=amber_red.darken(.1).hex, padding=[1, 0, 1, 1]),
+    },
+    'weekday': {
+        'text': TextStyle(color=black.hex, font=fonts.tamzen__rs),
+        'div': DivStyle(radius=2, background=gray.hex, padding=[1, 0, 1, 1]),
+    },
 }
 s_colon = [
     TextStyle(color=light_blue.darken(.5).hex, font=fonts.bitocra),
@@ -25,9 +27,14 @@ s_colon = [
 ]
 
 
+def weekday(fs: FrameState):
+    t = fs.now
+    style = s_day['weekend' if t.day_of_week in (6, 0) else 'weekday']
+    return div(text(t.strftime('%a').upper(), style['text']), style['div'])
+
+
 def composer(fs: FrameState):
     t = fs.now
-    day_of_week = 'weekend' if t.day_of_week in (6, 0) else 'weekday'
 
     return div(
         vstack([
@@ -38,9 +45,7 @@ def composer(fs: FrameState):
                 reposition(text(t.strftime('%S'), s_seconds), y=-1),
             ], gap=0, align='top'),
             hstack([
-                div(
-                    text(t.strftime('%a').upper(), s_day[day_of_week]),
-                    s_day_box[day_of_week]),
+                weekday(fs),
                 text(t.strftime('%d/%m'), s_date),
             ], gap=2, align='bottom'),
         ], gap=2, align='center'),
