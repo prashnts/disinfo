@@ -17,5 +17,7 @@ class AppColor(Color):
         return c
 
 
-dark_gray = AppColor('#9a9ba2')
+gray = AppColor('#9a9ba2')
+light_gray = AppColor('#c6c6cb')
+black = AppColor('#000000')
 amber_red = AppColor('#b21a1a')
