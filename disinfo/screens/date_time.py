@@ -7,10 +7,10 @@ from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
 
 
-s_date      = TextStyle(color='#50555a', font=fonts.tamzen__rs)
+s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.tamzen__rs)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_seconds   = TextStyle(color=gray.darken(.3).hex, font=fonts.bitocra)
+s_seconds   = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
 s_day = {
     'weekend': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
     'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
