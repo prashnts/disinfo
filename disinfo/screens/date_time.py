@@ -12,8 +12,8 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
 s_day = {
-    'weekend': TextStyle(color=light_gray.darken(.1).hex, font=fonts.bitocra),
-    'weekday': TextStyle(color=black.hex, font=fonts.bitocra),
+    'weekend': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
+    'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
 }
 s_day_box = {
     'weekend': DivStyle(radius=2, background=amber_red.darken(.1).hex, padding=[1, 0, 1, 1]),
