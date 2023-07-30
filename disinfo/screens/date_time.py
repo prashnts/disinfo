@@ -1,5 +1,5 @@
 from .drawer import draw_loop
-from .colors import gray, amber_red, black, light_gray
+from .colors import gray, amber_red, black, light_gray, light_blue
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.layers import div, DivStyle, reposition
@@ -16,12 +16,12 @@ s_day = {
     'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
 }
 s_day_box = {
-    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[1, 1, 1, 1]),
-    'weekday': DivStyle(radius=0, background=gray.hex, padding=[1, 1, 1, 1]),
+    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[1, 0, 1, 1]),
+    'weekday': DivStyle(radius=0, background=gray.hex, padding=[1, 0, 1, 1]),
 }
 s_colon = [
-    TextStyle(color=amber_red.darken(.5).hex, font=fonts.bitocra),
-    TextStyle(color=amber_red.hex, font=fonts.bitocra),
+    TextStyle(color=light_blue.darken(.5).hex, font=fonts.bitocra),
+    TextStyle(color=light_blue.hex, font=fonts.bitocra),
 ]
 
 

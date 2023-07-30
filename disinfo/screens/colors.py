@@ -20,4 +20,5 @@ class AppColor(Color):
 gray = AppColor('#9a9ba2')
 light_gray = AppColor('#c6c6cb')
 black = AppColor('#000000')
+light_blue = AppColor('#2d83b4')
 amber_red = AppColor('#b21a1a')
