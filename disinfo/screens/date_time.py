@@ -16,8 +16,8 @@ s_day = {
     'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
 }
 s_day_box = {
-    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[1, 1, 1, 1]),
-    'weekday': DivStyle(radius=0, background=gray.hex, padding=[1, 1, 1, 1]),
+    'weekend': DivStyle(radius=1, background=amber_red.darken(.1).hex, padding=[1, 1, 1, 1]),
+    'weekday': DivStyle(radius=1, background=gray.hex, padding=[1, 1, 1, 1]),
 }
 s_colon = [
     TextStyle(color=amber_red.darken(.5).hex, font=fonts.bitocra),
