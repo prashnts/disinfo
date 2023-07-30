@@ -41,7 +41,7 @@ def composer(fs: FrameState):
                 div(text(t.strftime('%a'), s_day[day_of_week]), s_day_box[day_of_week]),
                 text(t.strftime('%d/%m'), s_date),
             ], gap=2, align='bottom'),
-        ], gap=2, align='right'),
+        ], gap=2, align='center'),
         style=DivStyle(background='#000000ac'))
 
 draw = draw_loop(composer, sleepms=200)
