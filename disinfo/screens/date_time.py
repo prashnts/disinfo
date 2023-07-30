@@ -38,7 +38,9 @@ def composer(fs: FrameState):
                 reposition(text(t.strftime('%S'), s_seconds), y=-1),
             ], gap=0, align='top'),
             hstack([
-                div(text(t.strftime('%a'), s_day[day_of_week]), s_day_box[day_of_week]),
+                div(
+                    text(t.strftime('%a').upper(), s_day[day_of_week]),
+                    s_day_box[day_of_week]),
                 text(t.strftime('%d/%m'), s_date),
             ], gap=2, align='bottom'),
         ], gap=2, align='center'),
