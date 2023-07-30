@@ -12,11 +12,11 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=gray.darken(.3).hex, font=fonts.bitocra)
 s_day = {
-    'weekend': TextStyle(color=light_gray.hex, font=fonts.tamzen__rs),
+    'weekend': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
     'weekday': TextStyle(color=black.hex, font=fonts.tamzen__rs),
 }
 s_day_box = {
-    'weekend': DivStyle(radius=0, background=amber_red.hex, padding=[0, 1, 0, 1]),
+    'weekend': DivStyle(radius=0, background=amber_red.darken(.1).hex, padding=[0, 1, 0, 1]),
     'weekday': DivStyle(radius=0, background=gray.hex, padding=[0, 1, 0, 1]),
 }
 s_colon = [
