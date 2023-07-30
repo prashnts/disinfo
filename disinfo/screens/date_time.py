@@ -40,7 +40,7 @@ def composer(fs: FrameState):
             hstack([
                 div(text(t.strftime('%a'), s_day[day_of_week]), s_day_box[day_of_week]),
                 text(t.strftime('%d/%m'), s_date),
-            ], gap=2, align='center'),
+            ], gap=2, align='bottom'),
         ], gap=2, align='right'),
         style=DivStyle(background='#000000ac'))
 
