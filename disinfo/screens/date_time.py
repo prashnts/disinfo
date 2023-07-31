@@ -14,11 +14,11 @@ s_seconds   = TextStyle(color=amber_red.darken(.1).hex, font=fonts.bitocra)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=amber_red.darken(.1).hex, padding=[1, 0, 1, 1]),
+        'div': DivStyle(radius=2, background=amber_red.darken(.1).hex, padding=[1, 1, 1, 2]),
     },
     'weekday': {
         'text': TextStyle(color=black.hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=gray.hex, padding=[1, 0, 1, 1]),
+        'div': DivStyle(radius=2, background=gray.hex, padding=[1, 1, 1, 2]),
     },
 }
 s_colon = [
