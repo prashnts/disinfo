@@ -2,7 +2,7 @@ from .drawer import draw_loop
 from .colors import gray, amber_red, black, light_gray, light_blue
 from ..data_structures import FrameState
 from ..components import fonts
-from ..components.layers import div, DivStyle, reposition
+from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
 
@@ -10,7 +10,7 @@ from ..components.text import TextStyle, text
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_seconds   = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
+s_seconds   = TextStyle(color=amber_red.darken(.1).hex, font=fonts.bitocra)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
@@ -40,7 +40,7 @@ def composer(fs: FrameState):
         vstack([
             hstack([
                 text(t.strftime('%H'), s_hour),
-                text(':', s_colon[t.microsecond > 500000]).reposition(x=1),
+                text(':', s_colon[t.microsecond > 500_000]).reposition(x=1),
                 text(t.strftime('%M'), s_minute),
                 text(t.strftime('%S'), s_seconds).reposition(y=-1),
             ], gap=0, align='top'),
