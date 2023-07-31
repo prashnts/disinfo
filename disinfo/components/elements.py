@@ -18,6 +18,7 @@ class Frame(UIElement):
         self.height = image.height
 
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
+        # TODO: support extending the frame
         w = self.width
         h = self.height
 

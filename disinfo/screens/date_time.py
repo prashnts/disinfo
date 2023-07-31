@@ -26,28 +26,34 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra),
 ]
 
+def digital_clock(fs: FrameState, seconds=True):
+    t = fs.now
+    hhmm = hstack([
+        text(t.strftime('%H'), s_hour),
+        text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
+        text(t.strftime('%M'), s_minute),
+    ])
+    if seconds:
+        return hstack([hhmm, text(t.strftime('%S'), s_seconds)], gap=1)
+    return hhmm
 
-def weekday(fs: FrameState):
+def day_of_the_week(fs: FrameState):
     t = fs.now
     style = s_day['weekend' if t.day_of_week in (6, 0) else 'weekday']
     return div(text(t.strftime('%a').upper(), style['text']), style['div'])
 
+def date(fs: FrameState):
+    t = fs.now
+    return hstack([
+        day_of_the_week(fs),
+        text(t.strftime('%d/%m'), s_date),
+    ], gap=2, align='bottom')
 
 def composer(fs: FrameState):
-    t = fs.now
-
     return div(
         vstack([
-            hstack([
-                text(t.strftime('%H'), s_hour),
-                text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
-                text(t.strftime('%M'), s_minute),
-                text(t.strftime('%S'), s_seconds).reposition(y=0),
-            ], gap=0, align='center'),
-            hstack([
-                weekday(fs),
-                text(t.strftime('%d/%m'), s_date),
-            ], gap=2, align='bottom'),
+            digital_clock(fs),
+            date(fs),
         ], gap=2, align='center'),
         style=DivStyle(background='#000000ac'))
 
