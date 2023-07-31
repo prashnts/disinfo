@@ -43,7 +43,7 @@ def composer(fs: FrameState):
                 text(':', s_colon[t.microsecond > 500_000]).reposition(x=1),
                 text(t.strftime('%M'), s_minute),
                 text(t.strftime('%S'), s_seconds).reposition(y=-1),
-            ], gap=0, align='top'),
+            ], gap=0, align='bottom'),
             hstack([
                 weekday(fs),
                 text(t.strftime('%d/%m'), s_date),
