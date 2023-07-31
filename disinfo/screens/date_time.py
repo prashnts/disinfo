@@ -10,7 +10,7 @@ from ..components.text import TextStyle, text
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_seconds   = TextStyle(color=amber_red.darken(.1).hex, font=fonts.bitocra)
+s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
