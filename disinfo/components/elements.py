@@ -17,6 +17,14 @@ class Frame(UIElement):
         self.width = image.width
         self.height = image.height
 
+    def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
+        w = self.width
+        h = self.height
+
+        i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        i.alpha_composite(self.image, (x, y))
+        return Frame(i)
+
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')

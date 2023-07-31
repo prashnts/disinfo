@@ -40,9 +40,9 @@ def composer(fs: FrameState):
         vstack([
             hstack([
                 text(t.strftime('%H'), s_hour),
-                reposition(text(':', s_colon[t.second % 2]), x=1),
+                text(':', s_colon[t.microsecond > 500000]).reposition(x=1),
                 text(t.strftime('%M'), s_minute),
-                reposition(text(t.strftime('%S'), s_seconds), y=-1),
+                text(t.strftime('%S'), s_seconds).reposition(y=-1),
             ], gap=0, align='top'),
             hstack([
                 weekday(fs),
