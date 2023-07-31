@@ -40,7 +40,7 @@ def composer(fs: FrameState):
         vstack([
             hstack([
                 text(t.strftime('%H'), s_hour),
-                text(':', s_colon[t.microsecond > 500_000]).reposition(x=1, y=-1),
+                text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
                 text(t.strftime('%M'), s_minute),
                 text(t.strftime('%S'), s_seconds).reposition(y=0),
             ], gap=0, align='center'),
