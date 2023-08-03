@@ -1,7 +1,12 @@
+import random
+
+from PIL import Image, ImageDraw
+
 from .drawer import draw_loop
 from .colors import gray, amber_red, black, light_gray, light_blue
 from ..data_structures import FrameState
 from ..components import fonts
+from ..components.elements import Frame
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
@@ -48,6 +53,35 @@ def date(fs: FrameState):
         day_of_the_week(fs),
         text(t.strftime('%d/%m'), s_date),
     ], gap=2, align='bottom')
+
+def glitterify(frame: Frame):
+    # draw some shimmering leds everywhere!
+    # todo: WIP
+    gcols = [
+        '#4096D9',
+        '#404BD9',
+        '#AF4FD7',
+        '#D9BC40',
+        '#D96140',
+        '#1CB751',
+    ]
+    img = Image.new('RGBA', (frame.width, frame.height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    for x in range(frame.width):
+        for y in range(frame.height):
+            if random.random() < .3:
+                pts = [(x, y)]
+                if random.random() < 0.2:
+                    pts.append((x + 1, y))
+                if random.random() < 0.2:
+                    pts.append((x, y + 1))
+                if random.random() < 0.2:
+                    pts.append((x + 1, y + 1))
+                draw.point(pts, fill=random.choice(gcols))
+    img.alpha_composite(frame.image)
+
+    return Frame(img)
 
 def composer(fs: FrameState):
     return div(

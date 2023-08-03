@@ -44,7 +44,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
                 sunset_time=pendulum.from_timestamp(_today['sunsetTime'], tz='local'),
                 sunrise_time=pendulum.from_timestamp(_tomorrow['sunriseTime'], tz='local'),
                 updated_at=pendulum.from_timestamp(forecast['currently']['time'], tz='local'),
-                moon_phase=(_today['moonPhase'] * 100) % 100,
+                moon_phase=int((_today['moonPhase'] * 100) % 100),
             )
             self.state.valid = True
 
