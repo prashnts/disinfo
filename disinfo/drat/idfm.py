@@ -114,7 +114,7 @@ def is_active():
     time = pendulum.time
     return any([
         # 7h-9h on weekdays
-        t.day_of_week in [1, 2, 3, 4, 5] and (time(7, 0) <= t.hour <= time(9, 0)),
+        t.day_of_week in [1, 2, 3, 4, 5] and (time(7, 0) <= t.time() <= time(9, 0)),
         # 15h-16h30 on thursdays
         t.day_of_week == 4 and (time(15, 0) <= t.time() <= time(16, 30)),
     ])
