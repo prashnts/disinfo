@@ -28,15 +28,25 @@ scientifica__i = ImageFont.truetype('assets/fonts/scientificaItalic.ttf', 11)
 # BITOCRA
 # > License   OFL v1.1
 # > Source    https://github.com/ninjaaron/bitocra
-bitocra = ImageFont.truetype('assets/fonts/bitocra7.bdf', 7)
+bitocra7 = ImageFont.truetype('assets/fonts/bitocra7.bdf', 7)
+fiveel = ImageFont.truetype('assets/fonts/5thElement.bdf', 5)
 
 # COZETTE
 # > License   MIT
 # > Source    https://github.com/slavfox/Cozette
 cozette = ImageFont.truetype('assets/fonts/cozette.bdf', 13)
 
-
 # GREYBEARD
 # > License   MIT
 # > Source    https://github.com/flowchartsman/greybeard
 greybeard = ImageFont.truetype('assets/fonts/Greybeard-11px.ttf', 11)
+
+# SPLEEN
+# > License   BSD
+# > Source    https://github.com/fcambus/spleen
+spleen__s = ImageFont.truetype('assets/fonts/spleen-5x8.bdf', 8)
+
+# CREEP
+# > License   MIT
+# > Source    https://github.com/romeovs/creep
+creep = ImageFont.truetype('assets/fonts/creep.bdf', 16)

@@ -25,7 +25,7 @@ sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 
 s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
-s_sunset_time = TextStyle(font=fonts.bitocra, color='#5b5e64')
+s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
 s_moon_phase = TextStyle(font=fonts.px_op__r, color='#58595c', outline=1, outline_color='#000000')
 s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
 

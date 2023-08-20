@@ -12,10 +12,10 @@ from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
 
 
-s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra)
+s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra)
+s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
@@ -27,8 +27,8 @@ s_day = {
     },
 }
 s_colon = [
-    TextStyle(color=light_blue.darken(.5).hex, font=fonts.bitocra),
-    TextStyle(color=light_blue.hex, font=fonts.bitocra),
+    TextStyle(color=light_blue.darken(.5).hex, font=fonts.bitocra7),
+    TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 
 def digital_clock(fs: FrameState, seconds=True):

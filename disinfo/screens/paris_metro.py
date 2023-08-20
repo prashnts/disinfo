@@ -128,7 +128,7 @@ def metro_status_icon(line_name: str, issues: bool):
 
 @cache
 def timing_text(value: int) -> Text:
-    return Text(f'{value}'.rjust(2), style=TextStyle(font=fonts.bitocra, color='#a57a05'))
+    return Text(f'{value}'.rjust(2), style=TextStyle(font=fonts.bitocra7, color='#a57a05'))
 
 @cache
 def message_text(value: str) -> MultiLineText:

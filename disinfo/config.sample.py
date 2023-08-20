@@ -24,3 +24,6 @@ matrix_w = 128
 matrix_h = 64
 
 timezone = 'Europe/Paris'
+
+# Speaker source
+speaker_source = 'media_player.sonos_beam'
