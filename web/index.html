@@ -34,6 +34,8 @@
 <body>
     <h1>disinfo!</h1>
     <img src='' id='screen'/>
+    <div id='controls'>
+    </div>
     <script type="module">
         const WS_RETRY_DELAY = 2000;
         const connect = function () {
@@ -69,7 +71,46 @@
             }
         }
         connect();
+    </script>
+    <script type="module">
+        import { h, Component, render } from 'https://esm.sh/preact@10';
+        import htm from 'https://esm.sh/htm@3';
 
-        </script>
+        // Initialize htm with Preact
+        const html = htm.bind(h);
+
+        function RemoteButton(props) {
+            const didClick = () => {
+                fetch('/remote', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: props.action,
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                }).then(() => {
+                    console.log('Sent button press')
+                })
+            }
+            return html`<button onClick=${didClick}>${props.action}</button>`;
+        }
+
+
+        function App(props) {
+            return html`
+                <div>
+                    <${RemoteButton} action="up" />
+                    <${RemoteButton} action="left" />
+                    <${RemoteButton} action="right" />
+                    <${RemoteButton} action="down" />
+                    <${RemoteButton} action="btn_metro" />
+                    <${RemoteButton} action="btn_twentytwo" />
+                    <${RemoteButton} action="btn_debug" />
+                </div>`;
+        }
+
+        render(html`<${App} name="World" />`, document.getElementById('controls'));
+    </script>
 </body>
 </html>
