@@ -77,7 +77,7 @@
                     if (ws.readyState === WebSocket.CLOSED) {
                         clearInterval(interval);
                     }
-                }, 100);
+                }, 50);
             };
 
             ws.onclose = function () {
