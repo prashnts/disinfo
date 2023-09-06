@@ -84,7 +84,7 @@ def draw_background(fs, w: int, h: int):
     hyp = math.sqrt((cx) ** 2 + (cy) ** 2)
 
     ctx = cairo.Context(surface)
-    ctx.set_source_rgba(*light_blue.rgb, 1)
+    ctx.set_source_rgba(*SkyHues.sky_blue.rgb, 1)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
 
