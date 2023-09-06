@@ -27,7 +27,7 @@ s_day = {
     },
 }
 s_colon = [
-    TextStyle(color=light_blue.darken(.5).hex, font=fonts.bitocra7),
+    TextStyle(color=light_blue.darken(.2).hex, font=fonts.bitocra7),
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 
@@ -89,6 +89,6 @@ def composer(fs: FrameState):
             digital_clock(fs),
             date(fs),
         ], gap=2, align='center'),
-        style=DivStyle(background='#000000ac'))
+        style=DivStyle(background='#00000000'))
 
 draw = draw_loop(composer, sleepms=200)

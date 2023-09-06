@@ -139,8 +139,8 @@ def composer(fs: FrameState):
     ], gap=1, align='center')
 
     weather_info = vstack([
-        div(main_info, style=DivStyle(background='#000000ac')),
-        div(condition_info, style=DivStyle(background='#000000ac')),
+        div(main_info, style=DivStyle(background='#0000002f')),
+        div(condition_info, style=DivStyle(background='#0000002f')),
     ], gap=1, align='left')
 
     weather_stack = [weather_info, astronomical_info(state)]
