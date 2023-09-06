@@ -27,6 +27,9 @@ orange_red = AppColor('#c93f20')
 
 # Sky colors
 class SkyHues:
+    day_sky = AppColor('#27699b')
+    night_sky = AppColor('#092134')
+
     sky_blue = AppColor('#27699b')
     twilight_blue = AppColor('#404BD9')
     dusk_blue = AppColor('#190c7d')

@@ -18,7 +18,7 @@ from disinfo import config
 
 
 def deg_to_rad(deg):
-    return deg * (math.pi / 180)
+    return deg * (math.pi / 180) % (2 * math.pi)
 
 
 def time_to_angle(t):
@@ -32,7 +32,7 @@ def time_to_angle(t):
     # period = 60
     elapsed = time.hour * 60 * 60 + time.minute * 60 + time.second
     # elapsed = t.second % period
-    return int(((elapsed / period) * 360) + phase) % 360
+    return deg_to_rad((((elapsed / period) * 360) + phase) % 360)
 
 def to_pil(surface: cairo.ImageSurface) -> Image.Image:
     format = surface.get_format()
@@ -53,25 +53,18 @@ def to_pil(surface: cairo.ImageSurface) -> Image.Image:
 
 def sun_times(t):
     times = get_times(t.in_tz('UTC'), config.pw_longitude, config.pw_latitude)
-    return {k: deg_to_rad(time_to_angle(pendulum.instance(v).in_tz('local'))) for k, v in times.items()}
+    return {k: time_to_angle(pendulum.instance(v).in_tz('local')) for k, v in times.items()}
 
 def draw_background(fs, w: int, h: int):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
-    theta = deg_to_rad(time_to_angle(fs.now))
+    theta = time_to_angle(fs.now)
     suntimes = sun_times(fs.now)
+    is_day = theta < suntimes['sunset']
+    bg_color = SkyHues.day_sky if is_day else SkyHues.night_sky
 
-    sun_path_radius = 25
-    sun_radius = 3
-
-    dusk_start = 0.2 * math.pi
-    dusk_end = 1.7 * math.pi
-    # sunset_start = deg_to_rad(time_to_angle(suntimes['sunset']))
-    # sunset_end = deg_to_rad(time_to_angle(suntimes['sunrise']))
-    # ndusk_start = deg_to_rad(time_to_angle(suntimes['nautical_dusk']))
-    # ndusk_end = deg_to_rad(time_to_angle(suntimes['nautical_dawn']))
-    # dusk_start = deg_to_rad(time_to_angle(suntimes['dusk']))
-    # dusk_end = deg_to_rad(time_to_angle(suntimes['dawn']))
+    sun_path_radius = 22
+    sun_radius = 2
 
     cx = w / 2
     cy = h / 2
@@ -84,7 +77,7 @@ def draw_background(fs, w: int, h: int):
     hyp = math.sqrt((cx) ** 2 + (cy) ** 2)
 
     ctx = cairo.Context(surface)
-    ctx.set_source_rgba(*SkyHues.sky_blue.rgb, 1)
+    ctx.set_source_rgba(*bg_color.rgb, 1)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
 
@@ -138,22 +131,21 @@ def draw_background(fs, w: int, h: int):
     # ctx.close_path()
     # ctx.fill()
 
-    draw_sun(ctx, sun_x, sun_y, sun_radius)
-    return Frame(to_pil(surface))
+    def draw_sun(x, y, radius):
+        # ctx.set_source_rgba(1, 1, 1, 1)
+        r1 = cairo.RadialGradient(x, y, radius, x, y, 3 * radius)
+        r1.add_color_stop_rgba(1, 1, 1, 1, 0.7)
+        r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
+        r1.add_color_stop_rgba(1, 1, 0.2, 0, 0)
+        ctx.set_source(r1)
+        ctx.arc(x, y, radius * 2, 0, 2 * math.pi)
+        ctx.fill()
+        ctx.set_source_rgba(1, 1, 0, 1)
+        ctx.arc(x, y, radius, 0, 2 * math.pi)
+        ctx.fill()
 
-def draw_sun(ctx, x, y, radius):
-    # ctx.set_source_rgba(1, 1, 1, 1)
-    r1 = cairo.RadialGradient(x, y, radius, x, y, 2 * radius)
-    r1.add_color_stop_rgba(0, 1, 1, 1, 1)
-    r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
-    r1.add_color_stop_rgba(1, 1, 0.2, 0, 0)
-    ctx.set_source(r1)
-    ctx.arc(x, y, radius * 2, 0, 2 * math.pi)
-    ctx.fill()
-    ctx.set_source_rgba(1, 1, 0, 1)
-    ctx.arc(x, y, radius, 0, 2 * math.pi)
-    ctx.fill()
-    return ctx
+    draw_sun(sun_x, sun_y, sun_radius)
+    return Frame(to_pil(surface))
 
 @cache
 def generate_angles(w: int, h: int):
