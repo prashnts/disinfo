@@ -1,6 +1,7 @@
 from . import date_time
 from . import octoprint
 from . import weather
+from . import solar
 from . import twenty_two
 from . import now_playing
 from . import numbers
@@ -14,6 +15,7 @@ __all__ = [
     'date_time',
     'octoprint',
     'weather',
+    'solar',
     'twenty_two',
     'now_playing',
     'numbers',

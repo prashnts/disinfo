@@ -16,3 +16,6 @@ pydantic>=2.0.3
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.1
 websockets>=11.0.3
+sympy>=1.12
+pycairo>=1.24.0
+suncalc>=0.1.3

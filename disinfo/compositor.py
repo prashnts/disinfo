@@ -30,9 +30,10 @@ def compose_frame(fs: FrameState):
         # do not draw if nobody is there.
         return image
 
-    composite_at(screens.demo.draw(fs), image, 'mm')
+    # composite_at(screens.demo.draw(fs), image, 'mm')
 
     octoprint_info = screens.octoprint.draw(fs)
+    composite_at(screens.solar.draw(fs), image, 'mm')
 
     composite_at(
         vstack([

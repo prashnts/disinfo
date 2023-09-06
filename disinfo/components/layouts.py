@@ -205,6 +205,43 @@ def mosaic(
 
     return Frame(img)
 
+def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm') -> Frame:
+    '''Places the frame at the given coordinates.
+    The anchor is relative to the frame and will be located at the given coordinates.
+
+    Returns a new frame if dest is a Frame, else modifies the dest image.
+    '''
+    if not frame:
+        return dest
+
+    if isinstance(dest, Frame):
+        dest = dest.image.copy()
+
+    fw = frame.width
+    fh = frame.height
+
+    # calculate the delta between the anchor and the top left corner of the frame.
+
+    if anchor[0] == 't':
+        dy = 0
+    elif anchor[0] == 'm':
+        dy = -fh // 2
+    elif anchor[0] == 'b':
+        dy = -fh
+    else:
+        raise ValueError('Wrong value for anchor.')
+
+    if anchor[1] == 'l':
+        dx = 0
+    elif anchor[1] == 'm':
+        dx = -fw // 2
+    elif anchor[1] == 'r':
+        dx = -fw
+    else:
+        raise ValueError('Wrong value for anchor.')
+
+    dest.alpha_composite(frame.image, (x + dx, y + dy))
+    return Frame(dest)
 
 def tabular(table: list[list[Optional[Frame]]]):
     # convert a 2d list of frames into a tabular grid.

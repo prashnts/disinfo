@@ -80,6 +80,8 @@ sudo update-initramfs -u
 
 echo "=> Installing python dependencies"
 
+sudo apt install libcairo2-dev pkg-config -y
+
 cd ~/disinfo
 sudo pip install -r requirements.txt
 
