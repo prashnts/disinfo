@@ -111,6 +111,15 @@ def draw_background(fs, w: int, h: int):
     ctx.set_line_width(1)
     ctx.stroke()
 
+    r2 = cairo.RadialGradient(cx, cy, sun_path_radius, cx, cy, hyp)
+    r2.add_color_stop_rgba(0, 0, 0, 0, 0)
+    r2.add_color_stop_rgba(.8, 0, 0, 0, 1)
+    # r1.add_color_stop_rgba(1, *SkyHues.sun_position.rgb, 1)
+    ctx.set_source(r2)
+    ctx.rectangle(0, 0, w, h)
+    ctx.fill()
+
+
     # ctx.set_source_rgba(*SkyHues.twilight_blue.rgb, 1)
     # ctx.arc(cx, cy, hyp, sunset_start, sunset_end)
     # ctx.line_to(cx, cy)
