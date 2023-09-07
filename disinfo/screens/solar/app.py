@@ -160,10 +160,6 @@ def analog_clock(fs, w: int, h: int):
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     blank = i.copy()
     i.alpha_composite(to_pil(surface), (0, 0))
-    # i.alpha_composite(to_pil(surface_mask_night), (0, 0))
-    i.alpha_composite(Image.composite(to_pil(surface_day), blank.copy(), to_pil(surface_mask_day)), (0, 0))
-    i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
-    # i.alpha_composite(text('12').image, (int(cx), int(cy)))
 
     label_radius = 25
     # Draw ticks
@@ -177,6 +173,9 @@ def analog_clock(fs, w: int, h: int):
     draw_label(pendulum.time(hour=00), '24')
     draw_label(pendulum.time(hour=6), '6')
     draw_label(pendulum.time(hour=18), '18')
+
+    i.alpha_composite(Image.composite(to_pil(surface_day), blank.copy(), to_pil(surface_mask_day)), (0, 0))
+    i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
 
     return Frame(i)
 
