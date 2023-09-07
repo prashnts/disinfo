@@ -6,6 +6,15 @@ def constrain(value, min_value=0, max_value=1):
 
 
 class AppColor(Color):
+    def __init__(self, color: str):
+        self.__dict__['alpha'] = 1
+        if color.startswith('#'):
+            if len(color) == 9:
+                # contains alpha.
+                color = color[0:7]
+                self.__dict__['alpha'] = int(color[6:8], 16) / 255
+        super().__init__(color)
+
     def saturate(self, amount: float):
         self.saturation += amount
         return self
@@ -15,6 +24,10 @@ class AppColor(Color):
         luminance = self.luminance - amount
         c.luminance = constrain(luminance)
         return c
+
+    def get_rgba(self):
+        return (*self.rgb, self.alpha)
+
 
 
 gray = AppColor('#9a9ba2')
@@ -35,10 +48,12 @@ class SkyHues:
     dusk_blue = AppColor('#190c7d')
     night_blue = AppColor('#0b043e')
 
-    sun_path = AppColor('#bebebe')
-    sun_position = AppColor('#c5cf0e')
+    sun_path_a = AppColor('#bebebe00')
+    sun_path_b = AppColor('#bebebeff')
+    sun_position = AppColor('#d6d6d6')
 
     night = AppColor('#0e111f')
     astronomical_twilight = AppColor('#111154')
     nautical_twilight = AppColor('#1b1d74')
     civil_twilight = AppColor('#284995')
+

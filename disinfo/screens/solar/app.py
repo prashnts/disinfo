@@ -12,6 +12,7 @@ from disinfo.data_structures import FrameState
 from disinfo.components.elements import Frame, StillImage
 from disinfo.components.layouts import hstack, vstack, composite_at, place_at
 from disinfo.components.layers import div, DivStyle
+from disinfo.components.text import TextStyle, text
 from disinfo.screens.date_time import digital_clock
 from disinfo.screens.colors import light_blue, SkyHues
 from disinfo import config
@@ -56,10 +57,16 @@ def sun_times(t):
     return {k: time_to_angle(pendulum.instance(v).in_tz('local')) for k, v in times.items()}
 
 def draw_background(fs, w: int, h: int):
+    t = fs.now
+    # t = pendulum.now().set(hour=7, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    surface_day = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    surface_night = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    surface_mask_day = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    surface_mask_night = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
-    theta = time_to_angle(fs.now)
-    suntimes = sun_times(fs.now)
+    theta = time_to_angle(t)
+    suntimes = sun_times(t)
     is_day = theta < suntimes['sunset']
     bg_color = SkyHues.day_sky if is_day else SkyHues.night_sky
 
@@ -93,11 +100,10 @@ def draw_background(fs, w: int, h: int):
     draw_arc(ctx, suntimes['nautical_dusk'], suntimes['nautical_dawn'], SkyHues.astronomical_twilight)
     draw_arc(ctx, suntimes['night'], suntimes['night_end'], SkyHues.night)
 
-
     r1 = cairo.RadialGradient(cx, cy, sun_path_radius * 2, sun_x, sun_y, sun_radius)
-    r1.add_color_stop_rgba(0, *SkyHues.sun_path.rgb, 0)
-    r1.add_color_stop_rgba(.9, *SkyHues.sun_path.rgb, 1)
-    r1.add_color_stop_rgba(1, *SkyHues.sun_position.rgb, 1)
+    r1.add_color_stop_rgba(0.5, *SkyHues.sun_path_a.rgba)
+    r1.add_color_stop_rgba(.8, *SkyHues.sun_path_b.rgba)
+    r1.add_color_stop_rgba(1, *SkyHues.sun_position.rgba)
     ctx.set_source(r1)
     # ctx.set_source_rgba(1, 1, 1, 1)
     ctx.arc(cx, cy, sun_path_radius, 0, 2 * math.pi)
@@ -112,27 +118,22 @@ def draw_background(fs, w: int, h: int):
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
 
+    ctx = cairo.Context(surface_mask_day)
+    ctx.set_source_rgba(1, 1, 1, 1)
+    ctx.arc(cx, cy, hyp, suntimes['sunrise'], suntimes['sunset'])
+    ctx.line_to(cx, cy)
+    ctx.close_path()
+    ctx.fill()
 
-    # ctx.set_source_rgba(*SkyHues.twilight_blue.rgb, 1)
-    # ctx.arc(cx, cy, hyp, sunset_start, sunset_end)
-    # ctx.line_to(cx, cy)
-    # ctx.close_path()
-    # ctx.fill()
-
-    # ctx.set_source_rgba(*SkyHues.dusk_blue.rgb, 1)
-    # ctx.arc(cx, cy, hyp, dusk_start, dusk_end)
-    # ctx.line_to(cx, cy)
-    # ctx.close_path()
-    # ctx.fill()
-
-    # ctx.set_source_rgba(*SkyHues.night_blue.rgb, 1)
-    # ctx.arc(cx, cy, hyp, ndusk_start, ndusk_end)
-    # ctx.line_to(cx, cy)
-    # ctx.close_path()
-    # ctx.fill()
+    ctx = cairo.Context(surface_mask_night)
+    ctx.set_source_rgba(1, 1, 1, 1)
+    ctx.arc(cx, cy, hyp, suntimes['sunset'], suntimes['sunrise'])
+    ctx.line_to(cx, cy)
+    ctx.close_path()
+    ctx.fill()
 
     def draw_sun(x, y, radius):
-        # ctx.set_source_rgba(1, 1, 1, 1)
+        ctx = cairo.Context(surface_day)
         r1 = cairo.RadialGradient(x, y, radius, x, y, 3 * radius)
         r1.add_color_stop_rgba(1, 1, 1, 1, 0.7)
         r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
@@ -144,8 +145,25 @@ def draw_background(fs, w: int, h: int):
         ctx.arc(x, y, radius, 0, 2 * math.pi)
         ctx.fill()
 
+    def draw_night_sun(x, y, radius):
+        ctx = cairo.Context(surface_night)
+        ctx.set_source_rgba(0, 0, 0, 1)
+        ctx.arc(x, y, radius * 2, 0, 2 * math.pi)
+        ctx.fill_preserve()
+        ctx.set_line_width(0.5)
+        ctx.set_source_rgba(1, 1, 1, 1)
+        ctx.stroke()
+
     draw_sun(sun_x, sun_y, sun_radius)
-    return Frame(to_pil(surface))
+    draw_night_sun(sun_x, sun_y, sun_radius)
+    i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    i2 = i.copy()
+    i.alpha_composite(to_pil(surface), (0, 0))
+    # i.alpha_composite(to_pil(surface_mask_night), (0, 0))
+    i.alpha_composite(Image.composite(to_pil(surface_day), i2.copy(), to_pil(surface_mask_day)), (0, 0))
+    i.alpha_composite(Image.composite(to_pil(surface_night), i2.copy(), to_pil(surface_mask_night)), (0, 0))
+    # i.alpha_composite(text('12').image, (int(cx), int(cy)))
+    return Frame(i)
 
 @cache
 def generate_angles(w: int, h: int):
