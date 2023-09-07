@@ -57,3 +57,4 @@ class SkyHues:
     nautical_twilight = AppColor('#1b1d74')
     civil_twilight = AppColor('#284995')
 
+    label = '#9a9ba25c'
