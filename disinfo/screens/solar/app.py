@@ -111,6 +111,21 @@ def analog_clock(fs, w: int, h: int):
     ctx.set_line_width(1)
     ctx.stroke()
 
+    needle_radius = 28
+    needle_x = cx + needle_radius * math.cos(theta)
+    needle_y = cy + needle_radius * math.sin(theta)
+    r1 = cairo.RadialGradient(cx, cy, 0, sun_x, sun_y, needle_radius)
+    r1.add_color_stop_rgba(0.0, 1, 1, 1, 0)
+    r1.add_color_stop_rgba(0.4, 1, 1, 1, 1)
+    r1.add_color_stop_rgba(0.6, 1, 1, 1, 1)
+    r1.add_color_stop_rgba(1, 1, 1, 1, 0)
+    # r1.add_color_stop_rgba(.8, *SkyHues.sun_path_b.rgba)
+    # r1.add_color_stop_rgba(1, *SkyHues.sun_path_b.rgba)
+    ctx.set_source(r1)
+    ctx.move_to(cx, cy)
+    ctx.line_to(needle_x, needle_y)
+    ctx.stroke()
+
     # Reduce brightness of the background.
     r2 = cairo.RadialGradient(cx, cy, sun_path_radius, cx, cy, hyp)
     r2.add_color_stop_rgba(0, 0, 0, 0, 0)
