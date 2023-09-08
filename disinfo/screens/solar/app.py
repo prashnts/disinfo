@@ -70,13 +70,8 @@ def analog_clock(fs, w: int, h: int):
 
     theta = time_to_angle(t.time())
     solar_angles, solar_times, solar_pos = sun_times(t)
-    is_day = solar_times['sunrise_end'] <= t <= solar_times['sunset_start']
-    bg_color = SkyHues.day_sky if is_day else SkyHues.night_sky
 
     # print(abs(suntimes['sunset_start'] - suntimes['sunrise_end']))
-
-
-    # print(solar_pos['altitude'])
 
     sun_path_radius = 22
     sun_radius = 2
@@ -92,10 +87,20 @@ def analog_clock(fs, w: int, h: int):
     ctx = cairo.Context(surface)
     ctx.set_source_rgba(*SkyHues.night_background.rgb, 1)
     ctx.rectangle(0, 0, w, h)
-    ctx.fill()
+    ctx.fill_preserve()
 
     ctx.set_source_rgba(*SkyHues.sky_blue.rgb, clamp(solar_pos['altitude'] + 0.25))
-    ctx.rectangle(0, 0, w, h)
+    ctx.fill_preserve()
+
+    # pathorizon = cairo.LinearGradient(0, h, w, 0)
+    # pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
+    # pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, 1)
+    # pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak.rgb, 1)
+    # pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, 1)
+    # pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
+
+    # ctx.set_source(pathorizon)
+
     ctx.fill()
 
     # Sun time sections.
@@ -123,6 +128,7 @@ def analog_clock(fs, w: int, h: int):
     ctx.set_line_width(1)
     ctx.stroke()
 
+    # Needle
     needle_radius = 28
     needle_x = cx + needle_radius * math.cos(theta)
     needle_y = cy + needle_radius * math.sin(theta)
@@ -131,8 +137,6 @@ def analog_clock(fs, w: int, h: int):
     r1.add_color_stop_rgba(0.4, 1, 1, 1, 1)
     r1.add_color_stop_rgba(0.6, 1, 1, 1, 1)
     r1.add_color_stop_rgba(1, 1, 1, 1, 0)
-    # r1.add_color_stop_rgba(.8, *SkyHues.sun_path_b.rgba)
-    # r1.add_color_stop_rgba(1, *SkyHues.sun_path_b.rgba)
     ctx.set_source(r1)
     ctx.move_to(cx, cy)
     ctx.line_to(needle_x, needle_y)
@@ -142,7 +146,6 @@ def analog_clock(fs, w: int, h: int):
     r2 = cairo.RadialGradient(cx, cy, sun_path_radius, cx, cy, hyp)
     r2.add_color_stop_rgba(0, 0, 0, 0, 0)
     r2.add_color_stop_rgba(.8, 0, 0, 0, 1)
-    # r1.add_color_stop_rgba(1, *SkyHues.sun_position.rgb, 1)
     ctx.set_source(r2)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
@@ -152,14 +155,23 @@ def analog_clock(fs, w: int, h: int):
     ctx.line_to(cx, cy)
     ctx.clip()
 
-    r1 = cairo.RadialGradient(sun_x, sun_y, sun_radius, sun_x, sun_y, 3 * sun_radius)
-    r1.add_color_stop_rgba(1, 1, 1, 1, 0.7)
+    r1 = cairo.RadialGradient(sun_x, sun_y, 1, sun_x, sun_y, 3 * sun_radius)
+    r1.add_color_stop_rgba(0, 1, 1, 1, 0.7)
     r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
     r1.add_color_stop_rgba(1, 1, 0.2, 0, 0)
-    ctx.set_source(r1)
-    ctx.arc(sun_x, sun_y, sun_radius * 2, 0, 2 * math.pi)
+    r2 = cairo.RadialGradient(sun_x, sun_y, sun_radius * 1, sun_x, sun_y, sun_radius * 16)
+    r2.add_color_stop_rgba(0, 1, 1, 1, 0.2)
+    r2.add_color_stop_rgba(0.5, 1, 1, 1, 0.1)
+    r2.add_color_stop_rgba(1, 1, 1, 1, 0)
+
+    ctx.set_source(r2)
+    ctx.arc(sun_x, sun_y, sun_radius * 16, 0, 2 * math.pi)
     ctx.fill()
-    ctx.set_source_rgba(1, 1, 0, 1)
+
+    ctx.set_source(r1)
+    ctx.arc(sun_x, sun_y, sun_radius * 2.4, 0, 2 * math.pi)
+    ctx.fill()
+    ctx.set_source_rgba(1, 1, 0.9, 1)
     ctx.arc(sun_x, sun_y, sun_radius, 0, 2 * math.pi)
     ctx.fill()
 
@@ -180,12 +192,12 @@ def analog_clock(fs, w: int, h: int):
 
     i.alpha_composite(to_pil(surface), (0, 0))
 
-    label_radius = 25
+    label_radius = 26
     # Draw ticks
     def draw_label(time, label):
         theta = time_to_angle(time)
-        lx = int(cx + label_radius * math.cos(theta))
-        ly = int(cy + label_radius * math.sin(theta))
+        lx = round(cx + label_radius * math.cos(theta))
+        ly = round(cy + label_radius * math.sin(theta))
         place_at(text(label, s_time_tick), i, lx, ly, anchor='mm')
 
     draw_label(pendulum.time(hour=12), '12')
