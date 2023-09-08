@@ -65,7 +65,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=8, minute=20, month=3)
+    t = pendulum.now().set(hour=19, minute=0, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
@@ -89,8 +89,17 @@ def analog_clock(fs, w: int, h: int):
     ctx.rectangle(0, 0, w, h)
     ctx.fill_preserve()
 
-    ctx.set_source_rgba(*SkyHues.sky_blue.rgb, clamp(solar_pos['altitude'] + 0.25))
-    ctx.fill_preserve()
+    # ctx.set_source_rgba(*SkyHues.sky_blue.rgb, clamp(solar_pos['altitude'] + 0.25))
+    # ctx.fill_preserve()
+    dawn_coords = (cx + hyp * math.cos(solar_angles['dawn']), cy + hyp * math.sin(solar_angles['dawn']))
+    dusk_coords = (cx + hyp * math.cos(solar_angles['dusk']), cy + hyp * math.sin(solar_angles['dusk']))
+
+
+    p1 = clamp(solar_pos['altitude'] + 0.29)
+    ra = cairo.RadialGradient(cx, cy, 1, cx, cy, hyp)
+    ra.add_color_stop_rgba(0, *SkyHues.sky_blue.rgb, p1)
+    ra.add_color_stop_rgba(1, *SkyHues.sky_blue_b.rgb, p1)
+    ctx.set_source(ra)
 
     # pathorizon = cairo.LinearGradient(0, h, w, 0)
     # pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
@@ -105,13 +114,13 @@ def analog_clock(fs, w: int, h: int):
 
     # Sun time sections.
     sections = [
-        (solar_angles['sunset_start'], solar_angles['sunrise_end'], SkyHues.civil_twilight),
-        (solar_angles['dusk'], solar_angles['dawn'], SkyHues.nautical_twilight),
-        (solar_angles['nautical_dusk'], solar_angles['nautical_dawn'], SkyHues.astronomical_twilight),
-        (solar_angles['night'], solar_angles['night_end'], SkyHues.night),
+        (solar_angles['sunset_start'], solar_angles['sunrise_end'], SkyHues.civil_twilight, 0.2),
+        (solar_angles['dusk'], solar_angles['dawn'], SkyHues.nautical_twilight, 0.4),
+        (solar_angles['nautical_dusk'], solar_angles['nautical_dawn'], SkyHues.astronomical_twilight, 0.5),
+        (solar_angles['night'], solar_angles['night_end'], SkyHues.night, 0.5),
     ]
-    for start, end, color in sections:
-        ctx.set_source_rgba(*color.rgb, 1)
+    for start, end, color, alpha in sections:
+        ctx.set_source_rgba(*color.rgba)
         ctx.arc(cx, cy, hyp, start, end)
         ctx.line_to(cx, cy)
         ctx.close_path()
@@ -145,7 +154,8 @@ def analog_clock(fs, w: int, h: int):
     # Reduce brightness of the background.
     r2 = cairo.RadialGradient(cx, cy, sun_path_radius, cx, cy, hyp)
     r2.add_color_stop_rgba(0, 0, 0, 0, 0)
-    r2.add_color_stop_rgba(.8, 0, 0, 0, 1)
+    r2.add_color_stop_rgba(.4, 0, 0, 0, 0)
+    r2.add_color_stop_rgba(.9, 0, 0, 0, 1)
     ctx.set_source(r2)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
@@ -159,13 +169,13 @@ def analog_clock(fs, w: int, h: int):
     r1.add_color_stop_rgba(0, 1, 1, 1, 0.7)
     r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
     r1.add_color_stop_rgba(1, 1, 0.2, 0, 0)
-    r2 = cairo.RadialGradient(sun_x, sun_y, sun_radius * 1, sun_x, sun_y, sun_radius * 16)
+    r2 = cairo.RadialGradient(sun_x, sun_y, sun_radius * 1, sun_x, sun_y, sun_radius * 8)
     r2.add_color_stop_rgba(0, 1, 1, 1, 0.2)
     r2.add_color_stop_rgba(0.5, 1, 1, 1, 0.1)
     r2.add_color_stop_rgba(1, 1, 1, 1, 0)
 
     ctx.set_source(r2)
-    ctx.arc(sun_x, sun_y, sun_radius * 16, 0, 2 * math.pi)
+    ctx.arc(sun_x, sun_y, sun_radius * 8, 0, 2 * math.pi)
     ctx.fill()
 
     ctx.set_source(r1)

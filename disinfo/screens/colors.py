@@ -11,8 +11,8 @@ class AppColor(Color):
         if color.startswith('#'):
             if len(color) == 9:
                 # contains alpha.
+                self.__dict__['alpha'] = int(color[7:9], 16) / 255
                 color = color[0:7]
-                self.__dict__['alpha'] = int(color[6:8], 16) / 255
         super().__init__(color)
 
     def saturate(self, amount: float):
@@ -44,7 +44,8 @@ class SkyHues:
     night_sky = AppColor('#092134')
 
     sky_blue = AppColor('#27699b')
-    twilight_blue = AppColor('#404BD9')
+    sky_blue_b = AppColor('#2A5EAC')
+    twilight_blue = AppColor('#1A4498')
     dusk_blue = AppColor('#190c7d')
     night_blue = AppColor('#0b043e')
 
@@ -57,9 +58,9 @@ class SkyHues:
     sun_path_b = AppColor('#bebebeff')
     sun_position = AppColor('#d6d6d6')
 
-    night = AppColor('#0e111f')
-    astronomical_twilight = AppColor('#111154')
-    nautical_twilight = AppColor('#1b1d74')
-    civil_twilight = AppColor('#284995')
+    night = AppColor('#03152E')
+    astronomical_twilight = AppColor('#071D42')
+    nautical_twilight = AppColor('#082B6B')
+    civil_twilight = AppColor('#15377D')
 
     label = '#9a9ba25c'
