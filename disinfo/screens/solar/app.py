@@ -53,23 +53,30 @@ def to_pil(surface: cairo.ImageSurface) -> Image.Image:
         else:
             raise NotImplementedError(repr(format))
 
+def clamp(value, min_value=0, max_value=1):
+    return max(min(value, max_value), min_value)
+
 def sun_times(t):
     times = get_times(t.in_tz('UTC'), config.pw_longitude, config.pw_latitude)
-    return {k: time_to_angle(pendulum.instance(v).in_tz('local').time()) for k, v in times.items()}
+    position = get_position(t.in_tz('UTC'), config.pw_longitude, config.pw_latitude)
+    utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items()}
+    angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
+    return angles, utctimes, position
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=7, month=3)
+    # t = pendulum.now().set(hour=8, minute=20, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-    surface_day = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-    surface_night = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-    surface_mask_day = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-    surface_mask_night = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
-    suntimes = sun_times(t)
-    is_day = theta < suntimes['sunset']
+    solar_angles, solar_times, solar_pos = sun_times(t)
+    is_day = solar_times['sunrise_end'] <= t <= solar_times['sunset_start']
     bg_color = SkyHues.day_sky if is_day else SkyHues.night_sky
+
+    # print(abs(suntimes['sunset_start'] - suntimes['sunrise_end']))
+
+
+    # print(solar_pos['altitude'])
 
     sun_path_radius = 22
     sun_radius = 2
@@ -83,22 +90,27 @@ def analog_clock(fs, w: int, h: int):
     hyp = math.sqrt(cx ** 2 + cy ** 2)
 
     ctx = cairo.Context(surface)
-    ctx.set_source_rgba(*bg_color.rgb, 1)
+    ctx.set_source_rgba(*SkyHues.night_background.rgb, 1)
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
 
-    def draw_arc(ctx, start, end, color):
+    ctx.set_source_rgba(*SkyHues.sky_blue.rgb, clamp(solar_pos['altitude'] + 0.25))
+    ctx.rectangle(0, 0, w, h)
+    ctx.fill()
+
+    # Sun time sections.
+    sections = [
+        (solar_angles['sunset_start'], solar_angles['sunrise_end'], SkyHues.civil_twilight),
+        (solar_angles['dusk'], solar_angles['dawn'], SkyHues.nautical_twilight),
+        (solar_angles['nautical_dusk'], solar_angles['nautical_dawn'], SkyHues.astronomical_twilight),
+        (solar_angles['night'], solar_angles['night_end'], SkyHues.night),
+    ]
+    for start, end, color in sections:
         ctx.set_source_rgba(*color.rgb, 1)
         ctx.arc(cx, cy, hyp, start, end)
         ctx.line_to(cx, cy)
         ctx.close_path()
         ctx.fill()
-
-    # Sun time sections.
-    draw_arc(ctx, suntimes['sunset'], suntimes['sunrise_end'], SkyHues.civil_twilight)
-    draw_arc(ctx, suntimes['dusk'], suntimes['dawn'], SkyHues.nautical_twilight)
-    draw_arc(ctx, suntimes['nautical_dusk'], suntimes['nautical_dawn'], SkyHues.astronomical_twilight)
-    draw_arc(ctx, suntimes['night'], suntimes['night_end'], SkyHues.night)
 
     # Sun path circle.
     r1 = cairo.RadialGradient(cx, cy, sun_path_radius * 2, sun_x, sun_y, sun_radius)
@@ -135,23 +147,11 @@ def analog_clock(fs, w: int, h: int):
     ctx.rectangle(0, 0, w, h)
     ctx.fill()
 
-    # Create masks
-    ctx = cairo.Context(surface_mask_day)
-    ctx.set_source_rgba(1, 1, 1, 1)
-    ctx.arc(cx, cy, hyp, suntimes['sunrise'], suntimes['sunset'])
-    ctx.line_to(cx, cy)
-    ctx.close_path()
-    ctx.fill()
-
-    ctx = cairo.Context(surface_mask_night)
-    ctx.set_source_rgba(1, 1, 1, 1)
-    ctx.arc(cx, cy, hyp, suntimes['sunset'], suntimes['sunrise'])
-    ctx.line_to(cx, cy)
-    ctx.close_path()
-    ctx.fill()
-
     # Day Sun
-    ctx = cairo.Context(surface_day)
+    ctx.arc(cx, cy, hyp, solar_angles['sunrise'], solar_angles['sunset'])
+    ctx.line_to(cx, cy)
+    ctx.clip()
+
     r1 = cairo.RadialGradient(sun_x, sun_y, sun_radius, sun_x, sun_y, 3 * sun_radius)
     r1.add_color_stop_rgba(1, 1, 1, 1, 0.7)
     r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
@@ -163,8 +163,12 @@ def analog_clock(fs, w: int, h: int):
     ctx.arc(sun_x, sun_y, sun_radius, 0, 2 * math.pi)
     ctx.fill()
 
+    ctx.reset_clip()
+
     # Night Sun
-    ctx = cairo.Context(surface_night)
+    ctx.arc(cx, cy, hyp, solar_angles['sunset'], solar_angles['sunrise'])
+    ctx.line_to(cx, cy)
+    ctx.clip()
     ctx.set_source_rgba(0, 0, 0, 1)
     ctx.arc(sun_x, sun_y, sun_radius * 1.4, 0, 2 * math.pi)
     ctx.fill_preserve()
@@ -173,7 +177,7 @@ def analog_clock(fs, w: int, h: int):
     ctx.stroke()
 
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    blank = i.copy()
+
     i.alpha_composite(to_pil(surface), (0, 0))
 
     label_radius = 25
@@ -189,8 +193,7 @@ def analog_clock(fs, w: int, h: int):
     draw_label(pendulum.time(hour=6), '6')
     draw_label(pendulum.time(hour=18), '18')
 
-    i.alpha_composite(Image.composite(to_pil(surface_day), blank.copy(), to_pil(surface_mask_day)), (0, 0))
-    i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
+    # i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
 
     return Frame(i)
 

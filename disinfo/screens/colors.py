@@ -48,6 +48,8 @@ class SkyHues:
     dusk_blue = AppColor('#190c7d')
     night_blue = AppColor('#0b043e')
 
+    night_background = AppColor('#131129')
+
     sun_path_a = AppColor('#bebebe00')
     sun_path_b = AppColor('#bebebeff')
     sun_position = AppColor('#d6d6d6')
