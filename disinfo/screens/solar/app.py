@@ -6,6 +6,7 @@ from functools import cache
 from PIL import Image, ImageDraw, ImageFont
 from sympy import Ray, Polygon, pi, deg
 from suncalc import get_position, get_times
+from scipy.interpolate import interp1d
 
 from disinfo.data_structures import FrameState
 
@@ -21,9 +22,26 @@ from disinfo import config
 
 s_time_tick = TextStyle(font=fonts.bitocra7, color=SkyHues.label)
 
+altitude_alpha = [
+    # ALT   ALPHA
+    [-0.5,    0],
+    [-0.2,  0.1],
+    [0,     0.6],
+    [0.5,     0.8],
+    [1,     1],
+]
+p1_interpolator = interp1d(
+    *zip(*altitude_alpha),
+    bounds_error=False,
+    fill_value=(0, 1),
+)
+
 
 def deg_to_rad(deg):
     return deg * (math.pi / 180) % (2 * math.pi)
+
+def rad_to_deg(rad):
+    return rad * (180 / math.pi) % 360
 
 
 def time_to_angle(t):
@@ -65,7 +83,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    t = pendulum.now().set(hour=19, minute=0, month=3)
+    t = pendulum.now().set(hour=8, minute=0, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
@@ -94,8 +112,7 @@ def analog_clock(fs, w: int, h: int):
     dawn_coords = (cx + hyp * math.cos(solar_angles['dawn']), cy + hyp * math.sin(solar_angles['dawn']))
     dusk_coords = (cx + hyp * math.cos(solar_angles['dusk']), cy + hyp * math.sin(solar_angles['dusk']))
 
-
-    p1 = clamp(solar_pos['altitude'] + 0.29)
+    p1 = p1_interpolator(solar_pos['altitude'])
     ra = cairo.RadialGradient(cx, cy, 1, cx, cy, hyp)
     ra.add_color_stop_rgba(0, *SkyHues.sky_blue.rgb, p1)
     ra.add_color_stop_rgba(1, *SkyHues.sky_blue_b.rgb, p1)
@@ -138,14 +155,14 @@ def analog_clock(fs, w: int, h: int):
     ctx.stroke()
 
     # Needle
-    needle_radius = 28
+    needle_radius = 29
     needle_x = cx + needle_radius * math.cos(theta)
     needle_y = cy + needle_radius * math.sin(theta)
     r1 = cairo.RadialGradient(cx, cy, 0, sun_x, sun_y, needle_radius)
     r1.add_color_stop_rgba(0.0, 1, 1, 1, 0)
     r1.add_color_stop_rgba(0.4, 1, 1, 1, 1)
     r1.add_color_stop_rgba(0.6, 1, 1, 1, 1)
-    r1.add_color_stop_rgba(1, 1, 1, 1, 0)
+    r1.add_color_stop_rgba(0.8, 0, 0, 0, 0)
     ctx.set_source(r1)
     ctx.move_to(cx, cy)
     ctx.line_to(needle_x, needle_y)
@@ -169,7 +186,7 @@ def analog_clock(fs, w: int, h: int):
     r1.add_color_stop_rgba(0, 1, 1, 1, 0.7)
     r1.add_color_stop_rgba(0.2, 1, 1, 0, 0.5)
     r1.add_color_stop_rgba(1, 1, 0.2, 0, 0)
-    r2 = cairo.RadialGradient(sun_x, sun_y, sun_radius * 1, sun_x, sun_y, sun_radius * 8)
+    r2 = cairo.RadialGradient(sun_x, sun_y, sun_radius * 1, sun_x, sun_y, sun_radius * 6)
     r2.add_color_stop_rgba(0, 1, 1, 1, 0.2)
     r2.add_color_stop_rgba(0.5, 1, 1, 1, 0.1)
     r2.add_color_stop_rgba(1, 1, 1, 1, 0)

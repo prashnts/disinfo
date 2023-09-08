@@ -26,6 +26,9 @@ class Frame(UIElement):
         i.alpha_composite(self.image, (x, y))
         return Frame(i)
 
+    def rotate(self, angle: float) -> 'Frame':
+        return Frame(self.image.rotate(angle))
+
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')
