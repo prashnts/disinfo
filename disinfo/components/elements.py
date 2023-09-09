@@ -27,7 +27,7 @@ class Frame(UIElement):
         return Frame(i)
 
     def rotate(self, angle: float) -> 'Frame':
-        return Frame(self.image.rotate(angle))
+        return Frame(self.image.rotate(angle, expand=True))
 
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):

@@ -3,6 +3,7 @@ import cairo
 import pendulum
 
 from functools import cache
+from pendulum.time import Time
 from PIL import Image, ImageDraw, ImageFont
 from sympy import Ray, Polygon, pi, deg
 from suncalc import get_position, get_times
@@ -21,6 +22,7 @@ from disinfo import config
 
 
 s_time_tick = TextStyle(font=fonts.bitocra7, color=SkyHues.label)
+s_time_tick_div = DivStyle(radius=2, background=SkyHues.black.hex, padding=[1, 1, 1, 1])
 
 altitude_alpha = [
     # ALT   ALPHA
@@ -214,23 +216,54 @@ def analog_clock(fs, w: int, h: int):
     ctx.set_line_width(1)
     ctx.set_source_rgba(1, 1, 1, 1)
     ctx.stroke()
+    ctx.reset_clip()
+
+
+    tick_radius = 15
+    tick_len = 4
+
+    for hour in range(0, 24):
+        time = pendulum.time(hour=hour)
+        theta = time_to_angle(time)
+        lx = cx + tick_radius * math.cos(theta)
+        ly = cy + tick_radius * math.sin(theta)
+        mx = cx + (tick_radius + tick_len) * math.cos(theta)
+        my = cy + (tick_radius + tick_len) * math.sin(theta)
+
+        # place_at(text('|', s_time_tick).rotate(-rad_to_deg(theta) - 90), i, lx, ly, anchor='mm')
+        ctx.set_source_rgba(1, 1, 1, 1)
+        ctx.move_to(lx, ly)
+        ctx.line_to(mx, my)
+        ctx.set_line_width(0.4)
+        ctx.stroke()
+
+
 
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
     i.alpha_composite(to_pil(surface), (0, 0))
 
-    label_radius = 26
-    # Draw ticks
-    def draw_label(time, label):
+    label_radius = 28
+
+    time_ticks = [0, 6, 12, 18]
+    for hour in time_ticks:
+        time = pendulum.time(hour=hour)
         theta = time_to_angle(time)
+        label = time.format('HH')
         lx = round(cx + label_radius * math.cos(theta))
         ly = round(cy + label_radius * math.sin(theta))
+
         place_at(text(label, s_time_tick), i, lx, ly, anchor='mm')
 
-    draw_label(pendulum.time(hour=12), '12')
-    draw_label(pendulum.time(hour=00), '24')
-    draw_label(pendulum.time(hour=6), '6')
-    draw_label(pendulum.time(hour=18), '18')
+    # tick_radius = 17
+
+    # for hour in range(0, 24):
+    #     time = pendulum.time(hour=hour)
+    #     theta = time_to_angle(time)
+    #     lx = round(cx + tick_radius * math.cos(theta))
+    #     ly = round(cy + tick_radius * math.sin(theta))
+
+    #     place_at(text('|', s_time_tick).rotate(-rad_to_deg(theta) - 90), i, lx, ly, anchor='mm')
 
     # i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
 

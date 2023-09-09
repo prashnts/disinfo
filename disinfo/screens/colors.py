@@ -40,6 +40,7 @@ orange_red = AppColor('#c93f20')
 
 # Sky colors
 class SkyHues:
+    black = AppColor('#000000')
     day_sky = AppColor('#27699b')
     night_sky = AppColor('#092134')
 
@@ -63,4 +64,4 @@ class SkyHues:
     nautical_twilight = AppColor('#082B6B')
     civil_twilight = AppColor('#15377D')
 
-    label = '#9a9ba25c'
+    label = '#9a9ba28c'
