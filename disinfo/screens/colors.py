@@ -65,3 +65,4 @@ class SkyHues:
     civil_twilight = AppColor('#15377D')
 
     label = '#9a9ba28c'
+    tick_dark = '#0000008c'
