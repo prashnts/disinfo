@@ -54,7 +54,7 @@ class SkyHues:
 
     evening_streak = AppColor('#1b1d74')
     evening_streak_2 = AppColor('#FBCA7F')
-    evening_streak_3 = AppColor('#FEB455')
+    evening_streak_3 = AppColor('#4B39A3')
 
     sun_path_a = AppColor('#bebebe00')
     sun_path_b = AppColor('#bebebeff')

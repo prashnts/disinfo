@@ -101,7 +101,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=19, minute=0, month=3)
+    # t = pendulum.now().set(hour=10, minute=00, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
@@ -115,7 +115,7 @@ def analog_clock(fs, w: int, h: int):
     # full circle radius
     rcontain = min(cx, cy)
 
-    sun_path_radius = rcontain * 0.6
+    sun_path_radius = rcontain * 0.45
     sun_radius = 2
 
     sun_x = cx + sun_path_radius * math.cos(theta)
@@ -139,24 +139,24 @@ def analog_clock(fs, w: int, h: int):
     ctx.set_source(ra)
     ctx.fill_preserve()
 
-    # Yellow Streak
     p2 = p2_interpolator(solar_pos['altitude'])
+    # Violet Streak
+    pathorange = cairo.LinearGradient(pay, pbx, pby, pax)
+    pathorange.add_color_stop_rgba(0.2, 0, 0, 0, 0)
+    pathorange.add_color_stop_rgba(.5, *SkyHues.evening_streak_3.rgb, p2)
+    pathorange.add_color_stop_rgba(0.8, 0, 0, 0, 0)
+    ctx.set_source(pathorange)
+    ctx.fill_preserve()
+
+    # Yellow Streak
     pathorizon = cairo.LinearGradient(pay, pbx, pby, pax)
     pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
-    pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, p2)
+    pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, p2 / 2)
     pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak.rgb, p2)
-    pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, p2)
+    pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, p2 / 2)
     pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
     ctx.set_source(pathorizon)
     ctx.fill_preserve()
-
-    # Orange Streak
-    pathorange = cairo.LinearGradient(pay, pbx, pby, pax)
-    pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
-    pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak_3.rgb, p2)
-    pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
-    ctx.set_source(pathorizon)
-
 
     ctx.fill()
 
@@ -210,15 +210,21 @@ def analog_clock(fs, w: int, h: int):
     ctx = cairo.Context(surface_sun)
 
     # Needle
-    needle_radius = rcontain * 0.7
+    needle_radius = rcontain * 0.5
     needle_x = cx + needle_radius * math.cos(theta)
     needle_y = cy + needle_radius * math.sin(theta)
 
     pat_needle = cairo.RadialGradient(cx, cy, 0, sun_x, sun_y, needle_radius)
-    pat_needle.add_color_stop_rgba(0.0, 1, 1, 1, 0)
-    pat_needle.add_color_stop_rgba(0.4, 1, 1, 1, 1)
-    pat_needle.add_color_stop_rgba(0.6, 1, 1, 1, 1)
-    pat_needle.add_color_stop_rgba(0.8, 0, 0, 0, 0)
+    if theta < solar_angles['sunset'] or theta > solar_angles['sunrise']:
+        pat_needle.add_color_stop_rgba(0, 0, 0, 0, 0)
+        pat_needle.add_color_stop_rgba(0.4, 0, 0, 0, 1)
+        pat_needle.add_color_stop_rgba(0.6, 0, 0, 0, 1)
+        pat_needle.add_color_stop_rgba(0.8, 0, 0, 0, 0)
+    else:
+        pat_needle.add_color_stop_rgba(0, 1, 1, 1, 0)
+        pat_needle.add_color_stop_rgba(0.4, 1, 1, 1, 1)
+        pat_needle.add_color_stop_rgba(0.6, 1, 1, 1, 1)
+        pat_needle.add_color_stop_rgba(0.8, 1, 1, 1, 0)
 
     ctx.set_source(pat_needle)
     ctx.move_to(cx, cy)

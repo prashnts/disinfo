@@ -5,6 +5,7 @@ from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor
 from .components.layouts import hstack, vstack, composite_at
+from .components.layers import div, DivStyle
 from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, MotionSensorStateManager
 
@@ -45,10 +46,10 @@ def compose_frame(fs: FrameState):
         ], gap=1, align='right'),
         image, 'tr')
     composite_at(
-        vstack([
+        div(vstack([
             screens.weather.draw(fs),
             screens.now_playing.draw(fs),
-        ]),
+        ]), DivStyle(padding=2)),
         image, 'ml')
     composite_at(screens.numbers.draw(fs), image, 'bl')
 
