@@ -74,11 +74,10 @@ def draw_temp_range(
     value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.bitocra7, color=color_high.hex)).trim(upper=1)
     value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.bitocra7, color=color_low.hex)).trim(upper=1)
 
-    text_high = hstack([value_high, deg_c_h], align='top')
     text_low = hstack([value_low, deg_c_l], align='top')
     temp_range_stack = hstack([text_low, value_high], gap=6, align='center')
 
-    span = temp_range_stack.width - 1
+    span = temp_range_stack.width - 2
 
     range_graph = Image.new('RGBA', (span + 1, 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
