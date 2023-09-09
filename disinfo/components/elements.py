@@ -1,6 +1,6 @@
 from PIL import Image
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Optional, Union
 
 
 Postion = tuple[int, int]
@@ -28,6 +28,16 @@ class Frame(UIElement):
 
     def rotate(self, angle: float) -> 'Frame':
         return Frame(self.image.rotate(angle, expand=True))
+
+    def trim(self, left: int = 0, upper: int = 0, right: int = 0, lower: int = 0) -> 'Frame':
+        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)))
+
+    def rescale(self, ratio: Union[float, tuple[float, float]]) -> 'Frame':
+        if not isinstance(ratio, tuple):
+            ratio = (ratio, ratio)
+        width = self.width * ratio[0]
+        height = self.height * ratio[1]
+        return Frame(self.image.resize((int(width), int(height))))
 
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):

@@ -11,7 +11,7 @@ class WeatherData(AppBaseModel):
     temperature: float = 25.0
     condition: str = 'Sunny'
     icon_name: str = 'clear-day'
-    t_high: float = 30.0
+    t_high: float = 40.0
     t_low: float = 20.0
     sunset_time: Optional[datetime] = None
     sunrise_time: Optional[datetime] = None

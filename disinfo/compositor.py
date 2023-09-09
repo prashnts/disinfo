@@ -44,7 +44,7 @@ def compose_frame(fs: FrameState):
             octoprint_info,
         ], gap=1, align='right'),
         image, 'tr')
-    composite_at(screens.weather.draw(fs), image, 'tl')
+    composite_at(screens.weather.draw(fs), image, 'ml')
     composite_at(screens.numbers.draw(fs), image, 'bl')
 
     composite_at(screens.paris_metro.draw(fs), image, 'bm')

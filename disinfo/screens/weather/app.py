@@ -10,6 +10,7 @@ from disinfo.components.layers import div, DivStyle
 from disinfo.components.layouts import hstack, vstack, composite_at
 from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
+from disinfo.screens.colors import light_gray
 from disinfo.redis import publish
 
 from .state import WeatherStateManager, WeatherState
@@ -23,11 +24,11 @@ warning_icon = StillImage('assets/sync.png')
 sunset_icon = StillImage('assets/raster/sunset-7x9.png')
 sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 
-s_temp_value = TextStyle(font=fonts.px_op__l, color='#9a9ba2')
+s_temp_value = TextStyle(font=fonts.px_op__l, color=light_gray.darken(0.1).hex)
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
 s_moon_phase = TextStyle(font=fonts.px_op__r, color='#58595c', outline=1, outline_color='#000000')
-s_deg_c = TextStyle(font=fonts.px_op__r, color='#6E7078')
+s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 
 
 fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
@@ -63,25 +64,26 @@ def astronomical_info(state: WeatherState):
 def draw_temp_range(
     t_current: float,
     t_high: float,
-    t_low: float,
-    font: ImageFont.FreeTypeFont = fonts.tamzen__rs) -> Frame:
+    t_low: float) -> Frame:
     '''Generates a vertical range graph of temperatures.'''
 
     color_high = Color('#967b03')
     color_low = Color('#2d83b4')
+    deg_c_h = text('°', style=TextStyle(font=fonts.tamzen__rs, color=color_high.hex)).trim(lower=2, right=1)
+    deg_c_l = text('°', style=TextStyle(font=fonts.tamzen__rs, color=color_low.hex)).trim(lower=2)
+    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.bitocra7, color=color_high.hex)).trim(upper=1)
+    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.bitocra7, color=color_low.hex)).trim(upper=1)
 
-    text_high = text(f'{round(t_high)}°', style=TextStyle(font=font, color=color_high.hex))
-    text_low = text(f'{round(t_low)}°', style=TextStyle(font=font, color=color_low.hex))
-    span = text_high.height + text_low.height + 1
+    text_high = hstack([value_high, deg_c_h], align='top')
+    text_low = hstack([value_low, deg_c_l], align='top')
+    temp_range_stack = hstack([text_low, value_high], gap=6, align='center')
 
-    # Draw the range graph.
-    # todo: this can be refactored.
+    span = temp_range_stack.width - 1
 
-    range_graph = Image.new('RGBA', (5, span), (0, 0, 0, 0))
+    range_graph = Image.new('RGBA', (span, 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
-    span = span - 2
-    gradient = color_high.range_to(color_low, span)
+    gradient = color_low.range_to(color_high, span)
 
     color_current = Color('#ffffff')
 
@@ -99,22 +101,23 @@ def draw_temp_range(
     # "flip" the current pos and move it in frame.
     cp = span - current_pos
 
-    d.line([(3, 1), (4, 1)], fill=color_high.hex)
-    d.line([(3, span), (4, span)], fill=color_low.hex)
+    d.line([(0, 0), (0, 1)], fill=color_low.hex)
+    d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
 
     for x, c in enumerate(gradient):
-        d.point([(3, x + 1)], fill=c.hex)
+        d.point([(x, 0)], fill=c.hex)
 
     d.point([
-        (0, cp - 1),
-        (0, cp), (1, cp),
-        (0, cp + 1),
+                     (cp, 2),
+        (cp - 1, 3), (cp, 3), (cp + 1, 3),
     ], fill=color_current.hex)
 
-    return hstack([
+    graph = vstack([
+        temp_range_stack,
         Frame(range_graph),
-        vstack([text_high, text_low], gap=1, align='left'),
-    ], gap=1, align='center')
+    ], gap=0, align='center')
+    # add the deg. c for high after.
+    return hstack([graph, deg_c_h], gap=0, align='top')
 
 
 def composer(fs: FrameState):
@@ -129,18 +132,21 @@ def composer(fs: FrameState):
         text(s.condition, style=s_condition),
     ], gap=2, align='center')
 
-    main_info = hstack([
-        weather_icon.draw(fs.tick),
+    main_info = vstack([
         hstack([
-            text(f'{round(s.temperature)}', style=s_temp_value),
-            text('°', style=s_deg_c),
-        ], gap=0, align='top'),
-        draw_temp_range(s.temperature, s.t_high, s.t_low, fonts.tamzen__rs),
-    ], gap=1, align='center')
+            weather_icon.draw(fs.tick).rescale(1),
+            hstack([
+                text(f'{round(s.temperature)}', style=s_temp_value),
+                text('°', style=s_deg_c),
+            ], gap=0, align='top'),
+        ], gap=2),
+        draw_temp_range(s.temperature, s.t_high, s.t_low),
+        warning_icon if state.is_outdated else None,
+    ], gap=2, align='left')
 
     weather_info = vstack([
-        div(main_info, style=DivStyle(background='#0000002f')),
-        div(condition_info, style=DivStyle(background='#0000002f')),
+        div(main_info, style=DivStyle(background='#0000008f', padding=1, radius=2)),
+        # div(condition_info, style=DivStyle(background='#00000000')),
     ], gap=1, align='left')
 
     weather_stack = [weather_info] #, astronomical_info(state)]
