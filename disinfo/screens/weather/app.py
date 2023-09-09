@@ -115,7 +115,7 @@ def draw_temp_range(
         temp_range_stack,
         Frame(range_graph),
     ], gap=0, align='center')
-    # add the deg. c for high after.
+
     return hstack([graph, deg_c_h], gap=0, align='top')
 
 
@@ -126,27 +126,19 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
-    condition_info = hstack([
-        warning_icon if state.is_outdated else None,
-        text(s.condition, style=s_condition),
-    ], gap=2, align='center')
-
-    main_info = vstack([
-        hstack([
-            weather_icon.draw(fs.tick).rescale(1),
+    weather_info = div(
+        vstack([
             hstack([
-                text(f'{round(s.temperature)}', style=s_temp_value),
-                text('°', style=s_deg_c),
-            ], gap=0, align='top'),
-        ], gap=2),
-        draw_temp_range(s.temperature, s.t_high, s.t_low),
-        warning_icon if state.is_outdated else None,
-    ], gap=2, align='left')
-
-    weather_info = vstack([
-        div(main_info, style=DivStyle(background='#0000008f', padding=2, radius=2)),
-        # div(condition_info, style=DivStyle(background='#00000000')),
-    ], gap=1, align='left')
+                weather_icon.draw(fs.tick).rescale(1),
+                hstack([
+                    text(f'{round(s.temperature)}', style=s_temp_value),
+                    text('°', style=s_deg_c),
+                ], gap=0, align='top'),
+            ], gap=2, align='bottom'),
+            draw_temp_range(s.temperature, s.t_high, s.t_low),
+            warning_icon if state.is_outdated else None,
+        ], gap=3, align='left'),
+        style=DivStyle(background='#0000008f', padding=2, radius=2))
 
     weather_stack = [weather_info] #, astronomical_info(state)]
 
