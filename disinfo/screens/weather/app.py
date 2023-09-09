@@ -80,32 +80,32 @@ def draw_temp_range(
 
     span = temp_range_stack.width - 1
 
-    range_graph = Image.new('RGBA', (span, 4), (0, 0, 0, 0))
+    range_graph = Image.new('RGBA', (span + 1, 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
-    gradient = color_low.range_to(color_high, span)
+    gradient = color_low.range_to(color_high, span - 1)
 
     color_current = Color('#ffffff')
 
     high_span = t_high - t_low
     try:
-        current_pos = (t_current - t_low) * (span / high_span)
+        current_pos = (t_high - t_current) * (span / high_span)
     except ZeroDivisionError:
         current_pos = span // 2
 
     if current_pos <= 0:
-        current_pos = span - 1
+        current_pos = 1
     elif current_pos >= span - 1:
-        current_pos = 0
+        current_pos = span - 1
 
     # "flip" the current pos and move it in frame.
     cp = span - current_pos
 
-    d.line([(0, 0), (0, 1)], fill=color_low.hex)
+    d.line([(1, 0), (1, 1)], fill=color_low.hex)
     d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
 
     for x, c in enumerate(gradient):
-        d.point([(x, 0)], fill=c.hex)
+        d.point([(x + 1, 0)], fill=c.hex)
 
     d.point([
                      (cp, 2),
