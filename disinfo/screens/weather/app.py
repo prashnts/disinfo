@@ -145,7 +145,7 @@ def composer(fs: FrameState):
     ], gap=2, align='left')
 
     weather_info = vstack([
-        div(main_info, style=DivStyle(background='#0000008f', padding=1, radius=2)),
+        div(main_info, style=DivStyle(background='#0000008f', padding=2, radius=2)),
         # div(condition_info, style=DivStyle(background='#00000000')),
     ], gap=1, align='left')
 

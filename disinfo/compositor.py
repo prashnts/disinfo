@@ -44,13 +44,15 @@ def compose_frame(fs: FrameState):
             octoprint_info,
         ], gap=1, align='right'),
         image, 'tr')
-    composite_at(screens.weather.draw(fs), image, 'ml')
+    composite_at(
+        vstack([
+            screens.weather.draw(fs),
+            screens.now_playing.draw(fs),
+        ]),
+        image, 'ml')
     composite_at(screens.numbers.draw(fs), image, 'bl')
 
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
-
-    if not octoprint_info:
-        composite_at(screens.now_playing.draw(fs), image, 'mr')
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')

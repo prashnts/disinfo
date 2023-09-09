@@ -18,13 +18,17 @@ from ..components.scroller import HScroller
 from ..utils.func import throttle
 from ..data_structures import FrameState
 
-hscroller = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
+scroll_media_title = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
+scroll_artist_name = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
+scroll_album_title = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
 
 play_icon = StillImage('assets/raster/play-5x5.png')
 pause_icon = StillImage('assets/raster/pause-5x5.png')
 spotify_icon = StillImage('assets/raster/spotify-5x5.png')
 
-text_music_info = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
+text_media_title = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
+text_artist_name = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
+text_album_title = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
 
 
 @throttle(1033)
@@ -43,9 +47,9 @@ def get_state():
     last_updated = arrow.get(s['last_updated']).to('local')
     now = arrow.now()
 
-    state['media_title'] = s['attributes'].get('media_title')
-    state['media_album'] = s['attributes'].get('media_album_name')
-    state['media_artist'] = s['attributes'].get('media_artist')
+    state['media_title'] = s['attributes'].get('media_title', '')
+    state['media_album'] = s['attributes'].get('media_album_name', '')
+    state['media_artist'] = s['attributes'].get('media_artist', '')
     state['is_spotify'] = 'Spotify' in s['attributes'].get('source', '')
     state['album_art'] = get_album_art(
         s['attributes'].get('entity_picture'),
@@ -75,7 +79,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps
-        img = img.resize((80, 80)).quantize().resize((25, 25)).convert('RGBA')
+        img = img.resize((80, 80)).quantize().resize((20, 20)).convert('RGBA')
         if is_spotify:
             return composite_at(spotify_icon, img, 'bl')
         return Frame(img)
@@ -91,31 +95,38 @@ def composer(fs: FrameState):
     elements = [s['media_title'], s['media_album'], s['media_artist']]
     media_info = ' >> '.join([e if e else '--' for e in elements])
 
+    c = text_media_title.update(value=s['media_title'])
+    scroll_media_title.set_frame(text_media_title, c)
+    c = text_album_title.update(value=s['media_album'][:5])
+    scroll_album_title.set_frame(text_album_title, c)
+    c = text_artist_name.update(value=s['media_artist'])
+    scroll_artist_name.set_frame(text_artist_name, c)
 
     art = s['album_art']
 
     act_icon = play_icon if s['playing'] else pause_icon
 
-    changed = text_music_info.update(value=media_info)
-    # "Refresh" the scroller with the change status of the frame.
-    hscroller.set_frame(text_music_info, changed)
+    media_info = vstack([
+        scroll_media_title.draw(fs.tick),
+        text_album_title,
+    ])
 
     music_elements = [
         hstack([
             act_icon,
-            hscroller.draw(fs.tick),
-        ], gap=0)
+            media_info,
+        ], align='center'),
     ]
 
     if art:
-        music_elements.append(art)
+        music_elements.insert(0, art)
 
     return div(
-        vstack(music_elements, gap=1, align='right'),
+        hstack(music_elements, gap=1, align='top'),
         style=DivStyle(
-            background='#2c2e31',
+            background='#0000008f',
             padding=2,
-            radius=(2, 0, 0, 2),
+            radius=2,
         ),
     )
 
