@@ -101,7 +101,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    t = pendulum.now().set(hour=19, minute=0, month=3)
+    # t = pendulum.now().set(hour=19, minute=0, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
