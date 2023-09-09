@@ -24,7 +24,7 @@ def get_state():
     return numbers
 
 def composer(fs: FrameState):
-    # return
+    return
     numbers = get_state()
     num_str = f'#{num}' if (num := numbers['number']) else ' (*_*)'
 

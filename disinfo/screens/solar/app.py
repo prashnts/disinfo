@@ -101,7 +101,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=10, minute=00, month=3)
+    # t = pendulum.now().set(hour=18, minute=00, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
@@ -194,7 +194,7 @@ def analog_clock(fs, w: int, h: int):
             ctx.set_source_rgba(1, 1, 1, 1)
         ctx.move_to(mx, my)
         ctx.line_to(lx, ly)
-        ctx.set_line_width(0.6)
+        ctx.set_line_width(0.8)
         ctx.stroke()
 
     # Reduce brightness of the background.
@@ -210,7 +210,7 @@ def analog_clock(fs, w: int, h: int):
     ctx = cairo.Context(surface_sun)
 
     # Needle
-    needle_radius = rcontain * 0.5
+    needle_radius = rcontain * 0.6
     needle_x = cx + needle_radius * math.cos(theta)
     needle_y = cy + needle_radius * math.sin(theta)
 
