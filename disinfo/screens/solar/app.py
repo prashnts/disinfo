@@ -37,6 +37,19 @@ p1_interpolator = interp1d(
     bounds_error=False,
     fill_value=(0, 1),
 )
+p2_interpolator = interp1d(
+    *zip(*[
+        # ALT   ALPHA
+        [-0.8,    0],
+        [-0.2,  0.2],
+        [0,     0.6],
+        [0.5,   0.8],
+        [0.8,   0.5],
+        [1,     0.4],
+    ]),
+    bounds_error=False,
+    fill_value=(0, 0.8),
+)
 
 
 def deg_to_rad(deg):
@@ -44,6 +57,22 @@ def deg_to_rad(deg):
 
 def rad_to_deg(rad):
     return rad * (180 / math.pi) % 360
+
+
+Coords = tuple[float, float]
+
+def perpendicular_line_through(p1: Coords, p2: Coords, center: Coords):
+    ma = (p2[1] - p1[1]) / (p2[0] - p1[0])
+    ca = p2[1] - ma * p2[0]
+    mb = -1 / ma
+    cb = center[1] - mb * center[0]
+    return lambda x: mb * x + cb
+
+def point_at_distance(line, distance: float, center: Coords):
+    # using vector method.
+    # find the zero point
+    y0 = line(0)
+
 
 
 def time_to_angle(t):
@@ -85,7 +114,7 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=8, minute=0, month=3)
+    # t = pendulum.now().set(hour=19, minute=0, month=3)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
@@ -111,23 +140,25 @@ def analog_clock(fs, w: int, h: int):
 
     # ctx.set_source_rgba(*SkyHues.sky_blue.rgb, clamp(solar_pos['altitude'] + 0.25))
     # ctx.fill_preserve()
-    dawn_coords = (cx + hyp * math.cos(solar_angles['dawn']), cy + hyp * math.sin(solar_angles['dawn']))
-    dusk_coords = (cx + hyp * math.cos(solar_angles['dusk']), cy + hyp * math.sin(solar_angles['dusk']))
+    (pax, pay) = (cx + hyp * math.cos(solar_angles['dawn']), cy + hyp * math.sin(solar_angles['dawn']))
+    (pbx, pby) = (cx + hyp * math.cos(solar_angles['dusk']), cy + hyp * math.sin(solar_angles['dusk']))
 
     p1 = p1_interpolator(solar_pos['altitude'])
     ra = cairo.RadialGradient(cx, cy, 1, cx, cy, hyp)
     ra.add_color_stop_rgba(0, *SkyHues.sky_blue.rgb, p1)
     ra.add_color_stop_rgba(1, *SkyHues.sky_blue_b.rgb, p1)
     ctx.set_source(ra)
+    ctx.fill_preserve()
 
-    # pathorizon = cairo.LinearGradient(0, h, w, 0)
-    # pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
-    # pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, 1)
-    # pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak.rgb, 1)
-    # pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, 1)
-    # pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
+    p2 = p2_interpolator(solar_pos['altitude'])
+    pathorizon = cairo.LinearGradient(pay, pbx, pby, pax)
+    pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
+    pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, p2)
+    pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak.rgb, p2)
+    pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, p2)
+    pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
 
-    # ctx.set_source(pathorizon)
+    ctx.set_source(pathorizon)
 
     ctx.fill()
 
@@ -219,22 +250,24 @@ def analog_clock(fs, w: int, h: int):
     ctx.reset_clip()
 
 
+    # Draw hours ticks.
     tick_radius = 15
-    tick_len = 4
+    tick_len = [4, 2]
 
     for hour in range(0, 24):
         time = pendulum.time(hour=hour)
         theta = time_to_angle(time)
+        tick_l = tick_len[hour % 2]
+
         lx = cx + tick_radius * math.cos(theta)
         ly = cy + tick_radius * math.sin(theta)
-        mx = cx + (tick_radius + tick_len) * math.cos(theta)
-        my = cy + (tick_radius + tick_len) * math.sin(theta)
+        mx = cx + (tick_radius + tick_l) * math.cos(theta)
+        my = cy + (tick_radius + tick_l) * math.sin(theta)
 
-        # place_at(text('|', s_time_tick).rotate(-rad_to_deg(theta) - 90), i, lx, ly, anchor='mm')
         ctx.set_source_rgba(1, 1, 1, 1)
-        ctx.move_to(lx, ly)
-        ctx.line_to(mx, my)
-        ctx.set_line_width(0.4)
+        ctx.move_to(mx, my)
+        ctx.line_to(lx, ly)
+        ctx.set_line_width(0.6)
         ctx.stroke()
 
 
@@ -254,18 +287,6 @@ def analog_clock(fs, w: int, h: int):
         ly = round(cy + label_radius * math.sin(theta))
 
         place_at(text(label, s_time_tick), i, lx, ly, anchor='mm')
-
-    # tick_radius = 17
-
-    # for hour in range(0, 24):
-    #     time = pendulum.time(hour=hour)
-    #     theta = time_to_angle(time)
-    #     lx = round(cx + tick_radius * math.cos(theta))
-    #     ly = round(cy + tick_radius * math.sin(theta))
-
-    #     place_at(text('|', s_time_tick).rotate(-rad_to_deg(theta) - 90), i, lx, ly, anchor='mm')
-
-    # i.alpha_composite(Image.composite(to_pil(surface_night), blank.copy(), to_pil(surface_mask_night)), (0, 0))
 
     return Frame(i)
 
