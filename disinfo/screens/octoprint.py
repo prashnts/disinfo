@@ -57,10 +57,12 @@ def get_state(fs: FrameState):
 
     completion_time = now.shift(seconds=time_left).strftime('%H:%M') if time_left else 'Idle'
 
-    if _filename:
-        filename = py_.human_case(_filename.replace('.aw', '').replace('.gcode', ''))
-    else:
+    try:
+        filename = print_state['job']['file']['display'] or ''
+    except (KeyError, TypeError):
         filename = 'No file selected'
+
+    filename = py_.human_case(filename.replace('.aw', '').replace('.gcode', ''))
 
     # day_delta = completion_time.timetuple().tm_mday - now.timetuple().tm_mday
     # if day_delta:
