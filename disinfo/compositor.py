@@ -32,8 +32,6 @@ def compose_frame(fs: FrameState):
         return image
 
     # composite_at(screens.demo.draw(fs), image, 'mm')
-
-    octoprint_info = screens.octoprint.draw(fs)
     composite_at(screens.solar.draw(fs), image, 'mm')
 
     composite_at(
@@ -42,13 +40,13 @@ def compose_frame(fs: FrameState):
                 screens.date_time.draw(fs),
                 screens.plant.draw(fs),
             ], gap=2, align='right'),
-            octoprint_info,
         ], gap=1, align='right'),
         image, 'tr')
     composite_at(
         div(vstack([
             screens.weather.draw(fs),
             screens.now_playing.draw(fs),
+            screens.octoprint.draw(fs),
         ]), DivStyle(padding=2)),
         image, 'ml')
     composite_at(screens.numbers.draw(fs), image, 'bl')

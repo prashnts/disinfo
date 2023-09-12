@@ -135,7 +135,7 @@ def composer(fs: FrameState):
         detail_elem,
     ]
 
-    return div(vstack(elements, gap=1, align='right'), style=DivStyle(background='#000000ac'))
+    return div(vstack(elements, gap=1, align='right'), style=DivStyle(background='#000000ac', radius=2, padding=1))
 
 
 draw = draw_loop(composer, sleepms=10)
