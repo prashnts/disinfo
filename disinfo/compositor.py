@@ -47,7 +47,7 @@ def compose_frame(fs: FrameState):
             screens.weather.draw(fs),
             screens.now_playing.draw(fs),
             screens.octoprint.draw(fs),
-        ]), DivStyle(padding=2)),
+        ], gap=1), DivStyle(padding=2)),
         image, 'ml')
     composite_at(screens.numbers.draw(fs), image, 'bl')
 
