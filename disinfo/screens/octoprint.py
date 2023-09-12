@@ -41,7 +41,7 @@ def get_state(fs: FrameState):
     print_state = get_dict(rkeys['octoprint_printing'])
     tool_temp = get_dict(rkeys['octoprint_toolt'])
     bed_temp = get_dict(rkeys['octoprint_bedt'])
-    _filename = print_state['job']['file']['display']
+
     time_left = print_state['progress']['printTimeLeft']
     progress = print_state['progress']['completion'] or -1
     flags = print_state['state']['flags']
