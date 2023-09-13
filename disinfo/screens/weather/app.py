@@ -1,3 +1,5 @@
+import numpy as np
+
 from colour import Color
 from functools import cache
 from pydash import once
@@ -14,6 +16,7 @@ from disinfo.screens.colors import light_gray
 from disinfo.redis import publish
 
 from .state import WeatherStateManager, WeatherState
+from .assets import temperature_color
 
 
 weather_icon = SpriteIcon('assets/unicorn-weather-icons/cloudy.png', step_time=.05)
@@ -61,34 +64,24 @@ def astronomical_info(state: WeatherState):
     return hstack([moon_phase_image(s.moon_phase), vstack(infos, gap=1)], gap=2, align='center')
 
 @cache
-def draw_temp_range(
-    t_current: float,
-    t_high: float,
-    t_low: float) -> Frame:
-    '''Generates a vertical range graph of temperatures.'''
+def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
+    '''Generates a horizontal range graph of min/max temperatures.'''
+    color_low = temperature_color(t_low)
+    color_high = temperature_color(t_high)
+    color_current = Color('#ffffff')
 
-    color_high = Color('#967b03')
-    color_low = Color('#2d83b4')
-    deg_c_h = text('°', style=TextStyle(font=fonts.tamzen__rs, color=color_high.hex)).trim(lower=2, right=1)
-    deg_c_l = text('°', style=TextStyle(font=fonts.tamzen__rs, color=color_low.hex)).trim(lower=2)
     value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.bitocra7, color=color_high.hex)).trim(upper=1)
     value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.bitocra7, color=color_low.hex)).trim(upper=1)
 
-    text_low = hstack([value_low, deg_c_l], align='top')
-    temp_range_stack = hstack([text_low, value_high], gap=6, align='center')
+    temp_range_stack = hstack([value_low, value_high], gap=9, align='center')
 
     span = temp_range_stack.width - 2
 
     range_graph = Image.new('RGBA', (span + 1, 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
-    gradient = color_low.range_to(color_high, span - 1)
-
-    color_current = Color('#ffffff')
-
-    high_span = t_high - t_low
     try:
-        current_pos = (t_high - t_current) * (span / high_span)
+        current_pos = (t_high - t_current) * (span / (t_high - t_low))
     except ZeroDivisionError:
         current_pos = span // 2
 
@@ -97,26 +90,22 @@ def draw_temp_range(
     elif current_pos >= span - 1:
         current_pos = span - 1
 
-    # "flip" the current pos and move it in frame.
-    cp = span - current_pos
+    # d.line([(1, 0), (1, 1)], fill=color_low.hex)
+    # d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
 
-    d.line([(1, 0), (1, 1)], fill=color_low.hex)
-    d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
-
+    g_step = (t_high - t_low) / (span - 1)
+    gradient = [temperature_color(x) for x in np.arange(t_low, t_high, g_step)]
     for x, c in enumerate(gradient):
         d.point([(x + 1, 0)], fill=c.hex)
 
+    # Draw a pointer at the current temperature.
+    cp = span - current_pos
     d.point([
                      (cp, 2),
         (cp - 1, 3), (cp, 3), (cp + 1, 3),
     ], fill=color_current.hex)
 
-    graph = vstack([
-        temp_range_stack,
-        Frame(range_graph),
-    ], gap=0, align='center')
-
-    return hstack([graph, deg_c_h], gap=0, align='top')
+    return vstack([temp_range_stack, Frame(range_graph)], gap=0, align='center')
 
 
 def composer(fs: FrameState):

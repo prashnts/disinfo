@@ -101,12 +101,12 @@ def sun_times(t):
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    # t = pendulum.now().set(hour=18, minute=00, month=3)
+    t = pendulum.now().set(hour=17, minute=00, month=1)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
-    solar_angles, _, solar_pos = sun_times(t)
+    solar_angles, solar_times, solar_pos = sun_times(t)
 
     cx = w / 2
     cy = h / 2
@@ -188,7 +188,7 @@ def analog_clock(fs, w: int, h: int):
         mx = cx + (tick_radius + tick_l) * math.cos(htheta)
         my = cy + (tick_radius + tick_l) * math.sin(htheta)
 
-        if htheta < solar_angles['sunset'] or htheta > solar_angles['sunrise']:
+        if htheta < solar_angles['sunset'] and htheta > solar_angles['sunrise']:
             ctx.set_source_rgba(0, 0, 0, 1)
         else:
             ctx.set_source_rgba(1, 1, 1, 1)
@@ -316,6 +316,16 @@ def analog_clock(fs, w: int, h: int):
 
         is_day = theta < solar_angles['sunset'] or theta > solar_angles['sunrise']
         place_at(text(label, s_time_tick[is_day]), i, lx, ly, anchor='mm')
+
+    # Place sunset time
+    sunset = solar_times['sunset']
+    sunset_theta = time_to_angle(sunset.time())
+    sunset_radius = min(rcontain / math.sin(sunset_theta) - 5, rcontain / math.cos(2 * math.pi - sunset_theta))
+    sunset_label = sunset.format('HH:mm')
+    sunset_x = round(cx + sunset_radius * math.cos(sunset_theta))
+    sunset_y = round(cy + sunset_radius * math.sin(sunset_theta))
+    place_at(text(sunset_label, s_time_tick[0]), i, sunset_x, sunset_y, anchor='ml')
+
     i.alpha_composite(to_pil(surface_sun), (0, 0))
 
     return Frame(i)
