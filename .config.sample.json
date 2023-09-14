@@ -1,0 +1,16 @@
+{
+    "pw_api_key": "x",
+    "pw_unit": "ca",
+    "ha_base_url": "10.0.1.207:8123",
+    "ha_mqtt_host": "10.0.1.207",
+    "ha_mqtt_port": 1883,
+    "ha_mqtt_username": "x",
+    "ha_mqtt_password": "x",
+    "idfm_api_key": "x",
+    "latitude": 48.2,
+    "longitude": 2.1,
+    "timezone": "Europe/Paris",
+    "width": 64,
+    "height": 64,
+    "name": "picowpanel"
+}

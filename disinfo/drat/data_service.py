@@ -6,7 +6,7 @@ import json
 from traceback import format_exc
 from schedule import Scheduler
 
-from .. import config
+from ..config import app_config
 from ..redis import rkeys, set_dict, set_json, db, publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
@@ -42,7 +42,7 @@ class SafeScheduler(Scheduler):
 
 def get_weather():
     '''Fetch Weather from PirateWeather API.'''
-    forecast_url = f'https://api.pirateweather.net/forecast/{config.pw_api_key}/{config.pw_latitude},{config.pw_longitude}?units={config.pw_unit}'
+    forecast_url = f'https://api.pirateweather.net/forecast/{app_config.pw_api_key}/{app_config.latitude},{app_config.longitude}?units={app_config.pw_unit}'
     try:
         print('[i] [fetch] weather')
         r = requests.get(forecast_url)

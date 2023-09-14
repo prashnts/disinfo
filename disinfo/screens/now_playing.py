@@ -7,7 +7,7 @@ from functools import cache
 from datetime import timedelta
 
 from .drawer import draw_loop
-from .. import config
+from ..config import app_config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
@@ -74,7 +74,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
         # Hard code some album arts.
         return StillImage('assets/raster/france-info.png')
     try:
-        r = requests.get(f'http://{config.ha_base_url}{fragment}')
+        r = requests.get(f'http://{app_config.ha_base_url}{fragment}')
         r.raise_for_status()
         fp = io.BytesIO(r.content)
         img = Image.open(fp)

@@ -126,7 +126,7 @@ def composer(fs: FrameState):
             ], gap=2, align='bottom'),
             draw_temp_range(s.temperature, s.t_high, s.t_low),
             warning_icon if state.is_outdated else None,
-        ], gap=3, align='left'),
+        ], gap=3, align='center'),
         style=DivStyle(background='#0000008f', padding=2, radius=2))
 
     weather_stack = [weather_info] #, astronomical_info(state)]

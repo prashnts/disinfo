@@ -24,7 +24,7 @@ from typing import Optional, Generic, TypeVar, Callable, Union
 from scipy.interpolate import interp1d
 
 from . import idfm
-from .. import config
+from ..config import app_config
 from ..redis import get_dict, rkeys, db, publish
 from ..data_structures import FrameState, AppBaseModel
 from ..utils.time import is_expired
@@ -116,8 +116,8 @@ class CursorStateManager(PubSubStateManager[CursorState]):
             self.state.x -= 1
         if data.action == 'right':
             self.state.x += 1
-        self.state.x %= config.matrix_w
-        self.state.y %= config.matrix_h
+        self.state.x %= app_config.matrix_w
+        self.state.y %= app_config.matrix_h
 
 
 class RemoteState(AppBaseModel):

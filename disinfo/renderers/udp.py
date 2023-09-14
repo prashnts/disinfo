@@ -1,0 +1,81 @@
+import time
+import typer
+import base64
+import socket
+import numpy as np
+
+from io import BytesIO
+from pydash import flatten
+from itertools import chain
+from PIL import Image, ImageDraw, ImageEnhance
+
+from ..compositor import compose_frame
+from ..drat.app_states import LightSensorStateManager
+from ..data_structures import FrameState
+from ..redis import publish
+
+target_ip = '10.0.1.132'
+target_port = 6002
+
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+
+def apply_gamma(img: Image.Image, g):
+    im = np.array(img)
+    im = ((im / 255) ** g) * 255
+    return Image.fromarray(im.astype(np.uint8))
+
+def reencode_frame(img: Image.Image, brightness: float = 1):
+    img = apply_gamma(img, 2.3)
+    e = ImageEnhance.Brightness(img)
+    img = e.enhance(brightness / 100)
+    return img
+
+def publish_frame(img, brightness):
+    img = reencode_frame(img, brightness)
+
+    im = np.array(img)
+    im = np.flip(im, 1)
+    im = im.reshape(64 * 64, 4)
+
+    offsets = list(range(0, 64, 2))
+    even_offsets = offsets[::2]
+    odd_offsets = offsets[1::2]
+    errors = 0
+
+    for i in flatten(zip(even_offsets, odd_offsets)):
+        a = i * 64
+        b = a + 128
+
+        payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
+        try:
+            udp_socket.sendto(payload, (target_ip, target_port))
+        except OSError:
+            errors += 1
+
+    if errors:
+        print(f'encountered {errors} errors.')
+
+
+def main(fps: int = 60):
+    _tf = 1 / fps
+
+    while True:
+        t_start = time.monotonic()
+        frame = compose_frame(FrameState.create())
+        als = LightSensorStateManager().get_state()
+        publish_frame(frame, als.brightness)
+        t_draw = time.monotonic() - t_start
+
+        delay = max(_tf - t_draw, 0)
+        _fps = (1 / (t_draw + delay))
+
+        print(f't draw: {t_draw:0.4}')
+        print(f'fps:    \033[34m{_fps:0.4}\033[0m')
+        print('\033[3A')
+        time.sleep(delay)
+
+
+
+if __name__ == '__main__':
+    typer.run(main)

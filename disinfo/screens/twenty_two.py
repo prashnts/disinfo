@@ -9,11 +9,11 @@ from ..components.layouts import composite_at
 from ..components.text import TextStyle, text
 from ..data_structures import FrameState
 from ..drat.app_states import RemoteStateManager
-from .. import config
+from ..config import app_config
 
 
 def composer(fs: FrameState):
-    t = fs.now
+    t = fs.now #.set(hour=21, minute=21, second=2)
 
     equal_elements = t.hour == t.minute
     twentytwo = t.hour == t.minute == 22
@@ -31,13 +31,13 @@ def composer(fs: FrameState):
     fill = '#2FB21B'
     if twentytwo:
         fill = '#CF8C13'
-        font = fonts.px_op__xxl
+        font = fonts.px_op__xl if app_config.width < 128 else fonts.px_op__xxl
     if all_equal:
         fill = '#CF3F13'
 
     text_timestr = text(t.strftime('%H:%M'), style=TextStyle(font=font, color=fill, outline=1))
 
-    image = Image.new('RGBA', (config.matrix_w, config.matrix_h), (0, 0, 0, 0))
+    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     composite_at(text_timestr, image, 'mm')
@@ -56,8 +56,8 @@ def composer(fs: FrameState):
     ]
 
     # draw some shimmering leds everywhere!
-    for x in range(config.matrix_w):
-        for y in range(config.matrix_h):
+    for x in range(app_config.width):
+        for y in range(app_config.height):
             if random.random() < .003:
                 pts = [(x, y)]
                 if random.random() < 0.2:

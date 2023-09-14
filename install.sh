@@ -32,33 +32,24 @@ echo "=> Setup of git repo complete. Pulling the default branch."
 cd ~/disinfo
 git clone https://github.com/prashnts/disinfo.git .
 
-cat << 'EOF' > ~/disinfo/disinfo/config.py
-# Pirate Weather
-pw_api_key = 'x'
-pw_unit = 'ca'  # ca: SI units with kmph for wind.
-# Latitude and Longitude of the location
-pw_latitude = 48.8
-pw_longitude = 2.3
+cat << 'EOF' > ~/disinfo/.config.json
+{
+    "pw_api_key": "x",
+    "pw_unit": "ca",
+    "ha_base_url": "10.0.1.207:8123",
+    "ha_mqtt_host": "10.0.1.207",
+    "ha_mqtt_port": 1883,
+    "ha_mqtt_username": "x",
+    "ha_mqtt_password": "x",
+    "idfm_api_key": "x",
+    "latitude": 48.2,
+    "longitude": 2.1,
+    "timezone": "Europe/Paris",
+    "width": 64,
+    "height": 64,
+    "name": "picowpanel"
+}
 
-# Homeassistant MQTT
-ha_base_url = '10.0.1.207:8123'
-ha_mqtt_host = '10.0.1.207'
-ha_mqtt_port = 1883
-ha_mqtt_username = 'x'
-ha_mqtt_password = 'x'
-
-# Quirks
-mqtt_btn_latch_t = 300
-
-# idf mobilité
-idfm_api_key = 'x'
-
-# Matrix config
-# Represents combined panels
-matrix_w = 128
-matrix_h = 64
-
-timezone = 'Europe/Paris'
 EOF
 
 echo "=> Setting up rpi-rgb-matrix"
@@ -95,6 +86,7 @@ sudo ln -s /home/pi/disinfo/config/di_haservice.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_dataservice.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_renderer.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_server.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_pico_udp_renderer.conf /etc/supervisor/conf.d
 
 sudo supervisorctl update
 sudo supervisorctl start didataservice

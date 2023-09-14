@@ -2,12 +2,13 @@ import paho.mqtt.client as mqtt
 import json
 import arrow
 
-from .. import config
+from ..config import app_config
 from ..redis import set_dict, rkeys, db, get_dict, publish
 
 pir_topic_map = {
     'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
     'zigbee2mqtt/ikea.pir.kitchen': 'ha_pir_kitchen',
+    'zigbee2mqtt/ikea.pir.study': 'ha_pir_study',
 }
 
 latch_timing = {
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     client.on_message = on_message
     client.on_disconnect = on_disconnect
 
-    client.username_pw_set(config.ha_mqtt_username, config.ha_mqtt_password)
-    client.connect(config.ha_mqtt_host, config.ha_mqtt_port, 60)
+    client.username_pw_set(app_config.ha_mqtt_username, app_config.ha_mqtt_password)
+    client.connect(app_config.ha_mqtt_host, app_config.ha_mqtt_port, 60)
 
     client.loop_forever()

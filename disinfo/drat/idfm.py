@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from functools import cache
 from dataclasses import dataclass
 
-from ..config import idfm_api_key
+from ..config import app_config
 
 
 traffic_stops = [
@@ -76,7 +76,7 @@ class MetroData(BaseModel):
 async def get_stop(line_name: str, stop_name: str = None) -> tuple[LineData, StopData]:
     # we don't need this session, but it's required.
     session = aiohttp.ClientSession()
-    idfm = IDFMApi(session, idfm_api_key)
+    idfm = IDFMApi(session, app_config.idfm_api_key)
 
     _lines = await idfm.get_lines(TransportType.METRO)
     line = [l for l in _lines if l.name == line_name][0]
@@ -95,7 +95,7 @@ async def get_stop(line_name: str, stop_name: str = None) -> tuple[LineData, Sto
 
 async def fetch_stop_traffic(stop_id: str) -> list[TrafficData]:
     session = aiohttp.ClientSession()
-    idfm = IDFMApi(session, idfm_api_key)
+    idfm = IDFMApi(session, app_config.idfm_api_key)
     traffic = await idfm.get_traffic(stop_id)
     await session.close()
     return traffic
@@ -103,7 +103,7 @@ async def fetch_stop_traffic(stop_id: str) -> list[TrafficData]:
 
 async def fetch_line_infos(line_id: str) -> list[InfoData]:
     session = aiohttp.ClientSession()
-    idfm = IDFMApi(session, idfm_api_key)
+    idfm = IDFMApi(session, app_config.idfm_api_key)
     infos = await idfm.get_infos(line_id)
     await session.close()
     return infos

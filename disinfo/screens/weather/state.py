@@ -8,11 +8,11 @@ from disinfo.drat.app_states import PubSubStateManager, PubSubMessage
 
 
 class WeatherData(AppBaseModel):
-    temperature: float = 25.0
-    condition: str = 'Sunny'
-    icon_name: str = 'clear-day'
-    t_high: float = 40.0
-    t_low: float = 15.0
+    temperature: float = 1.0
+    condition: str = 'Snow'
+    icon_name: str = 'sleet'
+    t_high: float = 5.0
+    t_low: float = 0
     sunset_time: Optional[datetime] = None
     sunrise_time: Optional[datetime] = None
     updated_at: Optional[datetime] = None

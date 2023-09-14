@@ -1,5 +1,5 @@
 from .drawer import draw_loop
-from .. import config
+from ..config import app_config
 from ..components import fonts
 from ..components.text import Text, TextStyle
 from ..components.layouts import hstack, vstack
@@ -11,7 +11,7 @@ from ..data_structures import FrameState
 
 text_info = Text('i', style=TextStyle(font=fonts.tamzen__rs, color='#fff'))
 
-hscroller_main = HScroller(size=config.matrix_w - text_info.width - 2, delta=1, speed=0.02)
+hscroller_main = HScroller(size=app_config.width - text_info.width - 2, delta=1, speed=0.02)
 hscroller_num = HScroller(size=40, delta=1, speed=0.02, pause_at_loop=True)
 
 text_number_info = Text('', style=TextStyle(font=fonts.px_op__r, color='#12cce1'))
@@ -24,7 +24,7 @@ def get_state():
     return numbers
 
 def composer(fs: FrameState):
-    return
+    # return
     numbers = get_state()
     num_str = f'#{num}' if (num := numbers['number']) else ' (*_*)'
 

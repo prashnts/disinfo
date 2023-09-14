@@ -42,6 +42,13 @@ def digital_clock(fs: FrameState, seconds=True):
         return hstack([hhmm, text(t.strftime('%S'), s_seconds)], gap=1)
     return hhmm
 
+def world_clock(fs: FrameState):
+    t = fs.now.in_tz('Asia/Kolkata')
+    return hstack([
+        div(text('DEL', TextStyle(color=black.hex, font=fonts.tamzen__rs)), DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=[1, 1, 1, 2])),
+        text(t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7)),
+    ], gap=2)
+
 def day_of_the_week(fs: FrameState):
     t = fs.now
     style = s_day['weekend' if t.day_of_week in (6, 0) else 'weekday']
@@ -88,6 +95,7 @@ def composer(fs: FrameState):
         vstack([
             digital_clock(fs),
             date(fs),
+            world_clock(fs),
         ], gap=2, align='center'),
         style=DivStyle(background='#00000000'))
 

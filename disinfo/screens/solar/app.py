@@ -4,21 +4,19 @@ import pendulum
 
 from functools import cache
 from pendulum.time import Time
-from PIL import Image, ImageDraw, ImageFont
-from sympy import Ray, Polygon, pi, deg
+from PIL import Image
 from suncalc import get_position, get_times
 from scipy.interpolate import interp1d
 
 from disinfo.data_structures import FrameState
 
-from disinfo.components.elements import Frame, StillImage
-from disinfo.components.layouts import hstack, vstack, composite_at, place_at
+from disinfo.components.elements import Frame
+from disinfo.components.layouts import place_at
 from disinfo.components.layers import div, DivStyle
 from disinfo.components.text import TextStyle, text
 from disinfo.components import fonts
-from disinfo.screens.date_time import digital_clock
-from disinfo.screens.colors import light_blue, SkyHues, gray
-from disinfo import config
+from disinfo.screens.colors import SkyHues
+from disinfo.config import app_config
 
 
 s_time_tick = [
@@ -93,15 +91,15 @@ def clamp(value, min_value=0, max_value=1):
     return max(min(value, max_value), min_value)
 
 def sun_times(t):
-    times = get_times(t.in_tz('UTC'), config.pw_longitude, config.pw_latitude)
-    position = get_position(t.in_tz('UTC'), config.pw_longitude, config.pw_latitude)
+    times = get_times(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
+    position = get_position(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
     utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items()}
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
 def analog_clock(fs, w: int, h: int):
     t = fs.now
-    t = pendulum.now().set(hour=17, minute=00, month=1)
+    # t = pendulum.now().set(hour=17, minute=00, month=1)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
@@ -331,4 +329,4 @@ def analog_clock(fs, w: int, h: int):
     return Frame(i)
 
 def composer(fs: FrameState):
-    return div(analog_clock(fs, config.matrix_w, config.matrix_h))
+    return div(analog_clock(fs, app_config.width, app_config.height))
