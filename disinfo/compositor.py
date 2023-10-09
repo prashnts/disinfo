@@ -62,7 +62,7 @@ def compose_big_frame(fs: FrameState):
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not should_turn_on_display(['ha_pir_study']):
+    if not MotionSensorStateManager('ha_pir_study').get_state().occupied:
         # do not draw if nobody is there.
         return image
 
@@ -72,7 +72,7 @@ def compose_small_frame(fs: FrameState):
             screens.weather.draw(fs),
             screens.now_playing.draw(fs),
             screens.octoprint.draw(fs),
-        ], gap=1), DivStyle(padding=2)),
+        ], gap=1, align='center'), DivStyle(padding=2)),
         image, 'mm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 

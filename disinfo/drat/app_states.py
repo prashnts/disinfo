@@ -139,6 +139,7 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
         return s
 
 class MotionSensorState(AppBaseModel):
+    occupied: bool = True
     detected: bool = True
     detected_at: Optional[datetime] = None
 
@@ -153,9 +154,9 @@ class MotionSensorStateManager(PubSubStateManager[MotionSensorState]):
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update' and data.payload['sensor'] == self.entity_id:
             payload = data.payload
-            occupied = payload['occupancy']
             s = self.state
-            if occupied:
+            s.occupied = bool(payload['occupancy'])
+            if s.occupied:
                 # when motion is detected, it's on.
                 s.detected = True
             else:
