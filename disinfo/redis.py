@@ -11,6 +11,7 @@ rkeys = {
     'octoprint_toolt': 'hass.octoprint.toolt',
     'ha_pir_salon': 'hass.pir.salon',
     'ha_pir_kitchen': 'hass.pir.kitchen',
+    'ha_pir_study': 'hass.pir.study',
     'ha_enki_rmt': 'hass.enki.rmt',
     'ha_ikea_rmt_0x01': 'hass.ikea.rmt.0x01',
     'ha_sonos_beam': 'hass.sonos.beam',
