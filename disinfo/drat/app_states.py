@@ -154,9 +154,8 @@ class MotionSensorStateManager(PubSubStateManager[MotionSensorState]):
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update' and data.payload['sensor'] == self.entity_id:
             payload = data.payload
-            print(payload)
             s = self.state
-            s.occupied = bool(payload['occupancy'])
+            s.occupied = payload['occupancy']
             if s.occupied:
                 # when motion is detected, it's on.
                 s.detected = True
