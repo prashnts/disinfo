@@ -64,6 +64,7 @@ def on_message(client, userdata, msg):
             if event['entity_id'] == 'sensor.driplant_soil_cap':
                 set_dict(rkeys['ha_driplant_volts'], event)
             if event['entity_id'] in app_config.presence_sensors:
+                print('notifying', event)
                 notify('di.pubsub.presence', action='update', payload=event)
 
     if msg.topic == 'octoPrint/hass/printing':
