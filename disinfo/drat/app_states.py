@@ -155,6 +155,7 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
         if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
             s = self.state
             s.present = data.payload['new_state']['state'] == 'on'
+            print(s, data.payload['new_state']['state'])
             if s.present:
                 # when motion is detected, it's on.
                 s.detected = True
