@@ -23,6 +23,7 @@ class Config(AppBaseModel):
 
     # Speaker source
     speaker_source: str = 'media_player.office'
+    presence_sensors: list[str] = ['binary_sensor.ikea_pir_study_occupancy']
 
     # Panel
     width: int

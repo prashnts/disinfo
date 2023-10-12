@@ -7,14 +7,14 @@ from .utils.weather_icons import render_icon, cursor
 from .components.layouts import hstack, vstack, composite_at
 from .components.layers import div, DivStyle
 from .data_structures import FrameState
-from .drat.app_states import CursorStateManager, MotionSensorStateManager
+from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
 from . import screens
 from .config import app_config
 
 
 def should_turn_on_display(sensors: list[str]) -> bool:
-    return any([MotionSensorStateManager(s).get_state().detected for s in sensors])
+    return any([PresenceSensorStateManager(s).get_state().detected for s in sensors])
 
 
 def draw_btn_test(image, fs: FrameState):
@@ -27,7 +27,7 @@ def draw_btn_test(image, fs: FrameState):
 def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
-    if not should_turn_on_display(['ha_pir_salon', 'ha_pir_kitchen']):
+    if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
         # do not draw if nobody is there.
         return image
 
@@ -62,7 +62,7 @@ def compose_big_frame(fs: FrameState):
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not MotionSensorStateManager('ha_pir_study').get_state().occupied:
+    if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
         # do not draw if nobody is there.
         return image
 

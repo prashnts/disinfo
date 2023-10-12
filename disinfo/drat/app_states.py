@@ -138,32 +138,31 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
             return RemoteState(action='unknown')
         return s
 
-class MotionSensorState(AppBaseModel):
-    occupied: bool = True
+class PresenceSensorState(AppBaseModel):
+    present: bool = True
     detected: bool = True
     detected_at: Optional[datetime] = None
 
-class MotionSensorStateManager(PubSubStateManager[MotionSensorState]):
-    model = MotionSensorState
-    channels = ('di.pubsub.pir',)
+class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
+    model = PresenceSensorState
+    channels = ('di.pubsub.presence',)
 
     def __init__(self, entity_id: str):
         self.entity_id = entity_id
         super().__init__()
 
     def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update' and data.payload['sensor'] == self.entity_id:
-            payload = data.payload
+        if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
             s = self.state
-            s.occupied = payload['occupancy']
-            if s.occupied:
+            s.present = data.payload['new_state']['state'] == 'on'
+            if s.present:
                 # when motion is detected, it's on.
                 s.detected = True
             else:
                 # When motion is NOT detected, we want to keep the display on
                 # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
                 # this time is in local timezone.
-                last_change = pendulum.parse(payload['timestamp'])
+                last_change = pendulum.parse(data.payload['_timestamp'])
                 now = pendulum.now()
                 delay = 30 if 8 <= now.hour < 23 else 5
                 delta = (now - last_change).total_seconds()

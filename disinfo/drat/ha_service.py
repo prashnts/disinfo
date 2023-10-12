@@ -51,6 +51,13 @@ def on_connect(client, userdata, flags, rc):
 def on_disconnect(client, userdata, rc):
     print('Unexpected MQTT disconnection.')
 
+
+def notify(channel: str, action: str, payload: dict = {}, persist: bool = True):
+    publish(channel, action, payload)
+    if persist:
+        db.set(f'state_{channel}', json.dumps(payload))
+
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload)
@@ -71,16 +78,15 @@ def on_message(client, userdata, msg):
                 publish('di.pubsub.lux', action='update', payload=event)
             if event['entity_id'] == 'sensor.driplant_soil_cap':
                 set_dict(rkeys['ha_driplant_volts'], event)
+            if event['entity_id'] in app_config.presence_sensors:
+                notify('di.pubsub.presence', action='update', payload=event)
+
     if msg.topic == 'octoPrint/hass/printing':
         set_dict(rkeys['octoprint_printing'], payload)
     if msg.topic == 'octoPrint/temperature/bed':
         set_dict(rkeys['octoprint_bedt'], payload)
     if msg.topic == 'octoPrint/temperature/tool0':
         set_dict(rkeys['octoprint_toolt'], payload)
-    if msg.topic in pir_topic_map:
-        payload['timestamp'] = arrow.now().isoformat()
-        set_dict(rkeys[pir_topic_map[msg.topic]], payload)
-        publish('di.pubsub.pir', action='update', payload=dict(sensor=pir_topic_map[msg.topic], **payload))
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:
