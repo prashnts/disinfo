@@ -55,17 +55,15 @@ def on_message(client, userdata, msg):
         if payload['event_type'] == 'state_changed':
             event = payload['event_data']
             event['_timestamp'] = arrow.now().isoformat()
-            print(event['entity_id'])
             if 'media_player.' in event['entity_id']:
                 publish('di.pubsub.music', action='update', payload=event)
             if event['entity_id'] == 'media_player.sonos_beam':
                 set_dict(rkeys['ha_sonos_beam'], event)
-            if event['entity_id'] == app_config.ambient_light_sensor:
+            if event['entity_id'] in app_config.monitors.ambient_light_sensors:
                 notify('di.pubsub.lux', action='update', payload=event)
             if event['entity_id'] == 'sensor.driplant_soil_cap':
                 set_dict(rkeys['ha_driplant_volts'], event)
-            if event['entity_id'] in app_config.presence_sensors:
-                print('notifying', event)
+            if event['entity_id'] in app_config.monitors.presence_sensors:
                 notify('di.pubsub.presence', action='update', payload=event)
 
     if msg.topic == 'octoPrint/hass/printing':

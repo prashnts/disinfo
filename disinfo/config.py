@@ -3,6 +3,17 @@ import json
 
 from .data_structures import AppBaseModel
 
+class MonitorConfig(AppBaseModel):
+    presence_sensors: list[str] = [
+        'binary_sensor.ikea_pir_salon_occupancy',
+        'binary_sensor.ikea_pir_kitchen_occupancy',
+        'binary_sensor.ikea_pir_study_occupancy',
+    ]
+    ambient_light_sensors: list[str] = [
+        'sensor.sensei_lux',
+        'sensor.enviomental_lux',
+    ]
+
 class Config(AppBaseModel):
     pw_api_key: str
     pw_unit: str = 'ca'
@@ -25,6 +36,8 @@ class Config(AppBaseModel):
     speaker_source: str = 'media_player.office'
     presence_sensors: list[str] = ['binary_sensor.ikea_pir_study_occupancy']
     ambient_light_sensor: str = 'sensor.sensei_lux'
+
+    monitors: MonitorConfig = MonitorConfig()
 
     # Panel
     width: int
