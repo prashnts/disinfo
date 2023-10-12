@@ -24,6 +24,7 @@ except ImportError:
 
 from ..compositor import compose_frame
 from ..redis import publish
+from ..config import app_config
 from ..drat.app_states import LightSensorStateManager
 from ..data_structures import FrameState
 
@@ -66,7 +67,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
     last_draw_time = 0
 
     while True:
-        state = LightSensorStateManager().get_state()
+        state = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         fs = FrameState.create()
         fs.rendererdata = { **state.model_dump(), 'draw_time': last_draw_time }
 

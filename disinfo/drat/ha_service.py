@@ -5,17 +5,6 @@ import arrow
 from ..config import app_config
 from ..redis import set_dict, rkeys, db, get_dict, publish
 
-pir_topic_map = {
-    'zigbee2mqtt/ikea.pir.salon': 'ha_pir_salon',
-    'zigbee2mqtt/ikea.pir.kitchen': 'ha_pir_kitchen',
-    'zigbee2mqtt/ikea.pir.study': 'ha_pir_study',
-}
-
-latch_timing = {
-    'scene_1': 1_000,
-    'scene_3': 10_000,
-}
-
 rmt_enki_keymap = {
     'color_saturation_step_up': 'up',
     'color_saturation_step_down': 'down',
@@ -44,15 +33,11 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe('zigbee2mqtt/ikea.rmt.0x01')   # Kitchen Remote
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
 
-    for topic in pir_topic_map.keys():
-        # subscribe to PIR sensor states
-        client.subscribe(topic)
-
 def on_disconnect(client, userdata, rc):
     print('Unexpected MQTT disconnection.')
 
 
-def notify(channel: str, action: str, payload: dict = {}, persist: bool = True):
+def notify(channel: str, action: str, payload: dict = {}, persist: bool = False):
     publish(channel, action, payload)
     if persist:
         db.set(f'state_{channel}', json.dumps(payload))
@@ -74,8 +59,8 @@ def on_message(client, userdata, msg):
                 publish('di.pubsub.music', action='update', payload=event)
             if event['entity_id'] == 'media_player.sonos_beam':
                 set_dict(rkeys['ha_sonos_beam'], event)
-            if event['entity_id'] == 'sensor.enviomental_lux':
-                publish('di.pubsub.lux', action='update', payload=event)
+            if event['entity_id'] == app_config.ambient_light_sensor:
+                notify('di.pubsub.lux', action='update', payload=event)
             if event['entity_id'] == 'sensor.driplant_soil_cap':
                 set_dict(rkeys['ha_driplant_volts'], event)
             if event['entity_id'] in app_config.presence_sensors:

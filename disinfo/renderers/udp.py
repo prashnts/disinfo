@@ -13,6 +13,7 @@ from ..compositor import compose_frame
 from ..drat.app_states import LightSensorStateManager
 from ..data_structures import FrameState
 from ..redis import publish
+from ..config import app_config
 
 target_ip = '10.0.1.132'
 target_port = 6002
@@ -63,7 +64,7 @@ def main(fps: int = 60):
     while True:
         t_start = time.monotonic()
         frame = compose_frame(FrameState.create())
-        als = LightSensorStateManager().get_state()
+        als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         publish_frame(frame, als.brightness)
         t_draw = time.monotonic() - t_start
 

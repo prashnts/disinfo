@@ -201,6 +201,10 @@ class LightSensorStateManager(PubSubStateManager[LightSensorState]):
     model = LightSensorState
     channels = ('di.pubsub.lux',)
 
+    def __init__(self, entity_id: str):
+        self.entity_id = entity_id
+        super().__init__()
+
     def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update':
+        if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
             self.state.lux = float(data.payload['new_state']['state'])
