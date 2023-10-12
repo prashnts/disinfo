@@ -55,6 +55,7 @@ def on_message(client, userdata, msg):
         if payload['event_type'] == 'state_changed':
             event = payload['event_data']
             event['_timestamp'] = arrow.now().isoformat()
+            print(event['entity_id'])
             if 'media_player.' in event['entity_id']:
                 publish('di.pubsub.music', action='update', payload=event)
             if event['entity_id'] == 'media_player.sonos_beam':
