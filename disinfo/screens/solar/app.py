@@ -257,10 +257,10 @@ def analog_clock(fs, w: int, h: int):
     ctx.clip()
 
     # Day Path circle
-    ctx.set_source(pat_path_circle_dark)
-    ctx.arc(cx, cy, sun_path_radius, 0, 2 * math.pi)
-    ctx.set_line_width(1)
-    ctx.stroke()
+    # ctx.set_source(pat_path_circle_dark)
+    # ctx.arc(cx, cy, sun_path_radius, 0, 2 * math.pi)
+    # ctx.set_line_width(1)
+    # ctx.stroke()
 
     ctx.set_source(pat_sun_glow)
     ctx.arc(sun_x, sun_y, sun_radius * 8, 0, 2 * math.pi)
@@ -283,10 +283,10 @@ def analog_clock(fs, w: int, h: int):
     ctx.line_to(cx, cy)
     ctx.clip()
 
-    ctx.set_source(pat_path_circle_light)
-    ctx.arc(cx, cy, sun_path_radius, 0, 2 * math.pi)
-    ctx.set_line_width(1)
-    ctx.stroke()
+    # ctx.set_source(pat_path_circle_light)
+    # ctx.arc(cx, cy, sun_path_radius, 0, 2 * math.pi)
+    # ctx.set_line_width(1)
+    # ctx.stroke()
 
     ctx.set_source_rgba(0, 0, 0, 1)
     ctx.arc(sun_x, sun_y, sun_radius * 1.4, 0, 2 * math.pi)
