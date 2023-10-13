@@ -4,6 +4,7 @@ import json
 from .data_structures import AppBaseModel
 
 class MonitorConfig(AppBaseModel):
+    # These are all the ha entities we are interested in.
     presence_sensors: list[str] = [
         'binary_sensor.ikea_pir_salon_occupancy',
         'binary_sensor.ikea_pir_kitchen_occupancy',

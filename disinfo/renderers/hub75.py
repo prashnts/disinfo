@@ -27,6 +27,7 @@ from ..redis import publish
 from ..config import app_config
 from ..drat.app_states import LightSensorStateManager
 from ..data_structures import FrameState
+from ..utils.imops import apply_gamma
 
 
 # Configuration for the matrix
@@ -73,6 +74,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
 
         t_a = time.monotonic()
         img = compose_frame(fs)
+        img = apply_gamma(img, 2.3)
         publish_frame(img)
         t_b = time.monotonic()
         double_buffer.SetImage(img.convert('RGB'))

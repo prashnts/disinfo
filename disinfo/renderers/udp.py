@@ -14,17 +14,13 @@ from ..drat.app_states import LightSensorStateManager
 from ..data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
+from ..utils.imops import apply_gamma
 
 target_ip = '10.0.1.132'
 target_port = 6002
 
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-
-def apply_gamma(img: Image.Image, g):
-    im = np.array(img)
-    im = ((im / 255) ** g) * 255
-    return Image.fromarray(im.astype(np.uint8))
 
 def reencode_frame(img: Image.Image, brightness: float = 1):
     img = apply_gamma(img, 2.3)
