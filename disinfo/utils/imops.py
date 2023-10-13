@@ -57,6 +57,6 @@ def dither(img: np.array):
 def apply_gamma(img: Image.Image, g):
     im = np.array(img) / 255
     # im = floyd_steinberg(im)
-    im = dither(im)
+    # im = dither(im)
     im = im ** g    # gamma correction
     return Image.fromarray((im * 255).astype(np.uint8))
