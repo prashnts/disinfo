@@ -50,6 +50,8 @@ def floyd_steinberg(image):
 
 def dither(img: np.array):
     chans = np.split(img, 4, axis=2)
+    # Convert the channels from [[[x]]] to [[x]].
+    chans = [c.reshape(c.shape[0], c.shape[1]) for c in chans]
     return np.stack([floyd_steinberg(c) for c in chans], axis=2)
 
 def apply_gamma(img: Image.Image, g):
