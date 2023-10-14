@@ -56,7 +56,7 @@ p2_interpolator = interp1d(
 
 @throttle(1000)
 def apply_noise(img: Image.Image, noise: float = 0.1):
-    pat = np.random.rand(img.width, img.height) * noise
+    pat = np.random.rand(img.height, img.width) * noise
     pat = np.stack([pat] * 4, axis=2)
     img_arr = np.array(img) / 255
     img_arr = np.clip(img_arr + pat, 0, 1)
