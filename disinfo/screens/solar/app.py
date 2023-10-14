@@ -1,6 +1,7 @@
 import math
 import cairo
 import pendulum
+import numpy as np
 
 from functools import cache
 from pendulum.time import Time
@@ -17,6 +18,7 @@ from disinfo.components.text import TextStyle, text
 from disinfo.components import fonts
 from disinfo.screens.colors import SkyHues
 from disinfo.config import app_config
+from disinfo.utils.func import throttle
 
 
 s_time_tick = [
@@ -51,6 +53,14 @@ p2_interpolator = interp1d(
     bounds_error=False,
     fill_value=(0, 0.8),
 )
+
+@throttle(1000)
+def apply_noise(img: Image.Image, noise: float = 0.1):
+    pat = np.random.rand(img.width, img.height) * noise
+    pat = np.stack([pat] * 4, axis=2)
+    img_arr = np.array(img) / 255
+    img_arr = np.clip(img_arr + pat, 0, 1)
+    return Image.fromarray(np.uint8(img_arr * 255))
 
 
 def deg_to_rad(deg):
@@ -300,7 +310,7 @@ def analog_clock(fs, w: int, h: int):
 
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
-    i.alpha_composite(to_pil(surface), (0, 0))
+    i.alpha_composite(apply_noise(to_pil(surface), 0.04), (0, 0))
 
     label_radius = tick_radius + 8
 
