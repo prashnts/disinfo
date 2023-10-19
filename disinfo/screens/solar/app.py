@@ -54,10 +54,11 @@ p2_interpolator = interp1d(
     fill_value=(0, 0.8),
 )
 
-@throttle(1000)
+@throttle(4000)
 def apply_noise(img: Image.Image, noise: float = 0.1):
     pat = np.random.rand(img.height, img.width) * noise
-    pat = np.stack([pat] * 4, axis=2)
+    alpha = np.ones_like(pat)
+    pat = np.stack([pat, pat, pat, alpha], axis=2)
     img_arr = np.array(img) / 255
     img_arr = np.clip(img_arr + pat, 0, 1)
     return Image.fromarray(np.uint8(img_arr * 255))
@@ -310,7 +311,7 @@ def analog_clock(fs, w: int, h: int):
 
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
-    i.alpha_composite(apply_noise(to_pil(surface), 0.04), (0, 0))
+    i.alpha_composite(apply_noise(to_pil(surface), 0.03), (0, 0))
 
     label_radius = tick_radius + 8
 
