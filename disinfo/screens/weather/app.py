@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from disinfo.components import fonts
 from disinfo.components.elements import Frame, StillImage
 from disinfo.components.text import TextStyle, text
+from disinfo.components.transitions import FadeIn
 from disinfo.components.layers import div, DivStyle
 from disinfo.components.layouts import hstack, vstack, composite_at
 from disinfo.components.spriteim import SpriteIcon
@@ -131,4 +132,6 @@ def composer(fs: FrameState):
 
     weather_stack = [weather_info] #, astronomical_info(state)]
 
-    return vstack(weather_stack, gap=1, align='left')
+    return (FadeIn('weather.widget', duration=1)
+        .mut(vstack(weather_stack, gap=1, align='left').tag(s))
+        .draw(fs).tag(s))

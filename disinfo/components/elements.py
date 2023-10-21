@@ -16,6 +16,7 @@ class Frame(UIElement):
         self.image = image
         self.width = image.width
         self.height = image.height
+        self.hash = hash
 
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
         # TODO: support extending the frame
@@ -38,6 +39,25 @@ class Frame(UIElement):
         width = self.width * ratio[0]
         height = self.height * ratio[1]
         return Frame(self.image.resize((int(width), int(height))))
+
+    def __repr__(self) -> str:
+        return f'<Frame hash={self.hash}>'
+
+    def __hash__(self):
+        if self.hash:
+            return hash(self.hash)
+        return hash(self.image.tobytes())
+
+    def __eq__(self, other) -> bool:
+        return hash(self) == hash(other)
+
+    def tag(self, value) -> 'Frame':
+        self.hash = value
+        return self
+
+    @property
+    def size(self):
+        return self.image.size
 
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):

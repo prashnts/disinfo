@@ -31,6 +31,7 @@ class Text(Frame):
     ):
         self.value = value
         self.style = style
+        self.hash = (self.value, self.style)
 
         self.draw_text()
 

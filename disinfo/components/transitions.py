@@ -1,13 +1,46 @@
 from PIL import Image
 from typing import Literal, Optional
 
-from disinfo.data_structures import FrameState
+from disinfo.data_structures import FrameState, UniqInstance
 
 from .elements import Frame
 
 
 Edges = Literal['top', 'bottom', 'left', 'right']
 
+class FadeIn(metaclass=UniqInstance):
+    def __init__(self, name: str, duration: float) -> None:
+        self.name = name
+        self.duration = duration
+        self._prev_frame = None
+        self._curr_frame = None
+
+        self._last_step = 0
+        self._alpha = 0
+
+    def mut(self, frame: Frame) -> 'FadeIn':
+        if self._curr_frame != frame:
+            self._alpha = 0
+        self._curr_frame = frame
+        return self
+
+    def _tick(self, step: float):
+        slen = (self.duration) / 255
+        if step - self._last_step >= slen:
+            self._alpha += 0.05
+            if self._alpha >= 1:
+                self._alpha = 1
+                self._prev_frame = self._curr_frame
+                self._last_step = step
+
+    def draw(self, fs: FrameState) -> Optional[Frame]:
+        self._tick(fs.tick)
+        i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
+        if self._prev_frame:
+            i.alpha_composite(self._prev_frame.image, (0, 0))
+        # Draw the current frame with alpha.
+        next_frame = Frame(Image.blend(i, self._curr_frame.image, self._alpha))
+        return next_frame
 
 class Transition:
     '''

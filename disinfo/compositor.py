@@ -6,6 +6,8 @@ from PIL import Image
 from .utils.weather_icons import render_icon, cursor
 from .components.layouts import hstack, vstack, composite_at
 from .components.layers import div, DivStyle
+from .components.transitions import FadeIn
+from .components.elements import Frame
 from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
@@ -29,7 +31,7 @@ def compose_big_frame(fs: FrameState):
 
     if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
         # do not draw if nobody is there.
-        return image
+        return Frame(image).tag('not_present')
 
     # composite_at(screens.demo.draw(fs), image, 'mm')
     composite_at(screens.solar.draw(fs), image, 'mm')
@@ -58,13 +60,13 @@ def compose_big_frame(fs: FrameState):
 
     image = draw_btn_test(image, fs)
 
-    return image
+    return Frame(image).tag('present')
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
         # do not draw if nobody is there.
-        return image
+        return Frame(image).tag('not_present')
 
     composite_at(screens.solar.draw(fs), image, 'mm')
     composite_at(
@@ -76,10 +78,12 @@ def compose_small_frame(fs: FrameState):
         image, 'mm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
-    return image
+    return Frame(image).tag('present')
 
 
 def compose_frame(fs: FrameState):
     if app_config.name == 'picowpanel':
-        return compose_small_frame(fs)
-    return compose_big_frame(fs)
+        frame = compose_small_frame(fs)
+    else:
+        frame = compose_big_frame(fs)
+    return FadeIn('compose', duration=0.2).mut(frame).draw(fs).image

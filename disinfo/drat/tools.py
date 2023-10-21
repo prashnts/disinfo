@@ -3,6 +3,7 @@ import pendulum
 
 from ..redis import set_dict, db, publish
 from .data_service import get_weather, get_random_text, get_metro_info
+from disinfo.config import app_config
 
 app = typer.Typer()
 trigger_app = typer.Typer()
@@ -31,6 +32,18 @@ def sync_numbers():
 def sync_metro():
     get_metro_info(force=True)
 
+
+@trigger_app.command(name='motion')
+def trigger_motion(state: str = 'off'):
+    for entity in app_config.presence_sensors:
+        payload = {
+            'new_state': {
+                'state': state,
+            },
+            '_timestamp': pendulum.now().isoformat(),
+            'entity_id': entity,
+        }
+        publish('di.pubsub.presence', action='update', payload=payload)
 
 if __name__=='__main__':
     app()

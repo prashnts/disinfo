@@ -16,7 +16,7 @@ def publish_frame(img):
     publish('di.pubsub.frames', action='new-frame', payload=dict(img=encoded_img))
 
 
-def main(fps: int = 60):
+def main(fps: int = 60, stats: bool = False):
     _tf = 1 / fps
 
     while True:
@@ -28,9 +28,10 @@ def main(fps: int = 60):
         delay = max(_tf - t_draw, 0)
         _fps = (1 / (t_draw + delay))
 
-        print(f't draw: {t_draw:0.4}')
-        print(f'fps:    \033[34m{_fps:0.4}\033[0m')
-        print('\033[3A')
+        if stats:
+            print(f't draw: {t_draw:0.4}')
+            print(f'fps:    \033[34m{_fps:0.4}\033[0m')
+            print('\033[3A')
         time.sleep(delay)
 
 
