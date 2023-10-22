@@ -103,7 +103,7 @@ def glitterify(frame: Frame):
 def sticky_widget(fs: FrameState):
     return div(
         text_slide_in(fs, 'dt.sk.clk', fs.now.strftime('%H:%M:%S'), s_sticky, 'top'),
-        style=DivStyle(background='#235', padding=(0, 0, 0, 1), radius=(0, 2, 2, 0)))
+        style=DivStyle(background='#224', padding=(0, 0, 0, 1), radius=(0, 2, 2, 0)))
 
 def composer(fs: FrameState):
     return div(

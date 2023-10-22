@@ -54,10 +54,12 @@ class SlideIn(metaclass=UniqInstance):
 
         self._last_step = 0
         self._pos = 0
+        self._running = False
 
     def mut(self, frame: Frame) -> 'SlideIn':
         if self._curr_frame != frame:
             self._pos = 0
+            self._running = True
         self._curr_frame = frame
         return self
 
@@ -86,13 +88,18 @@ class SlideIn(metaclass=UniqInstance):
             return hstack([prev_frame, self._curr_frame])
 
     def _tick(self, step: float):
-        slen = (self.duration) / self._max_pos
-        if step - self._last_step >= slen:
-            self._pos += 1
-            if self._pos >= self._max_pos:
-                self._pos = self._max_pos
-                self._prev_frame = self._curr_frame
-                self._last_step = step
+        if not self._running:
+            self._last_step = step
+            return
+
+        factor = (step - self._last_step) / self.duration
+        self._pos = int(factor * self._max_pos)
+
+        if self._pos >= self._max_pos:
+            self._pos = self._max_pos
+            self._prev_frame = self._curr_frame
+            self._last_step = step
+            self._running = False
 
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self._tick(fs.tick)
@@ -111,7 +118,7 @@ class SlideIn(metaclass=UniqInstance):
         return next_frame
 
 
-def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.01):
+def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.2):
     frames = []
     for i, char in enumerate(value):
         slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge)
