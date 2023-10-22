@@ -74,13 +74,13 @@ class Text(Frame):
             self.style = style
             dirty = True
 
+        self.hash = (self.value, self.style)
+
         if dirty:
             self.draw_text()
 
         return dirty
 
-    def __hash__(self):
-        return hash([self.value, self.style])
 
 
 class MultiLineText(Text):

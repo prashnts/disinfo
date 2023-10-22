@@ -10,6 +10,7 @@ from ..components.elements import Frame
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
+from ..components.transitions import SlideIn
 
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
@@ -34,12 +35,21 @@ s_colon = [
 def digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
-        text(t.strftime('%H'), s_hour),
+        (SlideIn('dt.dc.hr', duration=0.001, edge='top')
+            .mut(text(t.strftime('%H'), s_hour))
+            .draw(fs)),
         text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
-        text(t.strftime('%M'), s_minute),
+        (SlideIn('dt.dc.min', duration=0.001, edge='top')
+            .mut(text(t.strftime('%M'), s_minute))
+            .draw(fs)),
     ])
     if seconds:
-        return hstack([hhmm, text(t.strftime('%S'), s_seconds)], gap=1)
+        return hstack([
+            hhmm,
+            (SlideIn('dt.dc.sec', duration=0.001, edge='top')
+                .mut(text(t.strftime('%S'), s_seconds))
+                .draw(fs)),
+        ], gap=1)
     return hhmm
 
 def world_clock(fs: FrameState):
