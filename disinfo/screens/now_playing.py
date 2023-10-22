@@ -13,6 +13,7 @@ from ..components.elements import Frame, StillImage
 from ..components.text import Text, TextStyle
 from ..components.layouts import hstack, vstack, composite_at
 from ..components.layers import div, DivStyle
+from ..components.transitions import SlideIn
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
@@ -119,7 +120,7 @@ def composer(fs: FrameState):
     ]
 
     if art:
-        music_elements.insert(0, art)
+        music_elements.insert(0, SlideIn('np.albumart', 1, 'right').mut(art).draw(fs))
 
     return div(
         hstack(music_elements, gap=1, align='top'),

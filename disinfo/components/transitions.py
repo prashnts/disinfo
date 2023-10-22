@@ -29,6 +29,8 @@ class TimedTransition(metaclass=UniqInstance):
         return 1
 
     def mut(self, frame: Frame) -> 'TimedTransition':
+        if not frame:
+            return self
         if self._curr_frame != frame:
             self.pos = 0
             self._running = True
