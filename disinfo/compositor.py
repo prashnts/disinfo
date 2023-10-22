@@ -72,7 +72,7 @@ def compose_small_frame(fs: FrameState):
     composite_at(
         div(vstack([
             screens.weather.draw(fs),
-            # screens.date_time.draw(fs),
+            screens.date_time.draw(fs),
             screens.now_playing.draw(fs),
             screens.octoprint.draw(fs),
         ], gap=1, align='center'), DivStyle(padding=2)),

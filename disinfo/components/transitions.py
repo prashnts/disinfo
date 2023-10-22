@@ -5,6 +5,7 @@ from disinfo.data_structures import FrameState, UniqInstance
 
 from .elements import Frame
 from .layouts import hstack, vstack, composite_at, place_at
+from .text import TextStyle, text
 
 
 Edges = Literal['top', 'bottom', 'left', 'right']
@@ -108,6 +109,17 @@ class SlideIn(metaclass=UniqInstance):
 
         next_frame = Frame(i)
         return next_frame
+
+
+def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.01):
+    frames = []
+    for i, char in enumerate(value):
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge)
+            .mut(text(char, style).tag(char))
+            .draw(fs))
+        frames.append(slide)
+    return hstack(frames)
+
 
 class VisibilitySlider:
     '''

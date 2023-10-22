@@ -10,7 +10,7 @@ from ..components.elements import Frame
 from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
-from ..components.transitions import SlideIn
+from ..components.transitions import text_slide_in
 
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
@@ -32,43 +32,42 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 
+
 def digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
-        (SlideIn('dt.dc.hr', duration=0.001, edge='top')
-            .mut(text(t.strftime('%H'), s_hour))
-            .draw(fs)),
+        text_slide_in(fs, 'dt.dc.hr', t.strftime('%H'), s_hour, 'top'),
         text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
-        (SlideIn('dt.dc.min', duration=0.001, edge='top')
-            .mut(text(t.strftime('%M'), s_minute))
-            .draw(fs)),
+        text_slide_in(fs, 'dt.dc.min', t.strftime('%M'), s_minute, 'top'),
     ])
     if seconds:
         return hstack([
             hhmm,
-            (SlideIn('dt.dc.sec', duration=0.001, edge='top')
-                .mut(text(t.strftime('%S'), s_seconds))
-                .draw(fs)),
+            text_slide_in(fs, 'dt.dc.sec', t.strftime('%S'), s_seconds, 'top'),
         ], gap=1)
     return hhmm
 
 def world_clock(fs: FrameState):
     t = fs.now.in_tz('Asia/Kolkata')
     return hstack([
-        div(text('DEL', TextStyle(color=black.hex, font=fonts.tamzen__rs)), DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=[1, 1, 1, 2])),
-        text(t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7)),
+        div(text(
+                'DEL',
+                TextStyle(color=black.hex, font=fonts.tamzen__rs)
+            ),
+            DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=[1, 1, 1, 2])),
+        text_slide_in(fs, 'dt.wc', t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7), 'top'),
     ], gap=2)
 
 def day_of_the_week(fs: FrameState):
     t = fs.now
     style = s_day['weekend' if t.day_of_week in (6, 0) else 'weekday']
-    return div(text(t.strftime('%a').upper(), style['text']), style['div'])
+    return div(text_slide_in(fs, 'dt.dow', t.strftime('%a').upper(), style['text'], 'top'), style['div'])
 
 def date(fs: FrameState):
     t = fs.now
     return hstack([
         day_of_the_week(fs),
-        text(t.strftime('%d/%m'), s_date),
+        text_slide_in(fs, 'dt.date', t.strftime('%d/%m'), s_date, 'top'),
     ], gap=2, align='bottom')
 
 def glitterify(frame: Frame):
