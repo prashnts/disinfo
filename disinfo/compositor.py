@@ -87,4 +87,4 @@ def compose_frame(fs: FrameState):
         frame = compose_small_frame(fs)
     else:
         frame = compose_big_frame(fs)
-    return FadeIn('compose', duration=0.2).mut(frame).draw(fs).image
+    return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image

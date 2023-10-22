@@ -1,3 +1,5 @@
+import time
+
 from PIL import Image
 from typing import Literal, Optional
 
@@ -10,58 +12,55 @@ from .text import TextStyle, text
 
 Edges = Literal['top', 'bottom', 'left', 'right']
 
-class FadeIn(metaclass=UniqInstance):
+class TimedTransition(metaclass=UniqInstance):
     def __init__(self, name: str, duration: float) -> None:
         self.name = name
         self.duration = duration
+
         self._prev_frame = None
         self._curr_frame = None
 
-        self._last_step = 0
-        self._alpha = 0
-
-    def mut(self, frame: Frame) -> 'FadeIn':
-        if self._curr_frame != frame:
-            self._alpha = 0
-        self._curr_frame = frame
-        return self
-
-    def _tick(self, step: float):
-        slen = (self.duration) / 255
-        if step - self._last_step >= slen:
-            self._alpha += 0.05
-            if self._alpha >= 1:
-                self._alpha = 1
-                self._prev_frame = self._curr_frame
-                self._last_step = step
-
-    def draw(self, fs: FrameState) -> Optional[Frame]:
-        self._tick(fs.tick)
-        i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
-        if self._prev_frame:
-            i.alpha_composite(self._prev_frame.image, (0, 0))
-        # Draw the current frame with alpha.
-        next_frame = Frame(Image.blend(i, self._curr_frame.image, self._alpha))
-        return next_frame
-
-class SlideIn(metaclass=UniqInstance):
-    def __init__(self, name: str, duration: float, edge: Edges) -> None:
-        self.name = name
-        self.duration = duration
-        self.edge = edge
-        self._prev_frame = None
-        self._curr_frame = None
-
-        self._last_step = 0
-        self._pos = 0
+        self._last_step = time.time()
+        self.pos = 0
         self._running = False
 
-    def mut(self, frame: Frame) -> 'SlideIn':
+    @property
+    def _max_pos(self):
+        return 1
+
+    def mut(self, frame: Frame) -> 'TimedTransition':
         if self._curr_frame != frame:
-            self._pos = 0
+            self.pos = 0
             self._running = True
         self._curr_frame = frame
         return self
+
+    def tick(self, step: float):
+        if not self._running:
+            self._last_step = step
+            return
+
+        factor = (step - self._last_step) / self.duration
+        self.pos = factor * self._max_pos
+
+        if self.pos >= self._max_pos:
+            self.pos = self._max_pos
+            self._last_step = step
+            self._prev_frame = self._curr_frame
+            self._running = False
+
+
+class FadeIn(TimedTransition):
+    def draw(self, fs: FrameState) -> Optional[Frame]:
+        self.tick(fs.tick)
+        i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
+        composite_at(self._prev_frame, i, 'mm')
+        return Frame(Image.blend(i, self._curr_frame.image, self.pos))
+
+class SlideIn(TimedTransition):
+    def __init__(self, name: str, duration: float, edge: Edges) -> None:
+        super().__init__(name, duration)
+        self.edge = edge
 
     @property
     def _max_pos(self):
@@ -87,35 +86,20 @@ class SlideIn(metaclass=UniqInstance):
         elif self.edge == 'right':
             return hstack([prev_frame, self._curr_frame])
 
-    def _tick(self, step: float):
-        if not self._running:
-            self._last_step = step
-            return
-
-        factor = (step - self._last_step) / self.duration
-        self._pos = int(factor * self._max_pos)
-
-        if self._pos >= self._max_pos:
-            self._pos = self._max_pos
-            self._prev_frame = self._curr_frame
-            self._last_step = step
-            self._running = False
-
-    def draw(self, fs: FrameState) -> Optional[Frame]:
-        self._tick(fs.tick)
+    def draw(self, fs: FrameState) -> Frame:
+        self.tick(fs.tick)
         i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
 
         if self.edge == 'top':
-            place_at(self._slide_frame, dest=i, x=0, y=self._pos, anchor='ml')
+            place_at(self._slide_frame, dest=i, x=0, y=int(self.pos), anchor='ml')
         elif self.edge == 'bottom':
-            place_at(self._slide_frame, dest=i, x=0, y=-self._pos, anchor='tl')
+            place_at(self._slide_frame, dest=i, x=0, y=-int(self.pos), anchor='tl')
         elif self.edge == 'left':
-            place_at(self._slide_frame, dest=i, x=self._pos, y=0, anchor='tm')
+            place_at(self._slide_frame, dest=i, x=int(self.pos), y=0, anchor='tm')
         elif self.edge == 'right':
-            place_at(self._slide_frame, dest=i, x=-self._pos, y=0, anchor='tl')
+            place_at(self._slide_frame, dest=i, x=-int(self.pos), y=0, anchor='tl')
 
-        next_frame = Frame(i)
-        return next_frame
+        return Frame(i)
 
 
 def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.2):

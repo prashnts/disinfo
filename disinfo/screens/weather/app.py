@@ -132,6 +132,6 @@ def composer(fs: FrameState):
 
     weather_stack = [weather_info] #, astronomical_info(state)]
 
-    return (FadeIn('weather.widget', duration=1)
+    return (FadeIn('weather.widget', duration=0.5)
         .mut(vstack(weather_stack, gap=1, align='left').tag(s))
         .draw(fs).tag(s))
