@@ -17,6 +17,7 @@ s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
+s_sticky   = TextStyle(color=light_gray.darken(.4).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
@@ -99,6 +100,11 @@ def glitterify(frame: Frame):
 
     return Frame(img)
 
+def sticky_widget(fs: FrameState):
+    return div(
+        text_slide_in(fs, 'dt.sk.clk', fs.now.strftime('%H:%M:%S'), s_sticky, 'top'),
+        style=DivStyle(background='#235', padding=(0, 0, 0, 1), radius=(0, 2, 2, 0)))
+
 def composer(fs: FrameState):
     return div(
         vstack([
@@ -108,4 +114,4 @@ def composer(fs: FrameState):
         ], gap=2, align='center'),
         style=DivStyle(background='#00000000'))
 
-draw = draw_loop(composer, sleepms=200)
+draw = draw_loop(composer)

@@ -69,10 +69,10 @@ def compose_small_frame(fs: FrameState):
         return Frame(image).tag('not_present')
 
     composite_at(screens.solar.draw(fs), image, 'mm')
+    composite_at(screens.date_time.sticky_widget(fs), image, 'tm')
     composite_at(
         div(vstack([
             screens.weather.draw(fs),
-            # screens.date_time.draw(fs),
             screens.now_playing.draw(fs),
             screens.octoprint.draw(fs),
         ], gap=1, align='center'), DivStyle(padding=2)),
