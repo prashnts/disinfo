@@ -104,6 +104,43 @@ class SlideIn(TimedTransition):
         return Frame(i)
 
 
+class NumberTransition(metaclass=UniqInstance):
+    def __init__(self, name: str, duration: float) -> None:
+        self.name = name
+        self.duration = duration
+
+        self._prev_value = 0
+        self._curr_value = None
+
+        self._last_step = time.time()
+        self.pos = 0
+        self._running = False
+
+    def mut(self, num: float) -> 'NumberTransition':
+        if self._curr_value != num:
+            self.pos = 0
+            self._running = True
+        self._curr_value = num
+        return self
+
+    def tick(self, step: float):
+        if not self._running:
+            self._last_step = step
+            return
+
+        factor = (step - self._last_step) / self.duration
+        self.pos = factor
+
+        if self.pos >= 1:
+            self.pos = 1
+            self._last_step = step
+            self._prev_value = self._curr_value
+            self._running = False
+
+    def value(self, fs: FrameState) -> float:
+        return self._prev_value + (self._curr_value - self._prev_value) * self.pos
+
+
 def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.2):
     frames = []
     for i, char in enumerate(value):

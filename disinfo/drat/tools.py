@@ -45,5 +45,17 @@ def trigger_motion(state: str = 'off'):
         }
         publish('di.pubsub.presence', action='update', payload=payload)
 
+@trigger_app.command(name='als')
+def trigger_als(state: int = 100):
+    for entity in app_config.ambient_light_sensor:
+        payload = {
+            'new_state': {
+                'state': state,
+            },
+            '_timestamp': pendulum.now().isoformat(),
+            'entity_id': entity,
+        }
+        publish('di.pubsub.lux', action='update', payload=payload)
+
 if __name__=='__main__':
     app()

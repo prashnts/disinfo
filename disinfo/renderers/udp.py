@@ -15,6 +15,7 @@ from ..data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
 from ..utils.imops import apply_gamma
+from ..components.transitions import NumberTransition
 
 target_ip = '10.0.1.132'
 target_port = 6002
@@ -59,9 +60,11 @@ def main(fps: int = 60, stats: bool = False):
 
     while True:
         t_start = time.monotonic()
+        fs = FrameState.create()
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
-        publish_frame(frame, als.brightness)
+        brightness = NumberTransition('sys.brightness', 0.5).mut(als.brightness).value(fs)
+        publish_frame(frame, brightness)
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)
