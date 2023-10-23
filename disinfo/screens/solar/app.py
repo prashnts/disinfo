@@ -54,7 +54,7 @@ p2_interpolator = interp1d(
     fill_value=(0, 0.8),
 )
 
-@throttle(4000)
+@throttle(10000)
 def apply_noise(img: Image.Image, noise: float = 0.1):
     pat = np.random.rand(img.height, img.width) * noise
     alpha = np.ones_like(pat)
@@ -311,7 +311,7 @@ def analog_clock(fs, w: int, h: int):
 
     i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
-    i.alpha_composite(apply_noise(to_pil(surface), 0.03), (0, 0))
+    i.alpha_composite(apply_noise(to_pil(surface), 0.003), (0, 0))
 
     label_radius = tick_radius + 8
 
