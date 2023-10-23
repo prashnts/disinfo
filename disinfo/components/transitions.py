@@ -105,11 +105,11 @@ class SlideIn(TimedTransition):
 
 
 class NumberTransition(metaclass=UniqInstance):
-    def __init__(self, name: str, duration: float) -> None:
+    def __init__(self, name: str, duration: float, initial: float) -> None:
         self.name = name
         self.duration = duration
 
-        self._prev_value = 0
+        self._prev_value = initial
         self._curr_value = None
 
         self._last_step = time.time()
