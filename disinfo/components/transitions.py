@@ -138,6 +138,7 @@ class NumberTransition(metaclass=UniqInstance):
             self._running = False
 
     def value(self, fs: FrameState) -> float:
+        self.tick(fs.tick)
         return self._prev_value + (self._curr_value - self._prev_value) * self.pos
 
 
