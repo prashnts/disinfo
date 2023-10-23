@@ -64,7 +64,7 @@ def main(fps: int = 60, stats: bool = False):
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 0.5, 100).mut(als.brightness).value(fs)
-        publish_frame(frame, brightness)
+        publish_frame(frame, int(brightness))
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)
