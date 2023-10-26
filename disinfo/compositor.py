@@ -15,8 +15,10 @@ from . import screens
 from .config import app_config
 
 
-def should_turn_on_display(sensors: list[str]) -> bool:
-    return any([PresenceSensorStateManager(s).get_state().detected for s in sensors])
+def should_turn_on_display(fs: FrameState) -> bool:
+    sensors = app_config.presence_sensors
+
+    return any([PresenceSensorStateManager(s).get_state().present_at(fs.now) for s in sensors])
 
 
 def draw_btn_test(image, fs: FrameState):
@@ -29,7 +31,7 @@ def draw_btn_test(image, fs: FrameState):
 def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
-    if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
+    if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
 
@@ -64,7 +66,7 @@ def compose_big_frame(fs: FrameState):
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not any([PresenceSensorStateManager(s).get_state().present for s in app_config.presence_sensors]):
+    if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
 

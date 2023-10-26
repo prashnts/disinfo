@@ -139,9 +139,14 @@ class RemoteStateManager(PubSubStateManager[RemoteState]):
         return s
 
 class PresenceSensorState(AppBaseModel):
-    present: bool = True
     detected: bool = True
     detected_at: Optional[datetime] = None
+
+    def present_at(self, now: datetime) -> bool:
+        delay = 2 if 8 <= now.hour < 23 else 2
+        expired = is_expired(self.detected_at, minutes=delay, now=now)
+        print(f"expired {expired} at {self.detected_at} now {now}")
+        return self.detected and not expired
 
 class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
     model = PresenceSensorState
@@ -151,25 +156,32 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
         self.entity_id = entity_id
         super().__init__()
 
+    def initial_state(self) -> PresenceSensorState:
+        return PresenceSensorState(detected=True, detected_at=pendulum.now())
+
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
-            s = self.state
-            s.present = data.payload['new_state']['state'] == 'on'
-            print(s, data.payload['new_state']['state'])
-            if s.present:
-                # when motion is detected, it's on.
-                s.detected = True
-            else:
-                # When motion is NOT detected, we want to keep the display on
-                # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
-                # this time is in local timezone.
-                last_change = pendulum.parse(data.payload['_timestamp'])
-                now = pendulum.now()
-                delay = 30 if 8 <= now.hour < 23 else 5
-                delta = (now - last_change).total_seconds()
-                s.detected = delta <= 60 * delay
-            s.detected_at = pendulum.now()
-            self.state = s
+            self.state = PresenceSensorState(
+                detected=data.payload['new_state']['state'] == 'on',
+                detected_at=pendulum.now(),
+            )
+
+            print(self.state, data.payload['new_state']['state'])
+
+            # if s.present:
+            #     # when motion is detected, it's on.
+            #     s.detected = True
+            # else:
+            #     # When motion is NOT detected, we want to keep the display on
+            #     # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
+            #     # this time is in local timezone.
+            #     last_change = pendulum.parse(data.payload['_timestamp'])
+            #     now = pendulum.now()
+            #     delay = 30 if 8 <= now.hour < 23 else 5
+            #     delta = (now - last_change).total_seconds()
+            #     s.detected = delta <= 60 * delay
+            # s.detected_at = pendulum.now()
+            # self.state = s
 
 
 brightness_min: float = 10
