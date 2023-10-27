@@ -26,7 +26,7 @@ from scipy.interpolate import interp1d
 from . import idfm
 from ..config import app_config
 from ..redis import get_dict, rkeys, db, publish
-from ..data_structures import FrameState, AppBaseModel
+from ..data_structures import FrameState, AppBaseModel, UniqInstance
 from ..utils.time import is_expired
 
 StateModel = TypeVar('StateModel')
@@ -35,17 +35,7 @@ class PubSubMessage(AppBaseModel):
     payload: Optional[dict]
 
 
-class StateManagerSingleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        key = (cls, args, tuple(kwargs.items()))
-        if key not in cls._instances:
-            cls._instances[key] = super().__call__(*args, **kwargs)
-        return cls._instances[key]
-
-
-class PubSubManager(metaclass=StateManagerSingleton):
+class PubSubManager(metaclass=UniqInstance):
     def __init__(self):
         self.pubsub = db.pubsub()
         self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
@@ -78,13 +68,16 @@ class PubSubManager(metaclass=StateManagerSingleton):
             self.subscribers[uid] = (channels, callback)
         return self
 
-class PubSubStateManager(Generic[StateModel], metaclass=StateManagerSingleton):
+class PubSubStateManager(Generic[StateModel], metaclass=UniqInstance):
     model: StateModel
     channels: tuple[str]
 
     def __init__(self):
-        PubSubManager().attach(self.__class__.__name__, self.channels, self.process_message)
+        self.manager = PubSubManager().attach(self._uid(), self.channels, self.process_message)
         self.state = self.initial_state()
+
+    def _uid(self) -> str:
+        return self.__class__.__name__
 
     def initial_state(self) -> StateModel:
         return self.model()
@@ -155,6 +148,9 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
     def __init__(self, entity_id: str):
         self.entity_id = entity_id
         super().__init__()
+
+    def _uid(self) -> str:
+        return f'{self.__class__.__name__}.{self.entity_id}'
 
     def initial_state(self) -> PresenceSensorState:
         return PresenceSensorState(detected=True, detected_at=pendulum.now())
