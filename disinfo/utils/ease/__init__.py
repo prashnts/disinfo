@@ -1,6 +1,6 @@
 from typing import Callable
 
-from .import bounce, exp, linear, cubic, circle
+from .import bounce, exp, linear, cubic, circle, sin
 
 EasingFn = Callable[[float], float]
 
@@ -11,4 +11,5 @@ __all__ = [
     'linear',
     'cubic',
     'circle',
+    'sin',
 ]

@@ -20,6 +20,9 @@ do
 	then
 		echo "Ref $ref received. Deploying ${BRANCH} branch to production..."
 		git --work-tree=$TARGET --git-dir=$GIT_DIR checkout -f $BRANCH
+        echo "=> Restarting services"
+        sudo supervisorctl restart all
+        echo "=> Deployed!"
 	else
 		echo "Ref $ref received. Doing nothing: only the ${BRANCH} branch may be deployed on this server."
 	fi
