@@ -147,7 +147,13 @@ class NumberTransition(metaclass=UniqInstance):
         return self._prev_value + (self._curr_value - self._prev_value) * self.pos
 
 
-def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.25):
+def text_slide_in(
+    fs: FrameState,
+    name: str,
+    value: str,
+    style=TextStyle(),
+    edge='top',
+    duration=0.25) -> Frame:
     frames = []
     for i, char in enumerate(value):
         slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.linear.linear)

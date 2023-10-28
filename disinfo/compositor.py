@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-import arrow
-
 from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor

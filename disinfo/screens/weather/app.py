@@ -42,7 +42,9 @@ def moon_phase_image(phase: int) -> StillImage:
     return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(24, 24))
 
 
-def astronomical_info(state: WeatherState):
+def astronomical_info(fs: FrameState):
+    state = WeatherStateManager().get_state(fs)
+
     if not state.show_moon_phase:
         return
     s = state.data
@@ -130,8 +132,6 @@ def composer(fs: FrameState):
         ], gap=3, align='center'),
         style=DivStyle(background='#0000008f', padding=2, radius=2))
 
-    weather_stack = [weather_info] #, astronomical_info(state)]
+    weather_stack = [weather_info]
 
-    return (FadeIn('weather.widget', duration=0.5)
-        .mut(vstack(weather_stack, gap=1, align='left').tag(s))
-        .draw(fs).tag(s))
+    return vstack(weather_stack, gap=1, align='left').tag(s)
