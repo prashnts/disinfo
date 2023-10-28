@@ -28,7 +28,7 @@ play_icon = StillImage('assets/raster/play-5x5.png')
 pause_icon = StillImage('assets/raster/pause-5x5.png')
 spotify_icon = StillImage('assets/raster/spotify-5x5.png')
 
-text_media_title = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
+text_media_title = Text(style=TextStyle(font=fonts.bitocra7, color='#0E8E47'))
 text_artist_name = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
 text_album_title = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
 
@@ -81,7 +81,7 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps
-        img = img.resize((80, 80)).quantize().resize((20, 20)).convert('RGBA')
+        img = img.resize((80, 80)).quantize().resize((18, 18)).convert('RGBA')
         if is_spotify:
             return composite_at(spotify_icon, img, 'bl')
         return Frame(img)
@@ -121,14 +121,16 @@ def composer(fs: FrameState):
     ]
 
     if art:
-        music_elements.insert(0, SlideIn('np.albumart', 1, edge='right', easing=ease.bounce.bounce_in).mut(art).draw(fs))
+        music_elements.insert(0, SlideIn('np.albumart', 0.9, edge='right', easing=ease.cubic.cubic_in_out).mut(art).draw(fs))
 
     return div(
-        hstack(music_elements, gap=1, align='top'),
+        hstack(music_elements, gap=1, align='center'),
         style=DivStyle(
-            background='#0000008f',
+            background='#101325',
             padding=2,
-            radius=2,
+            radius=3,
+            border=1,
+            border_color='#0E8E47'
         ),
     )
 
