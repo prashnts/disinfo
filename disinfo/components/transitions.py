@@ -150,7 +150,7 @@ class NumberTransition(metaclass=UniqInstance):
 def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.3):
     frames = []
     for i, char in enumerate(value):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.circle.circle_out)
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.exp.exp_out)
             .mut(text(char, style).tag(char))
             .draw(fs))
         frames.append(slide)
