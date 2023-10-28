@@ -41,9 +41,10 @@ class TimedTransition(metaclass=UniqInstance):
             return
 
         pos = (step - self._last_step) / self.duration
+        pos = max(0, min(1, pos))
         self.pos = self.easing_fn(pos)
 
-        if self.pos >= 1:
+        if pos == 1:
             self.pos = 1
             self._last_step = step
             self._prev_frame = self._curr_frame
@@ -146,10 +147,10 @@ class NumberTransition(metaclass=UniqInstance):
         return self._prev_value + (self._curr_value - self._prev_value) * self.pos
 
 
-def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.2):
+def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.3):
     frames = []
     for i, char in enumerate(value):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.cubic.cubic_in)
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.circle.circle_out)
             .mut(text(char, style).tag(char))
             .draw(fs))
         frames.append(slide)
