@@ -17,6 +17,7 @@ from ..components.transitions import SlideIn
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
+from ..utils import ease
 from ..data_structures import FrameState
 
 scroll_media_title = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
@@ -120,7 +121,7 @@ def composer(fs: FrameState):
     ]
 
     if art:
-        music_elements.insert(0, SlideIn('np.albumart', 1, 'right').mut(art).draw(fs))
+        music_elements.insert(0, SlideIn('np.albumart', 1, edge='right', easing=ease.ease_bounce_out).mut(art).draw(fs))
 
     return div(
         hstack(music_elements, gap=1, align='top'),

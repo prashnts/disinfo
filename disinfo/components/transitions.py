@@ -4,6 +4,7 @@ from PIL import Image
 from typing import Literal, Optional
 
 from disinfo.data_structures import FrameState, UniqInstance
+from disinfo.utils import ease
 
 from .elements import Frame
 from .layouts import hstack, vstack, composite_at, place_at
@@ -13,9 +14,10 @@ from .text import TextStyle, text
 Edges = Literal['top', 'bottom', 'left', 'right']
 
 class TimedTransition(metaclass=UniqInstance):
-    def __init__(self, name: str, duration: float) -> None:
+    def __init__(self, name: str, duration: float, easing: ease.EasingFn = ease.linear.linear) -> None:
         self.name = name
         self.duration = duration
+        self.easing_fn = easing
 
         self._prev_frame = None
         self._curr_frame = None
@@ -23,10 +25,6 @@ class TimedTransition(metaclass=UniqInstance):
         self._last_step = time.time()
         self.pos = 0
         self._running = False
-
-    @property
-    def _max_pos(self):
-        return 1
 
     def mut(self, frame: Frame) -> 'TimedTransition':
         if not frame:
@@ -42,11 +40,11 @@ class TimedTransition(metaclass=UniqInstance):
             self._last_step = step
             return
 
-        factor = (step - self._last_step) / self.duration
-        self.pos = factor * self._max_pos
+        pos = (step - self._last_step) / self.duration
+        self.pos = self.easing_fn(pos)
 
-        if self.pos >= self._max_pos:
-            self.pos = self._max_pos
+        if self.pos >= 1:
+            self.pos = 1
             self._last_step = step
             self._prev_frame = self._curr_frame
             self._running = False
@@ -60,19 +58,24 @@ class FadeIn(TimedTransition):
         return Frame(Image.blend(i, self._curr_frame.image, self.pos))
 
 class SlideIn(TimedTransition):
-    def __init__(self, name: str, duration: float, edge: Edges) -> None:
-        super().__init__(name, duration)
+    def __init__(
+            self,
+            name: str,
+            duration: float,
+            easing: ease.EasingFn = ease.linear.linear,
+            edge: Edges = 'bottom') -> None:
+        super().__init__(name, duration, easing)
         self.edge = edge
 
     @property
-    def _max_pos(self):
+    def max_pos(self):
         if self.edge in ['top', 'bottom']:
             return self._curr_frame.height
         else:
             return self._curr_frame.width
 
     @property
-    def _slide_frame(self) -> Frame:
+    def slide_frame(self) -> Frame:
         if self._prev_frame:
             prev_frame = self._prev_frame
         else:
@@ -91,15 +94,16 @@ class SlideIn(TimedTransition):
     def draw(self, fs: FrameState) -> Frame:
         self.tick(fs.tick)
         i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
+        pos = int(self.max_pos * self.pos)
 
         if self.edge == 'top':
-            place_at(self._slide_frame, dest=i, x=0, y=int(self.pos), anchor='ml')
+            place_at(self.slide_frame, dest=i, x=0, y=pos, anchor='ml')
         elif self.edge == 'bottom':
-            place_at(self._slide_frame, dest=i, x=0, y=-int(self.pos), anchor='tl')
+            place_at(self.slide_frame, dest=i, x=0, y=-pos, anchor='tl')
         elif self.edge == 'left':
-            place_at(self._slide_frame, dest=i, x=int(self.pos), y=0, anchor='tm')
+            place_at(self.slide_frame, dest=i, x=pos, y=0, anchor='tm')
         elif self.edge == 'right':
-            place_at(self._slide_frame, dest=i, x=-int(self.pos), y=0, anchor='tl')
+            place_at(self.slide_frame, dest=i, x=-pos, y=0, anchor='tl')
 
         return Frame(i)
 
@@ -145,7 +149,7 @@ class NumberTransition(metaclass=UniqInstance):
 def text_slide_in(fs: FrameState, name: str, value: str, style: TextStyle = TextStyle(), edge: str = 'top', duration=0.2):
     frames = []
     for i, char in enumerate(value):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge)
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.cubic.cubic_in)
             .mut(text(char, style).tag(char))
             .draw(fs))
         frames.append(slide)

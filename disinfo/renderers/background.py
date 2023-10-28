@@ -21,7 +21,8 @@ def main(fps: int = 60, stats: bool = False):
 
     while True:
         t_start = time.monotonic()
-        frame = compose_frame(FrameState.create())
+        fs = FrameState.create()
+        frame = compose_frame(fs)
         publish_frame(frame)
         t_draw = time.monotonic() - t_start
 
