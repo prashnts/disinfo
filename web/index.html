@@ -62,6 +62,7 @@
     </svg>
     <script type="module">
         const WS_RETRY_DELAY = 2000;
+        const FRAME_DELAY = 40
         const connect = function () {
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             let ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
@@ -78,7 +79,7 @@
                     if (ws.readyState === WebSocket.CLOSED) {
                         clearInterval(interval);
                     }
-                }, 10);
+                }, FRAME_DELAY);
             };
 
             ws.onclose = function () {

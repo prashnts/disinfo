@@ -81,10 +81,10 @@ def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps
-        img = img.resize((80, 80)).quantize().resize((18, 18)).convert('RGBA')
+        frame = Frame(img.resize((80, 80)).quantize().resize((25, 25)).convert('RGBA')).trim(3, 3, 3, 3)
         if is_spotify:
-            return composite_at(spotify_icon, img, 'bl')
-        return Frame(img)
+            return composite_at(spotify_icon, frame, 'bl')
+        return frame
     except requests.RequestException:
         return None
 
