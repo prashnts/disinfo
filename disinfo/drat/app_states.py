@@ -137,9 +137,10 @@ class PresenceSensorState(AppBaseModel):
 
     def present_at(self, now: datetime) -> bool:
         delay = 2 if 8 <= now.hour < 23 else 2
+        delay = 10 if self.detected else 10
         expired = is_expired(self.detected_at, minutes=delay, now=now)
-        print(f"expired {expired} at {self.detected_at} now {now}")
-        return self.detected and not expired
+        # print(f"expired {expired} at {self.detected_at} now {now}")
+        return not expired
 
 class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
     model = PresenceSensorState
@@ -157,12 +158,11 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
-            self.state = PresenceSensorState(
-                detected=data.payload['new_state']['state'] == 'on',
-                detected_at=pendulum.now(),
-            )
+            self.state.detected = data.payload['new_state']['state'] == 'on'
+            if self.state.detected:
+                self.state.detected_at = pendulum.now()
 
-            print(self.state, data.payload['new_state']['state'])
+            print(self.state, data.payload['new_state']['state'], flush=True)
 
             # if s.present:
             #     # when motion is detected, it's on.
