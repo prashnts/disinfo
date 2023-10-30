@@ -9,6 +9,7 @@ from . import paris_metro
 from . import plant
 from . import demo
 from . import debug_info
+from . import trash_pickup
 
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     'plant',
     'demo',
     'debug_info',
+    'trash_pickup',
 ]

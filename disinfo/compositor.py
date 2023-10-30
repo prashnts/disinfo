@@ -75,6 +75,7 @@ def compose_small_frame(fs: FrameState):
             screens.weather.draw(fs),
             screens.now_playing.draw(fs),
             screens.octoprint.draw(fs),
+            screens.trash_pickup.draw(fs),
         ], gap=1, align='center'), DivStyle(padding=2)),
         image, 'mm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
