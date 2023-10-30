@@ -2,7 +2,7 @@ import numpy as np
 
 from PIL import Image
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 
 Postion = tuple[int, int]
@@ -14,14 +14,11 @@ class UIElement(metaclass=ABCMeta):
     image: Image.Image
 
 class Frame(UIElement):
-    def __init__(self, image: Image.Image, hash: Optional[int] = None):
+    def __init__(self, image: Image.Image, hash: Any = None):
         self.image = image
         self.width = image.width
         self.height = image.height
-        self.hash = hash
-
-        if hash is None:
-            self.hash = (self.__class__.__name__, _hash(image.tobytes()))
+        self.hash = (self.__class__.__name__, _hash(image.tobytes()) if hash is None else hash)
 
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
         # TODO: support extending the frame
@@ -63,7 +60,7 @@ class Frame(UIElement):
         return hash(self) == hash(other)
 
     def tag(self, value) -> 'Frame':
-        self.hash = ('tag', value, self)
+        self.hash = ('tag', value, self.hash)
         return self
 
     @property
@@ -75,5 +72,4 @@ class StillImage(Frame):
         img = Image.open(filename).convert('RGBA')
         if resize:
             img = img.resize(resize)
-        super().__init__(img)
-        self.hash = (*self.hash, filename, resize)
+        super().__init__(img, hash=(filename, resize))

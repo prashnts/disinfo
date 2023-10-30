@@ -7,14 +7,14 @@ from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
 
 from .elements import Frame
-from .fonts import tamzen__rs
+from .fonts import tamzen__rs, TTFFont
 
 @dataclass(frozen=True)
 class TextStyle:
     color: str          = '#fff'
     outline: int        = 0
     outline_color: str  = '#000'
-    font: FreeTypeFont  = tamzen__rs
+    font: TTFFont       = tamzen__rs
 
     # Following are applicable to mutliline text.
     spacing: int        = 1
@@ -49,14 +49,14 @@ class Text(Frame):
         # If the text has outline the bounding box needs to be adjusted
         # in both axes. This is because the font has no way of knowing that
         # an outline will be applied while drawing.
-        _, _, w, h = self.style.font.getbbox(value, anchor='lt')
+        _, _, w, h = self.style.font.font.getbbox(value, anchor='lt')
         im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.text(
             (o, o),
             value,
             fill=self.style.color,
-            font=self.style.font,
+            font=self.style.font.font,
             anchor='lt',
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
