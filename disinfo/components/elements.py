@@ -53,6 +53,8 @@ class Frame(UIElement):
 
     def __hash__(self):
         if self.hash:
+            if self.hash[0] == 'tag':
+                return hash(self.hash[1])
             return hash(self.hash)
         return hash(self.image.tobytes())
 
@@ -60,7 +62,7 @@ class Frame(UIElement):
         return hash(self) == hash(other)
 
     def tag(self, value) -> 'Frame':
-        self.hash = value
+        self.hash = ('tag', value, self)
         return self
 
     @property
