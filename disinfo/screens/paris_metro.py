@@ -113,7 +113,7 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
         ((size / 2) + start_x, size / 2),
         line_name,
         fill=text_color,
-        font=fonts.tamzen__rs,
+        font=fonts.tamzen__rs.font,
         anchor='mm')
 
     return Frame(img)
