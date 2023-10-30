@@ -109,7 +109,7 @@ class MultiLineText(Text):
             (0, 0),
             value,
             fill=self.style.color,
-            font=self.style.font,
+            font=self.style.font.font,
             spacing=self.style.spacing,
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
