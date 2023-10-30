@@ -32,7 +32,7 @@ SCHEDULE = [
         'label_color': '#000',
         'color': '#f8f644',
         'icon': StillImage('assets/raster/trash-bin-yellow-10x14.png'),
-        'days': [1, 2, 4, 6],
+        'days': [2, 4, 6],
     },
     {
         'type': 'white',
@@ -40,7 +40,7 @@ SCHEDULE = [
         'label_color': '#000',
         'color': '#fff',
         'icon': StillImage('assets/raster/trash-bin-white-10x14.png'),
-        'days': [1, 3],
+        'days': [3],
     },
 ]
 
