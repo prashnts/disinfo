@@ -1,11 +1,8 @@
-import numpy as np
-
 from PIL import Image
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from typing import Optional, Union, Any
 
 
-Postion = tuple[int, int]
 _hash = hash
 
 class UIElement(metaclass=ABCMeta):
