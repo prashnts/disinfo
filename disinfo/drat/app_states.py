@@ -136,10 +136,7 @@ class PresenceSensorState(AppBaseModel):
     detected_at: Optional[datetime] = None
 
     def present_at(self, now: datetime) -> bool:
-        delay = 2 if 8 <= now.hour < 23 else 2
-        delay = 10 if self.detected else 10
-        expired = is_expired(self.detected_at, minutes=delay, now=now)
-        # print(f"expired {expired} at {self.detected_at} now {now}")
+        expired = is_expired(self.detected_at, minutes=app_config.presence_lag_minutes, now=now)
         return not expired
 
 class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
@@ -161,23 +158,6 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
             self.state.detected = data.payload['new_state']['state'] == 'on'
             if self.state.detected:
                 self.state.detected_at = pendulum.now()
-
-            print(self.state, data.payload['new_state']['state'], flush=True)
-
-            # if s.present:
-            #     # when motion is detected, it's on.
-            #     s.detected = True
-            # else:
-            #     # When motion is NOT detected, we want to keep the display on
-            #     # for 30 minutes during day (8h -> 23h), otherwise 5 minutes.
-            #     # this time is in local timezone.
-            #     last_change = pendulum.parse(data.payload['_timestamp'])
-            #     now = pendulum.now()
-            #     delay = 30 if 8 <= now.hour < 23 else 5
-            #     delta = (now - last_change).total_seconds()
-            #     s.detected = delta <= 60 * delay
-            # s.detected_at = pendulum.now()
-            # self.state = s
 
 
 brightness_min: float = 10
