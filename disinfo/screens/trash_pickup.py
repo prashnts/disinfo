@@ -23,7 +23,7 @@ SCHEDULE = [
         'label': '1',
         'label_color': '#fff',
         'color': '#42a459',
-        'icon': trash_bin_green,
+        'icon': StillImage('assets/raster/trash-bin-green-10x14.png'),
         'days': [0, 1, 2, 3, 4, 5, 6],
     },
     {
@@ -31,7 +31,7 @@ SCHEDULE = [
         'label': '2',
         'label_color': '#000',
         'color': '#f8f644',
-        'icon': trash_bin_yellow,
+        'icon': StillImage('assets/raster/trash-bin-yellow-10x14.png'),
         'days': [1, 2, 4, 6],
     },
     {
@@ -39,22 +39,23 @@ SCHEDULE = [
         'label': '3',
         'label_color': '#000',
         'color': '#fff',
-        'days': [3],
+        'icon': StillImage('assets/raster/trash-bin-white-10x14.png'),
+        'days': [1, 3],
     },
 ]
 
 def todays_trash_schedule(fs: FrameState):
     today = fs.now.day_of_week
     sch = [s for s in SCHEDULE if today in s['days']]
-    for s in sch:
-        yield s['icon']
+    for s in SCHEDULE:
+        yield s['icon'].opacity(0.6 if today not in s['days'] else 1)
         # yield div(
         #     text(s['label'], style=TextStyle(font=fonts.bitocra7, color=s['label_color'])),
         #     style=DivStyle(background=s['color'], radius=2, padding=(0, 0, 0, 1)))
 
 def composer(fs: FrameState):
     schedules = vstack([
-        text('Coll.', style=TextStyle(font=fonts.bitocra7)),
+        # text('Coll.', style=TextStyle(font=fonts.bitocra7)),
         hstack(list(todays_trash_schedule(fs)), gap=2),
     ], gap=2, align='left')
     # schedules = hstack([s['icon'] for s in todays_trash_schedule(fs)])

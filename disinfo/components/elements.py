@@ -1,3 +1,5 @@
+import numpy as np
+
 from PIL import Image
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Union
@@ -44,9 +46,8 @@ class Frame(UIElement):
         return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
 
     def opacity(self, opacity: float) -> 'Frame':
-        a = int(opacity * 255)
-        im = self.image.putalpha(a)
-        return Frame(im, hash=('opacity', a, self))
+        img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
+        return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self))
 
     def __repr__(self) -> str:
         return f'{self.hash}'
