@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 
 Postion = tuple[int, int]
-
+_hash = hash
 
 class UIElement(metaclass=ABCMeta):
     width: int
@@ -18,6 +18,9 @@ class Frame(UIElement):
         self.height = image.height
         self.hash = hash
 
+        if hash is None:
+            self.hash = (self.__class__.__name__, _hash(image.tobytes()))
+
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
         # TODO: support extending the frame
         w = self.width
@@ -25,23 +28,28 @@ class Frame(UIElement):
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(self.image, (x, y))
-        return Frame(i)
+        return Frame(i, hash=('reposition', (x, y), self))
 
     def rotate(self, angle: float) -> 'Frame':
-        return Frame(self.image.rotate(angle, expand=True))
+        return Frame(self.image.rotate(angle, expand=True), hash=('rotate', angle, self))
 
     def trim(self, left: int = 0, upper: int = 0, right: int = 0, lower: int = 0) -> 'Frame':
-        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)))
+        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)), hash=('trim', (left, upper, right, lower), self))
 
     def rescale(self, ratio: Union[float, tuple[float, float]]) -> 'Frame':
         if not isinstance(ratio, tuple):
             ratio = (ratio, ratio)
         width = self.width * ratio[0]
         height = self.height * ratio[1]
-        return Frame(self.image.resize((int(width), int(height))))
+        return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
+
+    def opacity(self, opacity: float) -> 'Frame':
+        a = int(opacity * 255)
+        im = self.image.putalpha(a)
+        return Frame(im, hash=('opacity', a, self))
 
     def __repr__(self) -> str:
-        return f'<Frame hash={self.hash}>'
+        return f'{self.hash}'
 
     def __hash__(self):
         if self.hash:
@@ -65,3 +73,4 @@ class StillImage(Frame):
         if resize:
             img = img.resize(resize)
         super().__init__(img)
+        self.hash = (*self.hash, filename, resize)

@@ -108,7 +108,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
         (cp - 1, 3), (cp, 3), (cp + 1, 3),
     ], fill=color_current.hex)
 
-    return vstack([temp_range_stack, Frame(range_graph)], gap=0, align='center')
+    return vstack([temp_range_stack, Frame(range_graph, hash=('range-graph',))], gap=0, align='center')
 
 
 def composer(fs: FrameState):
@@ -134,4 +134,4 @@ def composer(fs: FrameState):
 
     weather_stack = [weather_info]
 
-    return vstack(weather_stack, gap=1, align='left').tag(s)
+    return vstack(weather_stack, gap=1, align='left')

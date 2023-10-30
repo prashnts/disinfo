@@ -32,7 +32,7 @@ def hstack(
     Returns a new frame.
     '''
     if not any(elements):
-        return Frame(Image.new('RGBA', (1, 1)))
+        return Frame(Image.new('RGBA', (1, 1)), hash=('hstack', gap, align, None))
 
     _elems = [e for e in elements if e]
 
@@ -53,7 +53,7 @@ def hstack(
         x += e.width
         x += gap
 
-    return Frame(img)
+    return Frame(img, hash=('hstack', gap, align, tuple(elements)))
 
 def vstack(
     elements: Sequence[Optional[Frame]],
@@ -75,7 +75,7 @@ def vstack(
     Returns a new frame.
     '''
     if not any(elements):
-        return Frame(Image.new('RGBA', (1, 1)))
+        return Frame(Image.new('RGBA', (1, 1)), hash=('vstack', gap, align, None))
 
     _elems = [e for e in elements if e]
 
@@ -97,7 +97,7 @@ def vstack(
         y += e.height
         y += gap
 
-    return Frame(img)
+    return Frame(img, hash=('vstack', gap, align, tuple(elements)))
 
 def composite_at(
     frame: Optional[Frame],
@@ -150,7 +150,7 @@ def composite_at(
         raise ValueError('Wrong value for anchor.')
 
     dest.alpha_composite(frame.image, (left, top))
-    return Frame(dest)
+    return Frame(dest, hash=('composite_at', anchor, frame))
 
 def mosaic(
     frame: Frame,
@@ -203,7 +203,7 @@ def mosaic(
         for cx, cy in coords:
             img.alpha_composite(frame.image, (cx, cy))
 
-    return Frame(img)
+    return Frame(img, hash=('mosaic', nx, ny, seamless, frame))
 
 def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm') -> Frame:
     '''Places the frame at the given coordinates.
@@ -241,7 +241,7 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
         raise ValueError('Wrong value for anchor.')
 
     dest.alpha_composite(frame.image, (x + dx, y + dy))
-    return Frame(dest)
+    return Frame(dest, hash=('place_at', anchor, frame))
 
 def tabular(table: list[list[Optional[Frame]]]):
     # convert a 2d list of frames into a tabular grid.

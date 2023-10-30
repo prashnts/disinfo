@@ -118,23 +118,10 @@ def div(
         i.alpha_composite(bg, (margin[1], margin[0]))
 
     i.alpha_composite(frame.image, (o_x, o_y))
-    return Frame(i)
+    return Frame(i, hash=('div', style, frame))
 
 def styled_div(**kwargs):
     style = DivStyle(**kwargs)
     def div_(frame: Frame):
         return div(frame, style)
     return div_
-
-def reposition(frame: Frame, x: int = 0, y: int = 0) -> Frame:
-    '''
-    Repositions the frame.
-
-    Returns a new Frame.
-    '''
-    w = frame.width
-    h = frame.height
-
-    i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    i.alpha_composite(frame.image, (x, y))
-    return Frame(i)

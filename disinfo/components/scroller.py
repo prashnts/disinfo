@@ -80,7 +80,7 @@ class _Scroller:
         i = self._get_image()
         patch_img = self.frame.image.crop(self._get_crop_rect())
         i.alpha_composite(patch_img, (0, 0))
-        return Frame(i)
+        return Frame(i, hash=(self.__class__.__name__, self.size, self.frame))
 
 class HScroller(_Scroller):
     def _get_crop_rect(self):

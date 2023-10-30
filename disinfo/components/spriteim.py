@@ -10,6 +10,7 @@ class SpriteImage:
 
     def _init_sprites(self, filename: str):
         img = Image.open(filename)
+        self.filename = filename
         self.nframes = img.height // img.width
         self.width = img.width
         self.height = img.width
@@ -24,7 +25,7 @@ class SpriteImage:
             self._frames.append(img.crop(croprect))
 
     def __getitem__(self, index) -> Frame:
-        return Frame(self._frames[index])
+        return Frame(self._frames[index], hash=(self.__class__.__name__, self.filename))
 
 class SpriteIcon:
     # Renders animated sprites

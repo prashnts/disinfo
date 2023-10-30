@@ -19,6 +19,8 @@ class TimedTransition(metaclass=UniqInstance):
         self.duration = duration
         self.easing_fn = easing
 
+        self.hash = (self.__class__.__name__, name, duration, easing)
+
         self._prev_frame = None
         self._curr_frame = None
 
@@ -56,7 +58,7 @@ class FadeIn(TimedTransition):
         self.tick(fs.tick)
         i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
         composite_at(self._prev_frame, i, 'mm')
-        return Frame(Image.blend(i, self._curr_frame.image, self.pos))
+        return Frame(Image.blend(i, self._curr_frame.image, self.pos), hash=self.hash)
 
 class SlideIn(TimedTransition):
     def __init__(
@@ -106,7 +108,7 @@ class SlideIn(TimedTransition):
         elif self.edge == 'right':
             place_at(self.slide_frame, dest=i, x=-pos, y=0, anchor='tl')
 
-        return Frame(i)
+        return Frame(i, hash=(*self.hash, self.edge))
 
 
 class NumberTransition(metaclass=UniqInstance):
@@ -157,7 +159,7 @@ def text_slide_in(
     frames = []
     for i, char in enumerate(value):
         slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.linear.linear)
-            .mut(text(char, style).tag(char))
+            .mut(text(char, style))
             .draw(fs))
         frames.append(slide)
     return hstack(frames)
