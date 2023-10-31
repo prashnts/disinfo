@@ -96,7 +96,7 @@ class MultiLineText(Text):
         l, t, r, b = _dd.multiline_textbbox(
             (0, 0),
             value,
-            font=self.style.font,
+            font=self.style.font.font,
             spacing=self.style.spacing,
             stroke_width=self.style.outline,
         )
