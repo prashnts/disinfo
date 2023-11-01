@@ -36,7 +36,7 @@ class Stack(metaclass=UniqInstance):
 
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]
-        if step - self.last_step > curr_widget.priority * 2:
+        if step - self.last_step > curr_widget.priority * 2 + 1:
             if not any ([w.frame for w in self._widgets]):
                 self.pos = 0
             else:
