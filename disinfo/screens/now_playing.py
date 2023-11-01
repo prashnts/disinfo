@@ -131,8 +131,6 @@ def composer(fs: FrameState):
             background='#101325',
             padding=2,
             radius=3,
-            border=1,
-            border_color='#0E8E47'
         ),
     ).tag('music')
 

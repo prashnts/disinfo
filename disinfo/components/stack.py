@@ -23,19 +23,19 @@ class Stack(metaclass=UniqInstance):
         self.last_step = 0
         self.pos = 0
 
-        self.scroller = VScroller(size=app_config.height)
+        self.scroller = VScroller(size=app_config.height, speed=0.001, delta=2)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._widgets = sorted(widgets, key=lambda w: w.priority, reverse=True)
         return self
 
     def surface(self, fs: FrameState):
-        frames = [w.draw(fs) for w in self._widgets]
+        frames = [w.draw(fs, active=i == self.pos) for i, w in enumerate(self._widgets)]
         pos = app_config.height + sum([f.height for f in frames[0:self.pos]]) + (self.pos - 1 * 2)
         return div(vstack(frames, gap=2), DivStyle(padding=1)), pos
 
     def tick(self, step: float):
-        if step - self.last_step > 7:
+        if step - self.last_step > 8:
             self.pos = random.randint(0, len(self._widgets) - 1)
             self.pos %= len(self._widgets)
             self.last_step = step
