@@ -81,6 +81,8 @@ class _Scroller:
                     self.pos += self.delta
                 elif self.pos > self.target:
                     self.pos -= self.delta
+                else:
+                    self.pos = self.target
             else:
                 self.pos += self.delta
             self.pos %= self._get_frame_size()
