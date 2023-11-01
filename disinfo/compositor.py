@@ -5,6 +5,7 @@ from .components.layouts import hstack, vstack, composite_at
 from .components.layers import div, DivStyle
 from .components.transitions import FadeIn
 from .components.elements import Frame
+from .components.stack import Stack
 from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
@@ -44,13 +45,21 @@ def compose_big_frame(fs: FrameState):
             ], gap=2, align='right'),
         ], gap=1, align='right'),
         image, 'tr')
-    composite_at(
-        div(vstack([
-            screens.weather.draw(fs),
-            screens.now_playing.draw(fs),
-            screens.octoprint.draw(fs),
-        ], gap=1), DivStyle(padding=2)),
-        image, 'ml')
+    s = Stack('main_cards').mut([
+        screens.weather.widgets.weather(fs),
+        screens.now_playing.widget(fs),
+        screens.weather.widgets.moon_phase(fs),
+        screens.octoprint.widget(fs),
+        screens.trash_pickup.widget(fs),
+    ])
+    composite_at(s.draw(fs), image, 'ml')
+    # composite_at(
+    #     div(vstack([
+    #         screens.weather.draw(fs),
+    #         screens.now_playing.draw(fs),
+    #         screens.octoprint.draw(fs),
+    #     ], gap=1), DivStyle(padding=2)),
+    #     image, 'ml')
     # composite_at(screens.numbers.draw(fs), image, 'bl')
 
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
@@ -70,14 +79,22 @@ def compose_small_frame(fs: FrameState):
 
     composite_at(screens.solar.draw(fs), image, 'mm')
     composite_at(screens.date_time.sticky_widget(fs), image, 'tm')
-    composite_at(
-        div(vstack([
-            screens.weather.draw(fs),
-            screens.now_playing.draw(fs),
-            screens.octoprint.draw(fs),
-            screens.trash_pickup.draw(fs),
-        ], gap=1, align='center'), DivStyle(padding=2)),
-        image, 'mm')
+    s = Stack('main_cards').mut([
+        screens.weather.widgets.weather(fs),
+        screens.weather.widgets.moon_phase(fs),
+        screens.now_playing.widget(fs),
+        screens.octoprint.widget(fs),
+        screens.trash_pickup.widget(fs),
+    ])
+    composite_at(s.draw(fs), image, 'ml')
+    # composite_at(
+    #     div(vstack([
+    #         screens.weather.draw(fs),
+    #         screens.now_playing.draw(fs),
+    #         screens.octoprint.draw(fs),
+    #         screens.trash_pickup.draw(fs),
+    #     ], gap=1, align='center'), DivStyle(padding=2)),
+    #     image, 'mm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     return Frame(image).tag('present')

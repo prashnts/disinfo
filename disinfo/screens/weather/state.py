@@ -59,7 +59,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
         self.state.show_sunrise = s.sunrise_time.subtract(hours=8) < fs.now
 
         # Moon Phase is when sunset is shown and until 3 hours after sunset.
-        self.state.show_moon_phase = self.state.show_sunset or (fs.now - s.sunset_time).total_seconds() < 3 * 60 * 60
+        self.state.show_moon_phase = True # self.state.show_sunset or (fs.now - s.sunset_time).total_seconds() < 3 * 60 * 60
         # If the state is not updated for 30 minutes, it's outdated.
         self.state.is_outdated = (fs.now - s.updated_at).total_seconds() > 30 * 60  # 30 mins.
         return self.state

@@ -21,11 +21,16 @@ class _Scroller:
         self.static_if_small = static_if_small
         self.pause_at_loop = pause_at_loop
         self.pause_duration = pause_duration
+        self.target = None
         if frame:
             self._init_scroller(frame, True)
 
     def set_frame(self, frame: Frame, reset: bool = True):
         self._init_scroller(frame, reset)
+        return self
+
+    def set_target(self, target: int):
+        self.target = target
         return self
 
     def set_size(self, size: int):
@@ -71,7 +76,13 @@ class _Scroller:
             # We insert a pause by not incrementing position.
             return
         if delta >= self.speed:
-            self.pos += self.delta
+            if self.target is not None:
+                if self.pos < self.target:
+                    self.pos += self.delta
+                elif self.pos > self.target:
+                    self.pos -= self.delta
+            else:
+                self.pos += self.delta
             self.pos %= self._get_frame_size()
             self.last_step = step
 

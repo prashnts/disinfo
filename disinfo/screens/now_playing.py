@@ -14,6 +14,7 @@ from ..components.text import Text, TextStyle
 from ..components.layouts import hstack, vstack, composite_at
 from ..components.layers import div, DivStyle
 from ..components.transitions import SlideIn
+from ..components.widget import Widget
 from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
@@ -133,6 +134,9 @@ def composer(fs: FrameState):
             border=1,
             border_color='#0E8E47'
         ),
-    )
+    ).tag('music')
+
+def widget(fs: FrameState):
+    return Widget('music', composer(fs))
 
 draw = draw_loop(composer, sleepms=10)

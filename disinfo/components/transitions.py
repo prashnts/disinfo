@@ -1,7 +1,7 @@
 import time
 
 from PIL import Image
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeVar, Generic
 
 from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.utils import ease
@@ -12,60 +12,78 @@ from .text import TextStyle, text
 
 
 Edges = Literal['top', 'bottom', 'left', 'right']
+TransitionValue = TypeVar('TransitionValue')
 
-class TimedTransition(metaclass=UniqInstance):
-    def __init__(self, name: str, duration: float, easing: ease.EasingFn = ease.linear.linear) -> None:
+
+class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
+    '''A generic that transitions between pos 0 and 1 over a given duration.
+
+    Transition triggers when TransitionValue changes. Once the transition
+    completes, the previous value is set to the new value.
+    '''
+
+    def __init__(
+            self,
+            name: str,
+            duration: float,
+            easing: ease.EasingFn = ease.linear.linear,
+            initial: Optional[TransitionValue] = None) -> None:
         self.name = name
         self.duration = duration
         self.easing_fn = easing
 
         self.hash = (self.__class__.__name__, name, duration, easing)
 
-        self._prev_frame = None
-        self._curr_frame = None
+        self.prev_value: Optional[TransitionValue] = initial
+        self.curr_value: Optional[TransitionValue] = None
 
-        self._last_step = time.time()
+        self.last_step = time.time()
         self.pos = 0
-        self._running = False
+        self.running = False
+        self.finished = False
 
-    def mut(self, frame: Frame) -> 'TimedTransition':
-        if not frame:
+    def mut(self, value: TransitionValue) -> 'TimedTransition':
+        if not value:
             return self
-        if self._curr_frame != frame:
+
+        if self.curr_value != value:
             self.pos = 0
-            self._running = True
-        self._curr_frame = frame
+            self.running = True
+            self.finished = False
+        self.curr_value = value
         return self
 
     def tick(self, step: float):
-        if not self._running:
-            self._last_step = step
+        if not self.running:
+            self.last_step = step
             return
 
-        pos = (step - self._last_step) / self.duration
+        pos = (step - self.last_step) / self.duration
         pos = max(0, min(1, pos))
         self.pos = self.easing_fn(pos)
 
         if pos == 1:
             self.pos = 1
-            self._last_step = step
-            self._prev_frame = self._curr_frame
-            self._running = False
+            self.last_step = step
+            self.prev_value = self.curr_value
+            self.running = False
+            self.finished = True
 
 
-class FadeIn(TimedTransition):
+class FadeIn(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self.tick(fs.tick)
-        i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
-        composite_at(self._prev_frame, i, 'mm')
-        return Frame(Image.blend(i, self._curr_frame.image, self.pos), hash=self.hash)
+        i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
+        composite_at(self.prev_value, i, 'mm')
+        return Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash)
 
-class SlideIn(TimedTransition):
+class SlideIn(TimedTransition[Frame]):
     def __init__(
             self,
             name: str,
             duration: float,
             easing: ease.EasingFn = ease.linear.linear,
+            initial: Optional[Frame] = None,
             edge: Edges = 'bottom') -> None:
         super().__init__(name, duration, easing)
         self.edge = edge
@@ -73,30 +91,30 @@ class SlideIn(TimedTransition):
     @property
     def max_pos(self):
         if self.edge in ['top', 'bottom']:
-            return self._curr_frame.height
+            return self.curr_value.height
         else:
-            return self._curr_frame.width
+            return self.curr_value.width
 
     @property
     def slide_frame(self) -> Frame:
-        if self._prev_frame:
-            prev_frame = self._prev_frame
+        if self.prev_value:
+            prev_frame = self.prev_value
         else:
-            img = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
+            img = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
             prev_frame = Frame(img)
 
         if self.edge == 'top':
-            return vstack([self._curr_frame, prev_frame])
+            return vstack([self.curr_value, prev_frame])
         elif self.edge == 'bottom':
-            return vstack([prev_frame, self._curr_frame])
+            return vstack([prev_frame, self.curr_value])
         elif self.edge == 'left':
-            return hstack([self._curr_frame, prev_frame])
+            return hstack([self.curr_value, prev_frame])
         elif self.edge == 'right':
-            return hstack([prev_frame, self._curr_frame])
+            return hstack([prev_frame, self.curr_value])
 
     def draw(self, fs: FrameState) -> Frame:
         self.tick(fs.tick)
-        i = Image.new('RGBA', self._curr_frame.size, (0, 0, 0, 0))
+        i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         pos = int(self.max_pos * self.pos)
 
         if self.edge == 'top':
@@ -111,42 +129,10 @@ class SlideIn(TimedTransition):
         return Frame(i, hash=(*self.hash, self.edge))
 
 
-class NumberTransition(metaclass=UniqInstance):
-    def __init__(self, name: str, duration: float, initial: float) -> None:
-        self.name = name
-        self.duration = duration
-
-        self._prev_value = initial
-        self._curr_value = None
-
-        self._last_step = time.time()
-        self.pos = 0
-        self._running = False
-
-    def mut(self, num: float) -> 'NumberTransition':
-        if self._curr_value != num:
-            self.pos = 0
-            self._running = True
-        self._curr_value = num
-        return self
-
-    def tick(self, step: float):
-        if not self._running:
-            self._last_step = step
-            return
-
-        factor = (step - self._last_step) / self.duration
-        self.pos = factor
-
-        if self.pos >= 1:
-            self.pos = 1
-            self._last_step = step
-            self._prev_value = self._curr_value
-            self._running = False
-
+class NumberTransition(TimedTransition[float]):
     def value(self, fs: FrameState) -> float:
         self.tick(fs.tick)
-        return self._prev_value + (self._curr_value - self._prev_value) * self.pos
+        return self.prev_value + (self.curr_value - self.prev_value) * self.pos
 
 
 def text_slide_in(

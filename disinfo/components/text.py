@@ -74,7 +74,7 @@ class Text(Frame):
             self.style = style
             dirty = True
 
-        self.hash = (self.value, self.style)
+        self.hash = (self.__class__.__name__, self.value, self.style)
 
         if dirty:
             self.draw_text()

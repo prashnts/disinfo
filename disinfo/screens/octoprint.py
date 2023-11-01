@@ -10,6 +10,7 @@ from ..components.layouts import vstack, hstack
 from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
 from ..components.spriteim import SpriteIcon
+from ..components.widget import Widget
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
@@ -135,7 +136,11 @@ def composer(fs: FrameState):
         detail_elem,
     ]
 
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(background='#000000ac', radius=2, padding=1))
+    return vstack(elements, gap=1, align='left')
+
+def widget(fs: FrameState):
+    frame = composer(fs)
+    return Widget('octoprint', frame=frame, priority=1 if frame else 0)
 
 
 draw = draw_loop(composer, sleepms=10)

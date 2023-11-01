@@ -31,7 +31,7 @@ sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 s_temp_value = TextStyle(font=fonts.px_op__l, color=light_gray.darken(0.1).hex)
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
-s_moon_phase = TextStyle(font=fonts.px_op__r, color='#58595c', outline=1, outline_color='#000000')
+s_moon_phase = TextStyle(font=fonts.bitocra7, color='#58595c')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 
 
@@ -39,7 +39,7 @@ fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_wea
 
 @cache
 def moon_phase_image(phase: int) -> StillImage:
-    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(24, 24))
+    return StillImage(f'assets/moon/moon{phase:02d}.png', resize=(15, 15))
 
 
 def astronomical_info(fs: FrameState):
@@ -118,20 +118,14 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
-    weather_info = div(
-        vstack([
+    return vstack([
+        hstack([
+            weather_icon.draw(fs.tick).rescale(1),
             hstack([
-                weather_icon.draw(fs.tick).rescale(1),
-                hstack([
-                    text(f'{round(s.temperature)}', style=s_temp_value),
-                    text('°', style=s_deg_c),
-                ], gap=0, align='top'),
-            ], gap=2, align='bottom'),
-            draw_temp_range(s.temperature, s.t_high, s.t_low),
-            warning_icon if state.is_outdated else None,
-        ], gap=3, align='center'),
-        style=DivStyle(background='#0000008f', padding=2, radius=2))
-
-    weather_stack = [weather_info]
-
-    return vstack(weather_stack, gap=1, align='left')
+                text(f'{round(s.temperature)}', style=s_temp_value),
+                text('°', style=s_deg_c),
+            ], gap=0, align='top'),
+        ], gap=2, align='bottom'),
+        draw_temp_range(s.temperature, s.t_high, s.t_low),
+        warning_icon if state.is_outdated else None,
+    ], gap=3, align='center')
