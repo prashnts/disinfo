@@ -4,7 +4,7 @@ from datetime import timedelta
 from pydash import py_
 
 from .drawer import draw_loop
-from ..components.text import Text, TextStyle
+from ..components.text import Text, TextStyle, text
 from ..components.elements import StillImage
 from ..components.layouts import vstack, hstack
 from ..components.layers import div, DivStyle
@@ -29,13 +29,12 @@ tail_arrow_left         = Text(f'⤙', style=tail_arrow_style)
 tail_arrow_right        = Text(f'⤚', style=tail_arrow_style)
 text_time_left          = Text(style=muted_small_style)
 text_completion_time    = Text(style=TextStyle(font=fonts.bitocra7, color='#e88a36'))
-text_progress           = Text(style=TextStyle(font=fonts.cozette, color='#888888'))
 text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
 text_file_name          = Text(style=muted_small_style)
 text_toolt_current      = Text(style=muted_small_style)
 text_bedt_current       = Text(style=muted_small_style)
 
-hscroller_fname = HScroller(size=22, pause_at_loop=True)
+hscroller_fname = HScroller(size=28, pause_at_loop=True)
 
 @throttle(1061)
 def get_state(fs: FrameState):
@@ -92,10 +91,6 @@ def composer(fs: FrameState):
     if not state['is_visible']:
         return
 
-    text_progress.update(value=f'{state["progress"]:0.1f}')
-    text_toolt_current.update(value=f'{round(state["toolt_current"])}')
-    text_bedt_current.update(value=f'{round(state["bedt_current"])}')
-
     fname_changed = text_file_name.update(value=state["file_name"])
     hscroller_fname.set_frame(text_file_name, fname_changed)
 
@@ -108,7 +103,7 @@ def composer(fs: FrameState):
     if not state['is_done']:
         text_time_left.update(value=f'{state["time_left"]}')
         text_completion_time.update(value=f'{state["completion_time"]}')
-        completion_info.append(text_completion_time)
+        # completion_info.append(text_completion_time)
     else:
         text_time_left.update(value='Done!')
 
@@ -116,24 +111,24 @@ def composer(fs: FrameState):
 
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
-        hstack([text_progress, text_percent_sign], gap=1, align='top'),
+        hstack([text(f'{state["progress"]:0.1f}', TextStyle(font=fonts.cozette, color='#888888')), text_percent_sign], gap=1, align='top'),
     ], gap=4)
 
-    detail_elem = hstack([
-        hstack([
-            file_icon,
-            hscroller_fname.draw(fs.tick),
-        ], gap=1),
-        hstack([
-            hstack([toolt_icon, text_toolt_current], gap=1),
-            hstack([bedt_icon, text_bedt_current], gap=1),
-        ], gap=2),
+    file_detail = hstack([
+        file_icon,
+        hscroller_fname.draw(fs.tick),
+    ], gap=1)
+
+    temp_detail = hstack([
+        hstack([toolt_icon, text(f'{round(state["toolt_current"])}', muted_small_style)], gap=1),
+        hstack([bedt_icon, text(f'{round(state["bedt_current"])}', muted_small_style)], gap=1),
     ], gap=2)
 
     elements = [
         info_elem,
         completion_text,
-        detail_elem,
+        file_detail,
+        temp_detail,
     ]
 
     return vstack(elements, gap=1, align='left')

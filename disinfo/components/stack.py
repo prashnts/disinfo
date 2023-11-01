@@ -10,10 +10,7 @@ from .layouts import vstack
 from .layers import div, DivStyle
 from .widget import Widget
 from .scroller import VScroller
-from .transitions import TimedTransition, NumberTransition
 
-class TransitionList(TimedTransition[float]):
-    ...
 
 class Stack(metaclass=UniqInstance):
     def __init__(self, name: str):
