@@ -91,9 +91,6 @@ def composer(fs: FrameState):
     if not state['is_visible']:
         return
 
-    fname_changed = text_file_name.update(value=state["file_name"])
-    hscroller_fname.set_frame(text_file_name, fname_changed)
-
     completion_info = [
         tail_arrow_left,
         text_time_left,
@@ -116,7 +113,7 @@ def composer(fs: FrameState):
 
     file_detail = hstack([
         file_icon,
-        hscroller_fname.draw(fs.tick),
+        hscroller_fname.set_frame(text(state["file_name"], muted_small_style)).draw(fs.tick),
     ], gap=1)
 
     temp_detail = hstack([
@@ -131,7 +128,7 @@ def composer(fs: FrameState):
         temp_detail,
     ]
 
-    return vstack(elements, gap=1, align='left')
+    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
 
 def widget(fs: FrameState):
     frame = composer(fs)

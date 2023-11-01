@@ -25,7 +25,7 @@ class _Scroller:
         if frame:
             self._init_scroller(frame, True)
 
-    def set_frame(self, frame: Frame, reset: bool = True):
+    def set_frame(self, frame: Frame, reset: bool = False):
         self._init_scroller(frame, reset)
         return self
 

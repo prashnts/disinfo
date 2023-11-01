@@ -123,7 +123,7 @@ def composer(fs: FrameState):
     ]
 
     if art:
-        music_elements.insert(0, SlideIn('np.albumart', 0.8, edge='right', easing=ease.linear.linear).mut(art).draw(fs))
+        music_elements.insert(0, SlideIn('np.albumart', 1.6, edge='right', easing=ease.linear.linear).mut(art).draw(fs))
 
     return div(
         hstack(music_elements, gap=1, align='center'),
