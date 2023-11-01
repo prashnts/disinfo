@@ -39,6 +39,6 @@ def composer(fs: FrameState):
     ).tag('trash_pickup')
 
 def widget(fs: FrameState):
-    return Widget('trash_pickup', composer(fs))
+    return Widget('trash_pickup', composer(fs), priority=0.5)
 
 draw = draw_loop(composer)

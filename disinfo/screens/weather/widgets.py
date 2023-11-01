@@ -8,4 +8,4 @@ def weather(fs: FrameState) -> Widget:
 
 def moon_phase(fs: FrameState) -> Widget:
     frame = astronomical_info(fs)
-    return Widget(name='moon_phase.widget', frame=frame, priority=1)
+    return Widget(name='moon_phase.widget', frame=frame, priority=0.5)
