@@ -140,7 +140,7 @@ def composer(fs: FrameState):
 
 def widget(fs: FrameState):
     frame = composer(fs)
-    return Widget('octoprint', frame=frame, priority=1 if frame else 0)
+    return Widget('octoprint', frame=frame, priority=10 if frame else 0)
 
 
 draw = draw_loop(composer, sleepms=10)

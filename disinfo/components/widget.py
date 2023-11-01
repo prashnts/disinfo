@@ -12,7 +12,7 @@ from .layers import DivStyle, div
 class Widget:
     name: str
     frame: Optional[Frame] = None
-    priority: int = 0
+    priority: int = 1
     active: bool = True
     style: DivStyle = DivStyle(padding=1, radius=2, background='#000000cf', border=1)
 
@@ -20,4 +20,3 @@ class Widget:
         if self.frame:
             style = dc_replace(self.style, border_color='#0E8E47' if active else '#000000cf')
             return div(self.frame, style)
-        return Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)))
