@@ -15,7 +15,7 @@ class Frame(UIElement):
         self.image = image
         self.width = image.width
         self.height = image.height
-        self.hash = (self.__class__.__name__, _hash(image.tobytes()) if hash is None else hash)
+        self.hash = (self.__class__.__name__, _hash(image.tobytes())) if hash is None else hash
 
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
         # TODO: support extending the frame

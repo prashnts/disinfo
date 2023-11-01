@@ -109,8 +109,8 @@ class CursorStateManager(PubSubStateManager[CursorState]):
             self.state.x -= 1
         if data.action == 'right':
             self.state.x += 1
-        self.state.x %= app_config.matrix_w
-        self.state.y %= app_config.matrix_h
+        self.state.x %= app_config.width
+        self.state.y %= app_config.height
 
 
 class RemoteState(AppBaseModel):
@@ -193,6 +193,9 @@ class LightSensorStateManager(PubSubStateManager[LightSensorState]):
     def __init__(self, entity_id: str):
         self.entity_id = entity_id
         super().__init__()
+
+    def _uid(self) -> str:
+        return f'{self.__class__.__name__}.{self.entity_id}'
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
