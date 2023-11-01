@@ -77,7 +77,9 @@ class _Scroller:
             return
         if delta >= self.speed:
             if self.target is not None:
-                if self.pos < self.target:
+                if abs(self.pos - self.target) <= self.delta:
+                    self.pos = self.target
+                elif self.pos < self.target:
                     self.pos += self.delta
                 elif self.pos > self.target:
                     self.pos -= self.delta
