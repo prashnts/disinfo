@@ -140,7 +140,7 @@ def text_slide_in(
     name: str,
     value: str,
     style=TextStyle(),
-    edge='top',
+    edge='bottom',
     duration=0.25) -> Frame:
     frames = []
     for i, char in enumerate(value):

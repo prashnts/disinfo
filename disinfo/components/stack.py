@@ -33,13 +33,16 @@ class Stack(metaclass=UniqInstance):
 
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]
-        if step - self.last_step > curr_widget.priority * 2 + 1:
+        if step - self.last_step > curr_widget.wait_time + 1:
             if not any ([w.frame for w in self._widgets]):
                 self.pos = 0
+            elif len([w for w in self._widgets if w.frame]) == 1:
+                self.pos = [i for i, w in enumerate(self._widgets) if w.frame][0]
             else:
                 while True:
-                    self.pos = random.randint(0, len(self._widgets) - 1)
-                    if self._widgets[self.pos].frame:
+                    pos = random.randint(0, len(self._widgets) - 1)
+                    if self._widgets[pos].frame and pos != self.pos:
+                        self.pos = pos
                         break
             self.last_step = step
 

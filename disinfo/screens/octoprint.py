@@ -11,6 +11,7 @@ from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
 from ..components.spriteim import SpriteIcon
 from ..components.widget import Widget
+from ..components.transitions import text_slide_in
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
@@ -25,16 +26,11 @@ bedt_icon = StillImage('assets/raster/printerbed-5x5.png')
 tail_arrow_style = TextStyle(font=fonts.scientifica__r, color='#8c5b3e')
 muted_small_style = TextStyle(font=fonts.bitocra7, color='#888888')
 
-tail_arrow_left         = Text(f'⤙', style=tail_arrow_style)
-tail_arrow_right        = Text(f'⤚', style=tail_arrow_style)
-text_time_left          = Text(style=muted_small_style)
-text_completion_time    = Text(style=TextStyle(font=fonts.bitocra7, color='#e88a36'))
+tail_arrow_left         = text(f'⤙', style=tail_arrow_style)
+tail_arrow_right        = text(f'⤚', style=tail_arrow_style)
 text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
-text_file_name          = Text(style=muted_small_style)
-text_toolt_current      = Text(style=muted_small_style)
-text_bedt_current       = Text(style=muted_small_style)
 
-hscroller_fname = HScroller(size=28, pause_at_loop=True)
+hscroller_fname = HScroller(size=33, pause_at_loop=True)
 
 @throttle(1061)
 def get_state(fs: FrameState):
@@ -91,39 +87,40 @@ def composer(fs: FrameState):
     if not state['is_visible']:
         return
 
-    completion_info = [
-        tail_arrow_left,
-        text_time_left,
-        tail_arrow_right,
-    ]
+    completion_time = None
 
     if not state['is_done']:
-        text_time_left.update(value=f'{state["time_left"]}')
-        text_completion_time.update(value=f'{state["completion_time"]}')
-        # completion_info.append(text_completion_time)
+        completion_time = text_slide_in(fs, 'op.eta', f'{state["completion_time"]}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
+        time_left = text_slide_in(fs, 'op.time_left', f'{state["time_left"]}', muted_small_style)
     else:
-        text_time_left.update(value='Done!')
+        time_left = text('Done!', style=muted_small_style)
 
-    completion_text = hstack(completion_info, gap=2, align='center')
+
+    completion_text = hstack([tail_arrow_right, time_left], gap=2, align='center')
+    completion_eta = hstack([tail_arrow_left, completion_time], gap=2, align='center') if completion_time else None
 
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
-        hstack([text(f'{state["progress"]:0.1f}', TextStyle(font=fonts.cozette, color='#888888')), text_percent_sign], gap=1, align='top'),
+        hstack([
+            text_slide_in(fs, 'op.progress', f'{state["progress"]:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_percent_sign,
+        ], gap=1, align='top'),
     ], gap=4)
 
     file_detail = hstack([
         file_icon,
         hscroller_fname.set_frame(text(state["file_name"], muted_small_style)).draw(fs.tick),
-    ], gap=1)
+    ], gap=2)
 
     temp_detail = hstack([
-        hstack([toolt_icon, text(f'{round(state["toolt_current"])}', muted_small_style)], gap=1),
-        hstack([bedt_icon, text(f'{round(state["bedt_current"])}', muted_small_style)], gap=1),
-    ], gap=2)
+        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state["toolt_current"])}', muted_small_style)], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state["bedt_current"])}', muted_small_style)], gap=2),
+    ], gap=4)
 
     elements = [
         info_elem,
         completion_text,
+        completion_eta,
         file_detail,
         temp_detail,
     ]
@@ -132,7 +129,7 @@ def composer(fs: FrameState):
 
 def widget(fs: FrameState):
     frame = composer(fs)
-    return Widget('octoprint', frame=frame, priority=15 if frame else 0)
+    return Widget('octoprint', frame=frame, priority=15 if frame else 0, wait_time=20 if frame else 0)
 
 
 draw = draw_loop(composer, sleepms=10)
