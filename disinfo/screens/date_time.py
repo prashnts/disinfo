@@ -18,7 +18,7 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
-s_sticky_h  = TextStyle(color=minute_green.darken(.25).hex, font=fonts.bitocra7)
+s_sticky_h  = TextStyle(color=minute_green.darken(.2).hex, font=fonts.bitocra7)
 s_sticky_s  = TextStyle(color=light_gray.darken(.4).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
