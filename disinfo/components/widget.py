@@ -19,5 +19,5 @@ class Widget:
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         if self.frame:
-            style = dc_replace(self.style, border_color='#0E8E47' if active else '#000000cf')
+            style = dc_replace(self.style, border_color='#092058a9' if active else '#000000cf')
             return div(self.frame, style)
