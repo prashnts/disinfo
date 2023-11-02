@@ -71,7 +71,7 @@ def compose_small_frame(fs: FrameState):
         return Frame(image).tag('not_present')
 
     composite_at(screens.solar.draw(fs), image, 'mm')
-    composite_at(screens.date_time.sticky_widget(fs), image, 'tm')
+    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),
         screens.weather.widgets.moon_phase(fs),

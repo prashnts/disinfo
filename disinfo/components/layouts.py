@@ -103,6 +103,8 @@ def composite_at(
     frame: Optional[Frame],
     dest: Union[Image.Image, Frame],
     anchor: ComposeAnchor = 'tl',
+    dx: int = 0,
+    dy: int = 0,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -149,7 +151,7 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
-    dest.alpha_composite(frame.image, (left, top))
+    dest.alpha_composite(frame.image, (left + dx, top + dy))
     return Frame(dest, hash=('composite_at', anchor, frame))
 
 def mosaic(

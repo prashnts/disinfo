@@ -29,10 +29,13 @@ class Stack(metaclass=UniqInstance):
     def surface(self, fs: FrameState):
         frames = [w.draw(fs, active=i == self.pos) for i, w in enumerate(self._widgets)]
         pos = app_config.height + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
-        return div(vstack(frames, gap=2), DivStyle(padding=1)), pos
+        return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
 
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]
+        if not self.scroller.on_target:
+            return
+
         if step - self.last_step > curr_widget.wait_time + 1:
             if not any ([w.frame for w in self._widgets]):
                 self.pos = 0

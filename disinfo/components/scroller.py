@@ -1,9 +1,9 @@
 from PIL import Image
-from typing import Optional
+from typing import Optional, Callable
 
 from .elements import Frame
 
-class _Scroller:
+class Scroller:
     def __init__(self,
         size: int,
         frame: Optional[Frame] = None,
@@ -22,6 +22,7 @@ class _Scroller:
         self.pause_at_loop = pause_at_loop
         self.pause_duration = pause_duration
         self.target = None
+        self.on_target = False
         if frame:
             self._init_scroller(frame, True)
 
@@ -85,6 +86,9 @@ class _Scroller:
                     self.pos -= self.delta
                 else:
                     self.pos = self.target
+                self.on_target = False
+                if self.pos == self.target:
+                    self.on_target = True
             else:
                 self.pos += self.delta
             self.pos %= self._get_frame_size()
@@ -97,7 +101,7 @@ class _Scroller:
         i.alpha_composite(patch_img, (0, 0))
         return Frame(i, hash=(self.__class__.__name__, self.size, self.frame))
 
-class HScroller(_Scroller):
+class HScroller(Scroller):
     def _get_crop_rect(self):
         # HACK!
         if self.static_if_small and self._true_w <= self.size:
@@ -126,7 +130,7 @@ class HScroller(_Scroller):
         i.alpha_composite(f.image, (self.size, 0))
         return Frame(i)
 
-class VScroller(_Scroller):
+class VScroller(Scroller):
     def _get_crop_rect(self):
         if self.static_if_small and self._true_h <= self.size:
             return (0, self.size, self.frame.width, self.frame.height)
