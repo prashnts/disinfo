@@ -36,6 +36,7 @@ black = AppColor('#000000')
 light_blue = AppColor('#2d83b4')
 amber_red = AppColor('#b21a1a')
 orange_red = AppColor('#c93f20')
+minute_green = AppColor('#42a459')
 
 
 # Sky colors

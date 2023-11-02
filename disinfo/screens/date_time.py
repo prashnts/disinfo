@@ -3,7 +3,7 @@ import random
 from PIL import Image, ImageDraw
 
 from .drawer import draw_loop
-from .colors import gray, amber_red, black, light_gray, light_blue, orange_red
+from .colors import gray, amber_red, black, light_gray, light_blue, orange_red, minute_green
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.elements import Frame
@@ -18,7 +18,7 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
-s_sticky_h  = TextStyle(color=orange_red.darken(.2).hex, font=fonts.bitocra7)
+s_sticky_h  = TextStyle(color=minute_green.darken(.25).hex, font=fonts.bitocra7)
 s_sticky_s  = TextStyle(color=light_gray.darken(.4).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
@@ -109,7 +109,7 @@ def sticky_widget(fs: FrameState):
             text_slide_in(fs, 'dt.sk.clk.m', fs.now.strftime('%M'), s_sticky_h, 'top'),
             text_slide_in(fs, 'dt.sk.clk.s', fs.now.strftime('%S'), s_sticky, 'top'),
         ]),
-        style=DivStyle(background='#112244', padding=(1, 0, 1, 2), radius=(0, 0, 2, 2)))
+        style=DivStyle(background='#112244', padding=(1, 1, 1, 2), radius=(0, 0, 2, 2)))
 
 def composer(fs: FrameState):
     return div(
