@@ -28,7 +28,7 @@ class Stack(metaclass=UniqInstance):
 
     def surface(self, fs: FrameState):
         frames = [w.draw(fs, active=i == self.pos) for i, w in enumerate(self._widgets)]
-        pos = app_config.height + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
+        pos = app_config.height - 8 + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
         return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
 
     def tick(self, step: float):
