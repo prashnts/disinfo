@@ -15,7 +15,7 @@ class Widget:
     priority: int = 1
     active: bool = True
     wait_time: float = 2
-    style: DivStyle = DivStyle(padding=1, radius=2, background='#000000bf', border=1)
+    style: DivStyle = DivStyle(padding=1, radius=2, background='#000000ca', border=1)
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         if self.frame:
