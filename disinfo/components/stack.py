@@ -42,8 +42,11 @@ class Stack(metaclass=UniqInstance):
             elif len([w for w in self._widgets if w.frame]) == 1:
                 self.pos = [i for i, w in enumerate(self._widgets) if w.frame][0]
             else:
+                pos = self.pos
                 while True:
-                    pos = random.randint(0, len(self._widgets) - 1)
+                    # pos = random.randint(0, len(self._widgets) - 1)
+                    pos += 1
+                    pos %= len(self._widgets)
                     if self._widgets[pos].frame and pos != self.pos:
                         self.pos = pos
                         break
