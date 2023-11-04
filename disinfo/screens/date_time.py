@@ -105,9 +105,9 @@ def glitterify(frame: Frame):
 def sticky_widget(fs: FrameState):
     return div(
         vstack([
-            text_slide_in(fs, 'dt.sk.clk.h', fs.now.strftime('%H'), s_sticky_h, 'top'),
-            text_slide_in(fs, 'dt.sk.clk.m', fs.now.strftime('%M'), s_sticky_h, 'top'),
-            text_slide_in(fs, 'dt.sk.clk.s', fs.now.strftime('%S'), s_sticky, 'top'),
+            text_slide_in(fs, 'dt.sk.clk.h', fs.now.strftime('%H'), s_sticky_h, 'right'),
+            text_slide_in(fs, 'dt.sk.clk.m', fs.now.strftime('%M'), s_sticky_h, 'right'),
+            text_slide_in(fs, 'dt.sk.clk.s', fs.now.strftime('%S'), s_sticky, 'right'),
         ]),
         style=DivStyle(background='#112244', padding=(1, 1, 1, 2), radius=(0, 0, 2, 2)))
 
