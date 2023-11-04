@@ -13,17 +13,17 @@ class WeatherData(AppBaseModel):
     icon_name: str = 'sleet'
     t_high: float = 5.0
     t_low: float = 0
-    sunset_time: Optional[datetime] = None
-    sunrise_time: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    moon_phase: int = 50
+    sunset_time: Optional[datetime] = pendulum.now().set(hour=19, minute=0, second=0)
+    sunrise_time: Optional[datetime] = pendulum.now().set(hour=7, minute=0, second=0)
+    updated_at: Optional[datetime] = pendulum.now()
+    moon_phase: int = 10
 
 class WeatherState(AppBaseModel):
     data: WeatherData = WeatherData()
     valid: bool = False
-    show_sunrise: bool = False
-    show_sunset: bool = False
-    show_moon_phase: bool = False
+    show_sunrise: bool = True
+    show_sunset: bool = True
+    show_moon_phase: bool = True
     is_outdated: bool = True
 
 class WeatherStateManager(PubSubStateManager[WeatherState]):
@@ -56,10 +56,10 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
         self.state.show_sunset = s.sunset_time > fs.now > s.sunset_time.subtract(hours=5)
 
         # Sunrise time is shown after sunset.
-        self.state.show_sunrise = s.sunrise_time.subtract(hours=8) < fs.now
+        self.state.show_sunrise = fs.now > s.sunset_time
 
-        # Moon Phase is when sunset is shown and until 3 hours after sunset.
-        self.state.show_moon_phase = True # self.state.show_sunset or (fs.now - s.sunset_time).total_seconds() < 3 * 60 * 60
+        # Moon Phase is when sunset is shown and until 3 hours after sunset. (Always shown)
+        self.state.show_moon_phase = True
         # If the state is not updated for 30 minutes, it's outdated.
         self.state.is_outdated = (fs.now - s.updated_at).total_seconds() > 30 * 60  # 30 mins.
         return self.state
