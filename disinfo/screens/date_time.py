@@ -11,6 +11,7 @@ from ..components.layers import div, DivStyle
 from ..components.layouts import hstack, vstack
 from ..components.text import TextStyle, text
 from ..components.transitions import text_slide_in
+from ..components.widget import Widget
 
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
@@ -119,5 +120,12 @@ def composer(fs: FrameState):
             world_clock(fs),
         ], gap=2, align='center'),
         style=DivStyle(background='#00000000'))
+
+def calendar_widget(fs: FrameState):
+    contents = vstack([
+        date(fs),
+        world_clock(fs),
+    ], gap=2)
+    return Widget('dt.calendar', contents, priority=0.1)
 
 draw = draw_loop(composer)
