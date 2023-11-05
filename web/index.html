@@ -22,7 +22,7 @@
 
         img {
             width: 100%;
-            max-width: 500px;
+            max-height: 150px;
             image-rendering: pixelated;
             /* filter: brightness(1.05) contrast(1.25); */
             display: block;
@@ -49,6 +49,7 @@
 <body>
     <h1>disinfo!</h1>
     <img src='' id='screen'/>
+    <img src='' id='pico'/>
     <div id='controls'>
     </div>
     <svg height="0">
@@ -63,12 +64,12 @@
     <script type="module">
         const WS_RETRY_DELAY = 2000;
         const FRAME_DELAY = 40
-        const connect = function () {
+        const connect = function (endpoint, img_id) {
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            let ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+            let ws = new WebSocket(`${protocol}://${window.location.host}/${endpoint}`);
 
             ws.onmessage = function (event) {
-                document.getElementById('screen').src = `data:image/png;base64,${event.data}`;
+                document.getElementById(img_id).src = `data:image/png;base64,${event.data}`;
             };
 
             ws.onopen = function (event) {
@@ -95,7 +96,8 @@
                 ws.close();
             }
         }
-        connect();
+        connect('ws', 'screen');
+        connect('ws-pico', 'pico');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
@@ -121,6 +123,23 @@
             return html`<button onClick=${didClick} class='remote_button'>${props.action}</button>`;
         }
 
+        function TriggerButton(props) {
+            const didClick = () => {
+                fetch('/trigger', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        endpoint: props.endpoint,
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                }).then(() => {
+                    console.log('Sent trigger')
+                })
+            }
+            return html`<button onClick=${didClick} class='trigger_button'>${props.endpoint}</button>`;
+        }
+
 
         function App(props) {
             return html`
@@ -132,6 +151,9 @@
                     <${RemoteButton} action="btn_metro" />
                     <${RemoteButton} action="btn_twentytwo" />
                     <${RemoteButton} action="btn_debug" />
+                </div>
+                <div>
+                    <${TriggerButton} endpoint="motion" />
                 </div>`;
         }
 
