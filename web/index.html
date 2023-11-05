@@ -21,11 +21,14 @@
         }
 
         img {
-            height: 150px;
+            min-height: 150px;
+            max-height: 250px;
+            padding: 2px;
+            margin: 5px auto;
+            max-width: 100%;
             image-rendering: pixelated;
             /* filter: brightness(1.05) contrast(1.25); */
             display: block;
-            margin: auto;
             border-radius: 4px;
             border: 1px solid #000;
             filter: url('#gamma');
