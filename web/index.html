@@ -87,7 +87,7 @@
                 console.warn(`Disinfo connection lost. Retrying in ${WS_RETRY_DELAY / 1000}s.`)
                 setTimeout(function () {
                     // We generate socket with a timeout to make sure server has time to recover.
-                    ws = connect();
+                    ws = connect(endpoint, img_id);
                 }, WS_RETRY_DELAY);
             }
 
