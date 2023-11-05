@@ -15,6 +15,7 @@ from ..data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
 from ..utils.imops import apply_gamma
+from ..utils.func import throttle
 from ..components.transitions import NumberTransition
 
 target_ip = '10.0.1.132'
@@ -29,6 +30,7 @@ def reencode_frame(img: Image.Image, brightness: float = 1):
     img = e.enhance(brightness / 100)
     return img
 
+# @throttle()
 def publish_frame(img):
     with BytesIO() as buffer:
         img.save(buffer, format='png')
@@ -37,6 +39,7 @@ def publish_frame(img):
     publish('di.pubsub.frames', action='new-frame-pico', payload=dict(img=encoded_img))
 
 def emit_frame(img, brightness):
+    publish_frame(img)
     img = reencode_frame(img, brightness)
 
     im = np.array(img)
@@ -55,7 +58,6 @@ def emit_frame(img, brightness):
         payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
         try:
             udp_socket.sendto(payload, (target_ip, target_port))
-            publish_frame(img)
         except OSError:
             errors += 1
 
