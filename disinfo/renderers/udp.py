@@ -36,7 +36,7 @@ def publish_frame(img):
 
     publish('di.pubsub.frames', action='new-frame-pico', payload=dict(img=encoded_img))
 
-def publish_frame(img, brightness):
+def emit_frame(img, brightness):
     img = reencode_frame(img, brightness)
 
     im = np.array(img)
@@ -55,6 +55,7 @@ def publish_frame(img, brightness):
         payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
         try:
             udp_socket.sendto(payload, (target_ip, target_port))
+            publish_frame(img)
         except OSError:
             errors += 1
 
@@ -71,7 +72,7 @@ def main(fps: int = 60, stats: bool = False):
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 2, initial=50).mut(als.brightness).value(fs)
-        publish_frame(frame, int(brightness))
+        emit_frame(frame, int(brightness))
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)
