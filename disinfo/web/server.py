@@ -44,7 +44,7 @@ class TriggerInput(AppBaseModel):
 @app.post('/trigger')
 async def trigger_actions(tinput: TriggerInput):
     if tinput.endpoint == 'motion':
-        trigger_motion()
+        trigger_motion(state='on')
     return {'status': 'ok'}
 
 @app.websocket('/ws')
