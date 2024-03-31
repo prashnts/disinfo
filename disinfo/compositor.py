@@ -49,6 +49,7 @@ def compose_big_frame(fs: FrameState):
         screens.weather.widgets.weather(fs),
         screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
+        screens.dishwasher.widget(fs),
         screens.octoprint.widget(fs),
         screens.trash_pickup.widget(fs),
     ])
