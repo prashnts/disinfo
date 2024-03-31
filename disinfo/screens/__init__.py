@@ -10,6 +10,7 @@ from . import plant
 from . import demo
 from . import debug_info
 from . import trash_pickup
+from . import dishwasher
 
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     'demo',
     'debug_info',
     'trash_pickup',
+    'dishwasher',
 ]

@@ -103,6 +103,13 @@ def glitterify(frame: Frame):
 
     return Frame(img)
 
+def simple(fs: FrameState):
+    return div(vstack([
+        text_slide_in(fs, 'dt.sm.clk.h', fs.now.strftime('%H'), edge='right'),
+        text_slide_in(fs, 'dt.sm.clk.m', fs.now.strftime('%M'), edge='right'),
+        text_slide_in(fs, 'dt.sm.clk.s', fs.now.strftime('%S'), edge='right'),
+    ]))
+
 def sticky_widget(fs: FrameState):
     return div(
         vstack([

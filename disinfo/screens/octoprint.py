@@ -34,14 +34,17 @@ hscroller_fname = HScroller(size=33, pause_at_loop=True)
 
 @throttle(1061)
 def get_state(fs: FrameState):
-    print_state = get_dict(rkeys['octoprint_printing'])
-    tool_temp = get_dict(rkeys['octoprint_toolt'])
-    bed_temp = get_dict(rkeys['octoprint_bedt'])
+    try:
+        print_state = get_dict(rkeys['octoprint_printing'])
+        tool_temp = get_dict(rkeys['octoprint_toolt'])
+        bed_temp = get_dict(rkeys['octoprint_bedt'])
 
-    time_left = print_state['progress']['printTimeLeft']
-    progress = print_state['progress']['completion'] or -1
-    flags = print_state['state']['flags']
-    last_update = arrow.get(print_state['_timestamp'], tzinfo='local')
+        time_left = print_state['progress']['printTimeLeft']
+        progress = print_state['progress']['completion'] or -1
+        flags = print_state['state']['flags']
+        last_update = arrow.get(print_state['_timestamp'], tzinfo='local')
+    except KeyError:
+        return None
 
     is_printing = flags['printing']
     is_on = flags['operational'] or is_printing
@@ -84,7 +87,7 @@ def get_state(fs: FrameState):
 def composer(fs: FrameState):
     state = get_state(fs)
 
-    if not state['is_visible']:
+    if not state or not state['is_visible']:
         return
 
     completion_time = None
