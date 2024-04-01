@@ -61,7 +61,7 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')
 
-    image = draw_btn_test(image, fs)
+    # image = draw_btn_test(image, fs)
 
     return Frame(image).tag('present')
 
