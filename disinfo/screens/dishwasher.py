@@ -25,7 +25,7 @@ def timer_full_cycle(now):
 
 def composer(fs: FrameState):
     next_timer = timer_full_cycle(fs.now)
-    label = text('Timer', style=TextStyle(font=fonts.bitocra7, color=gray.hex))
+    label = text('Timer', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex))
     timer_widget = text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', TextStyle(color=gray.hex, font=fonts.bitocra7), 'top')
     schedules = hstack([dishwasher_icon, vstack([label, timer_widget])], gap=2)
 
@@ -35,6 +35,6 @@ def composer(fs: FrameState):
     ).tag('dishwasher')
 
 def widget(fs: FrameState):
-    return Widget('dishwasher', composer(fs), priority=0.5)
+    return Widget('dishwasher', composer(fs), priority=0.5, wait_time=8)
 
 draw = draw_loop(composer)
