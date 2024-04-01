@@ -42,7 +42,7 @@ def composer(fs: FrameState):
             hstack([
                 text_slide_in(fs, 'dishwasher.timer', f'{next_timer}', time_style, 'top'),
                 text('h', style=label_style),
-            ], align='center'),
+            ], align='top'),
         ], gap=4),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
