@@ -8,10 +8,15 @@ from ..components.widget import Widget
 from ..components.text import TextStyle, text
 from ..components.transitions import text_slide_in
 from ..data_structures import FrameState
+from ..utils.cairo import load_svg
 
 dishwasher_icon = StillImage('assets/raster/dishwasher.png')
-label_style = TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)
+label_style = TextStyle(font=fonts.bitocra7, color=gray.darken(0.6).hex)
 time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.bitocra7)
+
+
+
+dishwasher_icon = load_svg('assets/mui-icons/dishwasher_gen_FILL1_wght400_GRAD-25_opsz20.svg')
 
 
 def timer_full_cycle(now):
@@ -28,8 +33,8 @@ def is_visible(fs: FrameState):
 
 
 def composer(fs: FrameState):
-    if not is_visible(fs):
-        return
+    # if not is_visible(fs):
+    #     return
 
     next_timer = timer_full_cycle(fs.now)
 
@@ -41,7 +46,7 @@ def composer(fs: FrameState):
                 text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', time_style, 'top'),
             ], align='center'),
         ], gap=2),
-        style=DivStyle(padding=1, radius=2, background=gray.darken(0.8).hex)
+        style=DivStyle(padding=1, radius=1, background=gray.darken(0.2).hex)
     ).tag('dishwasher')
 
 def widget(fs: FrameState):

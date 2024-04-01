@@ -1,10 +1,11 @@
 import math
-import cairo
 import pendulum
 import numpy as np
 
-from functools import cache
-from pendulum.time import Time
+import cairocffi
+cairocffi.install_as_pycairo()
+import cairo
+
 from PIL import Image
 from suncalc import get_position, get_times
 from scipy.interpolate import interp1d
@@ -85,18 +86,18 @@ def to_pil(surface: cairo.ImageSurface) -> Image.Image:
     format = surface.get_format()
     size = (surface.get_width(), surface.get_height())
     stride = surface.get_stride()
+    buffer = surface.get_data()
 
-    with surface.get_data() as memory:
-        if format == cairo.Format.RGB24:
-            return Image.frombuffer(
-                "RGB", size, memory.tobytes(),
-                'raw', "BGRX", stride)
-        elif format == cairo.Format.ARGB32:
-            return Image.frombuffer(
-                "RGBA", size, memory.tobytes(),
-                'raw', "BGRa", stride)
-        else:
-            raise NotImplementedError(repr(format))
+    if format == cairo.FORMAT_RGB24:
+        return Image.frombuffer(
+            "RGB", size, buffer,
+            'raw', "BGRX", stride)
+    elif format == cairo.FORMAT_ARGB32:
+        return Image.frombuffer(
+            "RGBA", size, buffer,
+            'raw', "BGRa", stride)
+    else:
+        raise NotImplementedError(repr(format))
 
 def clamp(value, min_value=0, max_value=1):
     return max(min(value, max_value), min_value)

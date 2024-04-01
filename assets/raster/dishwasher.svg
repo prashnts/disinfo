@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="18px" height="16px" viewBox="0 0 18 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>dishwasher</title>
+    <defs>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#FFFFFF" stop-opacity="0" offset="0%"></stop>
+            <stop stop-color="#FBFBFB" stop-opacity="0.147344843" offset="29.789245%"></stop>
+            <stop stop-color="#000000" stop-opacity="0.5" offset="100%"></stop>
+        </linearGradient>
+        <rect id="path-2" x="0" y="0" width="18" height="16" rx="1"></rect>
+        <linearGradient x1="55.6149841%" y1="27.5017806%" x2="55.6149841%" y2="126.20425%" id="linearGradient-3">
+            <stop stop-color="#D2C395" offset="0%"></stop>
+            <stop stop-color="#C7A969" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="20.5502715%" y1="34.2297301%" x2="60.2924974%" y2="117.779142%" id="linearGradient-4">
+            <stop stop-color="#B99C42" offset="0%"></stop>
+            <stop stop-color="#69501A" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="dishwasher" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Rectangle">
+            <use fill="#424559" xlink:href="#path-2"></use>
+            <rect stroke="#25262D" stroke-width="1" stroke-linejoin="square" fill="url(#linearGradient-1)" x="0.5" y="0.5" width="17" height="15" rx="1"></rect>
+        </g>
+        <g id="Group" transform="translate(2.000000, 6.000000)">
+            <circle id="Oval" stroke="#AB9667" stroke-width="0.5" fill="url(#linearGradient-3)" cx="4.5" cy="4.5" r="4.25"></circle>
+            <circle id="Oval-Copy" stroke="#AB9667" stroke-width="0.5" fill="url(#linearGradient-4)" cx="10.5" cy="4.5" r="4.25"></circle>
+            <circle id="Oval" stroke="#B5A582" fill-opacity="0.429441652" fill="#D3CBBA" cx="10.5" cy="4.5" r="1.5"></circle>
+            <circle id="Oval-Copy-2" stroke="#B5A582" fill-opacity="0.429441652" fill="#D3CBBA" cx="4.5" cy="4.5" r="1.5"></circle>
+        </g>
+        <g id="Group-3" transform="translate(1.000000, 2.000000)">
+            <line x1="2.5" y1="5" x2="2.5" y2="0.5" id="Path" stroke-opacity="0.825202142" stroke="#5FA9B9" stroke-width="0.85"></line>
+            <line x1="1" y1="0.5" x2="4" y2="0.5" id="Path-2" stroke-opacity="0.825202142" stroke="#5FA9B9" stroke-width="0.85" stroke-linecap="round"></line>
+            <path d="M0.5,12 L0.178117625,7.49364675 C0.0865218945,6.21130652 1.05181103,5.09751136 2.33415126,5.00591563 C2.38934629,5.00197313 2.44466435,5 2.5,5 C3.78560734,5 4.82779801,6.04219067 4.82779801,7.32779801 C4.82779801,7.38313366 4.82582488,7.43845172 4.82188238,7.49364675 L4.5,12 L4.5,12" id="Path-3" stroke-opacity="0.634069056" stroke="#4CAAC7" stroke-width="0.5" fill-opacity="0.22418597" fill="#38E0CC" stroke-linecap="round"></path>
+        </g>
+        <g id="Group-2" transform="translate(7.000000, 2.000000)">
+            <line x1="2.5" y1="5" x2="2.5" y2="0.5" id="Path-Copy" stroke-opacity="0.825202142" stroke="#5FA9B9" stroke-width="0.85"></line>
+            <line x1="1" y1="0.5" x2="4" y2="0.5" id="Path-2-Copy" stroke-opacity="0.825202142" stroke="#5FA9B9" stroke-width="0.85" stroke-linecap="round"></line>
+            <path d="M0.5,12 L0.178117625,7.49364675 C0.0865218945,6.21130652 1.05181103,5.09751136 2.33415126,5.00591563 C2.38934629,5.00197313 2.44466435,5 2.5,5 C3.78560734,5 4.82779801,6.04219067 4.82779801,7.32779801 C4.82779801,7.38313366 4.82582488,7.43845172 4.82188238,7.49364675 L4.5,12 L4.5,12" id="Path-3-Copy" stroke-opacity="0.634069056" stroke="#4CAAC7" stroke-width="0.5" fill-opacity="0.22418597" fill="#38E0CC" stroke-linecap="round"></path>
+        </g>
+    </g>
+</svg>
