@@ -31,8 +31,8 @@ def is_visible(fs: FrameState):
 
 
 def composer(fs: FrameState):
-    # if not is_visible(fs):
-    #     return
+    if not is_visible(fs):
+        return
 
     next_timer = timer_full_cycle(fs.now)
 
