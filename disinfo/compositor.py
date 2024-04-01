@@ -16,7 +16,6 @@ from .config import app_config
 def should_turn_on_display(fs: FrameState) -> bool:
     sensors = app_config.presence_sensors
 
-    # return any([PresenceSensorStateManager(s).get_state().present_at(fs.now) for s in sensors])
     return any([PresenceSensorStateManager(s).get_state().present_at(fs.now) for s in sensors])
 
 
@@ -42,7 +41,8 @@ def compose_big_frame(fs: FrameState):
             vstack([
                 screens.date_time.draw(fs),
                 screens.plant.draw(fs),
-            ], gap=2, align='right'),
+                screens.weather.persistent_view(fs),
+            ], gap=3, align='right'),
         ], gap=1, align='right'),
         image, 'tr')
     stack = Stack('main_cards').mut([

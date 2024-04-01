@@ -1,10 +1,7 @@
 import math
 import pendulum
 import numpy as np
-
-import cairocffi
-cairocffi.install_as_pycairo()
-import cairo
+import cairocffi as cairo
 
 from PIL import Image
 from suncalc import get_position, get_times
@@ -20,6 +17,7 @@ from disinfo.components import fonts
 from disinfo.screens.colors import SkyHues
 from disinfo.config import app_config
 from disinfo.utils.func import throttle
+from disinfo.utils.cairo import to_pil
 
 
 s_time_tick = [
@@ -81,23 +79,6 @@ def time_to_angle(t):
     period = 60 * 60 * 24
     elapsed = t.hour * 60 * 60 + t.minute * 60 + t.second
     return deg_to_rad((((elapsed / period) * 360) + phase) % 360)
-
-def to_pil(surface: cairo.ImageSurface) -> Image.Image:
-    format = surface.get_format()
-    size = (surface.get_width(), surface.get_height())
-    stride = surface.get_stride()
-    buffer = surface.get_data()
-
-    if format == cairo.FORMAT_RGB24:
-        return Image.frombuffer(
-            "RGB", size, buffer,
-            'raw', "BGRX", stride)
-    elif format == cairo.FORMAT_ARGB32:
-        return Image.frombuffer(
-            "RGBA", size, buffer,
-            'raw', "BGRa", stride)
-    else:
-        raise NotImplementedError(repr(format))
 
 def clamp(value, min_value=0, max_value=1):
     return max(min(value, max_value), min_value)

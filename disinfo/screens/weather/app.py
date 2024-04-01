@@ -15,6 +15,7 @@ from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
 from disinfo.screens.colors import light_gray
 from disinfo.redis import publish
+from disinfo.utils.weather_icons import get_icon_for_condition
 
 from .state import WeatherStateManager, WeatherState
 from .assets import temperature_color
@@ -129,3 +130,21 @@ def composer(fs: FrameState):
         draw_temp_range(s.temperature, s.t_high, s.t_low),
         warning_icon if state.is_outdated else None,
     ], gap=3, align='center')
+
+
+def persistent_view(fs: FrameState):
+    fetch_on_start()
+    state = WeatherStateManager().get_state(fs)
+    s = state.data
+    icon = Frame(get_icon_for_condition(s.icon_name))
+    weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
+    return div(
+        hstack([
+            icon,
+            hstack([
+                text(f'{round(s.temperature)}', style=s_temp_value),
+                text('°', style=s_deg_c),
+            ], gap=0, align='top'),
+        ], gap=1),
+        style=DivStyle(padding=1, radius=1),
+    ).tag('weather-persistent')
