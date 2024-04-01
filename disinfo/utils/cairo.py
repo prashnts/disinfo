@@ -27,3 +27,7 @@ def load_svg(path: str) -> Frame:
         svg = f.read()
     surface = PNGSurface(Tree(bytestring=svg), None, 1).cairo
     return Frame(to_pil(surface), hash=path)
+
+def load_svg_string(svg: str) -> Frame:
+    surface = PNGSurface(Tree(bytestring=svg.encode()), None, 1).cairo
+    return Frame(to_pil(surface), hash=svg)

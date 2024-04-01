@@ -87,3 +87,6 @@ sudo apt install log2ram
 - Ensure libsixel can be found -- `sudo ln -s /opt/homebrew/lib /usr/local/lib` -- on macos with apple silicon
 
 - `watchmedo auto-restart -d disinfo -d assets --patterns="*.py;*.png;*.bdf;*.ttf" --recursive -- python -m disinfo.renderers.sixel --fps 42`
+
+- `uvicorn disinfo.web.server:app --host 0.0.0.0 --port 4200 --reload` -- run a local server showing the screen.
+- `watchmedo auto-restart -d disinfo -d assets --patterns="*.py;*.png;*.bdf;*.ttf" --recursive -- python -m disinfo.renderers.background --fps 25` -- to feed the webpage.
