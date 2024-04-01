@@ -31,7 +31,7 @@ def composer(fs: FrameState):
 
     return div(
         schedules,
-        style=DivStyle(padding=1, radius=2, background=gray.darken(0.4).hex)
+        style=DivStyle(padding=1, radius=2, background=gray.darken(0.8).hex)
     ).tag('dishwasher')
 
 def widget(fs: FrameState):
