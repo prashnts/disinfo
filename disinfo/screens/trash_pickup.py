@@ -30,7 +30,13 @@ def todays_trash_schedule(fs: FrameState):
     for s in SCHEDULE:
         yield s['icon'].opacity(0.4 if today not in s['days'] else 1)
 
+def is_visible(fs: FrameState):
+    return fs.now.hour >= 13 and fs.now.hour <= 17
+
 def composer(fs: FrameState):
+    if not is_visible(fs):
+        return
+
     schedules = hstack(list(todays_trash_schedule(fs)), gap=2)
 
     return div(
