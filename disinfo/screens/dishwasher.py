@@ -1,7 +1,7 @@
 import pendulum
 
 from .drawer import draw_loop
-from .colors import gray
+from .colors import gray, amber_red
 from ..components import fonts
 from ..components.elements import StillImage
 from ..components.layers import div, DivStyle
@@ -26,7 +26,7 @@ def timer_full_cycle(now):
 def composer(fs: FrameState):
     next_timer = timer_full_cycle(fs.now)
     label = text('Timer', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex))
-    timer_widget = text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', TextStyle(color=gray.hex, font=fonts.bitocra7), 'top')
+    timer_widget = text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', TextStyle(color=amber_red.darken(0.2).hex, font=fonts.bitocra7), 'top')
     schedules = hstack([dishwasher_icon, vstack([label, timer_widget])], gap=2)
 
     return div(
