@@ -74,3 +74,8 @@ small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8)
 # > License   CC0
 # > Source    https://www.dafont.com/fr/aztech.font
 aztech = TTFFont('assets/fonts/aztech.ttf', 16)
+
+# Pixel-lcd-machine
+# > License   CC-SA
+# > Source    https://www.dafont.com/fr/Pixel-lcd-machine.font
+pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16)

@@ -11,10 +11,8 @@ from ..data_structures import FrameState
 from ..utils.cairo import load_svg
 
 dishwasher_icon = StillImage('assets/raster/dishwasher.png')
-label_style = TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)
-time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.aztech)
-
-
+label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
+time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.pixel_lcd)
 
 dishwasher_icon = load_svg('assets/raster/dishwasher.svg')
 
@@ -33,19 +31,19 @@ def is_visible(fs: FrameState):
 
 
 def composer(fs: FrameState):
-    if not is_visible(fs):
-        return
+    # if not is_visible(fs):
+    #     return
 
     next_timer = timer_full_cycle(fs.now)
 
     return div(
         hstack([
             dishwasher_icon,
-            vstack([
-                # text('Timer', style=label_style),
-                text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', time_style, 'top'),
+            hstack([
+                text_slide_in(fs, 'dishwasher.timer', f'{next_timer}', time_style, 'top'),
+                text('h', style=label_style),
             ], align='center'),
-        ], gap=2),
+        ], gap=4),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
 
