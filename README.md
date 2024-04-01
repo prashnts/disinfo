@@ -79,3 +79,11 @@ sudo apt install log2ram
 
 - check disk speed with `sudo hdparm -Tt /dev/sda` (install hdparm first)
 - with dd `dd if=/dev/zero of=/tmp/output bs=8k count=10k; rm -f /tmp/output`
+
+
+### macOS Setup
+
+- Install pyenv, redis, libsixel, cairo from brew.
+- Ensure libsixel can be found -- `sudo ln -s /opt/homebrew/lib /usr/local/lib` -- on macos with apple silicon
+
+- `watchmedo auto-restart -d disinfo -d assets --patterns="*.py;*.png;*.bdf;*.ttf" --recursive -- python -m disinfo.renderers.sixel --fps 42`
