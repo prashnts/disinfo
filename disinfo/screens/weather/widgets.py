@@ -4,7 +4,7 @@ from .app import composer, astronomical_info
 
 def weather(fs: FrameState) -> Widget:
     frame = composer(fs)
-    return Widget(name='weather.widget', frame=frame, priority=2, wait_time=20)
+    return Widget(name='weather.widget', frame=frame, priority=2, wait_time=10)
 
 def moon_phase(fs: FrameState) -> Widget:
     frame = astronomical_info(fs)
