@@ -11,18 +11,18 @@ from ..data_structures import FrameState
 from ..utils.cairo import load_svg
 
 dishwasher_icon = StillImage('assets/raster/dishwasher.png')
-label_style = TextStyle(font=fonts.bitocra7, color=gray.darken(0.6).hex)
-time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.bitocra7)
+label_style = TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)
+time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.aztech)
 
 
 
-dishwasher_icon = load_svg('assets/mui-icons/hourglass_top_FILL1_wght400_GRAD-25_opsz20.svg')
+dishwasher_icon = load_svg('assets/raster/dishwasher.svg')
 
 
 def timer_full_cycle(now):
     # The dishwasher should finish by 07:00.
     # Cycle time is about 3h30m, so it should start at 03:30.
-    # now = fs.now.replace(hour=20, minute=0)
+    # now = now.replace(hour=23, minute=50)
     next_target = now.replace(hour=3, minute=30, second=0)
     if now > next_target:
         next_target = next_target.add(days=1)
@@ -42,11 +42,11 @@ def composer(fs: FrameState):
         hstack([
             dishwasher_icon,
             vstack([
-                text('Timer', style=label_style),
+                # text('Timer', style=label_style),
                 text_slide_in(fs, 'dishwasher.timer', f'{next_timer}h', time_style, 'top'),
             ], align='center'),
         ], gap=2),
-        style=DivStyle(padding=1, radius=1, background=gray.darken(0.2).hex)
+        style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
 
 def widget(fs: FrameState):

@@ -59,3 +59,18 @@ spleen__s = TTFFont('assets/fonts/spleen-5x8.bdf', 8)
 # > License   MIT
 # > Source    https://github.com/romeovs/creep
 creep = TTFFont('assets/fonts/creep.bdf', 16)
+
+# VIRTUAL DJ
+# > License   Free (non-standard)
+# > Source    https://www.dafont.com/fr/virtual-dj.font
+vdj = TTFFont('assets/fonts/virtual-dj.ttf', 8)
+
+# SMALL PIXEL
+# > License   Free (non-standard)
+# > Source    https://www.dafont.com/fr/small-pixel.font
+small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8)
+
+# AZTECH
+# > License   CC0
+# > Source    https://www.dafont.com/fr/aztech.font
+aztech = TTFFont('assets/fonts/aztech.ttf', 16)
