@@ -20,7 +20,7 @@ class Stack(metaclass=UniqInstance):
         self.last_step = 0
         self.pos = 0
 
-        self.scroller = VScroller(size=app_config.height, speed=0.001, delta=2, static_if_small=True)
+        self.scroller = VScroller(size=app_config.height, speed=0.001, delta=2, static_if_small=False)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._widgets = sorted(widgets, key=lambda w: w.priority, reverse=True)
