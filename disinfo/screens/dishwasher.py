@@ -16,7 +16,7 @@ time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.bitocra7)
 
 
 
-dishwasher_icon = load_svg('assets/mui-icons/dishwasher_gen_FILL1_wght400_GRAD-25_opsz20.svg')
+dishwasher_icon = load_svg('assets/mui-icons/hourglass_top_FILL1_wght400_GRAD-25_opsz20.svg')
 
 
 def timer_full_cycle(now):
