@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="19px" height="16px" viewBox="0 0 19 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="21px" height="16px" viewBox="0 0 21 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>dishwasher</title>
     <defs>
         <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-1">
@@ -7,7 +7,7 @@
             <stop stop-color="#FBFBFB" stop-opacity="0.147344843" offset="29.789245%"></stop>
             <stop stop-color="#000000" stop-opacity="0.5" offset="100%"></stop>
         </linearGradient>
-        <rect id="path-2" x="2" y="0" width="15" height="16" rx="1"></rect>
+        <rect id="path-2" x="3" y="0" width="15" height="16" rx="1"></rect>
         <linearGradient x1="20.5502715%" y1="34.2297301%" x2="60.2924974%" y2="117.779142%" id="linearGradient-3">
             <stop stop-color="#B99C42" offset="0%"></stop>
             <stop stop-color="#69501A" offset="100%"></stop>
@@ -16,18 +16,18 @@
     <g id="dishwasher" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="Rectangle">
             <use fill="#424559" xlink:href="#path-2"></use>
-            <rect stroke="#25262D" stroke-width="1" stroke-linejoin="square" fill="url(#linearGradient-1)" x="2.5" y="0.5" width="14" height="15" rx="1"></rect>
+            <rect stroke="#25262D" stroke-width="1" stroke-linejoin="square" fill="url(#linearGradient-1)" x="3.5" y="0.5" width="14" height="15" rx="1"></rect>
         </g>
-        <g id="Group" transform="translate(2.000000, 2.000000)">
+        <g id="Group" transform="translate(3.000000, 2.000000)">
             <circle id="Oval-Copy" stroke="#AB9667" stroke-width="0.5" fill="url(#linearGradient-3)" cx="10.5" cy="3.5" r="3.25"></circle>
             <circle id="Oval" stroke="#B5A582" fill-opacity="0.429441652" fill="#D3CBBA" cx="10.5" cy="8.5" r="1.5"></circle>
         </g>
-        <g id="Group-4" transform="translate(4.500000, 2.000000)" fill="#AFD9E2" stroke="#85AAB2">
+        <g id="Group-4" transform="translate(5.500000, 2.000000)" fill="#AFD9E2" stroke="#85AAB2">
             <path d="M0,3.5 L0,1 C-6.76353751e-17,0.44771525 0.44771525,6.76353751e-17 1,0 L2,0 C2.55228475,-1.01453063e-16 3,0.44771525 3,1 L3,3.5 L3,3.5" id="Path-4"></path>
         </g>
-        <path d="M1.3353097,5.5 L17.6646903,5.5 C18.2169751,5.5 18.6646903,5.94771525 18.6646903,6.5 C18.6646903,6.59523337 18.6510866,6.68997845 18.6242913,6.78136448 L16.3611111,14.5 L16.3611111,14.5 L2.63888889,14.5 L0.375708722,6.78136448 C0.220315409,6.2513915 0.523972229,5.69579234 1.05394521,5.54039903 C1.14533124,5.51360374 1.24007633,5.5 1.3353097,5.5 Z" id="Path-6-Copy" stroke="#25262D" fill="#4E5163"></path>
-        <path d="M1.3353097,6.5 L17.6646903,6.5 C18.2169751,6.5 18.6646903,6.94771525 18.6646903,7.5 C18.6646903,7.59523337 18.6510866,7.68997845 18.6242913,7.78136448 L16.3611111,15.5 L16.3611111,15.5 L2.63888889,15.5 L0.375708722,7.78136448 C0.220315409,7.2513915 0.523972229,6.69579234 1.05394521,6.54039903 C1.14533124,6.51360374 1.24007633,6.5 1.3353097,6.5 Z" id="Path-6" stroke="#25262D" fill="#4E5163"></path>
-        <line x1="12.5" y1="6" x2="13.5" y2="6" id="Line" stroke="#953333" stroke-linecap="round"></line>
-        <path d="M11.5,8.5 C11.5,10 10.8333333,11 9.5,11.5 C8.16666667,12 7.5,13 7.5,14.5 L11.5,14.5 C11.5,13.25 10.8333333,12.25 9.5,11.5 C8.16666667,10.75 7.5,9.75 7.5,8.5 L11.5,8.5 Z M8,10.5 L11,10.5 M8,9.5 L11,9.5" id="Combined-Shape" stroke="#FFFFFF" opacity="0.403134301"></path>
+        <path d="M2.16491106,5.5 L18.8105929,5.5 C19.4733346,5.5 20.0105929,6.0372583 20.0105929,6.7 C20.0105929,6.83454562 19.9879659,6.96813325 19.9436584,7.09517408 L17.3611111,14.5 L17.3611111,14.5 L3.5,14.5 L1.02649111,7.07947332 C0.816913779,6.45074134 1.15670576,5.77115737 1.78543774,5.56158004 C1.90779751,5.52079345 2.03593255,5.5 2.16491106,5.5 Z" id="Path-6-Copy" stroke="#25262D" fill="#4E5163"></path>
+        <path d="M2.3353097,6.5 L18.6646903,6.5 C19.2169751,6.5 19.6646903,6.94771525 19.6646903,7.5 C19.6646903,7.59523337 19.6510866,7.68997845 19.6242913,7.78136448 L17.3611111,15.5 L17.3611111,15.5 L3.63888889,15.5 L1.37570872,7.78136448 C1.22031541,7.2513915 1.52397223,6.69579234 2.05394521,6.54039903 C2.14533124,6.51360374 2.24007633,6.5 2.3353097,6.5 Z" id="Path-6" stroke="#25262D" fill="#4E5163"></path>
+        <line x1="13.5" y1="6" x2="14.5" y2="6" id="Line" stroke="#953333" stroke-linecap="round"></line>
+        <path d="M12.5,7.5 C12.5,9 11.8333333,10 10.5,10.5 C9.16666667,11 8.5,12 8.5,13.5 L12.5,13.5 C12.5,12.25 11.8333333,11.25 10.5,10.5 C9.16666667,9.75 8.5,8.75 8.5,7.5 L12.5,7.5 Z M9,9.5 L12,9.5" id="Combined-Shape" stroke="#FFFFFF" opacity="0.403134301"></path>
     </g>
 </svg>
