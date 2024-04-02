@@ -49,8 +49,7 @@ def timer_full_cycle(now):
     return next_target.diff(now).in_hours()
 
 def is_visible(fs: FrameState):
-    return True
-    return fs.now.hour >= 20 and fs.now.hour <= 23
+    return not (3 < fs.now.hour <= 19)
 
 
 def composer(fs: FrameState):
