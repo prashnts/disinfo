@@ -14,7 +14,7 @@ from ..data_structures import FrameState
 from ..utils.cairo import load_svg, load_svg_string
 
 dishwasher_icon = StillImage('assets/raster/dishwasher.png')
-label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
+label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.3).hex)
 time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.pixel_lcd)
 
 dishwasher_icon = load_svg('assets/dishwasher.svg')
@@ -68,7 +68,7 @@ def composer(fs: FrameState):
         hstack([
             dishwasher_icon,
             hstack([washer_lcd(next_timer), text('h', style=label_style)], align='bottom'),
-        ], gap=1),
+        ], gap=3),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
 
