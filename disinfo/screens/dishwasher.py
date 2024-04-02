@@ -4,23 +4,19 @@ from functools import cache
 from .drawer import draw_loop
 from .colors import gray, amber_red
 from ..components import fonts
-from ..components.elements import StillImage
 from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, vstack
+from ..components.layouts import hstack
 from ..components.widget import Widget
 from ..components.text import TextStyle, text
-from ..components.transitions import text_slide_in
 from ..data_structures import FrameState
 from ..utils.cairo import load_svg, load_svg_string
 
-dishwasher_icon = StillImage('assets/raster/dishwasher.png')
-label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.3).hex)
-time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.pixel_lcd)
+label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
 
 dishwasher_icon = load_svg('assets/dishwasher.svg')
 
 @cache
-def washer_lcd(hours):
+def washer_lcd(letter):
     mapping = {
         1: ['b2', 'd2'],
         2: ['a', 'b2', 'c', 'e', 'd1'],
@@ -32,15 +28,13 @@ def washer_lcd(hours):
         8: ['a', 'b1', 'b2', 'c', 'd1', 'd2', 'e'],
         9: ['a', 'b1', 'b2', 'c', 'd2', 'e'],
         0: ['a', 'b1', 'b2', 'd1', 'd2', 'e'],
+        'h': ['b1', 'c', 'd1', 'd2'],
     }
-    lit_leds = mapping[hours]
-    color = lambda x: amber_red.darken(0.1).hex if x in lit_leds else gray.darken(0.4).hex
-
     with open('assets/dishwasher-segment.svg', 'rb') as f:
         svg = pq(f.read())
 
-    for led in lit_leds:
-        svg(f'#{led}').attr('stroke', color(led))
+    for led in mapping[letter]:
+        svg(f'#{led}').attr('stroke', amber_red.darken(0.1).hex)
     
     return load_svg_string(str(svg))
 
@@ -67,7 +61,7 @@ def composer(fs: FrameState):
     return div(
         hstack([
             dishwasher_icon,
-            hstack([washer_lcd(next_timer), text('h', style=label_style)], align='bottom'),
+            hstack([washer_lcd(next_timer), washer_lcd('h')], align='bottom'),
         ], gap=3),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
