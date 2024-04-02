@@ -17,7 +17,7 @@ dishwasher_icon = StillImage('assets/raster/dishwasher.png')
 label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
 time_style = TextStyle(color=amber_red.darken(0.1).hex, font=fonts.pixel_lcd)
 
-dishwasher_icon = load_svg('assets/raster/dishwasher.svg')
+dishwasher_icon = load_svg('assets/dishwasher.svg')
 
 @cache
 def washer_lcd(hours):
@@ -67,8 +67,7 @@ def composer(fs: FrameState):
     return div(
         hstack([
             dishwasher_icon,
-            washer_lcd(next_timer),
-            text('h', style=label_style),
+            hstack([washer_lcd(next_timer), text('h', style=label_style)], align='bottom'),
         ], gap=1),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
