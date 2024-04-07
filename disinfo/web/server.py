@@ -8,10 +8,6 @@ from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from ..redis import db, publish
 
-pubsub = db.pubsub(ignore_subscribe_messages=True)
-pubsub.subscribe('di.pubsub.frames')
-pubsub.subscribe('di.pubsub.frames')
-
 app = FastAPI()
 
 frame = None
