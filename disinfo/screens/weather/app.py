@@ -32,7 +32,7 @@ sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 s_temp_value = TextStyle(font=fonts.px_op__l, color=light_gray.darken(0.1).hex)
 s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
-s_moon_phase = TextStyle(font=fonts.bitocra7, color='#58595c')
+s_moon_phase = TextStyle(font=fonts.bitocra7, color='#818284')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 
 
@@ -49,8 +49,8 @@ def astronomical_info(fs: FrameState):
     if not state.show_moon_phase:
         return
     s = state.data
-    phase_value = text(f'{s.moon_phase}%', style=s_moon_phase)
-    infos = [phase_value]
+    phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='#000000b0'))
+    infos = []
 
     if state.show_sunrise:
         sunrise_info = hstack([
@@ -65,7 +65,10 @@ def astronomical_info(fs: FrameState):
             text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         infos.append(sunset_info)
-    return hstack([moon_phase_image(s.moon_phase), vstack(infos, gap=1)], gap=2, align='center')
+    return hstack([
+        composite_at(phase_value, moon_phase_image(s.moon_phase), 'br'),
+        vstack(infos, gap=1),
+    ], gap=2, align='center')
 
 @cache
 def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
@@ -121,7 +124,7 @@ def composer(fs: FrameState):
 
     return vstack([
         hstack([
-            composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick).rescale(1), 'mm'),
+            composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick).rescale(1), 'br'),
             hstack([
                 text(f'{round(s.temperature)}', style=s_temp_value),
                 text('°', style=s_deg_c),

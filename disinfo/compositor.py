@@ -40,8 +40,8 @@ def compose_big_frame(fs: FrameState):
         vstack([
             vstack([
                 screens.date_time.draw(fs),
-                screens.plant.draw(fs),
                 screens.weather.persistent_view(fs),
+                screens.plant.draw(fs),
             ], gap=3, align='right'),
         ], gap=1, align='right'),
         image, 'tr')
