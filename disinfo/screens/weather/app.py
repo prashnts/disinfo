@@ -49,7 +49,7 @@ def astronomical_info(fs: FrameState):
     if not state.show_moon_phase:
         return
     s = state.data
-    phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='#000000b0'))
+    phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='#000000d0'))
     infos = []
 
     if state.show_sunrise:
