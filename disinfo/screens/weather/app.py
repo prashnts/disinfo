@@ -10,7 +10,7 @@ from disinfo.components.elements import Frame, StillImage
 from disinfo.components.text import TextStyle, text
 from disinfo.components.transitions import FadeIn
 from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack, composite_at
+from disinfo.components.layouts import hstack, vstack, composite_at, place_at
 from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
 from disinfo.screens.colors import light_gray
@@ -121,14 +121,13 @@ def composer(fs: FrameState):
 
     return vstack([
         hstack([
-            weather_icon.draw(fs.tick).rescale(1),
+            composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick).rescale(1), 'mm'),
             hstack([
                 text(f'{round(s.temperature)}', style=s_temp_value),
                 text('°', style=s_deg_c),
             ], gap=0, align='top'),
         ], gap=2, align='bottom'),
         draw_temp_range(s.temperature, s.t_high, s.t_low),
-        warning_icon if state.is_outdated else None,
     ], gap=3, align='center')
 
 
