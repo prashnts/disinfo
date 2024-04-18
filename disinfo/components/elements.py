@@ -64,6 +64,10 @@ class Frame(UIElement):
     def size(self):
         return self.image.size
 
+    def flex(self, width, height) -> 'Frame':
+        raise NotImplementedError
+
+
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')
