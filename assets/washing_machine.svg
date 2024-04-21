@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="16px" viewBox="0 0 14 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>washing_machine</title>
+    <defs>
+        <radialGradient cx="68.0971119%" cy="36.3273766%" fx="68.0971119%" fy="36.3273766%" r="100%" id="radialGradient-1">
+            <stop stop-color="#8B9BB9" offset="0%"></stop>
+            <stop stop-color="#D8D8D8" offset="100%"></stop>
+        </radialGradient>
+    </defs>
+    <g id="washing_machine" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" stroke="#333333" fill="#777777" x="0.5" y="0.5" width="13" height="15" rx="1"></rect>
+        <circle id="Oval" stroke="#3D3D3D" fill="url(#radialGradient-1)" cx="7" cy="9" r="4.5"></circle>
+    </g>
+</svg>

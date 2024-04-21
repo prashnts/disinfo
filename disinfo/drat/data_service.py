@@ -9,7 +9,7 @@ from schedule import Scheduler
 from ..config import app_config
 from ..redis import rkeys, set_dict, set_json, db, publish
 from .app_states import PubSubManager, PubSubMessage
-from . import idfm
+from . import idfm, washing_machine
 
 
 class SafeScheduler(Scheduler):
@@ -78,6 +78,15 @@ def get_metro_info(force: bool = False):
     except Exception as e:
         print('[e] metro_info', e)
 
+def get_washing_machine_info():
+    '''Fetch washing machine info.'''
+    try:
+        print('[i] [fetch] washing machine')
+        data = washing_machine.read_display()
+        publish('di.pubsub.washing_machine', action='update', payload=data)
+    except Exception as e:
+        print('[e] washing_machine', e)
+
 
 def on_pubsub(channel_name: str, message: PubSubMessage):
     if message.action == 'fetch_metro':
@@ -93,6 +102,7 @@ scheduler = SafeScheduler()
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
+scheduler.every(1).minutes.do(get_washing_machine_info)
 
 if __name__ == '__main__':
     print('[Data Service] Scheduler Started')
