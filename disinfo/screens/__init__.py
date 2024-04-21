@@ -11,6 +11,7 @@ from . import demo
 from . import debug_info
 from . import trash_pickup
 from . import dishwasher
+from . import washing_machine
 
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     'debug_info',
     'trash_pickup',
     'dishwasher',
+    'washing_machine',
 ]
