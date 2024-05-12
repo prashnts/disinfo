@@ -58,7 +58,10 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update':
             self.state = KlipperState(**data.payload)
-            self.state.is_on = self.state.state in ('printing', 'paused')
+            self.state.is_on = self.state.state in ('printing', 'paused', 'standby')
+            self.state.is_printing = self.state.state == 'printing'
+            self.state.is_done = self.state.state == 'complete'
+            self.state.is_visible = self.state.state in ('printing', 'paused', 'standby', 'complete')
 
 @throttle(1061)
 def get_state(fs: FrameState):
