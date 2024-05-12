@@ -2,6 +2,7 @@ import arrow
 
 from datetime import timedelta
 from pydash import py_
+from typing import Optional
 
 from .drawer import draw_loop
 from ..components.text import Text, TextStyle, text
@@ -15,7 +16,8 @@ from ..components.transitions import text_slide_in
 from ..components import fonts
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
-from ..data_structures import FrameState
+from ..drat.app_states import PubSubStateManager, PubSubMessage
+from ..data_structures import FrameState, AppBaseModel
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
@@ -31,6 +33,32 @@ tail_arrow_right        = text(f'⤚', style=tail_arrow_style)
 text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
 
 hscroller_fname = HScroller(size=33, pause_at_loop=True)
+
+
+class KlipperState(AppBaseModel):
+    bed_temp: Optional[float] = None
+    extruder_temp: Optional[float] = None
+    progress: Optional[float] = None
+    state: Optional[str] = None
+    filename: Optional[str] = None
+
+    completion_time: Optional[str] = ''
+    time_left: Optional[str] = ''
+
+    is_on: bool = False
+    is_visible: bool = False
+    is_done: bool = False
+    is_printing: bool = False
+
+
+class KlipperStateManager(PubSubStateManager[KlipperState]):
+    model = KlipperState
+    channels = ('di.pubsub.klipper',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'update':
+            self.state = KlipperState(**data.payload)
+            self.state.is_on = self.state.state in ('printing', 'paused')
 
 @throttle(1061)
 def get_state(fs: FrameState):
@@ -85,16 +113,16 @@ def get_state(fs: FrameState):
     )
 
 def composer(fs: FrameState):
-    state = get_state(fs)
+    state = KlipperStateManager().get_state(fs)
 
-    if not state or not state['is_visible']:
+    if not state.is_on:
         return
 
     completion_time = None
 
-    if not state['is_done']:
-        completion_time = text_slide_in(fs, 'op.eta', f'{state["completion_time"]}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
-        time_left = text_slide_in(fs, 'op.time_left', f'{state["time_left"]}', muted_small_style)
+    if not state.is_done:
+        completion_time = text_slide_in(fs, 'op.eta', f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
+        time_left = text_slide_in(fs, 'op.time_left', f'{state.time_left}', muted_small_style)
     else:
         time_left = text('Done!', style=muted_small_style)
 
@@ -103,27 +131,27 @@ def composer(fs: FrameState):
     completion_eta = hstack([tail_arrow_left, completion_time], gap=2, align='center') if completion_time else None
 
     info_elem = hstack([
-        threed_icon.draw(fs.tick) if state['is_printing'] else done_icon,
+        threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
-            text_slide_in(fs, 'op.progress', f'{state["progress"]:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_slide_in(fs, 'op.progress', f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
             text_percent_sign,
         ], gap=1, align='top'),
     ], gap=4)
 
     file_detail = hstack([
         file_icon,
-        hscroller_fname.set_frame(text(state["file_name"], muted_small_style)).draw(fs.tick),
+        hscroller_fname.set_frame(text(state.filename, muted_small_style)).draw(fs.tick),
     ], gap=2)
 
     temp_detail = hstack([
-        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state["toolt_current"])}', muted_small_style)], gap=2),
-        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state["bedt_current"])}', muted_small_style)], gap=2),
+        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state.extruder_temp)}', muted_small_style)], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state.bed_temp)}', muted_small_style)], gap=2),
     ], gap=4)
 
     elements = [
         info_elem,
-        completion_text,
-        completion_eta,
+        # completion_text,
+        # completion_eta,
         file_detail,
         temp_detail,
     ]

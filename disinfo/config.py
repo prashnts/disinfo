@@ -46,6 +46,9 @@ class Config(AppBaseModel):
     height: int
     name: str
 
+    # Klipper
+    klipper_host: str = '10.0.1.91'
+
 
 with open(os.environ.get('DI_CONFIG_PATH', '.config.json')) as f:
     app_config = Config(**json.load(f))
