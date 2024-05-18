@@ -90,12 +90,14 @@ sudo ln -s /home/pi/disinfo/config/di_dataservice.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_renderer.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_server.conf /etc/supervisor/conf.d
 sudo ln -s /home/pi/disinfo/config/di_pico_udp_renderer.conf /etc/supervisor/conf.d
+sudo ln -s /home/pi/disinfo/config/di_3dp_udp_renderer.conf /etc/supervisor/conf.d
 
 sudo supervisorctl update
 sudo supervisorctl start didataservice
 sudo supervisorctl start dihaservice
 sudo supervisorctl start direnderer
 sudo supervisorctl start diserver
+sudo supervisorctl start di3dp
 
 echo "=> Installation complete. Adding extras"
 
