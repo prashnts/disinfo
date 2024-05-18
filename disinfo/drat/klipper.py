@@ -123,7 +123,7 @@ class KlipperClient:
         if prev_state.get('filename') != s.get('filename') and s.get('filename'):
             self.send("server.files.metadata", 10043, filename=s['filename'])
             os.path.splitext(s['filename'])[0]
-            s['thumbnail'] = f"http://{self.host}/server/files/gcodes/.thumbs/{os.path.splitext(s['filename'])[0]}-32x32.png"
+            s['thumbnail'] = f"http://{self.host}/server/files/gcodes/.thumbs/{os.path.splitext(s['filename'])[0]}-300x300.png"
 
         s['eta'] = calculate_eta(s)
         s['pct_job'] = calculate_pct_job(s)

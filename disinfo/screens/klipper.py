@@ -77,11 +77,9 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
                 self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
 
 @cache
-def thumbnail_image(filename: str = None):
-    if not filename:
+def thumbnail_image(thumb_url: str = None):
+    if not thumb_url:
         return None
-    size = (300, 300)
-    thumb_url = f"http://{app_config.klipper_host}/server/files/gcodes/.thumbs/{os.path.splitext(filename)[0]}-{size[0]}x{size[1]}.png"
 
     try:
         r = requests.get(thumb_url)
