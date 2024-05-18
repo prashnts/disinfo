@@ -95,7 +95,7 @@ class KlipperClient:
             s['extruder_temp'] = pluck('extruder.temperature', status)
             s['filename'] = pluck('print_stats.filename', status)
             s['state'] = pluck('print_stats.state', status)
-            s['progress'] = pluck('display_status.progress', status) * 100
+            s['progress'] = pluck('display_status.progress', status, -1) * 100
         if msg.get('id') == 10043:
             s['file_metadata'] = msg['result']
         if msg.get('method') == 'notify_status_update':

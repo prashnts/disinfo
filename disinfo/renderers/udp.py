@@ -18,7 +18,7 @@ from ..utils.imops import apply_gamma
 from ..utils.func import throttle
 from ..components.transitions import NumberTransition
 
-target_ip = '10.0.1.132'
+target_ip = '10.0.1.214'
 target_port = 6002
 
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -44,16 +44,24 @@ def emit_frame(img, brightness):
 
     im = np.array(img)
     im = np.flip(im, 1)
-    im = im.reshape(64 * 64, 4)
 
+    if app_config.name == '3dpanel':
+        im = np.rot90(im, 1)
+        im = im.reshape(64 * 32, 4)
+        im = np.stack([im[:, 0], im[:, 2], im[:, 1], im[:, 3]], axis=1)
+    elif app_config.name == 'picowpanel':
+        im = im.reshape(64 * 64, 4)
+    else:
+        raise ValueError('Unknown panel type.')
+    
     offsets = list(range(0, 64, 2))
     even_offsets = offsets[::2]
     odd_offsets = offsets[1::2]
     errors = 0
 
     for i in flatten(zip(even_offsets, odd_offsets)):
-        a = i * 64
-        b = a + 128
+        a = i * 32 if app_config.name == '3dpanel' else i * 64
+        b = a + 64
 
         payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
         try:
