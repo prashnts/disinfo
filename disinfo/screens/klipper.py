@@ -219,7 +219,7 @@ def full_screen_composer(fs: FrameState):
         temp_detail,
     ]
 
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00003f31'))
+    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00003f51'))
 
 def widget(fs: FrameState):
     frame = composer(fs)
