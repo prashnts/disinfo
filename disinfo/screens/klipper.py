@@ -169,6 +169,10 @@ def composer(fs: FrameState):
 def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
 
+
+    if not state.is_visible:
+        return
+
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
