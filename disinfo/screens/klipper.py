@@ -1,3 +1,4 @@
+import os
 import io
 import arrow
 import pendulum
@@ -19,6 +20,7 @@ from ..components.spriteim import SpriteIcon
 from ..components.widget import Widget
 from ..components.transitions import text_slide_in
 from ..components import fonts
+from ..config import app_config
 from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..drat.app_states import PubSubStateManager, PubSubMessage
@@ -75,20 +77,22 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
                 self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
 
 @cache
-def thumbnail_image(url: str = None):
-    if not url:
+def thumbnail_image(filename: str = None):
+    if not filename:
         return None
+    size = (300, 300)
+    thumb_url = f"http://{app_config.klipper_host}/server/files/gcodes/.thumbs/{os.path.splitext(filename)[0]}-{size[0]}x{size[1]}.png"
 
     try:
-        r = requests.get(url)
+        r = requests.get(thumb_url)
         r.raise_for_status()
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps? .quantize()
-        frame = Frame(img.resize((32, 32)).convert('RGBA')).opacity(0.8)
+        frame = Frame(img.resize((32, 32)).convert('RGBA'))
         return frame
     except requests.RequestException:
-        return StillImage('assets/x.png') 
+        return None
 
 @throttle(1061)
 def get_state(fs: FrameState):

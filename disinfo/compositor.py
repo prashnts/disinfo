@@ -100,7 +100,7 @@ def compose_3dp_frame(fs: FrameState):
     # stack = Stack('main_cards').mut([
     #     screens.klipper.widget(fs),
     # ])
-    composite_at(screens.klipper.thumbnail_image(state.thumbnail), image, 'mr')
+    composite_at(screens.klipper.thumbnail_image(state.filename), image, 'mr')
     composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
