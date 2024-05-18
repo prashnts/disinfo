@@ -1,4 +1,5 @@
 import arrow
+import pendulum
 
 from datetime import timedelta
 from pydash import py_
@@ -42,6 +43,8 @@ class KlipperState(AppBaseModel):
     state: Optional[str] = None
     filename: Optional[str] = None
 
+    eta: Optional[str] = None
+
     completion_time: Optional[str] = ''
     time_left: Optional[str] = ''
 
@@ -62,6 +65,9 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
             self.state.is_printing = self.state.state == 'printing'
             self.state.is_done = self.state.state == 'complete'
             self.state.is_visible = self.state.state in ('printing', 'paused', 'standby', 'complete')
+
+            if data.payload.get('eta'):
+                self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
 
 @throttle(1061)
 def get_state(fs: FrameState):
@@ -118,10 +124,8 @@ def get_state(fs: FrameState):
 def composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
 
-    if not state.is_on:
+    if not state.is_visible:
         return
-
-    completion_time = None
 
     if not state.is_done:
         completion_time = text_slide_in(fs, 'op.eta', f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
@@ -154,8 +158,8 @@ def composer(fs: FrameState):
     elements = [
         info_elem,
         # completion_text,
-        # completion_eta,
         file_detail,
+        completion_eta,
         temp_detail,
     ]
 
