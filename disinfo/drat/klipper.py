@@ -3,6 +3,7 @@ import time
 import threading
 import json
 import rich
+from pydash import throttle
 from datetime import datetime, timedelta, timezone
 
 from ..redis import publish
@@ -83,6 +84,8 @@ class KlipperClient:
                                          on_open=self.on_open,
                                          on_close=self.on_close,
                                          on_error=self.on_error)
+        
+        self.publish = throttle(publish, 400)
     
     def on_message(self, ws, msg):
         # rich.print(f'Received message from {self.host}:', msg)
@@ -124,7 +127,7 @@ class KlipperClient:
 
         # rich.print(f'Klipper state:', s)
 
-        # publish('di.pubsub.klipper', action='update', payload=s)
+        self.publish('di.pubsub.klipper', action='update', payload=s)
 
     def on_open(self, ws):
         self.connected = True
