@@ -124,7 +124,7 @@ class KlipperClient:
 
         # rich.print(f'Klipper state:', s)
 
-        publish('di.pubsub.klipper', action='update', payload=s)
+        # publish('di.pubsub.klipper', action='update', payload=s)
 
     def on_open(self, ws):
         self.connected = True
