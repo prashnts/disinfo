@@ -2,7 +2,7 @@ from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor
 from .components.layouts import hstack, vstack, composite_at
-from .components.layers import div, DivStyle
+from .components.layers import div, DivStyle, rounded_rectangle
 from .components.transitions import FadeIn
 from .components.elements import Frame
 from .components.stack import Stack
@@ -100,7 +100,15 @@ def compose_3dp_frame(fs: FrameState):
     # stack = Stack('main_cards').mut([
     #     screens.klipper.widget(fs),
     # ])
+    background = rounded_rectangle(
+        app_config.width,
+        app_config.height,
+        radius=(3,)*4,
+        fill='#08223c00',
+        border=1,
+        border_color='#18626c76')
     composite_at(screens.klipper.thumbnail_image(state.filename), image, 'mr')
+    composite_at(Frame(background), image, 'mm')
     composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
