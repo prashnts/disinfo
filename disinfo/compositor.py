@@ -106,7 +106,7 @@ def compose_3dp_frame(fs: FrameState):
         radius=(3,)*4,
         fill='#08223c00',
         border=1,
-        border_color='#91342176')
+        border_color='#91642176')
     composite_at(screens.klipper.thumbnail_image(state.thumbnail), image, 'mr')
     composite_at(Frame(background), image, 'mm')
     composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
