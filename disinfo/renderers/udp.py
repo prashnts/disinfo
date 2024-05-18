@@ -61,7 +61,7 @@ def emit_frame(img, brightness):
 
     for i in flatten(zip(even_offsets, odd_offsets)):
         a = i * 32 if app_config.name == '3dpanel' else i * 64
-        b = a + 64
+        b = a + (64 if app_config.name == '3dpanel' else 128)
 
         payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
         try:
