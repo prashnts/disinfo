@@ -89,6 +89,7 @@ def compose_small_frame(fs: FrameState):
     return Frame(image).tag('present')
 
 def compose_3dp_frame(fs: FrameState):
+    state = screens.klipper.KlipperStateManager().get_state(fs)
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
@@ -99,6 +100,7 @@ def compose_3dp_frame(fs: FrameState):
     # stack = Stack('main_cards').mut([
     #     screens.klipper.widget(fs),
     # ])
+    composite_at(screens.klipper.thumbnail_image(state.thumbnail), image, 'mr')
     composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 

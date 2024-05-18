@@ -1,13 +1,17 @@
+import io
 import arrow
 import pendulum
+import requests
 
+from functools import cache
 from datetime import timedelta
 from pydash import py_
 from typing import Optional
+from PIL import Image
 
 from .drawer import draw_loop
 from ..components.text import Text, TextStyle, text
-from ..components.elements import StillImage
+from ..components.elements import StillImage, Frame
 from ..components.layouts import vstack, hstack
 from ..components.layers import div, DivStyle
 from ..components.scroller import HScroller
@@ -42,6 +46,7 @@ class KlipperState(AppBaseModel):
     progress: Optional[float] = None
     state: Optional[str] = None
     filename: Optional[str] = None
+    thumbnail: Optional[str] = None
 
     eta: Optional[str] = None
 
@@ -68,6 +73,22 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
 
             if data.payload.get('eta'):
                 self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
+
+@cache
+def thumbnail_image(url: str = None):
+    if not url:
+        return None
+
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        fp = io.BytesIO(r.content)
+        img = Image.open(fp)
+        # Dithering helps? .quantize()
+        frame = Frame(img.resize((32, 32)).convert('RGBA')).opacity(0.8)
+        return frame
+    except requests.RequestException:
+        return StillImage('assets/x.png') 
 
 @throttle(1061)
 def get_state(fs: FrameState):
@@ -197,7 +218,7 @@ def full_screen_composer(fs: FrameState):
         temp_detail,
     ]
 
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
+    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00003f31'))
 
 def widget(fs: FrameState):
     frame = composer(fs)

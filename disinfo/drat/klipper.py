@@ -1,10 +1,12 @@
-import websocket
 import time
 import threading
 import json
+import os
 import rich
-from pydash import throttle
+import websocket
+
 from datetime import datetime, timedelta, timezone
+from pydash import throttle
 
 from ..redis import publish
 
@@ -120,7 +122,8 @@ class KlipperClient:
 
         if prev_state.get('filename') != s.get('filename') and s.get('filename'):
             self.send("server.files.metadata", 10043, filename=s['filename'])
-
+            os.path.splitext(s['filename'])[0]
+            s['thumbnail'] = f"http://{self.host}/server/files/gcodes/.thumbs/{os.path.splitext(s['filename'])[0]}-32x32.png"
 
         s['eta'] = calculate_eta(s)
         s['pct_job'] = calculate_pct_job(s)
