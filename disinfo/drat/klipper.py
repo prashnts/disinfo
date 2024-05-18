@@ -122,7 +122,7 @@ class KlipperClient:
         s['eta'] = calculate_eta(s)
         s['pct_job'] = calculate_pct_job(s)
 
-        rich.print(f'Klipper state:', s)
+        # rich.print(f'Klipper state:', s)
 
         publish('di.pubsub.klipper', action='update', payload=s)
 
