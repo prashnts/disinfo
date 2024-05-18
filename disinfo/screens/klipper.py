@@ -166,9 +166,39 @@ def composer(fs: FrameState):
 
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
 
+def full_screen_composer(fs: FrameState):
+    state = KlipperStateManager().get_state(fs)
+
+    info_elem = hstack([
+        threed_icon.draw(fs.tick) if state.is_printing else done_icon,
+        hstack([
+            text_slide_in(fs, 'op.progress', f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_percent_sign,
+        ], gap=1, align='top'),
+    ], gap=4)
+
+    file_detail = hstack([
+        file_icon,
+        hscroller_fname.set_frame(text(state.filename, muted_small_style)).draw(fs.tick),
+    ], gap=2)
+
+    temp_detail = hstack([
+        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state.extruder_temp)}', muted_small_style)], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state.bed_temp)}', muted_small_style)], gap=2),
+    ], gap=4)
+
+    elements = [
+        info_elem,
+        file_detail,
+        temp_detail,
+    ]
+
+    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
+
 def widget(fs: FrameState):
     frame = composer(fs)
     return Widget('octoprint', frame=frame, priority=15 if frame else 0, wait_time=90 if frame else 0)
 
 
 draw = draw_loop(composer, sleepms=10)
+draw_full_screen = draw_loop(full_screen_composer, sleepms=10)
