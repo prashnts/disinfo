@@ -13,6 +13,7 @@ from ..redis import rkeys, set_dict, set_json, db, publish
 from .app_states import PubSubManager, PubSubMessage
 from ..data_structures import AppBaseModel
 from . import idfm, washing_machine
+from .klipper import KlipperClient
 
 
 class SafeScheduler(Scheduler):
@@ -173,15 +174,10 @@ if __name__ == '__main__':
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice',), on_pubsub)
 
-    ws = websocket.WebSocketApp(f'ws://{app_config.klipper_host}/websocket',
-                                on_message=on_klipper_msg,
-                                on_open=on_klipper_connect)
-    ws_thread = threading.Thread(target=ws.run_forever)
-    ws_thread.start()
+    KlipperClient(app_config.klipper_host).connect()
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)
     while True:
         scheduler.run_pending()
         time.sleep(1)
-    ws_thread.join()

@@ -1,5 +1,5 @@
 from . import date_time
-from . import octoprint
+from . import klipper
 from . import weather
 from . import solar
 from . import twenty_two
@@ -16,7 +16,7 @@ from . import washing_machine
 
 __all__ = [
     'date_time',
-    'octoprint',
+    'klipper',
     'weather',
     'solar',
     'twenty_two',
