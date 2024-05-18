@@ -65,7 +65,7 @@ def emit_frame(img, brightness):
 
         payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
         try:
-            udp_socket.sendto(payload, (target_ip, target_port))
+            udp_socket.sendto(payload, (app_config.panel_host, target_port))
         except OSError:
             errors += 1
 

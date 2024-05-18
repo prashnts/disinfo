@@ -45,6 +45,7 @@ class Config(AppBaseModel):
     width: int
     height: int
     name: str
+    panel_host: str
 
     # Klipper
     klipper_host: str = '10.0.1.91'
