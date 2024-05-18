@@ -89,7 +89,7 @@ def thumbnail_image(filename: str = None):
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps? .quantize()
-        frame = Frame(img.resize((32, 32)).convert('RGBA'))
+        frame = Frame(img.resize((150, 150)).quantize().resize((32, 32)).convert('RGBA'))
         return frame
     except requests.RequestException:
         return None
