@@ -1,6 +1,8 @@
 import os
 import json
 
+from typing import Optional
+
 from .data_structures import AppBaseModel
 
 class MonitorConfig(AppBaseModel):
@@ -45,7 +47,7 @@ class Config(AppBaseModel):
     width: int
     height: int
     name: str
-    panel_host: str
+    panel_host: Optional[str] = None
 
     # Klipper
     klipper_host: str = '10.0.1.91'
