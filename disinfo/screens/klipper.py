@@ -131,6 +131,7 @@ def composer(fs: FrameState):
         completion_time = text_slide_in(fs, 'op.eta', f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
         time_left = text_slide_in(fs, 'op.time_left', f'{state.time_left}', muted_small_style)
     else:
+        completion_time = None
         time_left = text('Done!', style=muted_small_style)
 
 
