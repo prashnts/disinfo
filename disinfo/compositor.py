@@ -95,15 +95,9 @@ def compose_3dp_frame(fs: FrameState):
         return Frame(image).tag('not_present')
 
     # composite_at(screens.solar.draw(fs), image, 'mm')
-    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
+    # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     stack = Stack('main_cards').mut([
-        screens.weather.widgets.weather(fs),
-        screens.dishwasher.widget(fs),
-        screens.weather.widgets.moon_phase(fs),
-        screens.now_playing.widget(fs),
         screens.klipper.widget(fs),
-        screens.trash_pickup.widget(fs),
-        screens.date_time.calendar_widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
