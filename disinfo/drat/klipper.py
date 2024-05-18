@@ -85,7 +85,7 @@ class KlipperClient:
                                          on_close=self.on_close,
                                          on_error=self.on_error)
         
-        self.publish = throttle(publish, 400)
+        self.publish = throttle(publish, 800)
     
     def on_message(self, ws, msg):
         # rich.print(f'Received message from {self.host}:', msg)
