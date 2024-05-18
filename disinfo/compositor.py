@@ -96,10 +96,10 @@ def compose_3dp_frame(fs: FrameState):
 
     # composite_at(screens.solar.draw(fs), image, 'mm')
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
-    stack = Stack('main_cards').mut([
-        screens.klipper.widget(fs),
-    ])
-    composite_at(stack.draw(fs), image, 'ml')
+    # stack = Stack('main_cards').mut([
+    #     screens.klipper.widget(fs),
+    # ])
+    composite_at(screens.klipper.widget(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     return Frame(image).tag('present')
