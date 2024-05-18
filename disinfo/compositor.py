@@ -108,9 +108,9 @@ def compose_3dp_frame(fs: FrameState):
         border=1,
         border_color='#91642176')
     composite_at(screens.klipper.thumbnail_image(state.thumbnail), image, 'mr')
-    composite_at(Frame(background), image, 'mm')
     composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    composite_at(Frame(background), image, 'mm')
 
     return Frame(image).tag('present')
 
