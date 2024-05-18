@@ -1,4 +1,5 @@
 import paho.mqtt.client as mqtt
+
 import json
 import arrow
 
@@ -23,7 +24,7 @@ rmt_ikea_keymap = {
 }
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_code, properties=None):
     print('connected!')
 
     client.subscribe('octoPrint/hass/printing')
@@ -84,7 +85,7 @@ def on_message(client, userdata, msg):
 
 
 if __name__ == '__main__':
-    client = mqtt.Client()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
     client.on_disconnect = on_disconnect
