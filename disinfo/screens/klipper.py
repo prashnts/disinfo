@@ -49,6 +49,8 @@ class KlipperState(AppBaseModel):
     filename: Optional[str] = None
     thumbnail: Optional[str] = None
 
+    online: bool = False
+
     eta: Optional[str] = None
 
     completion_time: Optional[str] = ''
@@ -70,7 +72,7 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
             self.state.is_on = self.state.state in ('printing', 'paused', 'standby')
             self.state.is_printing = self.state.state == 'printing'
             self.state.is_done = self.state.state == 'complete'
-            self.state.is_visible = self.state.state in ('printing', 'paused', 'standby', 'complete')
+            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete')
 
             if data.payload.get('eta'):
                 self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
@@ -192,9 +194,6 @@ def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
 
 
-    if not state.is_visible:
-        return
-
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
@@ -215,8 +214,8 @@ def full_screen_composer(fs: FrameState):
 
     elements = [
         info_elem,
-        file_detail,
-        temp_detail,
+        file_detail if state.online else None,
+        temp_detail if state.online else None,
     ]
 
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00003f51'))

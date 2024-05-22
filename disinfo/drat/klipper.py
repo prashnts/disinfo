@@ -79,7 +79,7 @@ class KlipperClient:
         self.retry_delay_after_max_retries = 25 # seconds
         self.max_retries = 5
 
-        self.klipper_state = {}
+        self.klipper_state = {'powered': False, 'online': False}
         self.publish = throttle(publish, 800)
     
     def on_message(self, ws, msg):
@@ -95,8 +95,15 @@ class KlipperClient:
                 s['filename'] = pluck('print_stats.filename', status)
                 s['state'] = pluck('print_stats.state', status)
                 s['progress'] = pluck('display_status.progress', status, -1) * 100
+                s['online'] = True
             if msg.get('id') == 10043:
                 s['file_metadata'] = msg['result']
+            if msg.get('method') == 'notify_klippy_ready':
+                # Resubscribe
+                self.subscribe()
+                s['online'] = True
+            if msg.get('method') == 'notify_klippy_shutdown':
+                s['online'] = False
             if msg.get('method') == 'notify_status_update':
                 params = msg['params'][0]
                 if pluck('heater_bed.temperature', params):
@@ -113,6 +120,7 @@ class KlipperClient:
                     s['progress'] = pluck('display_status.progress', params) * 100
                 if pluck('print_stats.filament_used', params):
                     s['filament_used'] = pluck('print_stats.filament_used', params)
+                s['online'] = True
 
             if prev_state.get('filename') != s.get('filename') and s.get('filename'):
                 self.send("server.files.metadata", 10043, filename=s['filename'])
@@ -129,11 +137,7 @@ class KlipperClient:
         except Exception as e:
             rich.print(f'Error in processing message from {self.host}: {e}', message=msg, state=s)
 
-    def on_open(self, ws):
-        self.connected = True
-        self.retry_count = 0
-        print(f'Connected to {self.host}')
-
+    def subscribe(self):
         self.send("printer.objects.subscribe", 10042, objects={
             "gcode_move": None,
             "toolhead": ["position", "status"],
@@ -144,6 +148,12 @@ class KlipperClient:
             "print_duration": None,
             "virtual_sdcard": None,
         })
+
+    def on_open(self, ws):
+        self.connected = True
+        self.retry_count = 0
+        print(f'Connected to {self.host}')
+        self.subscribe()
     
     def on_close(self, *args):
         self.connected = False
