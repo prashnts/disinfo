@@ -80,13 +80,6 @@ class KlipperClient:
         self.max_retries = 5
 
         self.klipper_state = {}
-
-        self.ws = websocket.WebSocketApp(f'ws://{host}/websocket',
-                                         on_message=self.on_message,
-                                         on_open=self.on_open,
-                                         on_close=self.on_close,
-                                         on_error=self.on_error)
-        
         self.publish = throttle(publish, 800)
     
     def on_message(self, ws, msg):
@@ -175,6 +168,12 @@ class KlipperClient:
     def connect(self):
         if self.connected:
             return
+        self.ws = websocket.WebSocketApp(f'ws://{self.host}/websocket',
+                                         on_message=self.on_message,
+                                         on_open=self.on_open,
+                                         on_close=self.on_close,
+                                         on_error=self.on_error)
+        
         self.ws_thread = threading.Thread(target=self.ws.run_forever, daemon=True)
         self.ws_thread.start()
     

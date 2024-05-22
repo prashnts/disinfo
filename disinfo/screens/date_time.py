@@ -103,6 +103,12 @@ def glitterify(frame: Frame):
 
     return Frame(img)
 
+def date_pattern(fs: FrameState):
+    t = fs.now
+    if t.hour == t.minute == t.second:
+        color = green
+    # todo: complete this.
+
 def simple(fs: FrameState):
     return div(vstack([
         text_slide_in(fs, 'dt.sm.clk.h', fs.now.strftime('%H'), edge='right'),
