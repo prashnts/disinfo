@@ -47,6 +47,7 @@ options.hardware_mapping = 'regular'
 
 
 def publish_frame(img):
+    return # noop
     with io.BytesIO() as buffer:
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
