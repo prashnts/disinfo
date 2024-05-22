@@ -195,8 +195,22 @@ def full_screen_composer(fs: FrameState):
 
 
     if not state.online:
-        offline_info = text_slide_in(fs, 'op.offline', f'Let\'s print!', TextStyle(font=fonts.cozette, color='#888888'))
-        return div(offline_info, style=DivStyle(padding=1, background='#00003f51'))
+        let_s = text('let\'s', TextStyle(font=fonts.bitocra7, color='#888888'))
+        verbs = [
+            ' print',
+            ' make ',
+            'create',
+            ' build',
+            ' craft',
+            ' forge',
+            ' shape',
+            'design',
+            '  fab ',
+        ]
+        verb = verbs[int(fs.tick // 5 % len(verbs))]
+
+        offline_info = text_slide_in(fs, 'op.offline', verb, TextStyle(font=fonts.creep, color='#888888'))
+        return div(vstack([let_s, offline_info], gap=3, align='center'), style=DivStyle(padding=1, background='#00003f51'))
 
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,

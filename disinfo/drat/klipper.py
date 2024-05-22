@@ -16,7 +16,7 @@ def pluck(key, data, default=None):
     store = data
     for k in ks:
         store = store.get(k)
-        if not store:
+        if store is None:
             return default
         if type(store) == dict:
             continue
@@ -95,7 +95,7 @@ class KlipperClient:
                 s['filename'] = pluck('print_stats.filename', status)
                 s['state'] = pluck('print_stats.state', status)
                 s['progress'] = pluck('display_status.progress', status, -1) * 100
-                s['online'] = True
+                s['online'] = pluck('webhooks.state', status, False) != 'shutdown'
             if msg.get('id') == 10043:
                 s['file_metadata'] = msg['result']
             if msg.get('method') == 'notify_klippy_ready':
@@ -139,14 +139,15 @@ class KlipperClient:
 
     def subscribe(self):
         self.send("printer.objects.subscribe", 10042, objects={
-            "gcode_move": None,
-            "toolhead": ["position", "status"],
+            # "gcode_move": None,
+            # "toolhead": ["position", "status"],
             "display_status": None,
             "heater_bed": ["temperature", "state"],
             "extruder": ["temperature", "state"],
             "print_stats": None,
             "print_duration": None,
-            "virtual_sdcard": None,
+            # "virtual_sdcard": None,
+            "webhooks": None,
         })
 
     def on_open(self, ws):
@@ -178,11 +179,12 @@ class KlipperClient:
     def connect(self):
         if self.connected:
             return
-        self.ws = websocket.WebSocketApp(f'ws://{self.host}/websocket',
-                                         on_message=self.on_message,
-                                         on_open=self.on_open,
-                                         on_close=self.on_close,
-                                         on_error=self.on_error)
+        self.ws = websocket.WebSocketApp(
+            f'ws://{self.host}/websocket',
+            on_message=self.on_message,
+            on_open=self.on_open,
+            on_close=self.on_close,
+            on_error=self.on_error)
         
         self.ws_thread = threading.Thread(target=self.ws.run_forever, daemon=True)
         self.ws_thread.start()
