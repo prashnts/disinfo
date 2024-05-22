@@ -151,7 +151,7 @@ class KlipperClient:
     def on_close(self, *args):
         self.connected = False
         print(f'Disconnected to {self.host}, will retry.')
-        threading.Thread(target=self.retry_connect).start()
+        self.retry_connect()
     
     def on_error(self, ws, error):
         print(f'Error in connection to {self.host}: {error}')
