@@ -194,7 +194,7 @@ def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
 
 
-    if not state.is_visible:
+    if not state.online:
         offline_info = text_slide_in(fs, 'op.offline', f'Let\'s print!', TextStyle(font=fonts.cozette, color='#888888'))
         return div(offline_info, style=DivStyle(padding=1, background='#00003f51'))
 
