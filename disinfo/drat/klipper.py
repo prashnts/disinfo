@@ -94,43 +94,47 @@ class KlipperClient:
         s = self.klipper_state
         prev_state = s.copy()
         msg = json.loads(msg)
-        if msg.get('id') == 10042:
-            status = msg['result']['status']
-            s['bed_temp'] = pluck('heater_bed.temperature', status)
-            s['extruder_temp'] = pluck('extruder.temperature', status)
-            s['filename'] = pluck('print_stats.filename', status)
-            s['state'] = pluck('print_stats.state', status)
-            s['progress'] = pluck('display_status.progress', status, -1) * 100
-        if msg.get('id') == 10043:
-            s['file_metadata'] = msg['result']
-        if msg.get('method') == 'notify_status_update':
-            params = msg['params'][0]
-            if pluck('heater_bed.temperature', params):
-                s['bed_temp'] = pluck('heater_bed.temperature', params)
-            if pluck('extruder.temperature', params):
-                s['extruder_temp'] = pluck('extruder.temperature', params)
-            if pluck('print_stats.filename', params):
-                s['filename'] = pluck('print_stats.filename', params)
-            if pluck('print_stats.state', params):
-                s['state'] = pluck('print_stats.state', params)
-            if pluck('print_stats.print_duration', params):
-                s['print_duration'] = pluck('print_stats.print_duration', params)
-            if pluck('display_status.progress', params):
-                s['progress'] = pluck('display_status.progress', params) * 100
-            if pluck('print_stats.filament_used', params):
-                s['filament_used'] = pluck('print_stats.filament_used', params)
+        try:
+            if msg.get('id') == 10042:
+                status = msg['result']['status']
+                s['bed_temp'] = pluck('heater_bed.temperature', status)
+                s['extruder_temp'] = pluck('extruder.temperature', status)
+                s['filename'] = pluck('print_stats.filename', status)
+                s['state'] = pluck('print_stats.state', status)
+                s['progress'] = pluck('display_status.progress', status, -1) * 100
+            if msg.get('id') == 10043:
+                s['file_metadata'] = msg['result']
+            if msg.get('method') == 'notify_status_update':
+                params = msg['params'][0]
+                if pluck('heater_bed.temperature', params):
+                    s['bed_temp'] = pluck('heater_bed.temperature', params)
+                if pluck('extruder.temperature', params):
+                    s['extruder_temp'] = pluck('extruder.temperature', params)
+                if pluck('print_stats.filename', params):
+                    s['filename'] = pluck('print_stats.filename', params)
+                if pluck('print_stats.state', params):
+                    s['state'] = pluck('print_stats.state', params)
+                if pluck('print_stats.print_duration', params):
+                    s['print_duration'] = pluck('print_stats.print_duration', params)
+                if pluck('display_status.progress', params):
+                    s['progress'] = pluck('display_status.progress', params) * 100
+                if pluck('print_stats.filament_used', params):
+                    s['filament_used'] = pluck('print_stats.filament_used', params)
 
-        if prev_state.get('filename') != s.get('filename') and s.get('filename'):
-            self.send("server.files.metadata", 10043, filename=s['filename'])
-            os.path.splitext(s['filename'])[0]
-            s['thumbnail'] = f"http://{self.host}/server/files/gcodes/.thumbs/{os.path.splitext(s['filename'])[0]}-300x300.png"
+            if prev_state.get('filename') != s.get('filename') and s.get('filename'):
+                self.send("server.files.metadata", 10043, filename=s['filename'])
+                os.path.splitext(s['filename'])[0]
+                s['thumbnail'] = f"http://{self.host}/server/files/gcodes/.thumbs/{os.path.splitext(s['filename'])[0]}-300x300.png"
 
-        s['eta'] = calculate_eta(s)
-        s['pct_job'] = calculate_pct_job(s)
+            s['eta'] = calculate_eta(s)
+            s['pct_job'] = calculate_pct_job(s)
 
-        # rich.print(f'Klipper state:', s)
+            # rich.print(f'Klipper state:', s)
 
-        self.publish('di.pubsub.klipper', action='update', payload=s)
+            self.publish('di.pubsub.klipper', action='update', payload=s)
+            print('.', end='', flush=True)
+        except Exception as e:
+            rich.print(f'Error in processing message from {self.host}: {e}', message=msg, state=s)
 
     def on_open(self, ws):
         self.connected = True
@@ -153,8 +157,8 @@ class KlipperClient:
         print(f'Disconnected to {self.host}, will retry.')
         self.retry_connect()
     
-    def on_error(self, ws, error):
-        print(f'Error in connection to {self.host}: {error}')
+    def on_error(self, ws, *args, **kwargs):
+        print(f'Error in connection to {self.host}: {args} {kwargs}')
         self.connected = False
 
     def send(self, method: str, id: int, **kwargs):
