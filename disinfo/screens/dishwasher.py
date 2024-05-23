@@ -83,7 +83,7 @@ def composer(fs: FrameState):
     return div(
         hstack([
             dishwasher_icon,
-            hstack([washer_lcd(next_timer), washer_lcd('h')], align='bottom'),
+            hstack([[washer_lcd(h) for h in str(next_timer)], washer_lcd('h')], align='bottom'),
         ], gap=3),
         style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
     ).tag('dishwasher')
