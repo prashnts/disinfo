@@ -72,6 +72,7 @@ def timer_full_cycle(now):
 
 def is_visible(fs: FrameState):
     state = DishwasherStateManager().get_state(fs)
+    return state.is_triggered
     return (not (3 < fs.now.hour <= 19)) or state.is_triggered
 
 def composer(fs: FrameState):
