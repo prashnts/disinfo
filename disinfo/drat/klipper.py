@@ -106,20 +106,20 @@ class KlipperClient:
                 s['online'] = False
             if msg.get('method') == 'notify_status_update':
                 params = msg['params'][0]
-                if pluck('heater_bed.temperature', params):
-                    s['bed_temp'] = pluck('heater_bed.temperature', params)
-                if pluck('extruder.temperature', params):
-                    s['extruder_temp'] = pluck('extruder.temperature', params)
-                if pluck('print_stats.filename', params):
-                    s['filename'] = pluck('print_stats.filename', params)
-                if pluck('print_stats.state', params):
-                    s['state'] = pluck('print_stats.state', params)
-                if pluck('print_stats.print_duration', params):
-                    s['print_duration'] = pluck('print_stats.print_duration', params)
-                if pluck('display_status.progress', params):
-                    s['progress'] = pluck('display_status.progress', params) * 100
-                if pluck('print_stats.filament_used', params):
-                    s['filament_used'] = pluck('print_stats.filament_used', params)
+                if bed_temp := pluck('heater_bed.temperature', params):
+                    s['bed_temp'] = bed_temp
+                if extruder_temp := pluck('extruder.temperature', params):
+                    s['extruder_temp'] = extruder_temp
+                if filename := pluck('print_stats.filename', params):
+                    s['filename'] = filename
+                if printer_state := pluck('print_stats.state', params):
+                    s['state'] = printer_state
+                if print_duration := pluck('print_stats.print_duration', params):
+                    s['print_duration'] = print_duration
+                if progress := pluck('display_status.progress', params):
+                    s['progress'] = progress * 100
+                if filament_used := pluck('print_stats.filament_used', params):
+                    s['filament_used'] = filament_used
                 s['online'] = True
 
             if prev_state.get('filename') != s.get('filename') and s.get('filename'):

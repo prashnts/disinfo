@@ -27,11 +27,9 @@ rmt_ikea_keymap = {
 def on_connect(client, userdata, flags, reason_code, properties=None):
     print('connected!')
 
-    client.subscribe('octoPrint/hass/printing')
-    client.subscribe('octoPrint/temperature/bed')
-    client.subscribe('octoPrint/temperature/tool0')
     client.subscribe('zigbee2mqtt/enki.rmt.0x03')   # Remote to control the display
     client.subscribe('zigbee2mqtt/ikea.rmt.0x01')   # Kitchen Remote
+    client.subscribe('zigbee2mqtt/aqara.contact.dishwasher')   # Dishwasher contact
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
 
 def on_disconnect(client, userdata, rc):
@@ -77,7 +75,8 @@ def on_message(client, userdata, msg):
         # We will retain the messages with a timeout.
         if payload['action']:
             publish('di.pubsub.remote', action=rmt_enki_keymap.get(payload['action'], 'unknown'))
-
+    if msg.topic == 'zigbee2mqtt/aqara.contact.dishwasher':
+        publish('di.pubsub.dishwasher', action='trigger')
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
         if payload['action']:
             # db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)

@@ -14,6 +14,7 @@ class Widget:
     frame: Optional[Frame] = None
     priority: int = 1
     active: bool = True
+    focus: bool = False
     wait_time: float = 2
     style: DivStyle = DivStyle(padding=1, radius=2, background='#000000ca', border=1)
 

@@ -1,5 +1,9 @@
+import pendulum
+
 from pyquery import PyQuery as pq
 from functools import cache
+from typing import Optional
+from datetime import datetime
 
 from .drawer import draw_loop
 from .colors import gray, amber_red
@@ -8,12 +12,30 @@ from ..components.layers import div, DivStyle
 from ..components.layouts import hstack
 from ..components.widget import Widget
 from ..components.text import TextStyle, text
-from ..data_structures import FrameState
+from ..drat.app_states import PubSubStateManager, PubSubMessage
+from ..data_structures import FrameState, AppBaseModel
+from ..utils.time import is_expired
 from ..utils.cairo import load_svg, load_svg_string
 
 label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
 
 dishwasher_icon = load_svg('assets/dishwasher.svg')
+
+class DishwasherState(AppBaseModel):
+    triggered_at: Optional[datetime] = None
+
+    @property
+    def is_triggered(self):
+        return not is_expired(self.triggered_at, 5, expired_if_none=True)
+
+class DishwasherStateManager(PubSubStateManager[DishwasherState]):
+    model = DishwasherState
+    channels = ('di.pubsub.dishwasher',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'trigger':
+            self.state.triggered_at = pendulum.now()
+
 
 @cache
 def washer_lcd(letter):
@@ -49,8 +71,8 @@ def timer_full_cycle(now):
     return next_target.diff(now).in_hours()
 
 def is_visible(fs: FrameState):
-    return not (3 < fs.now.hour <= 19)
-
+    state = DishwasherStateManager().get_state(fs)
+    return (not (3 < fs.now.hour <= 19)) or state.is_triggered
 
 def composer(fs: FrameState):
     if not is_visible(fs):
@@ -67,6 +89,7 @@ def composer(fs: FrameState):
     ).tag('dishwasher')
 
 def widget(fs: FrameState):
-    return Widget('dishwasher', composer(fs), priority=0.5, wait_time=8)
+    state = DishwasherStateManager().get_state(fs)
+    return Widget('dishwasher', composer(fs), priority=0.5, wait_time=8, focus=state.is_triggered)
 
 draw = draw_loop(composer)

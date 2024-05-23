@@ -26,10 +26,11 @@ def is_expired(
     minutes: int = 0,
     microseconds: int = 0,
     now: Optional[pendulum.DateTime] = None,
+    expired_if_none: bool = False,
 ):
     '''Checks if the given datetime has expired. Returns true if dt + delta <= now => dt has expired.'''
     if not dt:
-        return False
+        return expired_if_none
     if not now:
         now = pendulum.now()
     if isinstance(dt, str):
