@@ -76,6 +76,7 @@ def on_message(client, userdata, msg):
         if payload['action']:
             publish('di.pubsub.remote', action=rmt_enki_keymap.get(payload['action'], 'unknown'))
     if msg.topic == 'zigbee2mqtt/aqara.contact.dishwasher':
+        # print('Dishwasher contact:', payload)
         publish('di.pubsub.dishwasher', action='trigger')
     if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
         if payload['action']:
