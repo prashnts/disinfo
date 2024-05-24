@@ -2,6 +2,7 @@ import asyncio
 import aiohttp
 import random
 import pendulum
+import rich
 
 from datetime import datetime
 from idfm_api import IDFMApi
@@ -19,21 +20,21 @@ traffic_stops = [
         'line_id': 'C01371',
         'stop': 'Reuilly - Diderot',
         'stop_id': '44637',
-        'direction': 'LA DEFENSE',
+        'direction': 'La Défense (Grande Arche)',
     },
     {
         'line': '8',
         'line_id': 'C01378',
         'stop': 'Montgallet',
         'stop_id': '44160',
-        'direction': 'BALARD',
+        'direction': 'Balard',
     },
     {
         'line': '6',
         'line_id': 'C01376',
         'stop': 'Daumesnil',
         'stop_id': '45229',
-        'direction': 'CHARLES DE GAULLE-ETOILE',
+        'direction': 'Charles de Gaulle - Etoile',
     },
 ]
 line_infos = [
@@ -116,14 +117,15 @@ def is_active():
         # 7h-9h on weekdays
         t.day_of_week in [1, 2, 3, 4, 5] and (time(7, 0) <= t.time() <= time(9, 0)),
         # 15h-16h30 on thursdays
-        t.day_of_week == 4 and (time(15, 0) <= t.time() <= time(16, 30)),
+        t.day_of_week == 4 and (time(15, 0) <= t.time() <= time(16, 30)) and t.day < 15,
     ])
 
 
 def collate_train_time(traffic: list[TrafficData], direction: str):
-    now = pendulum.now()
+    now = pendulum.now('utc')
     for t in traffic:
-        if t.direction == direction and t.schedule >= now:
+        if t.direction.lower() == direction.lower() and t.schedule >= now:
+            print('here')
             mins = now.diff(t.schedule).total_seconds() / 60
             yield {
                 'next_in': mins,
