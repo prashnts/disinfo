@@ -60,6 +60,8 @@ def emit_frame(img, brightness):
         ims = [im]
     elif app_config.name == 'salon':
         im_1, im_2 = np.hsplit(im, 2)
+        im_1 = np.rot90(im_1, 3)
+        im_2 = np.rot90(im_2, 3)
         ims = [np.reshape(im_1, (64 * 64, 4)), np.reshape(im_2, (64 * 64, 4))]
     else:
         raise ValueError('Unknown panel type.')
