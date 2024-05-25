@@ -75,8 +75,6 @@ def emit_frame(img, brightness):
         for pix, panel in enumerate(app_config.udp_panel):
             a = i * panel.size
             b = a + panel.size * 2
-            # a = i * 32 if app_config.name == '3dpanel' else i * 64
-            # b = a + (64 if app_config.name == '3dpanel' else 128)
 
             payload = bytes([i, 0, 0] + ims[pix][a:b].astype(np.uint8).flatten().tolist())
             try:
