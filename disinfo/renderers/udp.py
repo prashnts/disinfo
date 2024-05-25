@@ -37,6 +37,7 @@ def reencode_frame(img: Image.Image, brightness: float = 1):
 
 # @throttle()
 def publish_frame(img):
+    return
     with BytesIO() as buffer:
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
