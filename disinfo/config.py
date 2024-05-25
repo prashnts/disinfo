@@ -53,7 +53,7 @@ class Config(AppBaseModel):
     name: str
     panel_host: Optional[str] = None
 
-    udp_panels: list[UDPPanel] = []
+    udp_panel: list[UDPPanel] = []
 
     # Klipper
     klipper_host: str = '10.0.1.91'
