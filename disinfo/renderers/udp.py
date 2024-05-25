@@ -70,7 +70,7 @@ def emit_frame(img, brightness):
     errors = 0
 
     for i in flatten(zip(even_offsets, odd_offsets)):
-        for pix, panel in enumerate(app_config.udp_panels):
+        for pix, panel in enumerate(app_config.udp_panel):
             a = i * panel.size
             b = a + panel.size * 2
             # a = i * 32 if app_config.name == '3dpanel' else i * 64
