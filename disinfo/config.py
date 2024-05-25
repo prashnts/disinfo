@@ -17,6 +17,10 @@ class MonitorConfig(AppBaseModel):
         'sensor.enviomental_lux',
     ]
 
+class UDPPanel(AppBaseModel):
+    ip: str
+    size: int
+
 class Config(AppBaseModel):
     pw_api_key: str
     pw_unit: str = 'ca'
@@ -48,6 +52,8 @@ class Config(AppBaseModel):
     height: int
     name: str
     panel_host: Optional[str] = None
+
+    udp_panels: list[UDPPanel] = []
 
     # Klipper
     klipper_host: str = '10.0.1.91'

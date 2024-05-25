@@ -21,6 +21,11 @@ from ..components.transitions import NumberTransition
 target_ip = '10.0.1.214'
 target_port = 6002
 
+# 10.0.1.132 => pico-study      28:CD:C1:0C:38:FA 
+# 10.0.1.214 => pico-3dpanel    28:CD:C1:0F:3D:F0 
+# 10.0.1.170 -> pico-salon-a    28:CD:C1:11:78:5F 
+# 10.0.1.140 -> pico-salon-b    28:CD:C1:11:73:09 
+
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
@@ -49,25 +54,33 @@ def emit_frame(img, brightness):
         im = np.rot90(im, 1)
         im = im.reshape(64 * 32, 4)
         im = np.stack([im[:, 0], im[:, 2], im[:, 1], im[:, 3]], axis=1)
+        ims = [im]
     elif app_config.name == 'picowpanel':
         im = im.reshape(64 * 64, 4)
+        ims = [im]
+    elif app_config.name == 'salon':
+        im_1, im_2 = np.hsplit(im, 2)
+        ims = [np.reshape(im_1, (64 * 64, 4)), np.reshape(im_2, (64 * 64, 4))]
     else:
         raise ValueError('Unknown panel type.')
-    
+
     offsets = list(range(0, 64, 2))
     even_offsets = offsets[::2]
     odd_offsets = offsets[1::2]
     errors = 0
 
     for i in flatten(zip(even_offsets, odd_offsets)):
-        a = i * 32 if app_config.name == '3dpanel' else i * 64
-        b = a + (64 if app_config.name == '3dpanel' else 128)
+        for pix, panel in enumerate(app_config.udp_panels):
+            a = i * panel.size
+            b = a + panel.size * 2
+            # a = i * 32 if app_config.name == '3dpanel' else i * 64
+            # b = a + (64 if app_config.name == '3dpanel' else 128)
 
-        payload = bytes([i, 0, 0] + im[a:b].astype(np.uint8).flatten().tolist())
-        try:
-            udp_socket.sendto(payload, (app_config.panel_host, target_port))
-        except OSError:
-            errors += 1
+            payload = bytes([i, 0, 0] + ims[pix][a:b].astype(np.uint8).flatten().tolist())
+            try:
+                udp_socket.sendto(payload, (panel.ip, target_port))
+            except OSError:
+                errors += 1
 
     if errors:
         print(f'encountered {errors} errors.')
