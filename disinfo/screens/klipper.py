@@ -236,7 +236,7 @@ def full_screen_composer(fs: FrameState):
         temp_detail if state.online else None,
     ]
 
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00003f51'))
+    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
 
 def widget(fs: FrameState):
     frame = composer(fs)
