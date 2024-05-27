@@ -164,15 +164,15 @@ brightness_min: float = 10
 brightness_max: float = 80
 brightness_curve = [
     # LUX   BRIGHTNESS %
-    [0.2,   7],
-    [0.5,   9],
-    [1,     14],
-    [2,     18],
-    [5,     40],
-    [20,    60],
-    [50,    70],
-    [200,   85],
-    [400,   90],
+    [0.2,   10],
+    [0.5,   30,
+    [1,     35],
+    [2,     48],
+    [5,     45],
+    [20,    50],
+    [50,    60],
+    [200,   70],
+    [400,   80],
 ]
 brightness_interpolator = interp1d(
     *zip(*brightness_curve),
