@@ -165,7 +165,7 @@ brightness_max: float = 80
 brightness_curve = [
     # LUX   BRIGHTNESS %
     [0.2,   10],
-    [0.5,   30,
+    [0.5,   30],
     [1,     35],
     [2,     48],
     [5,     45],
