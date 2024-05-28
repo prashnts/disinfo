@@ -72,7 +72,7 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
             self.state.is_on = self.state.state in ('printing', 'paused', 'standby')
             self.state.is_printing = self.state.state == 'printing'
             self.state.is_done = self.state.state == 'complete'
-            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete')
+            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete') and self.state.online
 
             if data.payload.get('eta'):
                 self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
