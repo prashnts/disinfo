@@ -30,9 +30,9 @@ udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
 def reencode_frame(img: Image.Image, brightness: float = 1):
-    img = apply_gamma(img, 1.4)
+    img = apply_gamma(img, app_config.panel_gamma)
     e = ImageEnhance.Brightness(img)
-    img = e.enhance(brightness / 400)
+    img = e.enhance(brightness / app_config.brightness_divider)
     return img
 
 # @throttle()

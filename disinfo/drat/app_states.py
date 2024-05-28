@@ -161,7 +161,7 @@ class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
 
 
 brightness_min: float = 10
-brightness_max: float = 80
+brightness_max: float = 90
 brightness_curve = [
     # LUX   BRIGHTNESS %
     [0.2,   10],
@@ -170,9 +170,9 @@ brightness_curve = [
     [2,     48],
     [5,     45],
     [20,    50],
-    [50,    60],
-    [200,   70],
-    [400,   80],
+    [50,    70],
+    [200,   80],
+    [400,   90],
 ]
 brightness_interpolator = interp1d(
     *zip(*brightness_curve),

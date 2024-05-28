@@ -52,6 +52,8 @@ class Config(AppBaseModel):
     height: int
     name: str
     panel_host: Optional[str] = None
+    brightness_divider: float = 400
+    panel_gamma: float = 1.2
 
     udp_panel: list[UDPPanel] = []
 

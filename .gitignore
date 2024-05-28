@@ -1,5 +1,6 @@
 .env
 .config.json
+.config-*
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
@@ -178,3 +179,4 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python
 
 emulator_config.json
+.
