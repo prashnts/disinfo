@@ -52,7 +52,7 @@ def emit_frame(img, brightness):
     im = np.flip(im, 1)
 
     if app_config.name == '3dpanel':
-        im = np.rot90(im, 1)
+        im = np.rot90(im, 3)
         im = im.reshape(64 * 32, 4)
         im = np.stack([im[:, 0], im[:, 2], im[:, 1], im[:, 3]], axis=1)
         ims = [im]
