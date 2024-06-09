@@ -77,7 +77,8 @@ class KlipperStateManager(PubSubStateManager[KlipperState]):
             self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
 
             if data.payload.get('eta'):
-                self.state.completion_time = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local').strftime('%H:%M')
+                eta = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local')
+                self.state.completion_time = eta.strftime('%H:%M')
 
 @cache
 def thumbnail_image(thumb_url: str = None):
@@ -94,6 +95,29 @@ def thumbnail_image(thumb_url: str = None):
         return frame
     except requests.RequestException:
         return None
+
+
+def time_remaining(fs: FrameState, eta: pendulum.DateTime) -> Frame:
+    if not eta:
+        return None
+    
+    now = fs.now
+    eta = pendulum.parse(eta, tz='UTC').in_tz(tz='local')
+    d = (eta - now).total_seconds()
+    days = d // (24 * 60 * 60)
+    d = d - (days * (24 * 3600))
+    hours = d // 3600
+    d -= hours * 3600
+    minutes = d // 60
+    d -= minutes * 60
+    seconds = int(d)
+
+    segments = [(days, 'd'), (hours, 'h'), (minutes, 'm'), (seconds, 's')]
+    segments = [(s, l) for s, l in segments if s > 0]
+
+    return hstack([
+        *[hstack([text(f'{int(s)}', muted_small_style), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
+    ], gap=2).tag(('klipper.eta', eta))
 
 
 def composer(fs: FrameState):
@@ -136,6 +160,7 @@ def composer(fs: FrameState):
         # completion_text,
         file_detail,
         completion_eta,
+        time_remaining(fs, state.eta),
         temp_detail,
     ]
 
