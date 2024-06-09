@@ -208,6 +208,7 @@ def full_screen_composer(fs: FrameState):
 
     elements = [
         info_elem,
+        time_remaining(fs, state.eta) if state.eta else None,
         file_detail if state.online else None,
         temp_detail if state.online else None,
     ]
