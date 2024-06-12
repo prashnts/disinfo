@@ -86,7 +86,7 @@ def clamp(value, min_value=0, max_value=1):
 def sun_times(t):
     times = get_times(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
     position = get_position(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
-    utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items()}
+    utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items() if not str(v) == 'NaT'}
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
@@ -156,9 +156,11 @@ def analog_clock(fs, w: int, h: int):
         (solar_angles['sunset_start'], solar_angles['sunrise_end'], SkyHues.civil_twilight),
         (solar_angles['dusk'], solar_angles['dawn'], SkyHues.nautical_twilight),
         (solar_angles['nautical_dusk'], solar_angles['nautical_dawn'], SkyHues.astronomical_twilight),
-        (solar_angles['night'], solar_angles['night_end'], SkyHues.night),
+        (solar_angles.get('night'), solar_angles.get('night_end'), SkyHues.night),
     ]
     for start, end, color in sections:
+        if not any([start, end]):
+            continue
         ctx.set_source_rgba(*color.rgba)
         ctx.arc(cx, cy, hyp, start, end)
         ctx.line_to(cx, cy)
