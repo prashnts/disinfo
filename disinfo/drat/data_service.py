@@ -10,6 +10,7 @@ from ..redis import rkeys, set_dict, set_json, db, publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm, washing_machine
 from .klipper import KlipperClient
+from ..screens.aviator.tasks import adsbx_task
 
 
 class SafeScheduler(Scheduler):
@@ -97,11 +98,12 @@ def on_pubsub(channel_name: str, message: PubSubMessage):
         get_random_text()
 
 
-scheduler = SafeScheduler()
+scheduler = SafeScheduler(reschedule_on_failure=False)
 
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
+scheduler.every(5).seconds.do(adsbx_task)
 # scheduler.every(1).minutes.do(get_washing_machine_info)
 
 

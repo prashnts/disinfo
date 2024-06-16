@@ -12,6 +12,7 @@ from . import debug_info
 from . import trash_pickup
 from . import dishwasher
 from . import washing_machine
+from . import aviator
 
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     'trash_pickup',
     'dishwasher',
     'washing_machine',
+    'aviator',
 ]

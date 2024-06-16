@@ -25,3 +25,4 @@ cairosvg>=2.7.1
 pyquery>=2.0.0
 scikit-image>=0.22.0
 websocket-client>=1.8.0
+geopy>=2.4.1

@@ -46,6 +46,7 @@ def compose_big_frame(fs: FrameState):
         ], gap=1, align='right'),
         image, 'tr')
     stack = Stack('main_cards').mut([
+        *screens.aviator.widgets.planes(fs),
         screens.weather.widgets.weather(fs),
         screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
