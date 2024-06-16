@@ -103,7 +103,7 @@ scheduler = SafeScheduler(reschedule_on_failure=False)
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
-scheduler.every(5).seconds.do(adsbx_task)
+scheduler.every(2).seconds.do(adsbx_task)
 # scheduler.every(1).minutes.do(get_washing_machine_info)
 
 

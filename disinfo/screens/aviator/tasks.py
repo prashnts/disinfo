@@ -23,7 +23,7 @@ def fetch_closest_planes():
     planes_with_pos = []
 
     for plane in planes:
-        if 'lat' not in plane or 'lon' not in plane:
+        if 'lat' not in plane or 'lon' not in plane or not plane.get('flight'):
             continue
         plane['distance'] = distance_to_home(plane['lat'], plane['lon'])
         planes_with_pos.append(plane)
@@ -35,5 +35,4 @@ def fetch_closest_planes():
 
 def adsbx_task():
     planes = fetch_closest_planes()
-    print(planes)
     publish('di.pubsub.aviator', action='update', payload=planes)
