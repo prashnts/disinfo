@@ -21,9 +21,15 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
-                text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{plane.get('alt_baro'):0d}", TextStyle(font=fonts.bitocra7, color=gray.hex)),
-                text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
-            ], align='bottom', gap=1),
+                hstack([
+                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{plane.get('alt_baro'):0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
+                    text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
+                ], align='bottom', gap=1),
+                hstack([
+                    text_slide_in(fs, f'avi.w.{plane["hex"]}.dist', f"{plane.get('distance'):0.1f}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
+                    text('km', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
+                ], align='bottom', gap=1),
+            ], gap=2),
         ], gap=2),
     ])
     return Widget(name='aviator.airplane_widget', frame=frame, priority=2, wait_time=10)
