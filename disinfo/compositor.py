@@ -46,8 +46,8 @@ def compose_big_frame(fs: FrameState):
         ], gap=1, align='right'),
         image, 'tr')
     stack = Stack('main_cards').mut([
-        *screens.aviator.widgets.planes(fs),
         screens.weather.widgets.weather(fs),
+        *screens.aviator.widgets.planes(fs),
         screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
         screens.dishwasher.widget(fs),
@@ -76,6 +76,7 @@ def compose_small_frame(fs: FrameState):
     composite_at(screens.solar.draw(fs), image, 'mm')
     composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     stack = Stack('main_cards').mut([
+        *screens.aviator.widgets.planes(fs),
         screens.weather.widgets.weather(fs),
         screens.dishwasher.widget(fs),
         screens.weather.widgets.moon_phase(fs),

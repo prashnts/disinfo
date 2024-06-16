@@ -17,6 +17,7 @@ airplane_icon = load_svg('assets/mui-icons/plane.svg')
 
 def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
+    hexname = plane.get('hex') or '000000'
     frame = hstack([
         airplane_icon,
         vstack([
@@ -33,10 +34,10 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
             ], gap=2),
         ], gap=2),
     ])
-    return Widget(name='aviator.airplane_widget', frame=frame, priority=2, wait_time=20, focus=distance < 2)
+    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance < 2)
 
 
 def planes(fs: FrameState):
     planes = ADSBxStateManager().get_state(fs)
-    widgets = [airplane_widget(fs, plane) for plane in planes[:1]]
+    widgets = [airplane_widget(fs, plane) for plane in planes[:2]]
     return widgets
