@@ -12,14 +12,22 @@ from disinfo.screens.colors import gray
 from .state import ADSBxStateManager
 
 
-airplane_icon = load_svg('assets/mui-icons/plane.svg')
+icons = {
+    'plane': load_svg('assets/mui-icons/plane.svg'),
+    'helicopter': load_svg('assets/mui-icons/helicopter.svg'),
+}
+
+category_mapping = {
+    'A7': 'helicopter',
+}
 
 
 def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
+    kind = category_mapping.get(plane.get('category')) or 'plane'
     hexname = plane.get('hex') or '000000'
     frame = hstack([
-        airplane_icon,
+        icons[kind],
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
