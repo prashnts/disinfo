@@ -34,10 +34,10 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
             ], gap=2),
         ], gap=2),
     ])
-    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance < 2)
+    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance <= 2.5)
 
 
-def planes(fs: FrameState):
+def planes(fs: FrameState) -> list[Widget]:
     planes = ADSBxStateManager().get_state(fs)
-    widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] < 6]
+    widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] <= 8]
     return widgets

@@ -98,7 +98,7 @@ def on_pubsub(channel_name: str, message: PubSubMessage):
         get_random_text()
 
 
-scheduler = SafeScheduler(reschedule_on_failure=False)
+scheduler = SafeScheduler(reschedule_on_failure=True)
 
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
