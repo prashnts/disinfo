@@ -33,13 +33,13 @@ class Stack(metaclass=UniqInstance):
 
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]
-        if not self.scroller.on_target:
-            return
-
         items_in_focus = [w for w in self._widgets if w.frame and w.focus]
 
         if len(items_in_focus) == 1:
             self.pos = [i for i, w in enumerate(self._widgets) if w.frame and w.focus][0]
+            return
+
+        if not self.scroller.on_target:
             return
 
         if step - self.last_step > curr_widget.wait_time + 1:

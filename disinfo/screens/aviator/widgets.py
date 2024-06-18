@@ -26,13 +26,14 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
     kind = category_mapping.get(plane.get('category')) or 'plane'
     hexname = plane.get('hex') or '000000'
+    alt = plane.get('alt_baro') or -69
     frame = hstack([
         icons[kind],
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
                 hstack([
-                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{plane.get('alt_baro'):0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
+                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{alt:0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
                     text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
                 ], align='bottom', gap=1),
                 hstack([
@@ -42,7 +43,7 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
             ], gap=2),
         ], gap=2),
     ])
-    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance <= 2.5)
+    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance <= 3)
 
 
 def planes(fs: FrameState) -> list[Widget]:
