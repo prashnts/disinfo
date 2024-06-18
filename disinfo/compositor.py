@@ -74,7 +74,6 @@ def compose_small_frame(fs: FrameState):
         return Frame(image).tag('not_present')
 
     composite_at(screens.solar.draw(fs), image, 'mm')
-    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     stack = Stack('main_cards').mut([
         *screens.aviator.widgets.planes(fs),
         screens.weather.widgets.weather(fs),
@@ -86,6 +85,7 @@ def compose_small_frame(fs: FrameState):
         screens.date_time.calendar_widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml')
+    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     return Frame(image).tag('present')
