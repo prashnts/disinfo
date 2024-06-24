@@ -1267,7 +1267,8 @@ def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale, angle=0)
     svg = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="' + shape['viewBox'] + '" '
     svg += 'preserveAspectRatio="none" ' if 'noAspect' in shape else ''
     svg += f'width="{wi}" height="{he}">'
-    svg += f'<g transform-box="fill-box" transform-origin="center" transform="rotate({angle}) {shape.get("transform", "")}">'
+    svg += f'<g transform="rotate({angle} {wi / 2} {he / 2}) {shape.get("transform", "")}">'
+    # svg += f'<g transform-box="fill-box" transform-origin="center" transform="rotate({angle}) {shape.get("transform", "")}">'
 
     path = shape['path']
     if not isinstance(path, list):

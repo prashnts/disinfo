@@ -67,7 +67,7 @@ sample_plane = {
     'mach': 0.42,
     'oat': 14,
     'tat': 24,
-    'track': 265.25,
+    'track': 65.25,
     'track_rate': -0.06,
     'roll': -0.53,
     'mag_heading': 263.5,
@@ -98,11 +98,12 @@ sample_plane = {
     'messages': 6512,
     'seen': 0.2,
     'rssi': -24.0,
-    'distance': 17.05826323753527
+    'distance': 1.05826323753527
 }
 
 
 def planes(fs: FrameState) -> list[Widget]:
     planes = ADSBxStateManager().get_state(fs)
+    # planes = [sample_plane]
     widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] <= 8]
     return widgets
