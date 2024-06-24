@@ -17,10 +17,13 @@ from .colors import marker_color
 def flight_icon(plane: dict) -> str:
     shape_name, scale = get_base_marker(plane.get('category', 'A3'), altitude=plane.get('alt_baro', 0))
     shape = shapes[shape_name]
+
+    alt = plane.get('alt_baro') or 0
+    alt = 0 if type(alt) == str else alt * 0.3048
     
     svg = svg_shape_to_svg(
         shape,
-        fillColor=marker_color(plane.get('alt_baro')).hex,
+        fillColor=marker_color(alt).hex,
         strokeColor='#229649',
         strokeWidth=0.1,
         scale=0.6*scale,
@@ -34,7 +37,7 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
     hexname = plane.get('hex') or '000000'
     alt = plane.get('alt_baro') or -69
-    alt = 0 if type(alt) == str else alt
+    alt = 0 if type(alt) == str else alt * 0.3048
     frame = hstack([
         flight_icon(plane),
         vstack([
