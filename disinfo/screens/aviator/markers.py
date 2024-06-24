@@ -1249,7 +1249,7 @@ def get_base_marker(category, type_description=None, wtc=None, addrtype=None, al
         return ['ground_square', 1]
     return ['unknown', 1]
 
-def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale):
+def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale, angle=0):
     scale = scale if scale else 1
 
     strokeWidth *= shape['strokeScale'] if 'strokeScale' in shape else 1
@@ -1264,7 +1264,7 @@ def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale):
     svg = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="' + shape['viewBox'] + '" '
     svg += 'preserveAspectRatio="none" ' if 'noAspect' in shape else ''
     svg += f'width="{wi}" height="{he}">'
-    svg += '<g transform="' + shape['transform'] + '">' if 'transform' in shape else '<g>'
+    svg += f'<g transform-origin="center" transform="rotate({angle}) {shape.get("transform", "")}">'
 
     path = shape['path']
     if not isinstance(path, list):
@@ -1285,4 +1285,3 @@ def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale):
     
     svg += '</g></svg>'
     return svg
-
