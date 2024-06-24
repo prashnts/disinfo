@@ -38,6 +38,7 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     hexname = plane.get('hex') or '000000'
     alt = plane.get('alt_baro') or -69
     alt = 0 if type(alt) == str else alt * 0.3048
+    alt = int(alt)
     frame = hstack([
         flight_icon(plane),
         vstack([
