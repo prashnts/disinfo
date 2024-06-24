@@ -6,24 +6,14 @@ from disinfo.components.layouts import hstack, vstack
 from disinfo.components.text import TextStyle, text
 from disinfo.components.transitions import text_slide_in
 from disinfo.components import fonts
-from disinfo.utils.cairo import load_svg, load_svg_string
+from disinfo.utils.cairo import load_svg_string
 from disinfo.screens.colors import gray
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker
 
-icons = {
-    'plane': load_svg('assets/mui-icons/plane.svg'),
-    'helicopter': load_svg('assets/mui-icons/helicopter.svg'),
-}
-
-category_mapping = {
-    'A7': 'helicopter',
-}
-
 
 def flight_icon(plane: dict) -> str:
-
     shape_name, scale = get_base_marker(plane.get('category', 'A3'), altitude=plane.get('alt_baro', 0))
     shape = shapes[shape_name]
 
@@ -32,12 +22,10 @@ def flight_icon(plane: dict) -> str:
 
 def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
-    kind = category_mapping.get(plane.get('category')) or 'plane'
     hexname = plane.get('hex') or '000000'
     alt = plane.get('alt_baro') or -69
     alt = 0 if type(alt) == str else alt
     frame = hstack([
-        # icons[kind],
         flight_icon(plane),
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),

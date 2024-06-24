@@ -1,3 +1,5 @@
+from functools import cache
+
 from cairocffi import ImageSurface, FORMAT_RGB24, FORMAT_ARGB32
 from cairosvg.parser import Tree
 from cairosvg.surface import PNGSurface
@@ -28,6 +30,7 @@ def load_svg(path: str) -> Frame:
     surface = PNGSurface(Tree(bytestring=svg), None, 1).cairo
     return Frame(to_pil(surface), hash=path)
 
+@cache
 def load_svg_string(svg: str) -> Frame:
     surface = PNGSurface(Tree(bytestring=svg.encode()), None, 1).cairo
     return Frame(to_pil(surface), hash=svg)
