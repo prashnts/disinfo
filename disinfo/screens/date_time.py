@@ -64,7 +64,7 @@ def world_clock(fs: FrameState):
 
 def day_of_the_week(fs: FrameState):
     t = fs.now
-    style = s_day['weekend' if t.day_of_week in (6, 0) else 'weekday']
+    style = s_day['weekend' if t.day_of_week in (6, 7) else 'weekday']
     return div(text_slide_in(fs, 'dt.dow', t.strftime('%a').upper(), style['text'], 'top'), style['div'])
 
 def date(fs: FrameState):
