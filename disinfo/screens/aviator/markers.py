@@ -1251,7 +1251,6 @@ def get_base_marker(category, type_description=None, wtc=None, addrtype=None, al
         return ['ground_square', 1]
     return ['unknown', 1]
 
-@throttle(1000)
 def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale, angle=0):
     scale = scale if scale else 1
 

@@ -14,11 +14,11 @@ from .markers import shapes, svg_shape_to_svg, get_base_marker
 from .colors import marker_color
 
 
-def flight_icon(plane: dict) -> str:
-    shape_name, scale = get_base_marker(plane.get('category', 'A3'), altitude=plane.get('alt_baro', 0))
+def flight_icon(category: str, altitude: float, track: float) -> str:
+    shape_name, scale = get_base_marker(category, altitude=altitude)
     shape = shapes[shape_name]
 
-    alt = plane.get('alt_baro') or 0
+    alt = altitude or 0
     alt = 0 if type(alt) == str else alt * 0.3048
     
     svg = svg_shape_to_svg(
@@ -27,7 +27,7 @@ def flight_icon(plane: dict) -> str:
         strokeColor='#229649',
         strokeWidth=0.1,
         scale=0.6*scale,
-        angle=plane.get('track', 0),
+        angle=track - 90,
     )
 
     return load_svg_string(svg)
@@ -40,7 +40,7 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     alt = 0 if type(alt) == str else alt * 0.3048
     alt = int(alt)
     frame = hstack([
-        flight_icon(plane),
+        flight_icon(plane.get('category', 'A3'), plane.get('alt_baro'), plane.get('track', 0)),
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
