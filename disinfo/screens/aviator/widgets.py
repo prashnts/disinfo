@@ -11,13 +11,23 @@ from disinfo.screens.colors import gray
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker
+from .colors import marker_color
 
 
 def flight_icon(plane: dict) -> str:
     shape_name, scale = get_base_marker(plane.get('category', 'A3'), altitude=plane.get('alt_baro', 0))
     shape = shapes[shape_name]
+    
+    svg = svg_shape_to_svg(
+        shape,
+        fillColor=marker_color(plane.get('alt_baro')).hex,
+        strokeColor='#229649',
+        strokeWidth=0.1,
+        scale=0.6*scale,
+        angle=plane.get('track', 0),
+    )
 
-    return load_svg_string(svg_shape_to_svg(shape, fillColor='#225679', strokeColor='#229649', strokeWidth=0.1, scale=0.6*scale, angle=plane.get('track', 0)))
+    return load_svg_string(svg)
 
 
 def airplane_widget(fs: FrameState, plane: dict) -> Widget:
