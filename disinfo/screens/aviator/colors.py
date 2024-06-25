@@ -11,9 +11,10 @@ altitude_scale = [
     [9000,  '#3E39F0'],
     [12000, '#C111D1'],
 ]
+tickpoints, colors = zip(*altitude_scale)
+scale = spectra.scale(colors).domain(tickpoints)
+
 def marker_color(altitude: float):
-    tickpoints, colors = zip(*altitude_scale)
-    scale = spectra.scale(colors).domain(tickpoints)
     if type(altitude) == str:
         altitude = 0
     if altitude < tickpoints[0]:

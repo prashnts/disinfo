@@ -23,9 +23,10 @@ def flight_icon(category: str, altitude: float, track: float) -> str:
     
     svg = svg_shape_to_svg(
         shape,
-        fillColor=marker_color(alt).hex,
-        strokeColor='#229649',
-        strokeWidth=0.1,
+        # fillColor=marker_color(alt).hex,
+        fillColor='#00000000',
+        strokeColor=marker_color(alt).hex,
+        strokeWidth=0.8,
         scale=0.6*scale,
         angle=track - 90,
     )
@@ -69,7 +70,7 @@ sample_plane = {
     'mach': 0.42,
     'oat': 14,
     'tat': 24,
-    'track': 65.25,
+    'track': -100.25,
     'track_rate': -0.06,
     'roll': -0.53,
     'mag_heading': 263.5,

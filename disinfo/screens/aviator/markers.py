@@ -1263,10 +1263,13 @@ def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale, angle=0)
         svg = svg.replace('SIZE', 'width="' + wi + 'px" height="' + he + 'px"')
         return svg
     
-    svg = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="' + shape['viewBox'] + '" '
+    svg = f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {wi} {he}" width="{wi}" height="{he}">'
+
+    svg += '<defs>'
+    svg += f'<svg version="1.1" id="marker" xmlns="http://www.w3.org/2000/svg" viewBox="{shape["viewBox"]}" width="{wi}" height="{he}"'
     svg += 'preserveAspectRatio="none" ' if 'noAspect' in shape else ''
-    svg += f'width="{wi}" height="{he}">'
-    svg += f'<g transform="rotate({angle} {shape["w"] / 2} {shape["h"] / 2}) {shape.get("transform", "")}">'
+    svg += '>'
+    svg += f'<g transform="{shape.get("transform", "")}">'
 
     path = shape['path']
     if not isinstance(path, list):
@@ -1286,4 +1289,10 @@ def svg_shape_to_svg(shape, fillColor, strokeColor, strokeWidth, scale, angle=0)
         svg += 'd="' + a + '"/>'
     
     svg += '</g></svg>'
+    svg += '</defs>'
+
+    svg += f'<g transform="rotate({angle} {wi / 2} {he / 2})" >'
+    svg += f'<use href="#marker" x="0" y="0" width="{wi}" height="{he}"/>'
+    svg += '</g></svg>'
+
     return svg
