@@ -8,6 +8,7 @@ from disinfo.components.transitions import text_slide_in
 from disinfo.components import fonts
 from disinfo.utils.cairo import load_svg_string
 from disinfo.screens.colors import gray
+from disinfo.config import app_config
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker
@@ -23,10 +24,9 @@ def flight_icon(category: str, altitude: float, track: float) -> str:
     
     svg = svg_shape_to_svg(
         shape,
-        # fillColor=marker_color(alt).hex,
-        fillColor='#00000000',
+        fillColor=marker_color(alt).hex,
         strokeColor=marker_color(alt).hex,
-        strokeWidth=0.8,
+        strokeWidth=0,
         scale=0.6*scale,
         angle=track - 90,
     )
@@ -107,6 +107,7 @@ sample_plane = {
 
 def planes(fs: FrameState) -> list[Widget]:
     planes = ADSBxStateManager().get_state(fs)
-    # planes = [sample_plane]
+    if app_config.devmode:
+        planes = [sample_plane]
     widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] <= 8]
     return widgets

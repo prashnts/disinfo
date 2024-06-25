@@ -22,6 +22,8 @@ class UDPPanel(AppBaseModel):
     size: int
 
 class Config(AppBaseModel):
+    devmode: bool = False
+
     pw_api_key: str
     pw_unit: str = 'ca'
 

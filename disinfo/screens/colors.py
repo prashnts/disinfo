@@ -27,7 +27,14 @@ class AppColor(Color):
 
     def get_rgba(self):
         return (*self.rgb, self.alpha)
+    
+    def get_hexa(self):
+        alpha = hex(int(self.alpha * 255))[2:].zfill(2)
+        return f'{self.hex}{alpha}'
 
+    def set_alpha(self, alpha: float) -> 'AppColor':
+        self.__dict__['alpha'] = alpha
+        return self
 
 
 gray = AppColor('#9a9ba2')
