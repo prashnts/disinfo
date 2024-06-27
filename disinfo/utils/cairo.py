@@ -24,10 +24,10 @@ def to_pil(surface: ImageSurface) -> Image.Image:
     else:
         raise NotImplementedError(repr(format))
 
-def load_svg(path: str) -> Frame:
+def load_svg(path: str, scale: float = 1) -> Frame:
     with open(path, 'rb') as f:
         svg = f.read()
-    surface = PNGSurface(Tree(bytestring=svg), None, 1).cairo
+    surface = PNGSurface(Tree(bytestring=svg), None, 1, scale=scale).cairo
     return Frame(to_pil(surface), hash=path)
 
 @cache

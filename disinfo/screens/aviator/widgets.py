@@ -1,3 +1,5 @@
+from functools import cache
+
 from disinfo.components.elements import Frame
 from disinfo.data_structures import FrameState
 from disinfo.components.widget import Widget
@@ -6,13 +8,14 @@ from disinfo.components.layouts import hstack, vstack
 from disinfo.components.text import TextStyle, text
 from disinfo.components.transitions import text_slide_in
 from disinfo.components import fonts
-from disinfo.utils.cairo import load_svg_string
+from disinfo.utils.cairo import load_svg_string, load_svg
 from disinfo.screens.colors import gray
 from disinfo.config import app_config
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker
 from .colors import marker_color
+from .flags import find_icao_range
 
 
 def flight_icon(category: str, altitude: float, track: float) -> str:
@@ -33,6 +36,15 @@ def flight_icon(category: str, altitude: float, track: float) -> str:
 
     return load_svg_string(svg)
 
+@cache
+def flag(hexid: str) -> Frame:
+    reg = find_icao_range(hexid)
+    flag_icon = load_svg(f"assets/flags/3x2/{reg.get('country_code', 'EU').upper()}.svg", scale=0.015)
+    return hstack([
+        flag_icon,
+        text(reg.get('country_code', '').upper(), TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
+    ], align='center', gap=1)
+
 
 def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     distance = plane.get('distance') or 9000
@@ -45,6 +57,7 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
         vstack([
             text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
+                flag(hexname),
                 hstack([
                     text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{alt:0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
                     text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
