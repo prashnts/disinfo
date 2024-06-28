@@ -10,7 +10,7 @@ def distance_to_home(lat: float, lon: float) -> float:
 
 
 def fetch_planes():
-    url = f'http://{app_config.adsbx_host}/tar1090/data/aircraft.json'
+    url = f'http://{app_config.adsbx_host}/data/aircraft.json'
 
     r = requests.get(url)
     r.raise_for_status()

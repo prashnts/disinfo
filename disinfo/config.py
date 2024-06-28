@@ -63,7 +63,7 @@ class Config(AppBaseModel):
     klipper_host: str = '10.0.1.91'
 
     # Aviator
-    adsbx_host: str = '10.0.1.203'
+    adsbx_host: str = '10.0.1.131:8080'
 
 
 with open(os.environ.get('DI_CONFIG_PATH', '.config.json')) as f:
