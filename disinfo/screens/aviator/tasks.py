@@ -36,3 +36,4 @@ def fetch_closest_planes():
 def adsbx_task():
     planes = fetch_closest_planes()
     publish('di.pubsub.aviator', action='update', payload=planes)
+    print('Published planes')

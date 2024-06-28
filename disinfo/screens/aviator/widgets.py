@@ -39,7 +39,23 @@ def flight_icon(category: str, altitude: float, track: float) -> str:
 @cache
 def flag(hexid: str) -> Frame:
     reg = find_icao_range(hexid)
-    flag_icon = load_svg(f"assets/flags/3x2/{reg.get('country_code', 'EU').upper()}.svg", scale=0.015)
+    country_code = reg.get("country_code", '').upper()
+
+    if not country_code:
+        return
+
+    with open(f'assets/flags/3x2/{country_code}.svg', 'r') as fp:
+        flag_icon = fp.read()
+    
+    width = 7
+    height = 7
+    
+    svg = f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}">'
+    svg += flag_icon
+    svg += '</svg>'
+
+    flag_icon = load_svg_string(svg)
+
     return hstack([
         flag_icon,
         text(reg.get('country_code', '').upper(), TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
@@ -59,17 +75,17 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
             hstack([
                 flag(hexname),
                 hstack([
-                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{alt:0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
-                    text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
-                ], align='bottom', gap=1),
-                hstack([
                     text_slide_in(fs, f'avi.w.{plane["hex"]}.dist', f"{plane.get('distance'):0.1f}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
                     text('km', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
                 ], align='bottom', gap=1),
+                hstack([
+                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{alt:0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
+                    text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
+                ], align='bottom', gap=1),
             ], gap=2),
         ], gap=2),
-    ])
-    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=20, focus=distance <= 3)
+    ], gap=1)
+    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=10, focus=distance <= 3)
 
 sample_plane = {
     'hex': '4402db',
