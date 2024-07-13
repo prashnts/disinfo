@@ -5,6 +5,7 @@ import socket
 import numpy as np
 
 from io import BytesIO
+from collections import defaultdict
 from pydash import flatten
 from itertools import chain
 from PIL import Image, ImageDraw, ImageEnhance
@@ -44,6 +45,9 @@ def publish_frame(img):
 
     publish('di.pubsub.frames', action='new-frame-3dp' if app_config.name == '3dpanel' else 'new-frame-pico', payload=dict(img=encoded_img))
 
+prev_img = defaultdict(bytes)
+duplicate_timeout = defaultdict(int)
+
 def emit_frame(img, brightness):
     publish_frame(img)
     img = reencode_frame(img, brightness)
@@ -78,6 +82,11 @@ def emit_frame(img, brightness):
             b = a + panel.size * 2
 
             payload = bytes([i, 0, 0] + ims[pix][a:b].astype(np.uint8).flatten().tolist())
+            if prev_img[(pix, i)] == payload and duplicate_timeout[(pix, i)] < 10:
+                duplicate_timeout[(pix, i)] += 1
+                continue
+            prev_img[(pix, i)] = payload
+            duplicate_timeout[(pix, i)] = 0
             try:
                 udp_socket.sendto(payload, (panel.ip, target_port))
             except OSError:
