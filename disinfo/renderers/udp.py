@@ -48,7 +48,7 @@ def publish_frame(img):
 prev_img = defaultdict(bytes)
 duplicate_timeout = defaultdict(int)
 
-def emit_frame(img, brightness):
+def emit_frame(img, brightness, fps):
     publish_frame(img)
     img = reencode_frame(img, brightness)
 
@@ -82,7 +82,7 @@ def emit_frame(img, brightness):
             b = a + panel.size * 2
 
             payload = bytes([i, 0, 0] + ims[pix][a:b].astype(np.uint8).flatten().tolist())
-            if prev_img[(pix, i)] == payload and duplicate_timeout[(pix, i)] < 10:
+            if prev_img[(pix, i)] == payload and duplicate_timeout[(pix, i)] < fps:
                 duplicate_timeout[(pix, i)] += 1
                 continue
             prev_img[(pix, i)] = payload
@@ -105,7 +105,7 @@ def main(fps: int = 60, stats: bool = False):
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 2, initial=50).mut(als.brightness).value(fs)
-        emit_frame(frame, int(brightness))
+        emit_frame(frame, int(brightness), fps)
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)
