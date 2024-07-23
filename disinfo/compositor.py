@@ -75,7 +75,8 @@ def compose_small_frame(fs: FrameState):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
 
-    composite_at(screens.solar.draw(fs), image, 'mm')
+    composite_at(screens.aviator.app.radar(fs), image, 'mm')
+    # composite_at(screens.solar.draw(fs), image, 'mm')
     stack = Stack('main_cards').mut([
         *screens.aviator.widgets.planes(fs),
         screens.weather.widgets.weather(fs),
