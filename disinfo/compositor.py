@@ -32,9 +32,11 @@ def compose_big_frame(fs: FrameState):
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
+    composite_at(screens.aviator.app.radar(fs), image, 'mm')
 
+    # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # composite_at(screens.demo.draw(fs), image, 'mm')
-    composite_at(screens.solar.draw(fs), image, 'mm')
+    # composite_at(screens.solar.draw(fs), image, 'mm')
 
     composite_at(
         vstack([

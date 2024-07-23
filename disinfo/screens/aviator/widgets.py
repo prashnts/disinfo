@@ -136,7 +136,7 @@ sample_plane = {
 
 def planes(fs: FrameState) -> list[Widget]:
     planes = ADSBxStateManager().get_state(fs)
-    if app_config.devmode:
-        planes = [sample_plane]
+    # if app_config.devmode:
+    #     planes = [sample_plane]
     widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] <= 8]
     return widgets

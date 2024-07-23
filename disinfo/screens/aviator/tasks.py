@@ -29,7 +29,7 @@ def fetch_closest_planes():
         planes_with_pos.append(plane)
 
     return {
-        'planes': sorted(planes_with_pos, key=lambda x: x['distance'])[:10],
+        'planes': sorted(planes_with_pos, key=lambda x: x['distance'])[:50],
     }
 
 
