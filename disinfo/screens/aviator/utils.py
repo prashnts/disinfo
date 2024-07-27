@@ -7,15 +7,15 @@ from disinfo.config import app_config
 earth_radius = 6371
 
 source_transform = cartopy.crs.Geodetic()
-screen_transform = cartopy.crs.epsg(3785)
+screen_transform = cartopy.crs.epsg(4087)
 
 
-def bbox(center: tuple[float, float], radius: float):
+def bbox(center: tuple[float, float], radius: tuple[float, float]):
     x, y = screen_transform.transform_point(center[0], center[1], source_transform)
 
     return (
-        (x - radius, y - radius),
-        (x + radius, y + radius),
+        (x - radius[0] / 2, y - radius[1] / 2),
+        (x + radius[0] / 2, y + radius[1] / 2),
     )
 
 def lat_long_zoom_to_xy(lat: float, long: float):

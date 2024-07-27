@@ -1,4 +1,5 @@
 import cairocffi as cairo
+import geopy.distance
 import math
 from pyquery import PyQuery as pq
 from functools import cache
@@ -46,7 +47,8 @@ def load_map() -> cairo.ImageSurface:
     return surface
 
 
-def flight_icon(category: str, altitude: float, track: float):
+@cache
+def flight_icon(category: str, altitude: float, track: float, scalefactor: float = 0.6) -> cairo.ImageSurface:
     shape_name, scale = get_base_marker(category, altitude=altitude)
     shape = shapes[shape_name]
 
@@ -58,7 +60,7 @@ def flight_icon(category: str, altitude: float, track: float):
         fillColor=marker_color(alt).hex,
         strokeColor=marker_color(alt).hex,
         strokeWidth=0,
-        scale=0.6*scale,
+        scale=scalefactor*scale,
         angle=track,
     )
 
@@ -69,15 +71,25 @@ def flight_icon(category: str, altitude: float, track: float):
     return surface
 
 
+class RadarSurface:
+    def __init__(self):
+        ...
+
+
 def radar(fs: FrameState) -> Frame:
     state = ADSBxStateManager().get_state(fs)
     w = app_config.width
     h = app_config.height
 
-    span = 30_000
-    box = bbox((app_config.latitude, app_config.longitude), span)
-    csx, csy = lat_long_zoom_to_xy(app_config.latitude, app_config.longitude)
-    cx, cy = scale_xy_to_screen(csx, csy, box)
+    center = 48.993, 2.515
+
+    span = 100_000, 140_000
+    box = bbox(center, span)
+    cx, cy = scale_xy_to_screen(*lat_long_zoom_to_xy(*center), box)
+    cx = w - cx
+    cy = h - cy
+
+    latlonxy = lambda lat, lon: scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box)
 
     rmax = max(w, h)
 
@@ -88,29 +100,52 @@ def radar(fs: FrameState) -> Frame:
     # ctx.set_source_surface(load_map(), 0, 0)
     # ctx.paint()
 
+    # for i in range(10):
+    #     ...
+
    
-    for i in range(nrings):
-        radius = i * rmax / nrings
-        thick_mul = i * 1.9 / nrings
+    # for i in range(nrings):
+    #     radius = i * rmax / nrings
+    #     thick_mul = i * 1.9 / nrings
 
-        pattern = cairo.RadialGradient(cx, cy, radius * 0.5, cx, cy, radius)
-        pattern.add_color_stop_rgba(1, 0, 0.6, 0.1, 1)
-        pattern.add_color_stop_rgba(0.95, 0, 0.6, 0.1, 0.6)
-        pattern.add_color_stop_rgba(0.5 * thick_mul, 0, 0.6, 0.1, 0.1)
-        pattern.add_color_stop_rgba(0, 1, 0.6, 1, 0)
+    #     pattern = cairo.RadialGradient(cx, cy, radius * 0.5, cx, cy, radius)
+    #     pattern.add_color_stop_rgba(1, 0, 0.6, 0.1, 1)
+    #     pattern.add_color_stop_rgba(0.95, 0, 0.6, 0.1, 0.6)
+    #     pattern.add_color_stop_rgba(0.5 * thick_mul, 0, 0.6, 0.1, 0.1)
+    #     pattern.add_color_stop_rgba(0, 1, 0.6, 1, 0)
 
-        ctx.set_source(pattern)
-        ctx.arc(cx, cy, radius, 0, 2 * math.pi)
-        ctx.fill()
+    #     ctx.set_source(pattern)
+    #     ctx.arc(cx, cy, radius, 0, 2 * math.pi)
+    #     ctx.fill()
 
     for plane in state:
+        if geopy.distance.distance(center, (plane['lat'], plane['lon'])).m > max(span) + 1_000:
+            continue
+        if plane['alt_baro'] == 'ground':
+            plane['alt_baro'] = 0
+
         try:
-            flight = flight_icon(plane['category'], plane['alt_baro'], plane['track'])
+            # flight = flight_icon(plane['category'], 1000, plane['track'])
+            flight = flight_icon(plane['category'], plane['alt_baro'], plane['track'], 0.3 if plane['alt_baro'] > 15000 else 0.5)
+            iw = flight.get_width()
+            ih = flight.get_height()
         except KeyError:
             continue
-        sx, sy = lat_long_zoom_to_xy(plane['lat'], plane['lon'])
-        x, y = scale_xy_to_screen(sx, sy, box)
-        ctx.set_source_surface(flight, x, y)
+        sx, sy = scale_xy_to_screen(*lat_long_zoom_to_xy(plane['lat'], plane['lon']), box)
+
+        positions = []
+        max_pos = 500
+        if plane['alt_baro'] < 15000:
+            for i, (lat, lon, alt, track) in enumerate(plane['positions'][-max_pos:]):
+                if alt is None:
+                    continue
+                ctx.set_source_rgba(*marker_color(alt).darken(0.2).rgb, i / max_pos)
+                x, y = scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box)
+                # positions.append((x, y, marker_color(alt).rgba))
+                ctx.arc(x, y, 0.5, 0, 2 * math.pi)
+                ctx.fill()
+
+        ctx.set_source_surface(flight, sx - iw / 2, sy - ih / 2)
         ctx.paint()
     
     return Frame(to_pil(surface)).tag('radar')
