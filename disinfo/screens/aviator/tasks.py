@@ -36,6 +36,9 @@ def fetch_closest_planes():
         positions[plane['hex']].append((plane['lat'], plane['lon'], plane['alt_baro'], plane.get('track')))
         plane['positions'] = positions[plane['hex']]
 
+        if len(plane['positions']) > 400:
+            del plane['positions'][:-400]
+
         planes_with_pos.append(plane)
 
     return {
