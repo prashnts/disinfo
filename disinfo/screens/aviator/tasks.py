@@ -1,3 +1,4 @@
+import time
 import geopy.distance
 import requests
 
@@ -26,6 +27,7 @@ positions = defaultdict(list)
 def fetch_closest_planes():
     planes = fetch_planes()
     planes_with_pos = []
+    now = time.time()
 
     for plane in planes:
         if 'lat' not in plane or 'lon' not in plane or 'alt_baro' not in plane or not plane.get('flight'):
@@ -33,13 +35,17 @@ def fetch_closest_planes():
         plane['distance'] = distance_to_home(plane['lat'], plane['lon'])
 
         # TODO: the positions array grows indefinitely.
-        positions[plane['hex']].append((plane['lat'], plane['lon'], plane['alt_baro'], plane.get('track')))
+        positions[plane['hex']].append((plane['lat'], plane['lon'], plane['alt_baro'], plane.get('track'), now))
         plane['positions'] = positions[plane['hex']]
 
         if len(plane['positions']) > 400:
             del plane['positions'][:-400]
 
         planes_with_pos.append(plane)
+    
+    for hex, pos in positions.items():
+        if now - pos[-1][-1] > 60 * 60:
+            del positions[hex]
 
     return {
         'planes': sorted(planes_with_pos, key=lambda x: x['distance'])[:50],
