@@ -32,12 +32,12 @@ def compose_big_frame(fs: FrameState):
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
-    composite_at(screens.aviator.app.radar(fs), image, 'mm')
+    # composite_at(screens.aviator.app.radar(fs), image, 'mm')
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # return Frame(image).tag('present')
     # composite_at(screens.demo.draw(fs), image, 'mm')
-    # composite_at(screens.solar.draw(fs), image, 'mm')
+    composite_at(screens.solar.draw(fs), image, 'mm')
 
     composite_at(
         vstack([
@@ -76,21 +76,20 @@ def compose_small_frame(fs: FrameState):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
 
-    composite_at(screens.aviator.app.radar(fs), image, 'mm')
+    # composite_at(screens.aviator.app.radar(fs), image, 'mm')
+    composite_at(screens.solar.draw(fs), image, 'mm')
+    stack = Stack('main_cards').mut([
+        *screens.aviator.widgets.planes(fs),
+        screens.weather.widgets.weather(fs),
+        screens.dishwasher.widget(fs),
+        screens.weather.widgets.moon_phase(fs),
+        screens.now_playing.widget(fs),
+        screens.klipper.widget(fs),
+        screens.trash_pickup.widget(fs),
+        screens.date_time.calendar_widget(fs),
+    ])
+    composite_at(stack.draw(fs), image, 'ml')
     composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
-    # composite_at(screens.solar.draw(fs), image, 'mm')
-    # stack = Stack('main_cards').mut([
-    #     *screens.aviator.widgets.planes(fs),
-    #     screens.weather.widgets.weather(fs),
-    #     screens.dishwasher.widget(fs),
-    #     screens.weather.widgets.moon_phase(fs),
-    #     screens.now_playing.widget(fs),
-    #     screens.klipper.widget(fs),
-    #     screens.trash_pickup.widget(fs),
-    #     screens.date_time.calendar_widget(fs),
-    # ])
-    # composite_at(stack.draw(fs), image, 'ml')
-    # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     return Frame(image).tag('present')

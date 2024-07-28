@@ -59,7 +59,7 @@ def flight_icon(category: str, altitude: float, track: float, scalefactor: float
         shape,
         fillColor=marker_color(alt).hex,
         strokeColor=marker_color(alt).hex,
-        strokeWidth=0,
+        strokeWidth=0.5,
         scale=scalefactor*scale,
         angle=track,
     )
