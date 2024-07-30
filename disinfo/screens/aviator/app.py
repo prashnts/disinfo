@@ -83,7 +83,7 @@ def radar(fs: FrameState) -> Frame:
 
     center = 48.993, 2.515
 
-    span = 100_000, 140_000
+    span = 16_000, 22_000
     box = bbox(center, span)
     cx, cy = scale_xy_to_screen(*lat_long_zoom_to_xy(*center), box)
     cx = w - cx
@@ -134,16 +134,27 @@ def radar(fs: FrameState) -> Frame:
         sx, sy = scale_xy_to_screen(*lat_long_zoom_to_xy(plane['lat'], plane['lon']), box)
 
         positions = []
-        max_pos = 500
-        if plane['alt_baro'] < 15000:
-            for i, (lat, lon, alt, track) in enumerate(plane['positions'][-max_pos:]):
+        max_pos = 400
+        positions = plane['positions'][-max_pos:]
+
+        if plane['alt_baro'] < 25000:
+            for i, (lat, lon, alt, track) in enumerate(positions):
                 if alt is None:
                     continue
-                ctx.set_source_rgba(*marker_color(alt).darken(0.2).rgb, i / max_pos)
+                alt *= 0.3048
                 x, y = scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box)
+                if i == 0:
+                    ctx.move_to(x, y)
+                else:
+                    prev_pos = positions[i - 1]
+                    px, py = scale_xy_to_screen(*lat_long_zoom_to_xy(prev_pos[0], prev_pos[1]), box)
+                    ctx.move_to(px, py)
+                ctx.set_source_rgba(*marker_color(alt).darken(0.2).rgb, 255)#max_pos - i / max_pos)
                 # positions.append((x, y, marker_color(alt).rgba))
-                ctx.arc(x, y, 0.5, 0, 2 * math.pi)
-                ctx.fill()
+                ctx.line_to(x, y)
+                ctx.set_line_width(1)
+                # ctx.arc(x, y, 0.5, 0, 2 * math.pi)
+                ctx.stroke()
 
         ctx.set_source_surface(flight, sx - iw / 2, sy - ih / 2)
         ctx.paint()

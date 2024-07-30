@@ -528,6 +528,7 @@ pw_icon_mapping = {
     'cloudy': icon18,
     'partly-cloudy-day': icon14d,
     'partly-cloudy-night': icon14n,
+    'none': icon18,
 }
 
 def render_icon(icon: list, scale: int=1) -> Image:

@@ -41,7 +41,7 @@ def fetch_closest_planes():
         if len(plane['positions']) > 400:
             del plane['positions'][:-400]
 
-        planes_with_pos.append(plane)
+        # planes_with_pos.append(plane)
     
     for hex, pos in positions.items():
         if now - pos[-1][-1] > 60 * 60:

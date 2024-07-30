@@ -14,8 +14,8 @@ def bbox(center: tuple[float, float], radius: tuple[float, float]):
     x, y = screen_transform.transform_point(center[0], center[1], source_transform)
 
     return (
-        (x - radius[0] / 2, y - radius[1] / 2),
-        (x + radius[0] / 2, y + radius[1] / 2),
+        (x - radius[0], y - radius[1]),
+        (x + radius[0], y + radius[1]),
     )
 
 def lat_long_zoom_to_xy(lat: float, long: float):
