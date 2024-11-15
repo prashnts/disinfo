@@ -19,7 +19,6 @@ import json
 import time
 
 from datetime import datetime
-from pydantic import computed_field
 from typing import Optional, Generic, TypeVar, Callable, Union
 from scipy.interpolate import interp1d
 
@@ -183,7 +182,6 @@ brightness_interpolator = interp1d(
 class LightSensorState(AppBaseModel):
     lux: float = 50.0
 
-    @computed_field
     @property
     def brightness(self) -> int:
         return int(brightness_interpolator(self.lux))

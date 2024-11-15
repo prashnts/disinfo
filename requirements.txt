@@ -27,3 +27,5 @@ scikit-image>=0.22.0
 websocket-client>=1.8.0
 geopy>=2.4.1
 cartopy>=0.23.0
+shazamio>=0.6.0
+pyaudio>=0.2.14

@@ -32,7 +32,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
     client.subscribe('zigbee2mqtt/aqara.contact.dishwasher')   # Dishwasher contact
     client.subscribe('ha_root')   # Get ALL HomeAssistant data.
 
-def on_disconnect(client, userdata, rc):
+def on_disconnect(client, userdata, rc, *args, **kwargs):
     print('Unexpected MQTT disconnection.')
 
 
@@ -41,6 +41,35 @@ def notify(channel: str, action: str, payload: dict = {}, persist: bool = False)
     if persist:
         db.set(f'state_{channel}', json.dumps(payload))
 
+def get_persisted_state(channel: str):
+    return json.loads(db.get(f'state_{channel}') or '{}')
+
+def on_bambu_message(payload):
+    state = get_persisted_state('di.pubsub.bambu')
+    next_state = {}
+    new_state = payload['new_state']['state']
+
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_print_progress':
+        next_state['progress'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_bed_temperature':
+        next_state['bed_temp'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_nozzle_temperature':
+        next_state['extruder_temp'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_print_status':
+        next_state['state'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_task_name':
+        next_state['filename'] = new_state
+    if payload['entity_id'] == 'image.a1mini_0309da461201450_cover_image':
+        next_state['thumbnail'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_remaining_time':
+        next_state['time_left'] = new_state
+    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_end_time':
+        next_state['eta'] = new_state
+    
+    if next_state:
+        full_state = {**state, **next_state}
+        notify('di.pubsub.bambu', 'update', full_state, persist=True)
+        print('Bambu state:', full_state, payload['new_state'])
 
 def on_message(client, userdata, msg):
     try:
@@ -64,7 +93,7 @@ def on_message(client, userdata, msg):
                 set_dict(rkeys['ha_driplant_volts'], event)
             if event['entity_id'] in app_config.monitors.presence_sensors:
                 notify('di.pubsub.presence', action='update', payload=event)
-
+            on_bambu_message(event)
     if msg.topic == 'octoPrint/hass/printing':
         set_dict(rkeys['octoprint_printing'], payload)
     if msg.topic == 'octoPrint/temperature/bed':

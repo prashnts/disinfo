@@ -10,6 +10,7 @@ from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
 from . import screens
+from .screens.music.shazam import widget as shazam_widget
 from .config import app_config
 
 
@@ -32,11 +33,11 @@ def compose_big_frame(fs: FrameState):
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         return Frame(image).tag('not_present')
-    # composite_at(screens.aviator.app.radar(fs), image, 'mm')
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # return Frame(image).tag('present')
     # composite_at(screens.demo.draw(fs), image, 'mm')
+    # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     composite_at(screens.solar.draw(fs), image, 'mm')
 
     composite_at(
@@ -51,6 +52,7 @@ def compose_big_frame(fs: FrameState):
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),
         *screens.aviator.widgets.planes(fs),
+        shazam_widget(fs),
         screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
         screens.dishwasher.widget(fs),
@@ -80,6 +82,7 @@ def compose_small_frame(fs: FrameState):
     composite_at(screens.solar.draw(fs), image, 'mm')
     stack = Stack('main_cards').mut([
         *screens.aviator.widgets.planes(fs),
+        shazam_widget(fs),
         screens.weather.widgets.weather(fs),
         screens.dishwasher.widget(fs),
         screens.weather.widgets.moon_phase(fs),

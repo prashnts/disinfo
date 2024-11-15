@@ -80,7 +80,7 @@ def emit_frame(client, img, brightness):
 
 
 def main(fps: int = 16, stats: bool = False):
-    client = mqtt.Client()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
     client.username_pw_set(app_config.ha_mqtt_username, app_config.ha_mqtt_password)
     client.connect(app_config.ha_mqtt_host, app_config.ha_mqtt_port, 60)
