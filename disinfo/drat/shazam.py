@@ -10,7 +10,7 @@ CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1 if sys.platform == 'darwin' else 2
 RATE = 44100
-RECORD_SECONDS = 5
+RECORD_SECONDS = 8
 
 async def recognize():
     destination = '/tmp/shazamioinput.wav'
