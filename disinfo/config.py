@@ -11,6 +11,8 @@ class MonitorConfig(AppBaseModel):
         'binary_sensor.ikea_pir_salon_occupancy',
         'binary_sensor.ikea_pir_kitchen_occupancy',
         'binary_sensor.ikea_pir_study_occupancy',
+        'binary_sensor.presence',
+        'binary_sensor.ikea_motion_salon_occupancy',
     ]
     ambient_light_sensors: list[str] = [
         'sensor.sensei_lux',
