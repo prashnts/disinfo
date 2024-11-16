@@ -39,7 +39,9 @@ class ShazamStateManager(PubSubStateManager[RecognizedMusic]):
 hscroller_name = HScroller(size=33, pause_at_loop=True)
 hscroller_subtitle = HScroller(size=33, pause_at_loop=True)
 
-base_text = TextStyle(font=fonts.tamzen__rm, color='#2C552A')
+s_title = TextStyle(font=fonts.bitocra7, color='#2C552A', outline=1, outline_color='#3E713B')
+s_subtitle = TextStyle(font=fonts.bitocra7, color='#474C52')
+
 
 def content(fs: FrameState):
     state = ShazamStateManager().get_state(fs)
@@ -47,9 +49,9 @@ def content(fs: FrameState):
         return None
 
     info = vstack([
-        hscroller_name.set_frame(text(state.title, base_text)).draw(fs.tick),
-        hscroller_subtitle.set_frame(text(state.subtitle)).draw(fs.tick),
-    ], gap=2)
+        hscroller_name.set_frame(text(state.title, s_title)).draw(fs.tick),
+        hscroller_subtitle.set_frame(text(state.subtitle, s_subtitle)).draw(fs.tick),
+    ], gap=1)
     return hstack([
         get_album_art(state.coverart),
         info,

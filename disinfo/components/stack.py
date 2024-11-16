@@ -16,6 +16,7 @@ class Stack(metaclass=UniqInstance):
     def __init__(self, name: str):
         self.name = name
         self._widgets = []
+        self._prev_widgets = []
 
         self.last_step = 0
         self.pos = 0
@@ -23,6 +24,7 @@ class Stack(metaclass=UniqInstance):
         self.scroller = VScroller(size=app_config.height, speed=0.001, delta=2, static_if_small=False)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
+        self._prev_widgets = self._widgets
         self._widgets = sorted(widgets, key=lambda w: w.priority, reverse=True)
         return self
 
@@ -34,9 +36,14 @@ class Stack(metaclass=UniqInstance):
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]
         items_in_focus = [w for w in self._widgets if w.frame and w.focus]
+        items_just_added = [w for w in self._widgets if w.frame and w not in self._prev_widgets]
 
         if len(items_in_focus) == 1:
             self.pos = [i for i, w in enumerate(self._widgets) if w.frame and w.focus][0]
+            return
+        
+        if len(items_just_added) == 1:
+            self.pos = [i for i, w in enumerate(self._widgets) if w.frame and w == items_just_added[0]][0]
             return
 
         if not self.scroller.on_target:
