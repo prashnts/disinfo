@@ -10,7 +10,7 @@ from disinfo.components.elements import Frame, StillImage
 
 
 @cache
-def get_album_art(url: str):
+def get_album_art(url: str, size: int = 16):
     if not url:
         return None
     try:
@@ -19,7 +19,7 @@ def get_album_art(url: str):
         fp = io.BytesIO(r.content)
         img = Image.open(fp)
         # Dithering helps
-        img = img.resize((80, 80)).quantize().resize((22, 22)).convert('RGBA')
+        img = img.resize((80, 80)).quantize().resize((size, size)).convert('RGBA')
         return Frame(img)
     except requests.RequestException:
         return None
