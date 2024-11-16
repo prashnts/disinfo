@@ -39,7 +39,7 @@ class ShazamStateManager(PubSubStateManager[RecognizedMusic]):
 hscroller_name = HScroller(size=33, pause_at_loop=True)
 hscroller_subtitle = HScroller(size=33, pause_at_loop=True)
 
-s_title = TextStyle(font=fonts.bitocra7, color='#2C552A', outline=1, outline_color='#3E713B')
+s_title = TextStyle(font=fonts.t, color='#2C552A')
 s_subtitle = TextStyle(font=fonts.bitocra7, color='#474C52')
 
 
