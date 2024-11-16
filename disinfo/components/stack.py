@@ -44,6 +44,7 @@ class Stack(metaclass=UniqInstance):
         
         if len(items_just_added) == 1:
             self.pos = [i for i, w in enumerate(self._widgets) if w.frame and w == items_just_added[0]][0]
+            self.last_step = step
             return
 
         if not self.scroller.on_target:
