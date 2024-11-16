@@ -55,7 +55,7 @@ def content(fs: FrameState):
     return hstack([
         get_album_art(state.coverart),
         info,
-    ], gap=2).tag('shazam')
+    ], gap=2).tag('shazam' + state.title)
 
 def widget(fs: FrameState) -> Widget:
     return Widget(
