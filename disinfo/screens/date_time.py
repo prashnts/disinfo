@@ -58,7 +58,7 @@ def world_clock(fs: FrameState):
                 'DEL',
                 TextStyle(color=black.hex, font=fonts.tamzen__rs)
             ),
-            DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=[1, 1, 1, 2])),
+            DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=(1, 1, 1, 2))),
         text_slide_in(fs, 'dt.wc', t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7), 'top'),
     ], gap=2)
 
