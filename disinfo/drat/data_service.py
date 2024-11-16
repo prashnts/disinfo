@@ -10,7 +10,6 @@ from ..redis import rkeys, set_dict, set_json, db, publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm, washing_machine
 from .klipper import KlipperClient
-from .shazam import recognize_music
 from ..screens.aviator.tasks import adsbx_task
 
 
@@ -89,14 +88,6 @@ def get_washing_machine_info():
     except Exception as e:
         print('[e] washing_machine', e)
 
-def get_recognized_music():
-    try:
-        print('[i] [fetch] recognized music')
-        data = recognize_music()
-        publish('di.pubsub.shazam', action='update', payload=data)
-    except Exception as e:
-        print('[e] shazam', e)
-
 def on_pubsub(channel_name: str, message: PubSubMessage):
     if message.action == 'fetch_metro':
         get_metro_info(force=True)
@@ -111,7 +102,6 @@ scheduler = SafeScheduler(reschedule_on_failure=True)
 scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
-scheduler.every(10).seconds.do(get_recognized_music)
 # scheduler.every(1).minutes.do(get_washing_machine_info)
 
 
