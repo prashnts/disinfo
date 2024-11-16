@@ -14,7 +14,7 @@ CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
-RECORD_SECONDS = 8
+RECORD_SECONDS = 6
 DEVICE_INDEX = 6
 
 async def recognize():
@@ -28,8 +28,10 @@ async def recognize():
         stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, input_device_index=DEVICE_INDEX)
 
         print('Recording...')
+        publish('di.pubsub.shazam', action='begin-recording')
         for _ in range(0, RATE // CHUNK * RECORD_SECONDS):
             wf.writeframes(stream.read(CHUNK))
+        publish('di.pubsub.shazam', action='end-recording')
         print('Done')
 
         stream.close()
@@ -62,10 +64,11 @@ def get_recognized_music():
         print('[i] [fetch] recognized music')
         recognize_music()
     except Exception as e:
+        publish('di.pubsub.shazam', action='end-recording')
         print('[e] shazam', e)
 
 scheduler = SafeScheduler(reschedule_on_failure=True)
-scheduler.every(30).seconds.do(get_recognized_music)
+scheduler.every(10).seconds.do(get_recognized_music)
 
 if __name__ == '__main__':
     scheduler.run_all(1)

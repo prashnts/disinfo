@@ -11,29 +11,38 @@ from disinfo.components.spriteim import SpriteIcon
 from disinfo.components.widget import Widget
 from disinfo.components.transitions import text_slide_in
 from disinfo.components import fonts
+from disinfo.utils.cairo import load_svg
 
 from .utils import get_album_art
+
+shazam_icon = load_svg('assets/shazam-icon.svg', scale=0.15)
 
 class RecognizedMusic(AppBaseModel):
     title: str = ''
     subtitle: str = ''
     coverart: str = ''
 
+    is_recording: bool = False
 
 class ShazamStateManager(PubSubStateManager[RecognizedMusic]):
     model = RecognizedMusic
     channels = ('di.pubsub.shazam',)
 
     def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'begin-recording':
+            self.state.is_recording = True
+            return
+        elif data.action == 'end-recording':
+            self.state.is_recording = False
+            return
+
         if data.action != 'update':
             return
-        print(self.state, "bb")
 
         if not data.payload:
             self.state = RecognizedMusic()
         
         self.state = RecognizedMusic(**data.payload)
-        print(self.state)
 
 
 hscroller_name = HScroller(size=33, pause_at_loop=True)
@@ -57,9 +66,26 @@ def content(fs: FrameState):
         info,
     ], gap=2).tag('shazam' + state.title)
 
-def widget(fs: FrameState) -> Widget:
-    return Widget(
-        name='shazam.recognized_music',
-        frame=content(fs),
-        priority=1,
-   )
+def indicator(fs: FrameState):
+    state = ShazamStateManager().get_state(fs)
+    if not state.is_recording:
+        return None
+    return div(
+        shazam_icon,
+        DivStyle(padding=1)
+    )
+
+def widgets(fs: FrameState) -> Widget:
+    return [
+        Widget(
+            name='shazam.recording',
+            frame=indicator(fs),
+            priority=2,
+            wait_time=8,
+        ),
+        Widget(
+            name='shazam.recognized_music',
+            frame=content(fs),
+            priority=1,
+        ),
+    ]
