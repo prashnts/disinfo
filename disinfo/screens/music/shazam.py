@@ -42,7 +42,7 @@ hscroller_subtitle = HScroller(size=33, pause_at_loop=True)
 
 def content(fs: FrameState):
     state = ShazamStateManager().get_state(fs)
-    if not state or not state.title:
+    if not state.title:
         return None
 
     info = vstack([
