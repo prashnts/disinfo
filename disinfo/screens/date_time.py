@@ -24,11 +24,11 @@ s_sticky_s  = TextStyle(color=light_gray.darken(.4).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
         'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=orange_red.darken(.2).hex, padding=[1, 1, 1, 2]),
+        'div': DivStyle(radius=2, background=orange_red.darken(.2).hex, padding=(1, 1, 1, 2)),
     },
     'weekday': {
         'text': TextStyle(color=black.hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=gray.darken(.2).hex, padding=[1, 1, 1, 2]),
+        'div': DivStyle(radius=2, background=gray.darken(.2).hex, padding=(1, 1, 1, 2)),
     },
 }
 s_colon = [
