@@ -69,7 +69,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
     def reset(self):
         self.pos = 0
         self.running = False
-        self.finished = False
+        self.finished = True
         self.curr_value = None
         self.prev_value = None
         return self
