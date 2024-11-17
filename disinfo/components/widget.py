@@ -23,11 +23,12 @@ class Widget:
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         enter = ScaleIn(f'{self.name}.scalein', self.transition_duration, ease.cubic.cubic_in)
+        exit = ScaleOut(f'{self.name}.scaleout', self.transition_duration, ease.cubic.cubic_out)
         if self.frame:
             style = dc_replace(self.style, border_color='#155598a9' if active else '#000000cf')
+            exit.reset()
             return enter.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
         else:
-            exit = ScaleOut(f'{self.name}.scaleout', self.transition_duration, ease.cubic.cubic_out)
             enter.reset()
             if enter.curr_value and not exit.finished:
                 return exit.mut(enter.curr_value).draw(fs)
