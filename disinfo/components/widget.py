@@ -24,3 +24,5 @@ class Widget:
         if self.frame:
             style = dc_replace(self.style, border_color='#155598a9' if active else '#000000cf')
             return transition.mut(div(self.frame, style).tag('static')).draw(fs)
+        else:
+            transition.mut(None)
