@@ -52,7 +52,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
 
     def mut(self, value: TransitionValue) -> 'TimedTransition':
         if not value:
-            if self.prev_value and self.reset_on_none:
+            if self.reset_on_none:
                 self.pos = 1
                 self.running = True
                 self.finished = False
