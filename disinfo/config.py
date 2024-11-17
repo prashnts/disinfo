@@ -19,6 +19,13 @@ class MonitorConfig(AppBaseModel):
         'sensor.enviomental_lux',
     ]
 
+class ShazamConfig(AppBaseModel):
+    chunk: int = 1024
+    channels: int = 1
+    sample_rate: int = 48000
+    record_duration: int = 6
+    device_index: int = 6
+
 class UDPPanel(AppBaseModel):
     ip: str
     size: int
@@ -66,6 +73,8 @@ class Config(AppBaseModel):
 
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'
+
+    shazam: ShazamConfig = ShazamConfig()
 
 
 with open(os.environ.get('DI_CONFIG_PATH', '.config.json')) as f:

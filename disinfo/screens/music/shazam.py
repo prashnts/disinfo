@@ -1,6 +1,6 @@
 from disinfo.data_structures import FrameState, AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubStateManager
-from disinfo import config
+from disinfo.config import app_config
 from disinfo.components.widget import Widget
 from disinfo.components.text import Text, TextStyle, text
 from disinfo.components.elements import StillImage, Frame
@@ -80,12 +80,13 @@ def widgets(fs: FrameState) -> Widget:
         Widget(
             name='shazam.recording',
             frame=indicator(fs),
-            priority=2,
-            wait_time=5,
+            priority=1,
+            wait_time=app_config.shazam.record_duration,
         ),
         Widget(
             name='shazam.recognized_music',
             frame=content(fs),
             priority=1,
+            wait_time=5,
         ),
     ]

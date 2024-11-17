@@ -8,24 +8,28 @@ import time
 from shazamio import Shazam
 
 from ..redis import publish
+from ..config import app_config
 from .data_service import SafeScheduler
-
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 48000
-RECORD_SECONDS = 6
-DEVICE_INDEX = 6
 
 async def recognize():
     destination = '/tmp/shazamioinput.wav'
+    RATE = app_config.shazam.sample_rate
+    CHUNK = app_config.shazam.chunk
+    RECORD_SECONDS = app_config.shazam.record_duration
+    FORMAT = pyaudio.paInt16
+
     with wave.open(destination, 'wb') as wf:
         p = pyaudio.PyAudio()
-        wf.setnchannels(CHANNELS)
+        wf.setnchannels(app_config.shazam.channels)
         wf.setsampwidth(p.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
+        wf.setframerate(app_config.shazam.sample_rate)
 
-        stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, input_device_index=DEVICE_INDEX)
+        stream = p.open(
+            format=FORMAT,
+            channels=app_config.shazam.channels,
+            rate=app_config.shazam.sample_rate,
+            input=True,
+            input_device_index=app_config.shazam.device_index)
 
         print('Recording...')
         publish('di.pubsub.shazam', action='begin-recording')

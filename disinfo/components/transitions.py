@@ -97,6 +97,8 @@ class ScaleIn(TimedTransition[Frame]):
         self.tick(fs.tick)
         fw, fh = self.curr_value.size
         new_size = (ensure_unity_int(fw * self.pos), ensure_unity_int(fh * self.pos))
+        if new_size[1] == 1 or new_size[0] == 1:
+            return None
         return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
 
 class ScaleOut(TimedTransition[Frame]):
@@ -104,6 +106,8 @@ class ScaleOut(TimedTransition[Frame]):
         self.tick(fs.tick)
         fw, fh = self.curr_value.size
         new_size = (ensure_unity_int(fw * (1 - self.pos)), ensure_unity_int(fh * (1 - self.pos)))
+        if new_size[1] == 1 or new_size[0] == 1:
+            return None
         return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
 
 class SlideIn(TimedTransition[Frame]):
