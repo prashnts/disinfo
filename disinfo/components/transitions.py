@@ -70,6 +70,9 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
         self.pos = 0
         self.running = False
         self.finished = False
+        self.curr_value = None
+        self.prev_value = None
+        return self
 
     def tick(self, step: float):
         if not self.running:
