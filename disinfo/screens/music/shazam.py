@@ -2,14 +2,11 @@ from disinfo.data_structures import FrameState, AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubStateManager
 from disinfo.config import app_config
 from disinfo.components.widget import Widget
-from disinfo.components.text import Text, TextStyle, text
-from disinfo.components.elements import StillImage, Frame
+from disinfo.components.text import TextStyle, text
 from disinfo.components.layouts import vstack, hstack
 from disinfo.components.layers import div, DivStyle
 from disinfo.components.scroller import HScroller
-from disinfo.components.spriteim import SpriteIcon
 from disinfo.components.widget import Widget
-from disinfo.components.transitions import text_slide_in
 from disinfo.components import fonts
 from disinfo.utils.cairo import load_svg
 
