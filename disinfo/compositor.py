@@ -96,6 +96,7 @@ def compose_small_frame(fs: FrameState):
     composite_at(stack.draw(fs), image, 'ml')
     composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    composite_at(shazam_indicators(fs).draw(fs), image, 'br')
 
     return Frame(image).tag('present')
 
