@@ -99,6 +99,13 @@ class ScaleIn(TimedTransition[Frame]):
         new_size = (ensure_unity_int(fw * self.pos), ensure_unity_int(fh * self.pos))
         return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
 
+class ScaleOut(TimedTransition[Frame]):
+    def draw(self, fs: FrameState) -> Optional[Frame]:
+        self.tick(fs.tick)
+        fw, fh = self.prev_value.size
+        new_size = (ensure_unity_int(fw * (1 - self.pos)), ensure_unity_int(fh * (1 - self.pos)))
+        return Frame(self.prev_value.image.resize(size=new_size), hash=self.hash)
+
 class SlideIn(TimedTransition[Frame]):
     def __init__(
             self,

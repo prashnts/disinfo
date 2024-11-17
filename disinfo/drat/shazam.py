@@ -68,7 +68,7 @@ def get_recognized_music():
         print('[e] shazam', e)
 
 scheduler = SafeScheduler(reschedule_on_failure=True)
-scheduler.every(10).seconds.do(get_recognized_music)
+scheduler.every(18).seconds.do(get_recognized_music)
 
 if __name__ == '__main__':
     scheduler.run_all(1)
