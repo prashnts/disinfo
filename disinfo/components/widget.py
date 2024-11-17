@@ -5,6 +5,7 @@ from typing import Optional
 from disinfo.data_structures import FrameState
 
 from .elements import Frame
+from .transitions import ScaleIn
 from .layers import DivStyle, div
 
 
@@ -21,4 +22,4 @@ class Widget:
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         if self.frame:
             style = dc_replace(self.style, border_color='#155598a9' if active else '#000000cf')
-            return div(self.frame, style)
+            return ScaleIn(f'{self.name}.scalein', 1).mut(div(self.frame, style).tag('static')).draw(fs)

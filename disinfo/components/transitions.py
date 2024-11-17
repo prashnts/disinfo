@@ -15,6 +15,12 @@ Edges = Literal['top', 'bottom', 'left', 'right']
 TransitionValue = TypeVar('TransitionValue')
 
 
+def ensure_unity_int(value: float) -> int:
+    if value <= 1:
+        return 1
+    return int(value)
+
+
 class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
     '''A generic that transitions between pos 0 and 1 over a given duration.
 
@@ -76,6 +82,13 @@ class FadeIn(TimedTransition[Frame]):
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         composite_at(self.prev_value, i, 'mm')
         return Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash)
+
+class ScaleIn(TimedTransition[Frame]):
+    def draw(self, fs: FrameState) -> Optional[Frame]:
+        self.tick(fs.tick)
+        fw, fh = self.curr_value.size
+        new_size = (ensure_unity_int(fw * self.pos), ensure_unity_int(fh * self.pos))
+        return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
 
 class SlideIn(TimedTransition[Frame]):
     def __init__(
