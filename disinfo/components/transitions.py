@@ -33,10 +33,12 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
             name: str,
             duration: float,
             easing: ease.EasingFn = ease.linear.linear,
-            initial: Optional[TransitionValue] = None) -> None:
+            initial: Optional[TransitionValue] = None,
+            reset_on_none: bool = False) -> None:
         self.name = name
         self.duration = duration
         self.easing_fn = easing
+        self.reset_on_none = reset_on_none
 
         self.hash = (self.__class__.__name__, name, duration, easing)
 
@@ -50,6 +52,10 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
 
     def mut(self, value: TransitionValue) -> 'TimedTransition':
         if not value:
+            if self.prev_value and self.reset_on_none:
+                self.pos = 1
+                self.running = True
+                self.finished = False
             return self
 
         if self.curr_value != value:
