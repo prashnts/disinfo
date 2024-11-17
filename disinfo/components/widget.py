@@ -23,6 +23,6 @@ class Widget:
         transition = ScaleIn(f'{self.name}.scalein', 2)
         if self.frame:
             style = dc_replace(self.style, border_color='#155598a9' if active else '#000000cf')
-            return transition.mut(div(self.frame, style).tag('static')).draw(fs)
+            return transition.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
         else:
             transition.reset()
