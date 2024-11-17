@@ -56,6 +56,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
                 self.pos = 1
                 self.running = True
                 self.finished = False
+                self.curr_value = None
             return self
 
         if self.curr_value != value:
