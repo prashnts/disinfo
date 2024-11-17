@@ -75,15 +75,17 @@ def indicator(fs: FrameState):
 def widgets(fs: FrameState) -> Widget:
     return [
         Widget(
-            name='shazam.recording',
-            frame=indicator(fs),
-            priority=1,
-            wait_time=app_config.shazam.record_duration,
-        ),
-        Widget(
             name='shazam.recognized_music',
             frame=content(fs),
             priority=1,
             wait_time=5,
         ),
     ]
+
+def indicators(fs: FrameState) -> Widget:
+    return Widget(
+        name='shazam.recording',
+        frame=indicator(fs),
+        priority=1,
+        wait_time=app_config.shazam.record_duration,
+    )

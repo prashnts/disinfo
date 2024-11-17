@@ -11,6 +11,7 @@ from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
 from . import screens
 from .screens.music.shazam import widgets as shazam_widgets
+from .screens.music.shazam import indicators as shazam_indicators
 from .config import app_config
 
 
@@ -61,6 +62,7 @@ def compose_big_frame(fs: FrameState):
         screens.trash_pickup.widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml')
+    composite_at(shazam_indicators(fs).draw(fs), image, 'br')
     # composite_at(screens.numbers.draw(fs), image, 'bl')
 
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
