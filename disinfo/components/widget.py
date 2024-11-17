@@ -18,7 +18,7 @@ class Widget:
     active: bool = True
     focus: bool = False
     wait_time: float = 2
-    transition_duration: float = 1
+    transition_duration: float = 0.7
     style: DivStyle = DivStyle(padding=1, radius=2, background='#000000ca', border=1)
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
