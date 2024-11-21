@@ -36,7 +36,7 @@ class WeatherStateManager(PubSubStateManager[WeatherState]):
             _today = forecast['daily']['data'][0]
             _tomorrow = forecast['daily']['data'][1]
             self.state.data = WeatherData(
-                temperature=forecast['currently']['apparentTemperature'],
+                temperature=forecast['currently']['temperature'],
                 condition=forecast['currently']['summary'],
                 icon_name=forecast['currently']['icon'],
                 t_high=_today['temperatureHigh'],
