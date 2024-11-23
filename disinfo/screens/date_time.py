@@ -129,7 +129,7 @@ def composer(fs: FrameState):
     return div(
         vstack([
             digital_clock(fs),
-            date(fs),
+            # date(fs),
             world_clock(fs),
         ], gap=2, align='center'),
         style=DivStyle(background='#00000000'))
