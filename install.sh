@@ -60,7 +60,7 @@ echo "=> Setting up rpi-rgb-matrix"
 cd ~
 git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
 cd rpi-rgb-led-matrix
-sudo apt-get install python3-dev python3-pillow python3-pip -y
+sudo apt-get install python3-dev python3-pillow python3-pip cython3 -y
 make build-python PYTHON=$(command -v python3)
 sudo make install-python PYTHON=$(command -v python3)
 
@@ -108,6 +108,6 @@ sudo wget -O /usr/share/keyrings/azlux-archive-keyring.gpg  https://azlux.fr/rep
 sudo apt update
 sudo apt install log2ram -y
 
-sudp apt install neovim zsh -y
+sudo apt install neovim zsh -y
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"

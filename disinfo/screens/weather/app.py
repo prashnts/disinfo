@@ -100,7 +100,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     # d.line([(1, 0), (1, 1)], fill=color_low.hex)
     # d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
 
-    g_step = (t_high - t_low) / (span - 1)
+    g_step = (t_high - t_low) / (span - 1) or 1
     gradient = [temperature_color(x) for x in np.arange(t_low, t_high, g_step)]
     for x, c in enumerate(gradient):
         d.point([(x + 1, 0)], fill=c.hex)

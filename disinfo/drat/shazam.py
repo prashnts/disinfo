@@ -11,6 +11,14 @@ from ..redis import publish
 from ..config import app_config
 from .data_service import SafeScheduler
 
+"""
+To find the device index, use soundevice:
+```
+import sounddevice as sd
+print(sd.query_devices())
+```
+"""
+
 async def recognize():
     destination = '/tmp/shazamioinput.wav'
     RATE = app_config.shazam.sample_rate
