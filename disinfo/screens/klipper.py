@@ -41,7 +41,7 @@ text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color
 hscroller_fname = HScroller(size=33, pause_at_loop=True)
 
 
-class KlipperState(AppBaseModel):
+class PrinterState(AppBaseModel):
     bed_temp: Optional[float] = None
     extruder_temp: Optional[float] = None
     progress: Optional[float] = None
@@ -63,17 +63,34 @@ class KlipperState(AppBaseModel):
     is_printing: bool = False
 
 
-class KlipperStateManager(PubSubStateManager[KlipperState]):
-    model = KlipperState
+class KlipperStateManager(PubSubStateManager[PrinterState]):
+    model = PrinterState
     channels = ('di.pubsub.klipper',)
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update':
-            self.state = KlipperState(**data.payload)
+            self.state = PrinterState(**data.payload)
             self.state.is_on = self.state.state in ('printing', 'paused', 'standby')
             self.state.is_printing = self.state.state == 'printing'
             self.state.is_done = self.state.state == 'complete'
             self.state.is_visible = self.state.state in ('printing', 'paused', 'complete') and self.state.online
+            self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
+
+            if data.payload.get('eta'):
+                eta = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local')
+                self.state.completion_time = eta.strftime('%H:%M')
+
+class BambuStateManager(PubSubStateManager[PrinterState]):
+    model = PrinterState
+    channels = ('di.pubsub.bambu',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        if data.action == 'update':
+            self.state = PrinterState(**data.payload)
+            self.state.is_on = self.state.state in ('running', 'printing', 'paused', 'standby') or (2 <= self.state.progress  <= 98)
+            self.state.is_printing = self.state.state == 'printing'
+            self.state.is_done = self.state.state == 'complete'
+            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete', 'running') and self.state.online
             self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
 
             if data.payload.get('eta'):
@@ -120,9 +137,7 @@ def time_remaining(fs: FrameState, eta: pendulum.DateTime) -> Frame:
     ], gap=2).tag(('klipper.eta', eta))
 
 
-def composer(fs: FrameState):
-    state = KlipperStateManager().get_state(fs)
-
+def composer(fs: FrameState, state: PrinterState):
     if not state.is_visible:
         return
 
@@ -165,6 +180,15 @@ def composer(fs: FrameState):
     ]
 
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
+
+def compose_klipper_state(fs: FrameState):
+    state = KlipperStateManager().get_state(fs)
+    return composer(fs, state)
+
+def compose_bambu_state(fs: FrameState):
+    state = BambuStateManager().get_state(fs)
+    print(state)
+    return composer(fs, state)
 
 def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
@@ -216,8 +240,13 @@ def full_screen_composer(fs: FrameState):
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
 
 def widget(fs: FrameState):
-    frame = composer(fs)
-    return Widget('octoprint', frame=frame, priority=15 if frame else 0, wait_time=90 if frame else 0)
+    klipper_frame = compose_klipper_state(fs)
+    bambu_frame = compose_bambu_state(fs)
+
+    return [
+        Widget('octoprint', frame=klipper_frame, priority=15 if klipper_frame else 0, wait_time=90 if klipper_frame else 0),
+        Widget('bambu', frame=bambu_frame, priority=15 if bambu_frame else 0, wait_time=90 if bambu_frame else 0),
+    ]
 
 
 draw = draw_loop(composer, sleepms=10)

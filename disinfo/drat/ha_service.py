@@ -68,7 +68,7 @@ def on_bambu_message(payload):
         next_state['eta'] = new_state
     
     if next_state:
-        full_state = {**state, **next_state}
+        full_state = {**state, **next_state, "online": True}
         notify('di.pubsub.bambu', 'update', full_state, persist=True)
         print('Bambu state:', full_state, payload['new_state'])
 

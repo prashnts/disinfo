@@ -58,7 +58,7 @@ def compose_big_frame(fs: FrameState):
         screens.weather.widgets.moon_phase(fs),
         screens.dishwasher.widget(fs),
         screens.washing_machine.widget(fs),
-        screens.klipper.widget(fs),
+        *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml')
@@ -89,7 +89,7 @@ def compose_small_frame(fs: FrameState):
         screens.dishwasher.widget(fs),
         screens.weather.widgets.moon_phase(fs),
         screens.now_playing.widget(fs),
-        screens.klipper.widget(fs),
+        *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
         screens.date_time.calendar_widget(fs),
     ])
