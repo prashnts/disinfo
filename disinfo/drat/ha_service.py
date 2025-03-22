@@ -48,22 +48,23 @@ def on_bambu_message(payload):
     state = get_persisted_state('di.pubsub.bambu')
     next_state = {}
     new_state = payload['new_state']['state']
+    printer_id = app_config.bambu_printer_id
 
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_print_progress':
+    if payload['entity_id'] == f'sensor.{printer_id}_print_progress':
         next_state['progress'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_bed_temperature':
+    if payload['entity_id'] == f'sensor.{printer_id}_bed_temperature':
         next_state['bed_temp'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_nozzle_temperature':
+    if payload['entity_id'] == f'sensor.{printer_id}_nozzle_temperature':
         next_state['extruder_temp'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_print_status':
+    if payload['entity_id'] == f'sensor.{printer_id}_print_status':
         next_state['state'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_task_name':
+    if payload['entity_id'] == f'sensor.{printer_id}_task_name':
         next_state['filename'] = new_state
-    if payload['entity_id'] == 'image.a1mini_0309da461201450_cover_image':
+    if payload['entity_id'] == f'image.{printer_id}_cover_image':
         next_state['thumbnail'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_remaining_time':
+    if payload['entity_id'] == f'sensor.{printer_id}_remaining_time':
         next_state['time_left'] = new_state
-    if payload['entity_id'] == 'sensor.a1mini_0309da461201450_end_time':
+    if payload['entity_id'] == f'sensor.{printer_id}_end_time':
         next_state['eta'] = new_state
     
     if next_state:

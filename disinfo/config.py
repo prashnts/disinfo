@@ -71,6 +71,9 @@ class Config(AppBaseModel):
     # Klipper
     klipper_host: str = '10.0.1.91'
 
+    # Bambu
+    bambu_printer_id: str = 'ender3'
+
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'
 
