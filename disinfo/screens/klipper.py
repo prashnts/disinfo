@@ -95,7 +95,7 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
         if data.action == 'update':
             self.state = PrinterState(**data.payload, source_timezone='local')
             self.state.is_on = self.state.state in ('running', 'printing', 'paused', 'standby') or (2 <= self.state.progress  <= 98)
-            self.state.is_printing = self.state.state == 'printing'
+            self.state.is_printing = self.state.state == 'running'
             self.state.is_done = self.state.state == 'complete'
             self.state.is_visible = self.state.state in ('printing', 'paused', 'complete', 'running') and self.state.online
             self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
