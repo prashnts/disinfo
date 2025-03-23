@@ -56,12 +56,19 @@ class PrinterState(AppBaseModel):
 
     completion_time: Optional[str] = ''
     time_left: Optional[str] = ''
+    source_timezone: str = 'UTC'
 
     is_on: bool = False
     is_visible: bool = False
     is_done: bool = False
     is_printing: bool = False
 
+    def seconds_left(self, now: pendulum.DateTime) -> int:
+        if not self.eta:
+            return -1
+
+        eta = pendulum.parse(self.eta, tz=self.source_timezone).in_tz(tz='local')
+        return (eta - now).total_seconds()
 
 class KlipperStateManager(PubSubStateManager[PrinterState]):
     model = PrinterState
@@ -86,7 +93,7 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update':
-            self.state = PrinterState(**data.payload)
+            self.state = PrinterState(**data.payload, source_timezone='local')
             self.state.is_on = self.state.state in ('running', 'printing', 'paused', 'standby') or (2 <= self.state.progress  <= 98)
             self.state.is_printing = self.state.state == 'printing'
             self.state.is_done = self.state.state == 'complete'
@@ -94,7 +101,7 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
             self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
 
             if data.payload.get('eta'):
-                eta = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local')
+                eta = pendulum.parse(data.payload['eta'])
                 self.state.completion_time = eta.strftime('%H:%M')
 
 @cache
@@ -114,12 +121,12 @@ def thumbnail_image(thumb_url: str = None):
         return None
 
 
-def time_remaining(fs: FrameState, eta: pendulum.DateTime) -> Frame:
-    if not eta:
+def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
+    if not state.eta:
         return None
     
     now = fs.now
-    eta = pendulum.parse(eta, tz='UTC').in_tz(tz='local')
+    eta = pendulum.parse(state.eta, tz=state.source_timezone).in_tz(tz='local')
     d = (eta - now).total_seconds()
     days = d // (24 * 60 * 60)
     d = d - (days * (24 * 3600))
