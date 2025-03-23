@@ -182,7 +182,7 @@ def composer(fs: FrameState, state: PrinterState):
         # completion_text,
         file_detail,
         completion_eta,
-        time_remaining(fs, state.eta),
+        time_remaining(fs, state),
         temp_detail,
     ]
 
@@ -194,7 +194,6 @@ def compose_klipper_state(fs: FrameState):
 
 def compose_bambu_state(fs: FrameState):
     state = BambuStateManager().get_state(fs)
-    print(state)
     return composer(fs, state)
 
 def full_screen_composer(fs: FrameState):
@@ -239,7 +238,7 @@ def full_screen_composer(fs: FrameState):
 
     elements = [
         info_elem,
-        time_remaining(fs, state.eta) if state.eta else None,
+        time_remaining(fs, state) if state.eta else None,
         file_detail if state.online else None,
         temp_detail if state.online else None,
     ]
