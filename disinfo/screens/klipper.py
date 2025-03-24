@@ -63,6 +63,8 @@ class PrinterState(AppBaseModel):
     is_done: bool = False
     is_printing: bool = False
 
+    _id: str = 'klipper'
+
     def seconds_left(self, now: pendulum.DateTime) -> int:
         if not self.eta:
             return -1
@@ -93,7 +95,7 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'update':
-            self.state = PrinterState(**data.payload, source_timezone='local')
+            self.state = PrinterState(**data.payload, source_timezone='local', _id='bambu')
             self.state.is_on = self.state.state in ('running', 'printing', 'paused', 'standby') or (2 <= self.state.progress  <= 98)
             self.state.is_printing = self.state.state == 'running'
             self.state.is_done = self.state.state == 'complete'
@@ -140,7 +142,7 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     segments = [(s, l) for s, l in segments if s > 0]
 
     return hstack([
-        *[hstack([text(f'{int(s)}', muted_small_style), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
+        *[hstack([text_slide_in(fs, f'kl.tr.{state._id}.{l}', f'{int(s)}', muted_small_style), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
     ], gap=2).tag(('klipper.eta', eta))
 
 
