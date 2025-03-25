@@ -164,7 +164,7 @@ def composer(fs: FrameState, state: PrinterState):
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
-            text_slide_in(fs, 'op.progress', f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_slide_in(fs, 'op.progress', f'{state.progress}', TextStyle(font=fonts.cozette, color='#888888')),
             text_percent_sign,
         ], gap=1, align='top'),
     ], gap=4)
