@@ -41,6 +41,8 @@ def publish_frame(img):
     with BytesIO() as buffer:
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
+    
+    print(app_config.name)
 
     publish('di.pubsub.frames', action='new-frame' if app_config.name == 'salon' else 'new-frame-pico', payload=dict(img=encoded_img))
 
