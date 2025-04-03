@@ -81,7 +81,7 @@ def emit_frame(img, brightness, fps):
             b = a + panel.size * 2
 
             payload = bytes([i, 0, 0] + ims[pix][a:b].astype(np.uint8).flatten().tolist())
-            if prev_img[(pix, i)] == payload and duplicate_timeout[(pix, i)] < fps and duplicate_timeout[(pix, i)] < fps * 2:
+            if prev_img[(pix, i)] == payload and duplicate_timeout[(pix, i)] < fps / 2:
                 duplicate_timeout[(pix, i)] += 1
                 continue
             prev_img[(pix, i)] = payload
