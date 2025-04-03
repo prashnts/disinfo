@@ -252,8 +252,8 @@ def widget(fs: FrameState):
     bambu_frame = compose_bambu_state(fs)
 
     return [
-        Widget('octoprint', frame=klipper_frame, priority=15 if klipper_frame else 0, wait_time=90 if klipper_frame else 0),
-        Widget('bambu', frame=bambu_frame, priority=15 if bambu_frame else 0, wait_time=90 if bambu_frame else 0),
+        Widget('octoprint', frame=klipper_frame, priority=15, wait_time=90 if klipper_frame else 0),
+        Widget('bambu', frame=bambu_frame, priority=15, wait_time=90 if bambu_frame else 0),
     ]
 
 
