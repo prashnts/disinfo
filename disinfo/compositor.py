@@ -31,8 +31,13 @@ def draw_btn_test(image, fs: FrameState):
     return image
 
 @throttle(15_000)
-def pos_offset(max=22):
-    return random.randint(0, max)
+def p_time_offset():
+    return random.randint(0, 22)
+
+@throttle(15_000)
+def p_stack_offset():
+    return random.randint(0, 3)
+
 
 
 def compose_big_frame(fs: FrameState):
@@ -56,7 +61,7 @@ def compose_big_frame(fs: FrameState):
                 screens.plant.draw(fs),
             ], gap=3, align='right'),
         ], gap=1, align='right'),
-        image, 'tr', dy=pos_offset(15))
+        image, 'tr', dy=p_time_offset())
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),
         *screens.aviator.widgets.planes(fs),
@@ -68,7 +73,7 @@ def compose_big_frame(fs: FrameState):
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
     ])
-    composite_at(stack.draw(fs), image, 'ml', dx=pos_offset(3))
+    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
     # composite_at(screens.numbers.draw(fs), image, 'bl')
 
@@ -100,8 +105,8 @@ def compose_small_frame(fs: FrameState):
         screens.trash_pickup.widget(fs),
         screens.date_time.calendar_widget(fs),
     ])
-    composite_at(stack.draw(fs), image, 'ml', dx=pos_offset(3))
-    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=pos_offset(20))
+    composite_at(stack.draw(fs), image, 'ml', dx=p_time_offset())
+    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=p_stack_offset())
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
 
