@@ -30,7 +30,7 @@ def draw_btn_test(image, fs: FrameState):
     image.alpha_composite(icon, (s.x, s.y))
     return image
 
-@throttle(15)
+@throttle(15_000)
 def pos_offset(max=22):
     return random.randint(0, max)
 
