@@ -1,5 +1,7 @@
+import base64
+
 from typing import Annotated
-from fastapi import FastAPI, WebSocket, Body
+from fastapi import FastAPI, WebSocket, Body, Response
 from starlette.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
 
@@ -60,5 +62,12 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.receive_text()
         if frame_pico:
             await websocket.send_text(frame_pico)
+
+@app.get('/png/salon')
+async def get_png_salon():
+    if not frame:
+        return Response(status_code=404)
+    bytes_ = base64.b64decode(frame)
+    return Response(content=bytes_, media_type='image/png')
 
 app.mount('/web', StaticFiles(directory='web'), name='web')
