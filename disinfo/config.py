@@ -81,5 +81,16 @@ class Config(AppBaseModel):
     shazam: ShazamConfig = ShazamConfig()
 
 
+    def replace(self, **kwargs):
+        """
+        Replace the config with new values.
+        """
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+            else:
+                raise ValueError(f'Config has no attribute {k}')
+
+
 with open(os.environ.get('DI_CONFIG_PATH', '.config.json')) as f:
     app_config = Config(**json.load(f))

@@ -159,3 +159,27 @@ def compose_frame(fs: FrameState):
     else:
         frame = compose_big_frame(fs)
     return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image
+
+
+def compose_epd_frame(fs: FrameState):
+    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
+    if not should_turn_on_display(fs):
+        # do not draw if nobody is there.
+        return Frame(image).tag('not_present')
+
+    stack = Stack('main_cards').mut([
+        *screens.aviator.widgets.planes(fs),
+        *shazam_widgets(fs),
+        screens.weather.widgets.weather(fs),
+        screens.dishwasher.widget(fs),
+        screens.weather.widgets.moon_phase(fs),
+        screens.now_playing.widget(fs),
+        *screens.klipper.widget(fs),
+        screens.trash_pickup.widget(fs),
+        screens.date_time.calendar_widget(fs),
+    ])
+    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
+
+    composite_at(screens.date_time.simple(fs), image, 'tr')
+
+    return Frame(image).tag('present')

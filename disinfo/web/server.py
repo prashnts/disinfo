@@ -1,5 +1,7 @@
+import io
 import base64
 
+from PIL import Image, ImageDraw, ImageEnhance
 from typing import Annotated
 from fastapi import FastAPI, WebSocket, Body, Response
 from starlette.staticfiles import StaticFiles
@@ -8,6 +10,10 @@ from starlette.responses import RedirectResponse
 from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
+from disinfo.config import app_config
+from disinfo.data_structures import FrameState
+from disinfo.compositor import compose_epd_frame
+from disinfo.utils.imops import dither
 from ..redis import db, publish
 
 app = FastAPI()
@@ -65,9 +71,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get('/png/salon')
 async def get_png_salon():
-    if not frame:
-        return Response(status_code=404)
-    bytes_ = base64.b64decode(frame)
+    fs = FrameState.create()
+
+    app_config.replace(width=860, height=540)
+
+    image = compose_epd_frame(fs).image
+
+    with io.BytesIO() as buffer:
+        image.save(buffer, format='png')
+        bytes_ = buffer.getvalue()
+
     return Response(content=bytes_, media_type='image/png')
 
 app.mount('/web', StaticFiles(directory='web'), name='web')
