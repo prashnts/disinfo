@@ -54,7 +54,7 @@ class Config(AppBaseModel):
     # Speaker source
     speaker_source: str = 'media_player.office'
     presence_sensors: list[str] = ['binary_sensor.ikea_pir_study_occupancy']
-    ambient_light_sensor: str = 'sensor.sensei_lux'
+    ambient_light_sensor: str = 'sensor.radar_salon_light'
     presence_lag_minutes: int = 20
 
     monitors: MonitorConfig = MonitorConfig()

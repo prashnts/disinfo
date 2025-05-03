@@ -12,7 +12,7 @@ from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from disinfo.config import app_config
 from disinfo.data_structures import FrameState
-from disinfo.compositor import compose_epd_frame
+from disinfo.epd.m5paper import draw as draw_epd_frame
 from disinfo.utils.imops import dither
 from ..redis import db, publish
 
@@ -72,13 +72,10 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get('/png/salon')
 async def get_png_salon():
     fs = FrameState.create()
-
-    app_config.replace(width=860, height=540)
-
-    image = compose_epd_frame(fs).image
+    image = draw_epd_frame(fs)
 
     with io.BytesIO() as buffer:
-        image.save(buffer, format='png')
+        image.convert("1").save(buffer, format='png')
         bytes_ = buffer.getvalue()
 
     return Response(content=bytes_, media_type='image/png')
