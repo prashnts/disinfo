@@ -165,9 +165,9 @@ brightness_curve = [
     # LUX   BRIGHTNESS %
     [0,   10],
     [50,  10],
-    [82,  30],
-    [90,  50],
-    [100, 60],
+    [82,  50],
+    [90,  70],
+    [100, 75],
     [150, 80],
     [200, 90],
 ]
@@ -178,7 +178,7 @@ brightness_interpolator = interp1d(
 )
 
 class LightSensorState(AppBaseModel):
-    lux: float = 50.0
+    lux: float = 100
 
     @property
     def brightness(self) -> int:
