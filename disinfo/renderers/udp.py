@@ -37,8 +37,8 @@ def reencode_frame(img: Image.Image, brightness: float = 1):
     return img
 
 # @throttle()
-def publish_frame(img, fs):
-    if not RemoteStateManager().get_state(fs).action == 'screencap':
+def publish_frame(img):
+    if not RemoteStateManager().state.action == 'screencap':
         return
     with BytesIO() as buffer:
         img.save(buffer, format='png')
@@ -49,8 +49,8 @@ def publish_frame(img, fs):
 prev_img = defaultdict(bytes)
 duplicate_timeout = defaultdict(int)
 
-def emit_frame(img, brightness, fps, fs):
-    publish_frame(img, fs)
+def emit_frame(img, brightness, fps):
+    publish_frame(img)
     img = reencode_frame(img, brightness)
 
     im = np.array(img)
@@ -106,7 +106,7 @@ def main(fps: int = 60, stats: bool = False):
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 2, initial=50).mut(als.brightness).value(fs)
-        emit_frame(frame, int(brightness), fps, fs)
+        emit_frame(frame, int(brightness), fps)
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)
