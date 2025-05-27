@@ -11,7 +11,7 @@ from itertools import chain
 from PIL import Image, ImageDraw, ImageEnhance
 
 from ..compositor import compose_frame
-from ..drat.app_states import LightSensorStateManager
+from ..drat.app_states import LightSensorStateManager, RemoteStateManager
 from ..data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
@@ -37,7 +37,9 @@ def reencode_frame(img: Image.Image, brightness: float = 1):
     return img
 
 # @throttle()
-def publish_frame(img):
+def publish_frame(img, fs):
+    if not RemoteStateManager().get_state(fs).action == 'screencap':
+        return
     with BytesIO() as buffer:
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
@@ -47,8 +49,8 @@ def publish_frame(img):
 prev_img = defaultdict(bytes)
 duplicate_timeout = defaultdict(int)
 
-def emit_frame(img, brightness, fps):
-    publish_frame(img)
+def emit_frame(img, brightness, fps, fs):
+    publish_frame(img, fs)
     img = reencode_frame(img, brightness)
 
     im = np.array(img)
@@ -104,7 +106,7 @@ def main(fps: int = 60, stats: bool = False):
         frame = compose_frame(FrameState.create())
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 2, initial=50).mut(als.brightness).value(fs)
-        emit_frame(frame, int(brightness), fps)
+        emit_frame(frame, int(brightness), fps, fs)
         t_draw = time.monotonic() - t_start
 
         delay = max(_tf - t_draw, 0)

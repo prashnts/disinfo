@@ -35,12 +35,13 @@ def clock(fs: FrameState):
 
 
 def draw(fs: FrameState):
-    img = Image.new('RGBA', (WIDTH, HEIGHT), ImageColor.getrgb(BG))
+    img = Image.new('RGBA', (HEIGHT, WIDTH), ImageColor.getrgb(BG))
 
     rabits = StillImage('/Users/prashant/Desktop/Screenshot 2024-03-24 at 22.47.16.png', resize=(WIDTH, HEIGHT))
 
     composite_at(rabits, img, 'mm')
     composite_at(clock(fs), img, 'tr', dx=-20, dy=20)
     composite_at(dishwasher_icon, img, 'mm')
+    composite_at(text('BOOP BOOP!', label_style), img, 'bm')
 
     return img
