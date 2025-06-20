@@ -21,7 +21,7 @@ from .config import app_config
 def should_turn_on_display(fs: FrameState) -> bool:
     sensors = app_config.presence_sensors
 
-    return any([PresenceSensorStateManager(s).get_state().present_at(fs.now) for s in sensors])
+    return any([PresenceSensorStateManager(s).state.detected for s in sensors])
 
 
 def draw_btn_test(image, fs: FrameState):
