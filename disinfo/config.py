@@ -15,7 +15,7 @@ class MonitorConfig(AppBaseModel):
         'binary_sensor.radar_salon_presence',
         'binary_sensor.radar_study_presence',
         'binary_sensor.radar_entree_presence',
-        'binary_sensor.radar_kitchen_presence',
+        'binary_sensor.radar_kitchen_radar_kitchen_presence',
     ]
     ambient_light_sensors: list[str] = [
         'sensor.sensei_lux',
