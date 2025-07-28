@@ -45,6 +45,7 @@ def compose_big_frame(fs: FrameState):
 
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
+        composite_at(screens.date_time.sticky_widget(fs), image, 'mr', dy=p_time_offset())
         return Frame(image).tag('not_present')
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
@@ -90,6 +91,7 @@ def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
+        composite_at(screens.date_time.sticky_widget(fs), image, 'mr', dy=p_time_offset())
         return Frame(image).tag('not_present')
 
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
