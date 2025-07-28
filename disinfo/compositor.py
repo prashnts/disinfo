@@ -45,7 +45,15 @@ def compose_big_frame(fs: FrameState):
 
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
-        composite_at(screens.date_time.sticky_widget(fs), image, 'mr', dy=p_time_offset())
+        composite_at(
+            vstack([
+                vstack([
+                    screens.date_time.draw(fs),
+                    screens.weather.persistent_view(fs),
+                ], gap=3, align='right'),
+            ], gap=1, align='right'),
+            image, 'tr', dy=p_time_offset())
+        composite_at(screens.twenty_two.draw(fs), image, 'mm')
         return Frame(image).tag('not_present')
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
@@ -59,7 +67,6 @@ def compose_big_frame(fs: FrameState):
             vstack([
                 screens.date_time.draw(fs),
                 screens.weather.persistent_view(fs),
-                screens.plant.draw(fs),
             ], gap=3, align='right'),
         ], gap=1, align='right'),
         image, 'tr', dy=p_time_offset())
@@ -92,6 +99,7 @@ def compose_small_frame(fs: FrameState):
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         composite_at(screens.date_time.sticky_widget(fs), image, 'mr', dy=p_time_offset())
+        composite_at(screens.twenty_two.draw(fs), image, 'mm')
         return Frame(image).tag('not_present')
 
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
