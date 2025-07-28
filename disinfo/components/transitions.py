@@ -71,6 +71,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
     def tick(self, step: float):
         if not self.running:
             self.last_step = step
+            self.prev_value = self.curr_value
             return
 
         pos = (step - self.last_step) / self.duration
