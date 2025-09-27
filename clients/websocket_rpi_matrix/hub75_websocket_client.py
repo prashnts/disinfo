@@ -111,7 +111,7 @@ def main(conf: Config):
         global frame
         print('Frame updated')
         with io.BytesIO(base64.b64decode(msg)) as buffer:
-            frame = Image.open(buffer).convert('RGB')
+            frame = Image.open(buffer, formats=['png']).convert('RGB')
         ws.send(action='ack')
         print('Frame updated')
 
