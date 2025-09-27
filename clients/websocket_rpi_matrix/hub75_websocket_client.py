@@ -104,12 +104,12 @@ class WebsocketClient:
         self.retry_count += 1
         self.connect()
 
+frame = None
 
 def main(conf: Config):
-    frame = None
 
     def _set_frame(ws: WebsocketClient, msg: dict):
-        nonlocal frame
+        global frame
         with io.BytesIO(base64.b64decode(msg['img'])) as buffer:
             frame = Image.open(buffer).convert('RGB')
         ws.send(action='ack')
@@ -128,4 +128,4 @@ def main(conf: Config):
             double_buffer.SetImage(frame)
             double_buffer = matrix.SwapOnVSync(double_buffer)
         t_b = time.monotonic()
-        print('.')
+        # print('.')
