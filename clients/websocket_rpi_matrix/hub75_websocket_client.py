@@ -110,8 +110,8 @@ def main(conf: Config):
     def _set_frame(ws: WebsocketClient, msg: dict):
         global frame
         print('Frame updated')
-        with io.BytesIO(base64.b64decode(msg)) as buffer:
-            frame = Image.open(buffer, formats=['png']).convert('RGB')
+        # with io.BytesIO(base64.b64decode(msg)) as buffer:
+        frame = Image.frombytes('RGBA', (conf.width, conf.height), base64.b64decode(msg)).convert('RGB')
         ws.send(action='ack')
         print('Frame updated')
 
