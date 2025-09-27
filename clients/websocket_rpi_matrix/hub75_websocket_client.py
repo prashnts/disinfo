@@ -58,7 +58,6 @@ class WebsocketClient:
     
     def on_message(self, ws, msg):
         # rich.print(f'Received message from {self.host}:', msg)
-        msg = json.loads(msg)
         self.callback(self, msg)
 
     def on_open(self, ws):
