@@ -1,0 +1,11 @@
+[project]
+name = "websocket-rpi-matrix"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow>=11.2.1",
+    "pydantic>=2.11.7",
+    "websocket-client>=1.8.0",
+]
