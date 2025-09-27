@@ -32,7 +32,7 @@
             filter: url('#gamma');
         }
 
-        img#pico {
+        img#pico, img#screen2 {
             height: 240px;
         }
 
@@ -61,6 +61,7 @@
 <body>
     <h1>disinfo!</h1>
     <img src='' id='screen'/>
+    <img src='' id='screen2'/>
     <img src='' id='pico'/>
     <div id='controls'>
     </div>
@@ -127,6 +128,7 @@
         }
         connect('ws', 'screen');
         connect('ws-pico', 'pico');
+        connect('ws-salon', 'screen2');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
