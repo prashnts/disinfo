@@ -59,7 +59,7 @@ class WebsocketClient:
     def on_message(self, ws, msg):
         # rich.print(f'Received message from {self.host}:', msg)
         msg = json.loads(msg)
-        self.callback(msg)
+        self.callback(self, msg)
 
     def on_open(self, ws):
         self.connected = True
@@ -108,10 +108,11 @@ class WebsocketClient:
 def main(conf: Config):
     frame = None
 
-    def _set_frame(msg: dict):
+    def _set_frame(ws: WebsocketClient, msg: dict):
         nonlocal frame
         with io.BytesIO(base64.b64decode(msg['img'])) as buffer:
             frame = Image.open(buffer).convert('RGB')
+        ws.send(action='ack')
 
     WebsocketClient(conf.websocket_url, _set_frame).connect()
 

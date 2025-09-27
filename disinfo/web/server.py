@@ -20,6 +20,7 @@ app = FastAPI()
 
 frame = None
 frame_pico = None
+frame_salon = None
 
 def load_frame(channel_name, message: PubSubMessage):
     global frame, frame_pico
@@ -27,6 +28,8 @@ def load_frame(channel_name, message: PubSubMessage):
         frame_pico = message.payload['img']
     if message.action == 'new-frame':
         frame = message.payload['img']
+    if message.action == 'new-frame-salon':
+        frame_salon = message.payload['img']
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 
@@ -50,6 +53,15 @@ async def trigger_actions(tinput: TriggerInput):
     if tinput.endpoint == 'motion':
         trigger_motion(state='on')
     return {'status': 'ok'}
+
+@app.websocket('/ws-salon')
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    while True:
+        await websocket.receive_text()
+        if frame_salon:
+            await websocket.send_text(frame_salon)
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):

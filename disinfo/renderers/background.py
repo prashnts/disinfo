@@ -13,7 +13,7 @@ def publish_frame(img):
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
 
-    publish('di.pubsub.frames', action='new-frame', payload=dict(img=encoded_img))
+    publish('di.pubsub.frames', action='new-frame-salon', payload=dict(img=encoded_img))
 
 
 def main(fps: int = 60, stats: bool = False):
