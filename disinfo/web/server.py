@@ -23,7 +23,7 @@ frame_pico = None
 frame_salon = None
 
 def load_frame(channel_name, message: PubSubMessage):
-    global frame, frame_pico
+    global frame, frame_pico, frame_salon
     if message.action == 'new-frame-pico':
         frame_pico = message.payload['img']
     if message.action == 'new-frame':
