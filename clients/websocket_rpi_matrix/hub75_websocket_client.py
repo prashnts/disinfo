@@ -115,7 +115,8 @@ def main(conf: Config):
         ws.send(action='ack')
         print('Frame updated')
 
-    WebsocketClient(conf.websocket_url, _set_frame).connect()
+    ws = WebsocketClient(conf.websocket_url, _set_frame)
+    ws.connect()
 
     matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
     double_buffer = matrix.CreateFrameCanvas()
@@ -129,4 +130,5 @@ def main(conf: Config):
             double_buffer.SetImage(frame)
             double_buffer = matrix.SwapOnVSync(double_buffer)
         t_b = time.monotonic()
+        ws.send(action='ping')
         # print('.')
