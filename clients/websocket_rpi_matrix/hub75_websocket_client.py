@@ -107,9 +107,9 @@ frame = None
 
 def _set_frame(ws: WebsocketClient, msg: dict):
     global frame
-    print(msg[:100])
     print('Frame updated')
-    frame = msg
+    payload = json.loads(msg)
+    frame = payload['img']
     print('Frame saved')
 
 def main(conf: Config):
