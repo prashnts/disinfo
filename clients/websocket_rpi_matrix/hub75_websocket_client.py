@@ -132,9 +132,10 @@ def main(conf: Config):
                     img = Image.open(img_io)
                     double_buffer.SetImage(img.convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
+                    print('Frame displayed')
                 except Exception as e:
                     print('Error displaying frame:', e)
-                print('Frame displayed')
+                print('pong')
         t_b = time.monotonic()
         ws.send(action='ping')
         # print('.')
