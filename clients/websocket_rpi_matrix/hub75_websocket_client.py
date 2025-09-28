@@ -26,7 +26,7 @@ class RGBMatrixConf(BaseModel):
     pwm_bits: int = 11
     pwm_dither_bits: int = 0
     scan_mode: int = 0
-    pixel_mapper_config: str = 'Rotate:180'
+    pixel_mapper_config: str = ''
     gpio_slowdown: int = 3
     drop_privileges: bool = True
     hardware_mapping: str = 'regular'
@@ -36,6 +36,7 @@ class RGBMatrixConf(BaseModel):
     def matrix_options(self) -> RGBMatrixOptions:
         options = RGBMatrixOptions()
         for key, value in self.dict().items():
+            print(key, value)
             setattr(options, key, value)
         return options
 
@@ -43,7 +44,7 @@ class RGBMatrixConf(BaseModel):
 class Config(BaseModel):
     websocket_url: str = 'wss://disinfo.amd.noop.pw/ws-salon'
     fps: int = 30
-    matrix_conf: RGBMatrixConf = RGBMatrixConf()
+    matrix_conf: RGBMatrixConf
 
     @property
     def width(self) -> int:
@@ -140,7 +141,7 @@ def main(conf: Config):
             with io.BytesIO(bytes_) as img_io:
                 try:
                     img = Image.open(img_io)
-                    double_buffer.SetImage(img.convert('RGB'))
+                    double_buffer.SetImage(img.rotate(90, expand=True).convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
                 except Exception as e:
                     print('[Error displaying frame] ', e)
