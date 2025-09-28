@@ -127,10 +127,13 @@ def main(conf: Config):
         t_a = time.monotonic()
         if frame:
             with io.BytesIO(base64.b64decode(frame)) as img_io:
-                print(frame, type(frame), img_io)
-                img = Image.open(img_io)
-                double_buffer.SetImage(img.convert('RGB'))
-                double_buffer = matrix.SwapOnVSync(double_buffer)
+                print(base64.b64decode(frame), type(frame), img_io)
+                try:
+                    img = Image.open(img_io)
+                    double_buffer.SetImage(img.convert('RGB'))
+                    double_buffer = matrix.SwapOnVSync(double_buffer)
+                except Exception as e:
+                    print('Error displaying frame:', e)
                 print('Frame displayed')
         t_b = time.monotonic()
         ws.send(action='ping')
