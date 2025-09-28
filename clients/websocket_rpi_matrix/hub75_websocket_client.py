@@ -9,7 +9,7 @@ from typing import Callable
 
 from pydantic import BaseModel
 from PIL import Image
-# from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 
 class RGBMatrixConf(BaseModel):
@@ -25,11 +25,11 @@ class RGBMatrixConf(BaseModel):
     drop_privileges: bool = True
     hardware_mapping: str = 'regular'
 
-    # def matrix_options(self) -> RGBMatrixOptions:
-    #     options = RGBMatrixOptions()
-    #     for key, value in self.dict().items():
-    #         setattr(options, key, value)
-    #     return options
+    def matrix_options(self) -> RGBMatrixOptions:
+        options = RGBMatrixOptions()
+        for key, value in self.dict().items():
+            setattr(options, key, value)
+        return options
 
 
 class Config(BaseModel):
@@ -109,7 +109,6 @@ def _set_frame(ws: WebsocketClient, msg: dict):
     global frame
     print('Frame updated')
     payload = json.loads(msg)
-    print('Payload:', payload)
     frame = payload['img']
     print('Frame saved')
 
@@ -119,8 +118,8 @@ def main(conf: Config):
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
 
-    # matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
-    # double_buffer = matrix.CreateFrameCanvas()
+    matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
+    double_buffer = matrix.CreateFrameCanvas()
 
     print('Matrix Renderer started')
     last_draw_time = 0
@@ -132,8 +131,9 @@ def main(conf: Config):
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
-                    # double_buffer.SetImage(img.convert('RGB'))
-                    # double_buffer = matrix.SwapOnVSync(double_buffer)
+                    print(img)
+                    double_buffer.SetImage(img.convert('RGB'))
+                    double_buffer = matrix.SwapOnVSync(double_buffer)
                     print('Frame displayed')
                 except Exception as e:
                     print('Error displaying frame:', e)
