@@ -105,15 +105,14 @@ class WebsocketClient:
 
 frame = None
 
+def _set_frame(ws: WebsocketClient, msg: dict):
+    global frame
+    print('Frame updated')
+    frame = msg
+    print('Frame saved')
+
 def main(conf: Config):
     global frame
-
-    def _set_frame(ws: WebsocketClient, msg: dict):
-        global frame
-        print('Frame updated')
-        frame = msg
-        ws.send(action='ack')
-        print('Frame saved')
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
