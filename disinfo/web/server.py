@@ -1,5 +1,6 @@
 import io
 import base64
+import json
 
 from PIL import Image, ImageDraw, ImageEnhance
 from typing import Annotated
@@ -61,7 +62,10 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         await websocket.receive_text()
         if frame_salon:
-            await websocket.send_text(frame_salon)
+            payload = {
+                'img': frame_salon
+            }
+            await websocket.send_text(json.dumps(payload))
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
