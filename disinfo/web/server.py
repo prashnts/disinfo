@@ -62,10 +62,7 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         await websocket.receive_text()
         if frame_salon:
-            payload = {
-                'img': frame_salon
-            }
-            await websocket.send_text(json.dumps(payload))
+            await websocket.send_text(frame_salon)
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
