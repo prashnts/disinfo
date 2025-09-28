@@ -128,8 +128,7 @@ def main(conf: Config):
         t_a = time.monotonic()
         if frame:
             print(frame, type(frame))
-            frame = base64.b64decode(frame)
-            img = Image.open(io.BytesIO(frame))
+            img = Image.open(io.BytesIO(base64.b64decode(frame)))
             double_buffer.SetImage(img.convert('RGB'))
             double_buffer = matrix.SwapOnVSync(double_buffer)
             print('Frame displayed')
