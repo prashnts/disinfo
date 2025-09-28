@@ -127,7 +127,7 @@ def main(conf: Config):
     while True:
         t_a = time.monotonic()
         if frame:
-            with io.BytesIO(base64.b64decode(frame)) as img_io:
+            with io.BytesIO(base64.b64decode(frame[:])) as img_io:
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
