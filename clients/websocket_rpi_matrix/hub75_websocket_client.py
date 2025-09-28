@@ -106,6 +106,7 @@ class WebsocketClient:
 frame = None
 
 def main(conf: Config):
+    global frame
 
     def _set_frame(ws: WebsocketClient, msg: dict):
         global frame
