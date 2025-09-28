@@ -131,14 +131,14 @@ def main(conf: Config):
     while True:
         t_a = time.monotonic()
         if frame:
-            with io.BytesIO(base64.b64decode(frame[:].encode())) as img_io:
+            with io.BytesIO(base64.b64decode(frame[:].encode(), validate=True)) as img_io:
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
                     img.load()
                     print(img)
-                    double_buffer.SetImage(img.convert('RGB'))
-                    double_buffer = matrix.SwapOnVSync(double_buffer)
+                    # double_buffer.SetImage(img.convert('RGB'))
+                    # double_buffer = matrix.SwapOnVSync(double_buffer)
                     print('Frame displayed')
                 except Exception as e:
                     print('Error displaying frame:', e)
