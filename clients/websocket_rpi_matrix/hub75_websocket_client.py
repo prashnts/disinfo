@@ -126,11 +126,12 @@ def main(conf: Config):
     while True:
         t_a = time.monotonic()
         if frame:
-            print(frame, type(frame))
-            img = Image.open(io.BytesIO(base64.b64decode(frame)))
-            double_buffer.SetImage(img.convert('RGB'))
-            double_buffer = matrix.SwapOnVSync(double_buffer)
-            print('Frame displayed')
+            with io.BytesIO(base64.b64decode(frame)) as img_io:
+                print(frame, type(frame), img_io)
+                img = Image.open(img_io)
+                double_buffer.SetImage(img.convert('RGB'))
+                double_buffer = matrix.SwapOnVSync(double_buffer)
+                print('Frame displayed')
         t_b = time.monotonic()
         ws.send(action='ping')
         # print('.')
