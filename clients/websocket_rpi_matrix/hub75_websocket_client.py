@@ -131,8 +131,10 @@ def main(conf: Config):
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
+                    print(type(img))
                     print(img)
-                    double_buffer.SetImage(img.convert('RGB'))
+                    print(type(double_buffer))
+                    # double_buffer.SetImage(img.convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
                     print('Frame displayed')
                 except Exception as e:
