@@ -14,7 +14,7 @@ text_info = Text('i', style=TextStyle(font=fonts.tamzen__rs, color='#fff'))
 hscroller_main = HScroller(size=app_config.width - text_info.width - 2, delta=1, speed=0.02)
 hscroller_num = HScroller(size=40, delta=1, speed=0.02, pause_at_loop=True)
 
-text_number_info = Text('', style=TextStyle(font=fonts.px_op__r, color='#12cce1'))
+text_number_info = Text('', style=TextStyle(font=fonts.pixel_lcd, color='#12cce1'))
 text_number = Text('', style=TextStyle(font=fonts.px_op__r, color='#9bb10d'))
 
 
