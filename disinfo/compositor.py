@@ -83,7 +83,7 @@ def compose_big_frame(fs: FrameState):
     ])
     composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
-    # composite_at(screens.numbers.draw(fs), image, 'bl')
+    composite_at(screens.numbers.draw(fs), image, 'bl')
 
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
 
