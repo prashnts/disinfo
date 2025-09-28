@@ -112,9 +112,9 @@ def main(conf: Config):
         img = base64.b64decode(msg)
         print(img, type(msg), type(img))
         print('Frame updated')
-        frame = Image.open(io.BytesIO(img)).convert('RGB')
+        frame = img
         ws.send(action='ack')
-        print('Frame updated')
+        print('Frame saved')
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
@@ -128,8 +128,10 @@ def main(conf: Config):
     while True:
         t_a = time.monotonic()
         if frame:
-            double_buffer.SetImage(frame)
+            img = Image.open(io.BytesIO(frame)).convert('RGB')
+            double_buffer.SetImage(img)
             double_buffer = matrix.SwapOnVSync(double_buffer)
+            print('Frame displayed')
         t_b = time.monotonic()
         ws.send(action='ping')
         # print('.')
