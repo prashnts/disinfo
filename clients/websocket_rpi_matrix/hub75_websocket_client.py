@@ -107,6 +107,7 @@ frame = None
 
 def _set_frame(ws: WebsocketClient, msg: dict):
     global frame
+    print(msg[:100])
     print('Frame updated')
     frame = msg
     print('Frame saved')
@@ -128,7 +129,6 @@ def main(conf: Config):
         if frame:
             with io.BytesIO(base64.b64decode(frame)) as img_io:
                 img_io.seek(0)
-                print(base64.b64decode(frame), type(frame), img_io)
                 try:
                     img = Image.open(img_io)
                     double_buffer.SetImage(img.convert('RGB'))
