@@ -135,6 +135,7 @@ def main(conf: Config):
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
+                    img.load()
                     print(img)
                     double_buffer.SetImage(img.convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
