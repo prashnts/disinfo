@@ -109,6 +109,7 @@ def _set_frame(ws: WebsocketClient, msg: dict):
     global frame
     print('Frame updated')
     payload = json.loads(msg)
+    print('Payload:', payload)
     frame = payload['img']
     print('Frame saved')
 
