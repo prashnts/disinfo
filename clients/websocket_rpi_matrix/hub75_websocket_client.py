@@ -8,9 +8,13 @@ import websocket
 from typing import Callable
 
 from pydantic import BaseModel
-from PIL import Image
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from PIL import Image, ImageFile
+try:
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
+except ImportError:
+    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class RGBMatrixConf(BaseModel):
     rows: int = 64
@@ -116,7 +120,7 @@ def main(conf: Config):
     global frame
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
-    # ws.connect()
+    ws.connect()
 
     matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
     double_buffer = matrix.CreateFrameCanvas()
@@ -131,10 +135,8 @@ def main(conf: Config):
                 img_io.seek(0)
                 try:
                     img = Image.open(img_io)
-                    print(type(img))
                     print(img)
-                    print(type(double_buffer))
-                    # double_buffer.SetImage(img.convert('RGB'))
+                    double_buffer.SetImage(img.convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
                     print('Frame displayed')
                 except Exception as e:
