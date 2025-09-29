@@ -141,7 +141,7 @@ def main(conf: Config):
             with io.BytesIO(bytes_) as img_io:
                 try:
                     img = Image.open(img_io)
-                    double_buffer.SetImage(img.rotate(90, expand=True).convert('RGB'))
+                    double_buffer.SetImage(img.convert('RGB'))
                     double_buffer = matrix.SwapOnVSync(double_buffer)
                 except Exception as e:
                     print('[Error displaying frame] ', e)
