@@ -10,6 +10,8 @@ from typing import Callable
 from pydantic import BaseModel
 from PIL import Image, ImageFile
 
+from sensors.gesture import gesture_detector
+
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
 except ImportError:
@@ -111,14 +113,10 @@ class WebsocketClient:
         self.retry_count += 1
         self.connect()
 
-frame = None
-
-def _set_frame(ws: WebsocketClient, msg: str):
-    global frame
-    frame = msg
-
 def main(conf: Config):
-    global frame
+    frame = None
+    telemetry = {}
+
     _tf = 1 / conf.fps
 
     # This is apparently needed to avoid PIL not loading its extensions.
@@ -128,13 +126,21 @@ def main(conf: Config):
     matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
     double_buffer = matrix.CreateFrameCanvas()
 
+    def _set_telemetry(values: dict):
+        nonlocal telemetry
+        telemetry = values
+
+    def _set_frame(ws: WebsocketClient, msg: str):
+        nonlocal frame
+        frame = msg
+
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
+    gesture_detector(_set_telemetry)
 
     print('[Matrix Renderer started]')
 
     while True:
-        ws.send(action='ping')
         t_start = time.monotonic()
         if frame:
             bytes_ = base64.b64decode(frame)
@@ -145,6 +151,7 @@ def main(conf: Config):
                     double_buffer = matrix.SwapOnVSync(double_buffer)
                 except Exception as e:
                     print('[Error displaying frame] ', e)
+        ws.send(telemetry=json.dumps(telemetry))
         t_draw = time.monotonic() - t_start
         delay = max(_tf - t_draw, 0)
         time.sleep(delay)

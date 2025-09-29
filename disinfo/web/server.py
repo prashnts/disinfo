@@ -60,7 +60,12 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
     while True:
-        await websocket.receive_text()
+        data = await websocket.receive_text()
+        try:
+            msg = json.loads(data)
+            print('Received message:', msg)
+        except json.JSONDecodeError:
+            pass
         if frame_salon:
             await websocket.send_text(frame_salon)
 
