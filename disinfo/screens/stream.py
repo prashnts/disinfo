@@ -11,6 +11,7 @@ from ..components.widget import Widget
 url = "https://kvm.as.noop.pw/streamer/stream"
 
 _image = None
+_stream_running = False
 
 def setup_stream():
     global _image
@@ -32,10 +33,12 @@ def setup_stream():
             _image = img.resize((int(img.width*ratio), int(img.height*ratio))).convert('RGBA')
         client.enqueue_buffer(buf)
 
-_stream = setup_stream()
 
 def stream_frame(fs):
-    global _image
+    global _image, _stream_running
+    if not _stream_running:
+        _stream_running = True
+        _stream = setup_stream()
     if not _image:
         return
     return Frame(_image, hash=('mjpeg', url)).tag('stream')
