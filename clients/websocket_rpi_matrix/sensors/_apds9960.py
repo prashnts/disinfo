@@ -1,5 +1,6 @@
 # APDS9960 sensor
 # https://github.com/liske/python-apds9960/tree/master
+# thomas@fiasko-nw.net
 # License: GPLv3
 
 from time import sleep
