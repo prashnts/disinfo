@@ -91,8 +91,9 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')
 
+    print(app_config.height)
     if app_config.height > 120:
-        composite_at(stream_widget(fs), image, 'bm')
+        composite_at(stream_widget(fs).draw(fs), image, 'bm')
     
 
     # image = draw_btn_test(image, fs)
