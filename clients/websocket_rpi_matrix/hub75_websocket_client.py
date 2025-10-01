@@ -139,9 +139,11 @@ def main(conf: Config):
                 frame = Image.open(img_io).convert('RGB')
         except Exception as e:
             print('[Error loading frame]', e)
+        ws.send(telemetry=json.dumps(telemetry))
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
+    ws.send(telemetry=json.dumps(telemetry))
     gesture_detector(_set_telemetry)
 
     print('[Matrix Renderer started]')
@@ -151,7 +153,6 @@ def main(conf: Config):
         if frame:
             double_buffer.SetImage(frame)
             double_buffer = matrix.SwapOnVSync(double_buffer)
-        ws.send(telemetry=json.dumps(telemetry))
         t_draw = time.monotonic() - t_start
         delay = max(_tf - t_draw, 0)
         time.sleep(delay)
