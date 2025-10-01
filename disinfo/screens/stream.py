@@ -14,7 +14,7 @@ def setup_stream():
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
-    bufs = client.request_buffers(365536, 50)
+    bufs = client.request_buffers(365536, 10)
     for b in bufs:
         client.enqueue_buffer(b)
         
