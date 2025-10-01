@@ -81,7 +81,6 @@ def compose_big_frame(fs: FrameState):
         screens.washing_machine.widget(fs),
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
-        stream_widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
@@ -91,6 +90,9 @@ def compose_big_frame(fs: FrameState):
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')
+
+    composite_at(stream_widget(fs), image, 'bm')
+    
 
     # image = draw_btn_test(image, fs)
 
