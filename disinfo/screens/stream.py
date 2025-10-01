@@ -35,7 +35,9 @@ def setup_stream():
 _stream = setup_stream()
 
 def stream_frame(fs):
-    global _stream
+    global _image
+    if not _image:
+        return
     return Frame(_image, hash=('mjpeg', url)).tag('stream')
 
 draw = draw_loop(stream_frame, use_threads=True, sleepms=10)
