@@ -115,6 +115,7 @@ class WebsocketClient:
 
 def main(conf: Config):
     frame = None
+    prev_frame = None
     telemetry = {}
 
     _tf = 1 / conf.fps
@@ -132,7 +133,12 @@ def main(conf: Config):
 
     def _set_frame(ws: WebsocketClient, msg: str):
         nonlocal frame
-        frame = msg
+        try:
+            bytes_ = base64.b64decode(msg)
+            with io.BytesIO(bytes_) as img_io:
+                frame = Image.open(img_io).convert('RGB')
+        except Exception as e:
+            print('[Error loading frame]', e)
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
@@ -143,14 +149,8 @@ def main(conf: Config):
     while True:
         t_start = time.monotonic()
         if frame:
-            bytes_ = base64.b64decode(frame)
-            with io.BytesIO(bytes_) as img_io:
-                try:
-                    img = Image.open(img_io)
-                    double_buffer.SetImage(img.convert('RGB'))
-                    double_buffer = matrix.SwapOnVSync(double_buffer)
-                except Exception as e:
-                    print('[Error displaying frame] ', e)
+            double_buffer.SetImage(frame)
+            double_buffer = matrix.SwapOnVSync(double_buffer)
         ws.send(telemetry=json.dumps(telemetry))
         t_draw = time.monotonic() - t_start
         delay = max(_tf - t_draw, 0)
