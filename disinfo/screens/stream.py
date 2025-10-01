@@ -10,15 +10,11 @@ from ..components.widget import Widget
 
 url = "https://kvm.as.noop.pw/streamer/stream"
 
-_image = None
-_stream_running = False
-
 def setup_stream():
-    global _image
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
-    bufs = client.request_buffers(565536, 50)
+    bufs = client.request_buffers(365536, 50)
     for b in bufs:
         client.enqueue_buffer(b)
         
@@ -30,18 +26,18 @@ def setup_stream():
         with io.BytesIO(buf.data) as buffer:
             img = Image.open(buffer)
             ratio = min(120/img.width, 120/img.height)
-            _image = img.resize((int(img.width*ratio), int(img.height*ratio))).convert('RGBA')
+            img = img.resize((int(img.width*ratio), int(img.height*ratio)))
+            yield img
         client.enqueue_buffer(buf)
 
+_stream = setup_stream()
 
 def stream_frame(fs):
-    global _image, _stream_running
-    if not _stream_running:
-        _stream_running = True
-        _stream = setup_stream()
-    if not _image:
-        return
-    return Frame(_image, hash=('mjpeg', url)).tag('stream')
+    global _stream
+    img = next(_stream)
+    img = img.convert('RGBA')
+    # img = img.resize((64, 64))
+    return Frame(img, hash=('mjpeg', url)).tag('stream')
 
 draw = draw_loop(stream_frame, use_threads=True, sleepms=10)
 
