@@ -86,15 +86,13 @@ def compose_big_frame(fs: FrameState):
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
     # composite_at(screens.numbers.draw(fs), image, 'bl')
 
+    if app_config.height > 120:
+        composite_at(stream_widget(fs).draw(fs), image, 'bm')
+
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(screens.debug_info.draw(fs), image, 'mm')
-
-    print(app_config.height)
-    if app_config.height > 120:
-        composite_at(stream_widget(fs).draw(fs), image, 'bm')
-    
+    composite_at(screens.debug_info.draw(fs), image, 'mm')    
 
     # image = draw_btn_test(image, fs)
 
