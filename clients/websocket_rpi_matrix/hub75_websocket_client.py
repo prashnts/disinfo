@@ -143,16 +143,19 @@ def main(conf: Config):
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
-    ws.send(telemetry=json.dumps(telemetry))
     gesture_detector(_set_telemetry)
 
     print('[Matrix Renderer started]')
 
     while True:
+        ws.send(telemetry=json.dumps(telemetry))
         t_start = time.monotonic()
         if frame:
             double_buffer.SetImage(frame)
             double_buffer = matrix.SwapOnVSync(double_buffer)
+        else:
+            ws.send(telemetry=json.dumps(telemetry))
+
         t_draw = time.monotonic() - t_start
         delay = max(_tf - t_draw, 0)
         time.sleep(delay)
