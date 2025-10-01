@@ -15,6 +15,7 @@ from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 from . import screens
 from .screens.music.shazam import widgets as shazam_widgets
 from .screens.music.shazam import indicators as shazam_indicators
+from .screens.stream import widget as stream_widget
 from .config import app_config
 
 
@@ -80,6 +81,7 @@ def compose_big_frame(fs: FrameState):
         screens.washing_machine.widget(fs),
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
+        stream_widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
