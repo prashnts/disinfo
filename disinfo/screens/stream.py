@@ -25,7 +25,8 @@ def setup_stream():
         buf = client.dequeue_buffer()
         with io.BytesIO(buf.data) as buffer:
             img = Image.open(buffer)
-            img = img.resize((120, 120))
+            ratio = min(120/img.width, 120/img.height)
+            img = img.resize((int(img.width*ratio), int(img.height*ratio)))
             yield img
         client.enqueue_buffer(buf)
 
