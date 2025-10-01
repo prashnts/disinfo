@@ -148,7 +148,6 @@ def main(conf: Config):
     print('[Matrix Renderer started]')
 
     while True:
-        ws.send(telemetry=json.dumps(telemetry))
         t_start = time.monotonic()
         if frame:
             double_buffer.SetImage(frame)
