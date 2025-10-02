@@ -14,7 +14,7 @@ def setup_stream():
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
-    bufs = client.request_buffers(365536, 2)
+    bufs = client.request_buffers(365536, 1)
     for b in bufs:
         client.enqueue_buffer(b)
         
@@ -26,7 +26,9 @@ def setup_stream():
         with io.BytesIO(buf.data) as buffer:
             img = Image.open(buffer)
             ratio = min(120/img.width, 120/img.height)
-            img = img.resize((int(img.width*ratio), int(img.height*ratio)))
+            size = (int(img.width*ratio), int(img.height*ratio))
+            img = img.resize(size, resample=Image.Resampling.LANCZOS)
+            # client.print_stats()
             yield img
         client.enqueue_buffer(buf)
 
