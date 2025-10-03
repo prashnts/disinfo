@@ -1,4 +1,5 @@
 import io
+import time
 from PIL import Image
 from mjpeg.client import MJPEGClient
 
@@ -23,6 +24,10 @@ def setup_stream():
 
     while True:
         buf = client.dequeue_buffer()
+        if buf.timestamp > time.time() - 3:
+            client.enqueue_buffer(buf)
+            print('[skipping old frame]')
+            continue
         with io.BytesIO(buf.data) as buffer:
             img = Image.open(buffer)
             ratio = min(120/img.width, 120/img.height)
