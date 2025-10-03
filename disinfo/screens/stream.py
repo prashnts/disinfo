@@ -49,7 +49,7 @@ def stream_frame(fs):
     img = next(_stream)
     return Frame(img, hash=('mjpeg', url)).tag('stream')
 
-draw = draw_loop(stream_frame, use_threads=True, sleepms=10)
+draw = draw_loop(stream_frame, use_threads=True)
 
 def widget(fs: FrameState):
     return Widget('stream', draw(fs), priority=0.5, wait_time=8)
