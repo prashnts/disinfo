@@ -166,16 +166,18 @@ class SlideIn(TimedTransition[Frame]):
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
+            line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, 60))
             if self.pos < 0.5:
-                top_prev = top_prev.resize((top_prev.width, int((self.pos + 0.5) * top_prev.height)))
+                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((self.pos) * top_prev.height)))
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(top_prev, (0, mid_y - top_prev.height))
             else:
-                bottom_curr = bottom_curr.resize((bottom_curr.width, int((1.5 - self.pos) * bottom_curr.height)))
+                bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int((self.pos) * bottom_curr.height)))
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(bottom_curr, (0, mid_y))
+            i.alpha_composite(line, (0, pos + 1))
 
         return Frame(i, hash=(*self.hash, self.edge))
 

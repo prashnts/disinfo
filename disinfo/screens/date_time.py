@@ -19,6 +19,8 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_date_flip = TextStyle(color=gray.hex, font=fonts.px_op__lb)
+s_time_flip = TextStyle(color=gray.hex, font=fonts.greybeard)
+s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.greybeard)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -54,10 +56,10 @@ def digital_clock(fs: FrameState, seconds=True):
         ], gap=1)
     return hhmm
 
-def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#000000'):
+def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111'):
     info = div(
-        text_slide_in(fs, key, value, text_style, edge),
-        style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#111111'),
+        text_slide_in(fs, key, value, text_style, edge, duration=0.1),
+        style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000'),
     )
     img = Frame(Image.new('RGBA', (info.width, 1), (0, 0, 0, 90)))
     return composite_at(img, info, 'mm')
@@ -69,20 +71,20 @@ def flip_info(fs: FrameState, seconds=True):
         _flip_text(fs, 'dt.fi.mon', t.strftime('%b'), s_month, 'flip-top'),
         _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top'),
     ], gap=4)
-    background = '#992222' if t.day_of_week in (5, 6) else '#000000'
+    background = '#992222' if t.day_of_week in (5, 6) else '#111111'
     none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background)
     return vstack([mon_day, none_day], gap=5, align='right')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
-        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_hour, 'flip-top'),
-        _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_minute, 'flip-top'),
+        _flip_text(fs, 'dt.fd.hr', t.strftime('%H:%M'), s_time_flip, 'flip-top'),
+        # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
     ], gap=1)
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_seconds, 'flip-top'),
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_second_flip, 'flip-top'),
         ], gap=1, align='right')
     return hhmm
 
