@@ -60,7 +60,7 @@ def digital_clock(fs: FrameState, seconds=True):
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111'):
     info = div(
-        text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease.cubic.cubic_in_out),
+        text_slide_in(fs, key, value, text_style, edge, duration=0.2, easing=ease.cubic.cubic_in_out),
         style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000'),
     )
     img = Frame(Image.new('RGBA', (info.width, 1), (0, 0, 0, 90)))
