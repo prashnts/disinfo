@@ -116,6 +116,7 @@ class WebsocketClient:
 def main(conf: Config):
     frame = None
     prev_frame = None
+    last_ping = 0
     telemetry = {}
 
     _tf = 1 / conf.fps
@@ -152,7 +153,10 @@ def main(conf: Config):
         if frame:
             double_buffer.SetImage(frame)
             double_buffer = matrix.SwapOnVSync(double_buffer)
-        else:
+
+        if time.monotonic() - last_ping > 5:
+            # Initial ping and then every 5 seconds
+            last_ping = time.monotonic()
             ws.send(telemetry=json.dumps(telemetry))
 
         t_draw = time.monotonic() - t_start
