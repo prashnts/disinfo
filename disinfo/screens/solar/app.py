@@ -63,6 +63,9 @@ class AnalogClockStyle:
     cx: Optional[int] = None
     cy: Optional[int] = None
 
+    dial_radius_multiplier: float = 0.45
+    tick_radius_multiplier: float = 0.4
+
 
 
 @throttle(10000)
@@ -121,7 +124,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     # full circle radius
     rcontain = min(cx, cy)
 
-    sun_path_radius = rcontain * 0.45
+    sun_path_radius = rcontain * style.dial_radius_multiplier
     sun_radius = 2
 
     sun_x = cx + sun_path_radius * math.cos(theta)
@@ -183,7 +186,7 @@ def analog_clock(fs, style: AnalogClockStyle):
         ctx.fill()
 
     # Draw hours ticks.
-    tick_radius = rcontain * 0.4
+    tick_radius = rcontain * style.tick_radius_multiplier
     tick_len = [4, 2]
 
     for hour in range(0, 24):

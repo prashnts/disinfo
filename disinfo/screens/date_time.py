@@ -8,7 +8,7 @@ from ..data_structures import FrameState
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, vstack
+from ..components.layouts import hstack, vstack, composite_at
 from ..components.text import TextStyle, text
 from ..components.transitions import text_slide_in
 from ..components.widget import Widget
@@ -16,6 +16,9 @@ from ..components.widget import Widget
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
+s_month     = TextStyle(color=gray.hex, font=fonts.px_op__r)
+s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__l)
+s_date_flip = TextStyle(color=gray.hex, font=fonts.px_op__lb)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -49,6 +52,38 @@ def digital_clock(fs: FrameState, seconds=True):
             hhmm,
             text_slide_in(fs, 'dt.dc.sec', t.strftime('%S'), s_seconds, 'top'),
         ], gap=1)
+    return hhmm
+
+def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#000000'):
+    info = div(
+        text_slide_in(fs, key, value, text_style, edge),
+        style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#111111'),
+    )
+    img = Frame(Image.new('RGBA', (info.width, 1), (0, 0, 0, 90)))
+    return composite_at(img, info, 'mm')
+
+
+def flip_info(fs: FrameState, seconds=True):
+    t = fs.now
+    mon_day = hstack([
+        _flip_text(fs, 'dt.fi.mon', t.strftime('%b'), s_month, 'top'),
+        _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'top'),
+    ], gap=4)
+    background = '#992222' if t.day_of_week in (5, 6) else '#000000'
+    none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'top', background)
+    return vstack([mon_day, none_day], gap=5, align='right')
+
+def flip_digital_clock(fs: FrameState, seconds=True):
+    t = fs.now
+    hhmm = hstack([
+        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_hour, 'top'),
+        _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_minute, 'top'),
+    ], gap=1)
+    if seconds:
+        return vstack([
+            hhmm,
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_seconds, 'top'),
+        ], gap=1, align='right')
     return hhmm
 
 def world_clock(fs: FrameState):
@@ -140,5 +175,12 @@ def calendar_widget(fs: FrameState):
         world_clock(fs),
     ], gap=2)
     return Widget('dt.calendar', contents, priority=0.1)
+
+def flip_clock(fs: FrameState):
+    return div(
+        flip_info(fs),
+        style=DivStyle(background='#00000000', padding=1, radius=2)
+    )
+
 
 draw = draw_loop(composer)

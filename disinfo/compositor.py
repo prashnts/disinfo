@@ -62,17 +62,18 @@ def compose_big_frame(fs: FrameState):
     # return Frame(image).tag('present')
     # composite_at(screens.demo.draw(fs), image, 'mm')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
-    solar_style = AnalogClockStyle(cx=90, cy=40)
+    solar_style = AnalogClockStyle(cx=80, cy=40, tick_radius_multiplier=0.25, dial_radius_multiplier=0.4)
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr')
 
-    composite_at(
-        vstack([
-            vstack([
-                screens.date_time.draw(fs),
-                screens.weather.persistent_view(fs),
-            ], gap=3, align='right'),
-        ], gap=1, align='right'),
-        image, 'tr', dy=p_time_offset())
+    # composite_at(
+    #     vstack([
+    #         vstack([
+    #             screens.date_time.draw(fs),
+    #             screens.weather.persistent_view(fs),
+    #         ], gap=3, align='right'),
+    #     ], gap=1, align='right'),
+    #     image, 'tr', dy=p_time_offset())
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),
         *screens.aviator.widgets.planes(fs),
@@ -95,6 +96,7 @@ def compose_big_frame(fs: FrameState):
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.draw(fs), image, 'mm')    
+    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset() + 35)
 
     # image = draw_btn_test(image, fs)
 
