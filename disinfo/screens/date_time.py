@@ -19,10 +19,10 @@ from ..components.widget import Widget
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.px_op__r)
-s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_date_flip = TextStyle(color=gray.hex, font=fonts.px_op__lb)
-s_time_flip = TextStyle(color=gray.hex, font=fonts.greybeard)
-s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.greybeard)
+s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
+s_date_flip = TextStyle(color=gray.hex, font=fonts.px_op__xl)
+s_time_flip = TextStyle(color=gray.hex, font=fonts.px_op__r)
+s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.px_op__xl)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -42,6 +42,10 @@ s_colon = [
     TextStyle(color=light_blue.darken(.2).hex, font=fonts.bitocra7),
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
+s_colon_2 = [
+    TextStyle(color=light_blue.darken(.2).hex, font=fonts.px_op__xl),
+    TextStyle(color=light_blue.hex, font=fonts.px_op__xl),
+]
 
 
 def digital_clock(fs: FrameState, seconds=True):
@@ -58,35 +62,34 @@ def digital_clock(fs: FrameState, seconds=True):
         ], gap=1)
     return hhmm
 
-def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111'):
-    info = div(
-        text_slide_in(fs, key, value, text_style, edge, duration=0.2, easing=ease.cubic.cubic_in_out),
-        style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000'),
-    )
-    img = Frame(Image.new('RGBA', (info.width, 1), (0, 0, 0, 90)))
-    return composite_at(img, info, 'mm')
+def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
+    div_style = DivStyle(background=background, padding=(2, 2, 2, 2), radius=2, border=1, border_color='#000000cc')
+    content = text_slide_in(fs, key, value, text_style, edge, duration=0.2, easing=ease.linear.linear, div_style=div_style, together=together)
+    return content
 
 
 def flip_info(fs: FrameState, seconds=True):
     t = fs.now
-    mon_day = hstack([
-        _flip_text(fs, 'dt.fi.mon', t.strftime('%b'), s_month, 'flip-top'),
-        _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top'),
-    ], gap=4)
     background = '#992222' if t.day_of_week in (5, 6) else '#111111'
-    none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background)
-    return vstack([mon_day, none_day], gap=4, align='right')
+    mon_day = vstack([
+        _flip_text(fs, 'dt.fi.mon', t.strftime('%b'), s_month, 'flip-top', together=True),
+        _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background, together=True),
+    ], gap=1)
+    none_day = _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True)
+    return hstack([none_day, mon_day], gap=2, align='top')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
-        _flip_text(fs, 'dt.fd.hr', t.strftime('%H:%M'), s_time_flip, 'flip-top'),
+        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True),
+        text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1).trim(left=1),
+        _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True),
         # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
-    ], gap=1)
+    ], gap=0)
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_second_flip, 'flip-top'),
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[t.second % 2 == 0], 'flip-top', together=True),
         ], gap=0, align='right')
     return hhmm
 

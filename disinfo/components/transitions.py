@@ -1,4 +1,5 @@
 import time
+from dataclasses import replace as dc_replace
 
 from PIL import Image
 from typing import Literal, Optional, TypeVar, Generic
@@ -7,6 +8,7 @@ from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.utils import ease
 
 from .elements import Frame
+from .layers import DivStyle, div
 from .layouts import hstack, vstack, composite_at, place_at
 from .text import TextStyle, text
 
@@ -166,9 +168,9 @@ class SlideIn(TimedTransition[Frame]):
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
-            line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, 60))
+            line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, 90))
             if self.pos < 0.5:
-                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((self.pos) * top_prev.height)))
+                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((self.pos) * top_curr.height)))
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(top_prev, (0, mid_y - top_prev.height))
@@ -177,7 +179,7 @@ class SlideIn(TimedTransition[Frame]):
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(bottom_curr, (0, mid_y))
-            i.alpha_composite(line, (0, pos + 1))
+            # i.alpha_composite(line, (0, pos + 2))
 
         return Frame(i, hash=(*self.hash, self.edge))
 
@@ -195,13 +197,42 @@ def text_slide_in(
     style=TextStyle(),
     edge='bottom',
     duration=0.25,
-    easing=ease.linear.linear) -> Frame:
-    frames = []
-    for i, char in enumerate(value):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
-            .mut(text(char, style))
-            .draw(fs))
+    easing=ease.linear.linear,
+    div_style=None,
+    together=False) -> Frame:
+    frames: list[Frame] = []
+    if together:
+        slide = text(value, style)
         frames.append(slide)
+    else:
+        for i, char in enumerate(value):
+            slide = text(char, style)
+            # (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
+            #     .mut(text(char, style))
+            #     .draw(fs))
+            frames.append(slide)
+    if div_style and frames:
+        h = max(frames, key=lambda f: f.height).height
+        padding = div_style.padding if isinstance(div_style.padding, tuple) else (div_style.padding,)*4
+        for i, frame in enumerate(frames):
+            diff = h - frame.height
+            p_top = padding[0] + diff // 2
+            p_bottom = padding[2] + diff - (diff // 2)
+            div_style = dc_replace(div_style, padding=(p_top, padding[1], p_bottom, padding[3]))
+            slide = div(frame, style=div_style)
+            frames[i] = slide
+    for i, frame in enumerate(frames):
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
+                .mut(frame)
+                .draw(fs))
+        frames[i] = slide
+
+    if edge == 'flip-top':
+        for i, frame in enumerate(frames):
+            line = Frame(Image.new('RGBA', (frame.width, 1), (0, 0, 0, 80)))
+            frames[i] = composite_at(line, frame, 'mm')
+
+
     return hstack(frames)
 
 
