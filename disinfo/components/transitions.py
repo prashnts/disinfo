@@ -11,7 +11,7 @@ from .layouts import hstack, vstack, composite_at, place_at
 from .text import TextStyle, text
 
 
-Edges = Literal['top', 'bottom', 'left', 'right']
+Edges = Literal['top', 'bottom', 'left', 'right', 'flip-top']
 TransitionValue = TypeVar('TransitionValue')
 
 
@@ -159,6 +159,23 @@ class SlideIn(TimedTransition[Frame]):
             place_at(self.slide_frame, dest=i, x=pos, y=0, anchor='tm')
         elif self.edge == 'right':
             place_at(self.slide_frame, dest=i, x=-pos, y=0, anchor='tl')
+        elif self.edge == 'flip-top':
+            mid_y = self.curr_value.height // 2
+            prev = self.prev_value if self.prev_value else Frame(Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0)))
+            top_curr = self.curr_value.image.crop((0, 0, self.curr_value.width, mid_y))
+            bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
+            top_prev = prev.image.crop((0, 0, prev.width, mid_y))
+            bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
+            if self.pos < 0.5:
+                top_prev = top_prev.resize((top_prev.width, int((self.pos + 0.5) * top_prev.height)))
+                i.alpha_composite(top_curr, (0, 0))
+                i.alpha_composite(bottom_prev, (0, mid_y))
+                i.alpha_composite(top_prev, (0, mid_y - top_prev.height))
+            else:
+                bottom_curr = bottom_curr.resize((bottom_curr.width, int((1.5 - self.pos) * bottom_curr.height)))
+                i.alpha_composite(top_curr, (0, 0))
+                i.alpha_composite(bottom_prev, (0, mid_y))
+                i.alpha_composite(bottom_curr, (0, mid_y))
 
         return Frame(i, hash=(*self.hash, self.edge))
 
