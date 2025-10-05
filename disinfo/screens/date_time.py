@@ -2,6 +2,8 @@ import random
 
 from PIL import Image, ImageDraw
 
+from disinfo.utils import ease
+
 from .drawer import draw_loop
 from .colors import gray, amber_red, black, light_gray, light_blue, orange_red, minute_green
 from ..data_structures import FrameState
@@ -58,7 +60,7 @@ def digital_clock(fs: FrameState, seconds=True):
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111'):
     info = div(
-        text_slide_in(fs, key, value, text_style, edge, duration=0.1),
+        text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease.cubic.cubic_in_out),
         style=DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000'),
     )
     img = Frame(Image.new('RGBA', (info.width, 1), (0, 0, 0, 90)))
@@ -73,7 +75,7 @@ def flip_info(fs: FrameState, seconds=True):
     ], gap=4)
     background = '#992222' if t.day_of_week in (5, 6) else '#111111'
     none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background)
-    return vstack([mon_day, none_day], gap=5, align='right')
+    return vstack([mon_day, none_day], gap=4, align='right')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
@@ -85,7 +87,7 @@ def flip_digital_clock(fs: FrameState, seconds=True):
         return vstack([
             hhmm,
             _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_second_flip, 'flip-top'),
-        ], gap=1, align='right')
+        ], gap=0, align='right')
     return hhmm
 
 def world_clock(fs: FrameState):

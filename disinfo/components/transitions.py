@@ -194,10 +194,11 @@ def text_slide_in(
     value: str,
     style=TextStyle(),
     edge='bottom',
-    duration=0.25) -> Frame:
+    duration=0.25,
+    easing=ease.linear.linear) -> Frame:
     frames = []
     for i, char in enumerate(value):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=ease.linear.linear)
+        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
             .mut(text(char, style))
             .draw(fs))
         frames.append(slide)
