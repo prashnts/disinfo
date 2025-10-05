@@ -13,6 +13,7 @@ from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
 from . import screens
+from .screens.solar import AnalogClockStyle
 from .screens.music.shazam import widgets as shazam_widgets
 from .screens.music.shazam import indicators as shazam_indicators
 from .screens.stream import widget as stream_widget
@@ -61,7 +62,8 @@ def compose_big_frame(fs: FrameState):
     # return Frame(image).tag('present')
     # composite_at(screens.demo.draw(fs), image, 'mm')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
-    composite_at(screens.solar.draw(fs), image, 'mm')
+    solar_style = AnalogClockStyle(cx=90, cy=40)
+    composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
 
     composite_at(
         vstack([

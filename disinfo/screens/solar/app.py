@@ -6,6 +6,8 @@ import cairocffi as cairo
 from PIL import Image
 from suncalc import get_position, get_times
 from scipy.interpolate import interp1d
+from dataclasses import dataclass
+from typing import Optional
 
 from disinfo.data_structures import FrameState
 
@@ -53,6 +55,16 @@ p2_interpolator = interp1d(
     fill_value=(0, 0.8),
 )
 
+@dataclass(frozen=True)
+class AnalogClockStyle:
+    width: int = app_config.width
+    height: int = app_config.height
+
+    cx: Optional[int] = None
+    cy: Optional[int] = None
+
+
+
 @throttle(10000)
 def apply_noise(img: Image.Image, noise: float = 0.1):
     pat = np.random.rand(img.height, img.width) * noise
@@ -90,8 +102,11 @@ def sun_times(t):
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
-def analog_clock(fs, w: int, h: int):
+def analog_clock(fs, style: AnalogClockStyle):
     t = fs.now
+    w = style.width
+    h = style.height
+
     # t = pendulum.now().set(hour=17, minute=00, month=1)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
@@ -99,8 +114,8 @@ def analog_clock(fs, w: int, h: int):
     theta = time_to_angle(t.time())
     solar_angles, solar_times, solar_pos = sun_times(t)
 
-    cx = w / 2
-    cy = h / 2
+    cx = w / 2 if not style.cx else style.cx
+    cy = h / 2 if not style.cy else style.cy
     hyp = math.sqrt(cx ** 2 + cy ** 2)
 
     # full circle radius
@@ -323,5 +338,5 @@ def analog_clock(fs, w: int, h: int):
 
     return Frame(i)
 
-def composer(fs: FrameState):
-    return div(analog_clock(fs, app_config.width, app_config.height))
+def composer(fs: FrameState, style: AnalogClockStyle = AnalogClockStyle()):
+    return div(analog_clock(fs, style))
