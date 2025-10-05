@@ -133,13 +133,14 @@ def main(conf: Config):
         telemetry = values
 
     def _set_frame(ws: WebsocketClient, msg: str):
-        nonlocal frame
+        nonlocal frame, last_ping
         try:
             bytes_ = base64.b64decode(msg)
             with io.BytesIO(bytes_) as img_io:
                 frame = Image.open(img_io).convert('RGB')
         except Exception as e:
             print('[Error loading frame]', e)
+        last_ping = time.monotonic()
         ws.send(telemetry=json.dumps(telemetry))
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
@@ -156,7 +157,6 @@ def main(conf: Config):
 
         if time.monotonic() - last_ping > 5:
             # Initial ping and then every 5 seconds
-            last_ping = time.monotonic()
             ws.send(telemetry=json.dumps(telemetry))
 
         t_draw = time.monotonic() - t_start
