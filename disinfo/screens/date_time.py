@@ -20,9 +20,9 @@ s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
-s_date_flip = TextStyle(color=gray.hex, font=fonts.tamzen__rm)
-s_time_flip = TextStyle(color=gray.hex, font=fonts.px_op__r)
-s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.px_op__xl)
+s_date_flip = TextStyle(color=gray.hex, font=fonts.catv)
+s_time_flip = TextStyle(color=gray.hex, font=fonts.scientifica__r)
+s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -43,8 +43,8 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 s_colon_2 = [
-    TextStyle(color=light_blue.darken(.2).hex, font=fonts.px_op__xl),
-    TextStyle(color=light_blue.hex, font=fonts.px_op__xl),
+    TextStyle(color=light_blue.darken(.2).hex, font=fonts.scientifica__r),
+    TextStyle(color=light_blue.hex, font=fonts.scientifica__r),
 ]
 
 

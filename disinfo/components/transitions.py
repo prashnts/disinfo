@@ -179,7 +179,7 @@ class SlideIn(TimedTransition[Frame]):
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(bottom_curr, (0, mid_y))
-            # i.alpha_composite(line, (0, pos + 2))
+            i.alpha_composite(line, (0, pos + 2))
 
         return Frame(i, hash=(*self.hash, self.edge))
 

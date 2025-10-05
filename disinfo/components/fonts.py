@@ -79,3 +79,8 @@ aztech = TTFFont('assets/fonts/aztech.ttf', 16)
 # > License   CC-SA
 # > Source    https://www.dafont.com/fr/Pixel-lcd-machine.font
 pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16)
+
+# CatV6x12
+# > License   CC-BY-SA
+# Note: Not pixel font.
+catv = TTFFont('assets/fonts/CatV_6x12_9.ttf', 24)
