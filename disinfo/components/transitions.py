@@ -229,7 +229,7 @@ def text_slide_in(
 
     if edge == 'flip-top':
         for i, frame in enumerate(frames):
-            line = Frame(Image.new('RGBA', (frame.width, 1), (0, 0, 0, 80)))
+            line = Frame(Image.new('RGBA', (frame.width, 1), (0, 0, 0, 60)))
             frames[i] = composite_at(line, frame, 'mm')
 
 
