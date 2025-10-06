@@ -84,3 +84,15 @@ pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16)
 # > License   CC-BY-SA
 # Note: Not pixel font.
 catv = TTFFont('assets/fonts/CatV_6x12_9.ttf', 24)
+
+# 16x8pxl-mono
+# > License   OFL
+s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 24)
+
+# 15x5
+# > License   ?
+s15x5 = TTFFont('assets/fonts/15x5.ttf', 16)
+
+# SG09
+# > License   ?
+sg09 = TTFFont('assets/fonts/SG09.ttf', 8)
