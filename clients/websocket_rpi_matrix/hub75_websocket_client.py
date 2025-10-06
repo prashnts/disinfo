@@ -158,6 +158,9 @@ def main(conf: Config):
         if time.monotonic() - last_ping > 5:
             # Initial ping and then every 5 seconds
             ws.send(telemetry=json.dumps(telemetry))
+            if frame:
+                # let supervisor restart
+                raise RuntimeError()
 
         t_draw = time.monotonic() - t_start
         delay = max(_tf - t_draw, 0)
