@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from textwrap import wrap
-from typing import Optional
+from typing import Optional, Union
 from functools import cache
 
 from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
 
-from .elements import Frame
+from .elements import Frame, TrimParam
 from .fonts import tamzen__rs, TTFFont
 
 @dataclass(frozen=True)
@@ -19,6 +19,15 @@ class TextStyle:
     # Following are applicable to mutliline text.
     spacing: int        = 1
     line_width: int     = 20
+
+    # Hacks to make some fonts look better
+    trim: Union[int, TrimParam] = 0
+
+    @property
+    def trims(self) -> TrimParam:
+        if isinstance(self.trim, int):
+            return TrimParam(self.trim, self.trim, self.trim, self.trim)
+        return self.trim
 
 # Used as a fallback image when the text value is missing.
 EmptyTextFallback = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
@@ -39,6 +48,8 @@ class Text(Frame):
         self.image = im
         self.width = im.width
         self.height = im.height
+        if self.style.trim:
+            self.image = self.trim(*self.style.trims).image
 
     def draw_text(self):
         value = self.value

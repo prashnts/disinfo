@@ -1,5 +1,6 @@
 from PIL import Image
 from abc import ABCMeta
+from collections import namedtuple
 from typing import Optional, Union, Any
 
 
@@ -9,6 +10,8 @@ class UIElement(metaclass=ABCMeta):
     width: int
     height: int
     image: Image.Image
+
+TrimParam = namedtuple('TrimParam', ['left', 'upper', 'right', 'lower'])
 
 class Frame(UIElement):
     def __init__(self, image: Image.Image, hash: Any = None):

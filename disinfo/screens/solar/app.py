@@ -65,6 +65,7 @@ class AnalogClockStyle:
 
     dial_radius_multiplier: float = 0.45
     tick_radius_multiplier: float = 0.4
+    needle_radius_multiplier: float = 0.6
 
 
 
@@ -221,7 +222,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     ctx = cairo.Context(surface_sun)
 
     # Needle
-    needle_radius = rcontain * 0.6
+    needle_radius = rcontain * style.needle_radius_multiplier
     needle_x = cx + needle_radius * math.cos(theta)
     needle_y = cy + needle_radius * math.sin(theta)
 

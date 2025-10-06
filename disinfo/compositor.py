@@ -62,7 +62,7 @@ def compose_big_frame(fs: FrameState):
     # return Frame(image).tag('present')
     # composite_at(screens.demo.draw(fs), image, 'mm')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
-    solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=38 + p_stack_offset(), tick_radius_multiplier=0.42, dial_radius_multiplier=0.45)
+    solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.30, dial_radius_multiplier=0.30, needle_radius_multiplier=0.35)
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
     composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=p_stack_offset(), dy=p_stack_offset())
 
