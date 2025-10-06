@@ -49,7 +49,10 @@ class Text(Frame):
         self.width = im.width
         self.height = im.height
         if self.style.trim:
-            self.image = self.trim(*self.style.trims).image
+            trim = self.trim(*self.style.trims)
+            self.image = trim.image
+            self.width = trim.width
+            self.height = trim.height
 
     def draw_text(self):
         value = self.value
