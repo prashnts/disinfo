@@ -22,6 +22,9 @@ def setup_stream():
     # Start the client in a background thread
     client.start()
 
+    # emit client
+    yield client
+
     while True:
         buf = client.dequeue_buffer()
         if buf.timestamp < time.time() - 3:
@@ -40,16 +43,25 @@ def setup_stream():
             yield img
 
 _stream = None
+_client = None
+_last_update = None
 
 def stream_frame(fs):
-    global _stream
+    global _stream, _client, _last_update
     if not _stream:
         _stream = setup_stream()
+        _client = next(_stream)
 
     img = next(_stream)
+    _last_update = fs.tick
     return Frame(img, hash=('mjpeg', url)).tag('stream')
 
 draw = draw_loop(stream_frame, use_threads=True)
 
 def widget(fs: FrameState):
+    global _stream
+    if _last_update and _last_update < (fs.tick + 9):
+        # reset stream
+        _client.stop()
+        _stream = None
     return Widget('stream', draw(fs), priority=0.5, wait_time=8)
