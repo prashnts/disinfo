@@ -47,7 +47,7 @@ _client = None
 _last_update = None
 
 def stream_frame(fs):
-    global _last_update
+    global _last_update, _stream
     if not _stream:
         return
     img = next(_stream)
