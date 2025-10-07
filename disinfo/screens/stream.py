@@ -47,11 +47,9 @@ _client = None
 _last_update = None
 
 def stream_frame(fs):
-    global _stream, _client, _last_update
+    global _last_update
     if not _stream:
-        _stream = setup_stream()
-        _client = next(_stream)
-
+        return
     img = next(_stream)
     _last_update = fs.tick
     return Frame(img, hash=('mjpeg', url)).tag('stream')
@@ -59,9 +57,11 @@ def stream_frame(fs):
 draw = draw_loop(stream_frame, use_threads=True)
 
 def widget(fs: FrameState):
-    global _stream
-    if _last_update and _last_update < (fs.tick + 9):
+    global _stream, _client
+    if not _last_update or _last_update < (fs.tick + 9):
         # reset stream
-        _client.stop()
-        _stream = None
+        if _client:
+            _client.stop()
+        _stream = setup_stream()
+        _client = next(_stream)
     return Widget('stream', draw(fs), priority=0.5, wait_time=8)
