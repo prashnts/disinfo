@@ -59,7 +59,7 @@ def stream_frame(fs):
 draw = draw_loop(stream_frame, use_threads=True)
 
 def widget(fs: FrameState):
-    global _stream, _client, _lock
+    global _stream, _client, _lock, _last_update
     if (_last_update and _last_update < (fs.tick - 20)) or not _stream:
         print("* no updates")
         # reset stream
