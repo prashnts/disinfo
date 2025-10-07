@@ -87,7 +87,7 @@ catv = TTFFont('assets/fonts/CatV_6x12_9.ttf', 24)
 
 # 16x8pxl-mono
 # > License   OFL
-s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 24)
+s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 20)
 
 # 15x5
 # > License   ?
@@ -96,3 +96,20 @@ s15x5 = TTFFont('assets/fonts/15x5.ttf', 16)
 # SG09
 # > License   ?
 sg09 = TTFFont('assets/fonts/SG09.ttf', 8)
+
+# Dansk
+# > License   Demo
+dansk = TTFFont('assets/fonts/Dansk.ttf', 16)
+
+# Pixeloza
+# > License   Free (non-standard)
+pixeloza = TTFFont('assets/fonts/Pixeloza03.ttf', 21)
+
+# PixTall
+# > License   Free (non-standard)
+# Not monospaced.
+pix_tall = TTFFont('assets/fonts/PixTall.ttf', 32)
+
+# Long Pixel-7
+# > License   Free (non-standard)
+long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10)

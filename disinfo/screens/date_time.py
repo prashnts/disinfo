@@ -18,10 +18,10 @@ from ..components.widget import Widget
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
-s_month     = TextStyle(color=gray.hex, font=fonts.px_op__r)
+s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_date_flip = TextStyle(color=gray.hex, font=fonts.s16x8, trim=(0, 0, 0, 0))
-s_time_flip = TextStyle(color=gray.hex, font=fonts.s15x5, trim=(0, 0, 0, 0))
+s_time_flip = TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0))
 s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -43,8 +43,8 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 s_colon_2 = [
-    TextStyle(color=light_blue.hex, font=fonts.sg09, trim=(0, 0, 0, 0)),
-    TextStyle(color=light_blue.hex, font=fonts.sg09, trim=(0, 0, 0, 0)),
+    TextStyle(color=light_blue.hex, font=fonts.long_pixel, trim=(0, 0, 0, 0)),
+    TextStyle(color=light_blue.hex, font=fonts.long_pixel, trim=(0, 0, 0, 0)),
 ]
 
 
@@ -72,7 +72,7 @@ def flip_info(fs: FrameState, seconds=True):
     t = fs.now
     background = '#992222' if t.day_of_week in (5, 6) else '#111111'
     mon_day = vstack([
-        _flip_text(fs, 'dt.fi.mon', t.strftime('%b'), s_month, 'flip-top', together=True),
+        _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True),
         _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background, together=True),
     ], gap=1)
     none_day = _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True)
