@@ -1,5 +1,6 @@
 import io
 import time
+import queue
 from PIL import Image
 from mjpeg.client import MJPEGClient
 
@@ -26,7 +27,7 @@ def setup_stream():
     yield client
 
     while True:
-        buf = client.dequeue_buffer()
+        buf = client.dequeue_buffer(timeout=5)
         if buf.timestamp < time.time() - 3:
             client.enqueue_buffer(buf)
             print('[skipping old frame]')
@@ -52,7 +53,11 @@ def stream_frame(fs):
     if _lock or not _stream:
         print(f"* {_lock=}, {_stream=}")
         return
-    img = next(_stream)
+    try:
+        img = next(_stream)
+    except queue.Empty:
+        _stream = None
+        return
     _last_update = fs.tick
     return Frame(img, hash=('mjpeg', url)).tag('stream')
 
