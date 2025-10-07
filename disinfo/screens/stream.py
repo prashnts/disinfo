@@ -9,7 +9,7 @@ from ..components.elements import Frame, StillImage
 from ..data_structures import FrameState, AppBaseModel
 from ..components.widget import Widget
 
-url = "https://kvm.as.noop.pw/streamer/stream"
+url = "https://kvm.amd.noop.pw/streamer/stream"
 
 def setup_stream():
     client = MJPEGClient(url)
