@@ -113,3 +113,11 @@ pix_tall = TTFFont('assets/fonts/PixTall.ttf', 32)
 # Long Pixel-7
 # > License   Free (non-standard)
 long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10)
+
+# Silkscreen
+# > License   Free
+slkscre = TTFFont('assets/fonts/slkscre.ttf', 8)
+
+# Teeny Tiny Pixls
+# > License   Free
+ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 8)
