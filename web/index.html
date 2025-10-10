@@ -93,7 +93,7 @@
     </script>
     <script type="module">
         const WS_RETRY_DELAY = 2000;
-        const FRAME_DELAY = 40
+        const FRAME_DELAY = 20
         const connect = function (endpoint, img_id) {
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             let ws = new WebSocket(`${protocol}://${window.location.host}/${endpoint}`);

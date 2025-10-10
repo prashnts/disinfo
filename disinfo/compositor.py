@@ -95,7 +95,7 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(screens.debug_info.draw(fs), image, 'mm')    
+    composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm')    
     composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset() + 1, dx=1)
 
     # image = draw_btn_test(image, fs)

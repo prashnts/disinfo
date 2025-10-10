@@ -140,7 +140,7 @@ def message_text(value: str) -> MultiLineText:
             outline=1,
             outline_color='#181818',
             spacing=1,
-            line_width=12,
+            width=40,
         ),
     )
 

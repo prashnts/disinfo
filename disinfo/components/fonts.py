@@ -1,10 +1,16 @@
 from PIL import ImageFont
+from pathlib import Path
+
+
+register = {}
 
 class TTFFont:
     def __init__(self, path: str, size: int):
-        self.path = path
+        self.path = Path(path)
+        self.filename = self.path.name
         self.size = size
         self.font = ImageFont.truetype(path, size)
+        register[self.filename] = self
 
     def __repr__(self) -> str:
         return f'TTFFont(path={self.path}, size={self.size})'
@@ -121,3 +127,12 @@ slkscre = TTFFont('assets/fonts/slkscre.ttf', 8)
 # Teeny Tiny Pixls
 # > License   Free
 ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 8)
+
+
+# Small Bars
+# > License   Free (non-standard)
+small_bars = TTFFont('assets/fonts/smallbars.ttf', 10)
+
+# OPN Bit Fuul
+# > License   GNU GPLv3
+opn_bit_fuul = TTFFont('assets/fonts/OPN BitFUUL.ttf', 10)

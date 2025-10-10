@@ -7,14 +7,16 @@ from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
 
 from .elements import Frame, TrimParam
-from .fonts import tamzen__rs, TTFFont
+from .fonts import bitocra7, TTFFont, small_bars
 
 @dataclass(frozen=True)
 class TextStyle:
     color: str          = '#fff'
     outline: int        = 0
     outline_color: str  = '#000'
-    font: TTFFont       = tamzen__rs
+    font: TTFFont       = bitocra7
+
+    width: int          = -1
 
     # Following are applicable to mutliline text.
     spacing: int        = 1
@@ -64,7 +66,8 @@ class Text(Frame):
         # in both axes. This is because the font has no way of knowing that
         # an outline will be applied while drawing.
         _, _, w, h = self.style.font.font.getbbox(value, anchor='lt')
-        im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
+        max_width = self.style.width if self.style.width > 0 else w + (2 * o)
+        im = Image.new('RGBA', (max_width, h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.text(
             (o, o),
@@ -102,11 +105,34 @@ class MultiLineText(Text):
         if not self.value:
             return self.populate_frame(EmptyTextFallback)
         # Wrap the string to fit in the container.
-        wrap_paragraph = lambda x: '\n'.join(wrap(x, self.style.line_width))
-        value = '\n'.join([wrap_paragraph(l) for l in self.value.splitlines()])
+        wrap_paragraph = lambda x, lwidth: '\n'.join(wrap(x, lwidth))
+        wrapped_value = lambda width: '\n'.join([wrap_paragraph(l, width) for l in self.value.splitlines()])
 
-        # create a dummy draw instance in order to get the bbox.
         _dd = ImageDraw.Draw(Image.new('RGBA', (0, 0)))
+
+        # Basic character width
+        l, t, r, b = _dd.multiline_textbbox(
+            (0, 0),
+            'M',
+            font=self.style.font.font,
+            spacing=self.style.spacing,
+            stroke_width=self.style.outline,
+        )
+        _est_line_width = self.style.width // (r - l)
+
+        for width in range(max(_est_line_width - 5, 1), _est_line_width + 20):
+            l, t, r, b = _dd.multiline_textbbox(
+                (0, 0),
+                wrapped_value(width),
+                font=self.style.font.font,
+                spacing=self.style.spacing,
+                stroke_width=self.style.outline,
+            )
+            bwidth = r - l
+            if bwidth > self.style.width:
+                break
+            value = wrapped_value(width)
+
         l, t, r, b = _dd.multiline_textbbox(
             (0, 0),
             value,
