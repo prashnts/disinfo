@@ -39,7 +39,7 @@ def setup_stream():
             size_mid = (2 * size[0], 2 * size[1])
             img = img.resize(size_mid).quantize()
             img = img.resize(size, resample=Image.Resampling.LANCZOS).convert('RGBA')
-            client.print_stats()
+            # client.print_stats()
             client.enqueue_buffer(buf)
             yield img
 

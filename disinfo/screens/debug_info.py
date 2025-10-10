@@ -1,7 +1,7 @@
 from functools import cache
 from .drawer import draw_loop
 from ..components.text import text, TextStyle
-from ..components.layouts import vstack
+from ..components.layouts import vstack, composite_at, hstack
 from ..components.fonts import register as font_register, small_bars
 from ..components.scroller import VScroller
 from ..components.layers import div, DivStyle
@@ -25,7 +25,7 @@ def font_demo():
     pauses = [0]
     spacing = 10
     _p = 0
-    font_bg = DivStyle(border=1, border_color='#444444', background='#222222', padding=3, radius=2)
+    font_bg = DivStyle(border=1, border_color='#444444', background='#22222244', padding=3, radius=2)
 
     for fname, font in font_register.items():
         demo = vstack([
@@ -45,11 +45,16 @@ def info_content(fs: FrameState):
         sample_vscroll.reset_position()
         return
 
-    info = vstack([
-        text('Font Demo', style=TextStyle(font=small_bars)),
-        div(sample_vscroll.draw(fs.tick)),
-    ], gap=2)
-    return info
+    header = div(hstack([
+        text('Font Demo', style=TextStyle(font=small_bars, width=42, color='#222222cc')),
+    ], gap=2), style=DivStyle(
+        background='#ffffff88',
+        padding=2,
+        radius=(2, 1, 1, 2),
+        border=0,
+        border_color='#444444',
+    ))
+    return composite_at(header, div(sample_vscroll.draw(fs.tick)), 'tr', frosted=True)
 
 
 def widget(fs: FrameState):
