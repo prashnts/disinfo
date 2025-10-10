@@ -19,7 +19,7 @@ class Widget:
     focus: bool = False
     wait_time: float = 2
     transition_duration: float = 0.25
-    style: DivStyle = DivStyle(padding=1, radius=2, background="#00000085", border=1, border_color="#00000088")
+    style: DivStyle = DivStyle(padding=3, radius=2, background="#00000085", border=1, border_color="#00000088")
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         enter = ScaleIn(f'{self.name}.scalein', self.transition_duration, ease.cubic.cubic_in)
