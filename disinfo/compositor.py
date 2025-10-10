@@ -64,7 +64,7 @@ def compose_big_frame(fs: FrameState):
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.30, dial_radius_multiplier=0.30, needle_radius_multiplier=0.35)
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
-    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60)
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frosted=True)
 
     # composite_at(
     #     vstack([
@@ -85,7 +85,7 @@ def compose_big_frame(fs: FrameState):
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
     ])
-    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
+    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frosted=True)
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
     # composite_at(screens.numbers.draw(fs), image, 'bl')
 
@@ -95,8 +95,8 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.paris_metro.draw(fs), image, 'bm')
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm')    
-    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1)
+    composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frosted=True)  
+    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frosted=True)
 
     # image = draw_btn_test(image, fs)
 

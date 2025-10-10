@@ -4,7 +4,7 @@ Some of the functions are inspired with CSS FlexBoxes. Namely the
 horizontal and vertical alignments when differently sized elements
 are in the same container.
 '''
-from PIL import Image
+from PIL import Image, ImageFilter
 from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
 
@@ -105,6 +105,7 @@ def composite_at(
     anchor: ComposeAnchor = 'tl',
     dx: int = 0,
     dy: int = 0,
+    frosted: bool = False,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -150,6 +151,20 @@ def composite_at(
         left = dw - fw
     else:
         raise ValueError('Wrong value for anchor.')
+
+    if frosted:
+        bg = dest.filter(ImageFilter.GaussianBlur(3))
+        region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
+
+        rg_data = region.getdata()
+        fr_data = frame.image.getdata()
+        new_data = []
+
+        for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
+            new_data.append((r, g, b, 0 if fa == 0 else 255))
+        
+        region.putdata(new_data)
+        dest.alpha_composite(region, (left + dx, top + dy))
 
     dest.alpha_composite(frame.image, (left + dx, top + dy))
     return Frame(dest, hash=('composite_at', anchor, frame))

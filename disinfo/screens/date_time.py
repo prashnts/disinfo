@@ -21,7 +21,7 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_date_flip = TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0))
-s_time_flip = TextStyle(color=gray.hex, font=fonts.s16x8, trim=(0, 0, 0, 0))
+s_time_flip = TextStyle(color='#CCCCCCAA', font=fonts.s16x8, trim=(0, 0, 0, 0))
 s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -63,33 +63,36 @@ def digital_clock(fs: FrameState, seconds=True):
     return hhmm
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
-    div_style = DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000cc')
+    div_style = DivStyle(background=background, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#00000088')
     content = text_slide_in(fs, key, value, text_style, edge, duration=0.28, easing=ease.cubic.cubic_in_out, div_style=div_style, together=together)
     return content
 
 
 def flip_info(fs: FrameState, seconds=True):
     t = fs.now
+    bg = '#22222222'
+    week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
     background = '#992222' if t.day_of_week in (5, 6) else '#111111'
     mon_day = vstack([
-        _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True),
-        _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', background, together=True),
+        _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
+        _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True),
     ], gap=1)
-    none_day = _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True)
+    none_day = _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg)
     return hstack([none_day, mon_day], gap=2, align='top')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
+    bg = '#22222222'
     hhmm = hstack([
-        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True),
+        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
         text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1).trim(left=1),
-        _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True),
+        _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
         # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
     ], gap=0)
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[t.second % 2 == 0], 'flip-top', together=True),
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[t.second % 2 == 0], 'flip-top', together=True, background="#33333333"),
         ], gap=2, align='right')
     return hhmm
 

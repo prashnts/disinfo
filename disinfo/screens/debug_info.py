@@ -54,7 +54,7 @@ def info_content(fs: FrameState):
 
 def widget(fs: FrameState):
     return Widget('debug_info', info_content(fs), style=DivStyle(
-        background="#100F1D",
+        background="#100F1D88",
         padding=3,
         margin=0,
         radius=(3, 5, 3, 0),
