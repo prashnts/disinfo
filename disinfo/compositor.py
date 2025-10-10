@@ -34,7 +34,7 @@ def draw_btn_test(image, fs: FrameState):
 
 @throttle(15_000)
 def p_time_offset():
-    return random.randint(0, 22)
+    return random.randint(2, 10)
 
 @throttle(15_000)
 def p_stack_offset():
@@ -64,7 +64,7 @@ def compose_big_frame(fs: FrameState):
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.30, dial_radius_multiplier=0.30, needle_radius_multiplier=0.35)
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
-    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=p_stack_offset(), dy=p_stack_offset() + 60)
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60)
 
     # composite_at(
     #     vstack([
@@ -96,7 +96,7 @@ def compose_big_frame(fs: FrameState):
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm')    
-    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset() + 1, dx=1)
+    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1)
 
     # image = draw_btn_test(image, fs)
 
