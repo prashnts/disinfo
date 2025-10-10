@@ -25,7 +25,7 @@ class Widget:
         enter = ScaleIn(f'{self.name}.scalein', self.transition_duration, ease.cubic.cubic_in)
         exit = ScaleOut(f'{self.name}.scaleout', self.transition_duration, ease.cubic.cubic_out)
         if self.frame:
-            style = dc_replace(self.style, border_color='#155598a9' if active else '#00000088')
+            style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
             exit.reset()
             return enter.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
         else:
