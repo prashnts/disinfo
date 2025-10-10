@@ -41,7 +41,7 @@ def font_demo():
 
 def info_content(fs: FrameState):
     sample_vscroll.set_frame(*font_demo())
-    if not RemoteStateManager().get_state(fs).is_visible:
+    if not RemoteStateManager().get_state(fs).show_debug:
         sample_vscroll.reset_position()
         return
 

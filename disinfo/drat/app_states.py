@@ -116,21 +116,24 @@ class RemoteState(AppBaseModel):
     action: str = 'unknown'
     pressed_at: Optional[datetime] = None
     is_visible: bool = False
+    show_debug: bool = False
 
 class RemoteStateManager(PubSubStateManager[RemoteState]):
     model = RemoteState
     channels = ('di.pubsub.remote',)
 
     def process_message(self, channel: str, data: PubSubMessage):
+        if data.action != self.state.action and data.action != 'unknown':
+            self.state.show_debug = data.action == 'btn_debug'
         self.state.action = data.action
         self.state.pressed_at = pendulum.now()
         self.state.is_visible = not self.state.is_visible
 
-    # def get_state(self, fs: FrameState) -> RemoteState:
-    #     s = self.state
-    #     if is_expired(s.pressed_at, seconds=10, now=fs.now):
-    #         return RemoteState(action='unknown')
-    #     return s
+    def get_state(self, fs: FrameState) -> RemoteState:
+        s = self.state
+        if is_expired(s.pressed_at, seconds=1, now=fs.now):
+            self.state.action = 'unknown'
+        return s
 
 class PresenceSensorState(AppBaseModel):
     detected: bool = True
