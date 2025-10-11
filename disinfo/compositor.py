@@ -124,7 +124,7 @@ def compose_small_frame(fs: FrameState):
         screens.date_time.calendar_widget(fs),
     ])
     composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=2)
-    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=p_time_offset())
+    composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=p_time_offset(), frost=1.8)
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(shazam_indicators(fs).draw(fs), image, 'br')
 
