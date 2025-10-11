@@ -29,7 +29,7 @@ def font_demo():
 
     for fname, font in font_register.items():
         demo = vstack([
-            text(fname, style=TextStyle(line_width=20, width=80, font=fonts.tamzen__rm), multiline=True),
+            text(fname, style=TextStyle(line_width=20, width=100, font=fonts.scientifica__i), multiline=True),
             div(text(sample, style=TextStyle(font=font, width=100), multiline=True), style=font_bg),
         ], gap=2)
         _p += demo.height + spacing
@@ -46,15 +46,15 @@ def info_content(fs: FrameState):
         return
 
     header = div(hstack([
-        text('Font Demo', style=TextStyle(font=small_bars, width=42, color='#222222cc')),
+        text('Font Demo', style=TextStyle(font=small_bars, width=45, color='#222222cc')),
     ], gap=2), style=DivStyle(
-        background='#ffffff88',
+        background='#ffffff77',
         padding=2,
-        radius=(2, 1, 1, 2),
+        radius=(2, 0, 2, 2),
         border=0,
         border_color='#444444',
     ))
-    return composite_at(header, div(sample_vscroll.draw(fs.tick)), 'tr', frosted=True)
+    return composite_at(header, div(sample_vscroll.draw(fs.tick)), 'tr', frost=2.4)
 
 
 def widget(fs: FrameState):
@@ -62,7 +62,7 @@ def widget(fs: FrameState):
         background="#100F1D88",
         padding=3,
         margin=0,
-        radius=(3, 5, 3, 0),
+        radius=(3, 0, 0, 3),
         border=1,
         border_color='#b196ce'
     ))
