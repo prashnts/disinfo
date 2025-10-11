@@ -168,7 +168,7 @@ def sticky_widget(fs: FrameState):
             text_slide_in(fs, 'dt.sk.clk.m', fs.now.strftime('%M'), s_sticky_h, 'right'),
             text_slide_in(fs, 'dt.sk.clk.s', fs.now.strftime('%S'), s_sticky, 'right'),
         ]),
-        style=DivStyle(background='#112244', padding=(1, 1, 1, 2), radius=(0, 0, 2, 2)))
+        style=DivStyle(background='#11224466', padding=(1, 1, 1, 2), radius=(0, 0, 2, 2)))
 
 def composer(fs: FrameState):
     return div(
