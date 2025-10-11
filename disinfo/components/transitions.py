@@ -178,7 +178,7 @@ class SlideIn(TimedTransition[Frame]):
                 bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
                 if self.pos <= 1:
                     place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
-                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.8 if self.pos < 1 elst 0)
+                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.8 if self.pos < 1 else 0)
             place_at(Frame(line), i, 0, mid_y, 'tl', frost=0.2)
 
         return Frame(i, hash=(*self.hash, self.edge))
