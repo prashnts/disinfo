@@ -18,6 +18,7 @@ class Scroller:
         static_if_small: bool = True,
         pause_at_loop: bool = False,
         pause_duration: float = 2,
+        pause_offset: int = 5,
         scrollbar: bool = False,
     ):
         self.size = size
@@ -32,15 +33,17 @@ class Scroller:
         self.target = None
         self.on_target = False
         self.scrollbar = scrollbar
-        self.pause_offset = 5
+        self.pause_offset = pause_offset
         self._last_target = 0
         if frame:
             self._init_scroller(frame, True)
 
-    def set_frame(self, frame: Frame, reset: bool = False, pauses: Optional[list[int]] = None):
+    def set_frame(self, frame: Frame, reset: bool = False, pauses: Optional[list[int]] = None, pause_offset: Optional[int] = None):
         self._init_scroller(frame, reset)
         if pauses is not None:
             self.pauses = [p + self.size for p in pauses]
+        if pause_offset is not None:
+            self.pause_offset = pause_offset
         return self
 
     def set_target(self, target: int):
@@ -135,9 +138,9 @@ class Scroller:
             thumb = self._get_scrollbar_thumb(5)
             pos = self.pos // ratio
             if self._vertical:
-                i.alpha_composite(thumb, (i.width - thumb.width - 1, pos))
+                i.alpha_composite(thumb, (i.width - thumb.width, pos))
             if self._horizontal:
-                i.alpha_composite(thumb, (pos, i.height - thumb.height - 1))
+                i.alpha_composite(thumb, (pos, i.height - thumb.height))
         return Frame(i, hash=(self.__class__.__name__, self.size, self.frame))
 
 class HScroller(Scroller):
