@@ -196,7 +196,7 @@ def render_metro_info(fs: FrameState, state: MetroAppState):
         main_view.append(div(
             msg_box,
             style=DivStyle(
-                background='#242424',
+                background="#24242485",
                 padding=1,
                 radius=(2, 2, 0, 0),
             ),
@@ -214,11 +214,11 @@ def metro_view(fs: FrameState, state: MetroAppState):
     return div(
         content,
         style=DivStyle(
-            background='#051534',
+            background="#05153486",
             padding=2,
             radius=(3, 0, 0, 3),
             border=1,
-            border_color='#333435',
+            border_color="#333435C9",
         ),
     )
 

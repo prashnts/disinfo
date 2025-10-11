@@ -153,7 +153,7 @@ def composite_at(
         raise ValueError('Wrong value for anchor.')
 
     if frosted:
-        bg = dest.filter(ImageFilter.GaussianBlur(1))
+        bg = dest.filter(ImageFilter.GaussianBlur(1.8))
         region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
 
         rg_data = region.getdata()

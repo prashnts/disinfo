@@ -175,11 +175,11 @@ class SlideIn(TimedTransition[Frame]):
                 i.alpha_composite(bottom_prev, (0, mid_y))
                 i.alpha_composite(top_prev, (0, mid_y - top_prev.height))
             else:
-                bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
+                # bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
                 bottom_prev = bottom_prev.crop((0, mid_y + bottom_curr.height, prev.width, prev.height))
                 i.alpha_composite(top_curr, (0, 0))
                 i.alpha_composite(bottom_curr, (0, mid_y))
-                i.alpha_composite(bottom_prev, (0, mid_y + bottom_curr.height))
+                i.alpha_composite(bottom_prev, (0, mid_y))
             i.alpha_composite(line, (0, pos))
 
         return Frame(i, hash=(*self.hash, self.edge))

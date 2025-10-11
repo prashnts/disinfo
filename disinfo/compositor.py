@@ -92,7 +92,7 @@ def compose_big_frame(fs: FrameState):
     if app_config.height > 120:
         composite_at(stream_widget(fs).draw(fs), image, 'bm')
 
-    composite_at(screens.paris_metro.draw(fs), image, 'bm')
+    composite_at(screens.paris_metro.draw(fs), image, 'bm', frosted=True)
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frosted=True)  
