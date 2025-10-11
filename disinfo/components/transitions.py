@@ -169,6 +169,8 @@ class SlideIn(TimedTransition[Frame]):
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
             line = Image.new('RGBA', (self.curr_value.width, 1), (128, 128, 128, 20))
+
+            place_at(Frame(line), i, 0, mid_y, 'tl', frost=0.2)
             place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
             if self.pos <= 0.5:
                 top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - (self.pos * 2)) * top_curr.height)))
@@ -179,7 +181,6 @@ class SlideIn(TimedTransition[Frame]):
                 if self.pos <= 1:
                     place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
                 place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.8 if self.pos < 1 else 0)
-            place_at(Frame(line), i, 0, mid_y, 'tl', frost=0.2)
 
         return Frame(i, hash=(*self.hash, self.edge))
 
