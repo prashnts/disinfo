@@ -168,19 +168,18 @@ class SlideIn(TimedTransition[Frame]):
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
-            line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, 90))
+            line = Image.new('RGBA', (self.curr_value.width, 1), (128, 128, 128, 20))
+            place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
             if self.pos <= 0.5:
-                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((self.pos * 2) * top_curr.height)))
-                i.alpha_composite(top_curr, (0, 0))
-                i.alpha_composite(bottom_prev, (0, mid_y))
-                i.alpha_composite(top_prev, (0, mid_y - top_prev.height))
+                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - (self.pos * 2)) * top_curr.height)))
+                place_at(Frame(top_prev), dest=i, x=0, y=mid_y, anchor='bl', frost=0)
+                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
             else:
-                # bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
-                bottom_prev = bottom_prev.crop((0, mid_y + bottom_curr.height, prev.width, prev.height))
-                i.alpha_composite(top_curr, (0, 0))
-                i.alpha_composite(bottom_curr, (0, mid_y))
-                i.alpha_composite(bottom_prev, (0, mid_y))
-            i.alpha_composite(line, (0, pos))
+                bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
+                if self.pos <= 1:
+                    place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
+                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
+            place_at(Frame(line), i, 0, mid_y, 'tl', frost=0.2)
 
         return Frame(i, hash=(*self.hash, self.edge))
 

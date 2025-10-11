@@ -105,7 +105,7 @@ def composite_at(
     anchor: ComposeAnchor = 'tl',
     dx: int = 0,
     dy: int = 0,
-    frosted: bool = False,
+    frost: float = 0,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -152,8 +152,8 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
-    if frosted:
-        bg = dest.filter(ImageFilter.GaussianBlur(1.8))
+    if frost > 0:
+        bg = dest.filter(ImageFilter.GaussianBlur(frost))
         region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
 
         rg_data = region.getdata()
@@ -222,7 +222,7 @@ def mosaic(
 
     return Frame(img, hash=('mosaic', nx, ny, seamless, frame))
 
-def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm') -> Frame:
+def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm', frost: float = 0) -> Frame:
     '''Places the frame at the given coordinates.
     The anchor is relative to the frame and will be located at the given coordinates.
 
@@ -256,6 +256,20 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
         dx = -fw
     else:
         raise ValueError('Wrong value for anchor.')
+
+    if frost > 0:
+        bg = dest.filter(ImageFilter.GaussianBlur(frost))
+        region = bg.crop((x + dx, y + dy, x + dx + fw, y + dy + fh))
+
+        rg_data = region.getdata()
+        fr_data = frame.image.getdata()
+        new_data = []
+
+        for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
+            new_data.append((r, g, b, 0 if fa == 0 else 255))
+        
+        region.putdata(new_data)
+        dest.alpha_composite(region, (x + dx, y + dy))
 
     dest.alpha_composite(frame.image, (x + dx, y + dy))
     return Frame(dest, hash=('place_at', anchor, frame))
