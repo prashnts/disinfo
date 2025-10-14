@@ -41,7 +41,7 @@ def composer(fs: FrameState):
 
     return div(
         schedules,
-        style=DivStyle(padding=1, radius=2, background=gray.darken(0.4).hex)
+        style=DivStyle(padding=1)
     ).tag('trash_pickup')
 
 def widget(fs: FrameState):
