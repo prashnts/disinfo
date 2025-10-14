@@ -266,7 +266,7 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
         new_data = []
 
         for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
-            new_data.append((r, g, b, 0 if fa == 0 else 255))
+            new_data.append((r, g, b, 0 if fa == 0 else min(40, fa)))
         
         region.putdata(new_data)
         dest.alpha_composite(region, (x + dx, y + dy))

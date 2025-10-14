@@ -43,8 +43,8 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 s_colon_2 = [
-    TextStyle(color=light_blue.darken(.1).hex, font=fonts.px_op__l, trim=(0, 0, 0, 0)),
-    TextStyle(color=light_blue.hex, font=fonts.px_op__l, trim=(0, 0, 0, 0)),
+    TextStyle(color=gray.darken(.1).hex, font=fonts.dansk, trim=(0, 0, 0, 0)),
+    TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0)),
 ]
 
 
@@ -73,12 +73,12 @@ def flip_info(fs: FrameState, seconds=True):
     bg = '#22222222'
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
     background = '#992222' if t.day_of_week in (5, 6) else '#111111'
-    mon_day = vstack([
+    mon_day = hstack([
+        _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
         _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
-        _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True),
     ], gap=1)
-    none_day = _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg)
-    return hstack([none_day, mon_day], gap=2, align='top')
+    none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True)
+    return vstack([mon_day, none_day], gap=2, align='right')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now

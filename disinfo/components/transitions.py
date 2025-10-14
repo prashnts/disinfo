@@ -168,18 +168,18 @@ class SlideIn(TimedTransition[Frame]):
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
-            line = Image.new('RGBA', (self.curr_value.width, 1), (128, 128, 128, 20))
-            place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
+            line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, int(self.pos * 255) if self.pos < 0.5 else 30))
+            place_at(Frame(line), i, 0, mid_y, 'tl')
+            place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0.1)
             if self.pos <= 0.5:
                 top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - (self.pos * 2)) * top_curr.height)))
                 place_at(Frame(top_prev), dest=i, x=0, y=mid_y, anchor='bl', frost=0)
-                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
+                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0.5)
             else:
                 bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
                 if self.pos <= 1:
-                    place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y + ensure_unity_int(self.pos * prev.height), anchor='tl', frost=0)
-                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
-            place_at(Frame(line), i, 0, mid_y, 'tl', frost=0.2)
+                    place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y + ensure_unity_int(((self.pos - 0.5) * 2) * prev.height), anchor='tl', frost=0)
+                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.2)
 
         return Frame(i, hash=(*self.hash, self.edge))
 
@@ -207,9 +207,6 @@ def text_slide_in(
     else:
         for i, char in enumerate(value):
             slide = text(char, style)
-            # (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
-            #     .mut(text(char, style))
-            #     .draw(fs))
             frames.append(slide)
     if div_style and frames:
         h = max(frames, key=lambda f: f.height).height
@@ -226,12 +223,6 @@ def text_slide_in(
                 .mut(frame)
                 .draw(fs))
         frames[i] = slide
-
-    if edge == 'flip-top':
-        for i, frame in enumerate(frames):
-            line = Frame(Image.new('RGBA', (frame.width, 1), (0, 0, 0, 60)))
-            frames[i] = composite_at(line, frame, 'mm')
-
 
     return hstack(frames)
 

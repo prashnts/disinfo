@@ -66,7 +66,7 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
     if rmt_state.show_debug:
         composite_at(screens.demo.draw(fs), image, 'mm')
-    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1.8)
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
 
     # composite_at(
     #     vstack([
