@@ -46,8 +46,6 @@ def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     rmt_state = RemoteStateManager().get_state(fs)
 
-    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
-
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
         # composite_at(
@@ -66,6 +64,7 @@ def compose_big_frame(fs: FrameState):
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.40, dial_radius_multiplier=0.40, needle_radius_multiplier=0.45)
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
     if rmt_state.show_debug:
         composite_at(screens.demo.draw(fs), image, 'mm')
 
