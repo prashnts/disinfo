@@ -6,6 +6,7 @@ from typing import Literal, Optional, TypeVar, Generic
 
 from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.utils import ease
+from disinfo.utils.imops import perspective_transform
 
 from .elements import Frame
 from .layers import DivStyle, div
@@ -172,14 +173,22 @@ class SlideIn(TimedTransition[Frame]):
             place_at(Frame(line), i, 0, mid_y, 'tl')
             place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0.1)
             if self.pos <= 0.5:
-                top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - (self.pos * 2)) * top_curr.height)))
-                place_at(Frame(top_prev), dest=i, x=0, y=mid_y, anchor='bl', frost=0)
+                hpos = top_prev.height - ensure_unity_int((1 - (self.pos * 2)) * top_prev.height)
+                d = (top_prev.height - hpos) * 2
+                src_t_pt = [(0, 0), (top_prev.width, 0), (top_prev.width, top_prev.height), (0, top_prev.height)]
+                dst_t_pt = [(-d, hpos), (top_prev.width + d, hpos), (top_prev.width, top_prev.height), (0, top_prev.height)]
+                top_prev = perspective_transform(top_prev, src_t_pt, dst_t_pt)
                 place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0.5)
+                place_at(Frame(top_prev), dest=i, x=0, y=mid_y - top_prev.height, anchor='tl', frost=0.5)
             else:
-                bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)))
-                if self.pos <= 1:
+                hpos =  ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)
+                d = (bottom_curr.height - hpos) * 2
+                src_t_pt = [(0, 0), (bottom_curr.width, 0), (bottom_curr.width, bottom_curr.height), (0, bottom_curr.height)]
+                dst_t_pt = [(0, 0), (bottom_curr.width, 0), (bottom_curr.width + d, hpos), (-d, hpos)]
+                bottom_curr = perspective_transform(bottom_curr, src_t_pt, dst_t_pt)
+                if self.pos < 1:
                     place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y + ensure_unity_int(((self.pos - 0.5) * 2) * prev.height), anchor='tl', frost=0)
-                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.2)
+                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.5)
 
         return Frame(i, hash=(*self.hash, self.edge))
 

@@ -46,16 +46,18 @@ def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     rmt_state = RemoteStateManager().get_state(fs)
 
+    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
+
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
-        composite_at(
-            vstack([
-                vstack([
-                    screens.date_time.draw(fs),
-                    screens.weather.persistent_view(fs),
-                ], gap=3, align='right'),
-            ], gap=1, align='right'),
-            image, 'tr', dy=p_time_offset())
+        # composite_at(
+        #     vstack([
+        #         vstack([
+        #             screens.date_time.draw(fs),
+        #             screens.weather.persistent_view(fs),
+        #         ], gap=3, align='right'),
+        #     ], gap=1, align='right'),
+        #     image, 'tr', dy=p_time_offset())
         composite_at(screens.twenty_two.draw(fs), image, 'mm')
         return Frame(image).tag('not_present')
 
@@ -66,7 +68,6 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
     if rmt_state.show_debug:
         composite_at(screens.demo.draw(fs), image, 'mm')
-    composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
 
     # composite_at(
     #     vstack([
