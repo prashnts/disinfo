@@ -60,3 +60,21 @@ def apply_gamma(img: Image.Image, g):
     # im = dither(im)
     im = im ** g    # gamma correction
     return Image.fromarray((im * 255).astype(np.uint8))
+
+
+def find_coeffs(pa, pb):
+    # https://stackoverflow.com/a/14178717
+    matrix = []
+    for p1, p2 in zip(pa, pb):
+        matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0]*p1[0], -p2[0]*p1[1]])
+        matrix.append([0, 0, 0, p1[0], p1[1], 1, -p2[1]*p1[0], -p2[1]*p1[1]])
+
+    A = np.matrix(matrix, dtype=np.float64)
+    B = np.array(pb).reshape(8)
+
+    res = np.dot(np.linalg.inv(A.T * A) * A.T, B)
+    return np.array(res).reshape(8)
+
+def perspective_transform(img: Image.Image, src_pts, dst_pts):
+    coeffs = find_coeffs(dst_pts, src_pts)
+    return img.transform((img.width, img.height), Image.PERSPECTIVE, coeffs, Image.BICUBIC)
