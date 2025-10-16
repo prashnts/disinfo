@@ -45,6 +45,7 @@ def p_stack_offset():
 def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     rmt_state = RemoteStateManager().get_state(fs)
+    awake = should_turn_on_display(fs)
 
     if not should_turn_on_display(fs):
         # do not draw if nobody is there.
@@ -62,8 +63,9 @@ def compose_big_frame(fs: FrameState):
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # return Frame(image).tag('present')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
-    solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.40, dial_radius_multiplier=0.40, needle_radius_multiplier=0.45)
-    composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
+    if awake:
+        solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.40, dial_radius_multiplier=0.40, needle_radius_multiplier=0.45)
+        composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
     composite_at(screens.date_time.flip_clock(fs), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
     if rmt_state.show_debug:
         composite_at(screens.demo.draw(fs), image, 'mm')
@@ -87,9 +89,10 @@ def compose_big_frame(fs: FrameState):
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
     ])
-    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
-    composite_at(shazam_indicators(fs).draw(fs), image, 'br')
-    # composite_at(screens.numbers.draw(fs), image, 'bl')
+    if awake:
+        composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
+        composite_at(shazam_indicators(fs).draw(fs), image, 'br')
+        # composite_at(screens.numbers.draw(fs), image, 'bl')
 
     if app_config.height > 120:
         composite_at(stream_widget(fs).draw(fs), image, 'bm')
