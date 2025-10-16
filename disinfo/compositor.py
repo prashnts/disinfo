@@ -47,19 +47,6 @@ def compose_big_frame(fs: FrameState):
     rmt_state = RemoteStateManager().get_state(fs)
     awake = should_turn_on_display(fs)
 
-    if not should_turn_on_display(fs):
-        # do not draw if nobody is there.
-        # composite_at(
-        #     vstack([
-        #         vstack([
-        #             screens.date_time.draw(fs),
-        #             screens.weather.persistent_view(fs),
-        #         ], gap=3, align='right'),
-        #     ], gap=1, align='right'),
-        #     image, 'tr', dy=p_time_offset())
-        composite_at(screens.twenty_two.draw(fs), image, 'mm')
-        return Frame(image).tag('not_present')
-
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # return Frame(image).tag('present')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
@@ -103,9 +90,9 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
     composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
 
-    # image = draw_btn_test(image, fs)
+    image = draw_btn_test(image, fs)
 
-    return Frame(image).tag('present')
+    return Frame(image).tag(awake)
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
