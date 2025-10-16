@@ -4,7 +4,7 @@ from PIL import Image
 
 from .utils.weather_icons import render_icon, cursor
 from .utils.func import throttle
-from .components.layouts import hstack, vstack, composite_at
+from .components.layouts import hstack, vstack, composite_at, place_at
 from .components.layers import div, DivStyle, rounded_rectangle
 from .components.transitions import FadeIn
 from .components.elements import Frame
@@ -25,12 +25,11 @@ def should_turn_on_display(fs: FrameState) -> bool:
 
     return any([PresenceSensorStateManager(s).state.detected for s in sensors])
 
+cursor_f = Frame(render_icon(cursor, 3), hash=('cursor', 'v1'))
 
 def draw_btn_test(image, fs: FrameState):
     s = CursorStateManager().get_state(fs)
-    icon = render_icon(cursor)
-    image.alpha_composite(icon, (s.x, s.y))
-    return image
+    return place_at(cursor_f.opacity(0.3), image, s.x, s.y, 'tl', frost=1)
 
 @throttle(15_000)
 def p_time_offset():
@@ -90,7 +89,8 @@ def compose_big_frame(fs: FrameState):
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
     composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
 
-    image = draw_btn_test(image, fs)
+    s = CursorStateManager().get_state(fs)
+    place_at(cursor_f.opacity(0.4), image, s.x, s.y, 'tl', frost=1)
 
     return Frame(image).tag(awake)
 

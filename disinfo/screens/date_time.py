@@ -63,8 +63,8 @@ def digital_clock(fs: FrameState, seconds=True):
     return hhmm
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
-    div_style = DivStyle(background=background, margin=2, padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000BB')
-    content = text_slide_in(fs, key, value, text_style, edge, duration=0.4, easing=ease.sin.sin_in_out, div_style=div_style, together=together)
+    div_style = DivStyle(background=background, margin=(0, 3, 0, 3), padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000BB')
+    content = text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease.sin.sin_in_out, div_style=div_style, together=together)
     return content
 
 
@@ -76,7 +76,7 @@ def flip_info(fs: FrameState, seconds=True):
     mon_day = hstack([
         _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
         _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
-    ], gap=1)
+    ], gap=0)
     none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True)
     return vstack([mon_day, none_day], gap=2, align='right')
 

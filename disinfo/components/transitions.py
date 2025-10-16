@@ -1,4 +1,5 @@
 import time
+import math
 from dataclasses import replace as dc_replace
 
 from PIL import Image
@@ -153,6 +154,7 @@ class SlideIn(TimedTransition[Frame]):
         self.tick(fs.tick)
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         pos = int(self.max_pos * self.pos)
+        flip_margin = 3
 
         if self.edge == 'top':
             place_at(self.slide_frame, dest=i, x=0, y=pos, anchor='ml')
@@ -163,7 +165,7 @@ class SlideIn(TimedTransition[Frame]):
         elif self.edge == 'right':
             place_at(self.slide_frame, dest=i, x=-pos, y=0, anchor='tl')
         elif self.edge == 'flip-top':
-            mid_y = self.curr_value.height // 2
+            mid_y = math.ceil(self.curr_value.height / 2)
             prev = self.prev_value if self.prev_value else Frame(Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0)))
             top_curr = self.curr_value.image.crop((0, 0, self.curr_value.width, mid_y))
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
@@ -171,24 +173,27 @@ class SlideIn(TimedTransition[Frame]):
             bottom_prev = prev.image.crop((0, mid_y, prev.width, prev.height))
             line = Image.new('RGBA', (self.curr_value.width, 1), (0, 0, 0, int(self.pos * 255) if self.pos < 0.5 else 30))
             place_at(Frame(line), i, 0, mid_y, 'tl')
-            place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0.1)
+            place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
             if self.pos <= 0.5:
-                hpos = top_prev.height - ensure_unity_int((1 - (self.pos * 2)) * top_prev.height)
-                d = (top_prev.height - hpos) * 2
-                src_t_pt = [(0, 0), (top_prev.width, 0), (top_prev.width, top_prev.height), (0, top_prev.height)]
-                dst_t_pt = [(-d, hpos), (top_prev.width + d, hpos), (top_prev.width, top_prev.height), (0, top_prev.height)]
+                hpos = self.pos * 2
+                d = flip_margin * hpos
+                # d = (top_prev.height - hpos) * 2
+                src_t_pt = [(flip_margin, flip_margin), (top_prev.width - flip_margin, 0), (top_prev.width - flip_margin, top_prev.height), (flip_margin, top_prev.height)]
+                dst_t_pt = [(d, flip_margin + hpos), (top_prev.width, hpos), (top_prev.width - d, top_prev.height - hpos), (flip_margin, top_prev.height - hpos)]
                 top_prev = perspective_transform(top_prev, src_t_pt, dst_t_pt)
-                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0.5)
-                place_at(Frame(top_prev), dest=i, x=0, y=mid_y - top_prev.height, anchor='tl', frost=0.5)
+                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
+                place_at(Frame(top_prev), dest=i, x=0, y=int(mid_y * hpos), anchor='tl', frost=0.6)
             else:
-                hpos =  ensure_unity_int(((self.pos - 0.5) * 2) * bottom_curr.height)
-                d = (bottom_curr.height - hpos) * 2
-                src_t_pt = [(0, 0), (bottom_curr.width, 0), (bottom_curr.width, bottom_curr.height), (0, bottom_curr.height)]
-                dst_t_pt = [(0, 0), (bottom_curr.width, 0), (bottom_curr.width + d, hpos), (-d, hpos)]
-                bottom_curr = perspective_transform(bottom_curr, src_t_pt, dst_t_pt)
                 if self.pos < 1:
-                    place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y + ensure_unity_int(((self.pos - 0.5) * 2) * prev.height), anchor='tl', frost=0)
-                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0.5)
+                    hpos =  (self.pos - 0.5) * 2
+                    d = flip_margin * hpos
+                    # d = (bottom_curr.height - hpos) * 2
+                    src_t_pt = [(d, hpos), (bottom_curr.width - d, hpos), (bottom_curr.width - d, bottom_curr.height - hpos), (flip_margin, bottom_curr.height - hpos)]
+                    dst_t_pt = [(flip_margin, 0), (bottom_curr.width - flip_margin, 0), (bottom_curr.width - flip_margin, bottom_curr.height), (flip_margin, bottom_curr.height)]
+                    bottom_curr = perspective_transform(bottom_curr, src_t_pt, dst_t_pt)
+                if self.pos < 1:
+                    place_at(Frame(bottom_prev), dest=i, x=0, y=-mid_y, anchor='bl', frost=0)
+                place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl')
 
         return Frame(i, hash=(*self.hash, self.edge))
 
