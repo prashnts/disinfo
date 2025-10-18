@@ -32,6 +32,10 @@ class Stack(metaclass=UniqInstance):
         frames = [w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)]
         pos = app_config.height - 8 + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
         return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
+    
+    def next_widget(self):
+        self.pos += 1
+        self.pos %= len(self._widgets)
 
     def tick(self, step: float):
         curr_widget = self._widgets[self.pos]

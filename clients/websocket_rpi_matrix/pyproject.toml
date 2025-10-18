@@ -5,7 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "adafruit-blinka>=8.66.2",
+    "adafruit-circuitpython-apds9960>=3.1.16",
+    "adafruit-circuitpython-seesaw>=1.16.7",
+    "hidapi>=0.14.0.post4",
     "pillow>=11.2.1",
     "pydantic>=2.11.7",
+    "rgbmatrixemulator>=0.13.5",
     "websocket-client>=1.8.0",
 ]

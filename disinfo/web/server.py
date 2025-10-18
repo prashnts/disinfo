@@ -63,7 +63,9 @@ async def websocket_endpoint(websocket: WebSocket):
         data = await websocket.receive_text()
         try:
             msg = json.loads(data)
-            print('Received message:', msg)
+            telemetry = msg.get('telemetry')
+            if telemetry:
+                publish('di.pubsub.telemetry', action='update', payload={'data': telemetry})
         except json.JSONDecodeError:
             pass
         if frame_salon:

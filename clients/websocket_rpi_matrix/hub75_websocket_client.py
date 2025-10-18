@@ -10,7 +10,7 @@ from typing import Callable
 from pydantic import BaseModel
 from PIL import Image, ImageFile
 
-from sensors.gesture import gesture_detector
+from sensors.di_remote import sensor_thread
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
@@ -145,7 +145,7 @@ def main(conf: Config):
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
-    gesture_detector(_set_telemetry)
+    sensor_thread(_set_telemetry)
 
     print('[Matrix Renderer started]')
 
