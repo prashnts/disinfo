@@ -209,7 +209,7 @@ def setup():
     ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
     ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
 
-    time.sleep(0.05)
+    time.sleep(0.10)
 
     apds = APDS9960(i2c)
     apds.enable_proximity = True
@@ -236,7 +236,7 @@ def sensor_loop(apds, remote, callback=None):
         time.sleep(0.02)
         remote.update()
         try:
-            payload = {"remote": remote.serialize(), "apds": apds.serialize(), "_v": "dit"}
+            payload = {"remote": remote.serialize(), "light_sensor": apds.serialize(), "_v": "dit"}
             if callback:
                 callback(payload)
             else:
