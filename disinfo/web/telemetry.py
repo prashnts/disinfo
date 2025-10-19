@@ -1,6 +1,7 @@
 import json
 from typing import Literal
-from pydantic import ValidationError, Field
+from typing_extensions import Annotated
+from pydantic import ValidationError, Field, model_validator, RootModel
 
 from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
@@ -41,12 +42,25 @@ class DiRemoteState(AppBaseModel):
     encoder: DiEncoderState = DiEncoderState()
     updated_at: float = 0.0
 
+
+class EdgeTriggerState(RootModel):
+    root: str = ''
+
+    def read(self, key: str) -> str:
+        if not hasattr(self, '_read_for'):
+            self._read_for = []
+        if key in self._read_for:
+            return ''
+        if self.root:
+            self._read_for.append(key)
+        return self.root
+
 class DiLightSensorState(AppBaseModel):
     color_hex: str = '#000000'
     color_temp: float = 0.0
     lux: float = 0.0
     proximity: int = 0
-    gesture: str = '--'
+    gesture: EdgeTriggerState = EdgeTriggerState('--')
     updated_at: float = 0.0
 
 class DiUserState(AppBaseModel):

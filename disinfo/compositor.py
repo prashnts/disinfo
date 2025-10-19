@@ -20,6 +20,7 @@ from .screens.music.shazam import indicators as shazam_indicators
 from .screens.stream import widget as stream_widget
 from .config import app_config
 from .web.telemetry import TelemetryStateManager
+from disinfo.redis import publish
 
 
 def should_turn_on_display(fs: FrameState) -> bool:
@@ -52,6 +53,16 @@ def compose_big_frame(fs: FrameState):
 
     next_time = fs.now.add(minutes=telermt.remote.encoder.position * 30)
     fs_next = dc_replace(fs, now=next_time)
+    gesture = telermt.light_sensor.gesture.read('comp')
+
+    if gesture == 'left':
+        publish('di.pubsub.remote', action='btn_debug')
+    elif gesture == 'right':
+        publish('di.pubsub.remote', action='btn_metro')
+    # elif gesture == '--':
+    #     publish('di.pubsub.remote', action='btn_metro')
+
+
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
     # return Frame(image).tag('present')
