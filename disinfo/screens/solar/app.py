@@ -69,7 +69,7 @@ class AnalogClockStyle:
 
 
 
-@throttle(10000)
+@throttle(200)
 def apply_noise(img: Image.Image, noise: float = 0.1):
     pat = np.random.rand(img.height, img.width) * noise
     alpha = np.ones_like(pat)

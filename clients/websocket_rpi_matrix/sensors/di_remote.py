@@ -194,7 +194,9 @@ class LightSensor:
 
 def setup():
     i2c = board.I2C()  # uses board.SCL and board.SDA
+    time.sleep(0.05)
     ssaw = seesaw.Seesaw(i2c, addr=0x49)
+    time.sleep(0.05)
 
     seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
     print(f"Found product {seesaw_product}")
@@ -207,10 +209,14 @@ def setup():
     ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
     ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
 
+    time.sleep(0.05)
+
     apds = APDS9960(i2c)
     apds.enable_proximity = True
     # apds.enable_color = True
     apds.enable_gesture = True
+
+    time.sleep(0.05)
 
     remote = AdafruitRemote(
         buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
@@ -224,10 +230,10 @@ def setup():
 
     return light, remote
 
-def sensor_loop(callback=None):
-    apds, remote = setup()
+def sensor_loop(apds, remote, callback=None):
     while True:
-        # apds.update()
+        apds.update()
+        time.sleep(0.02)
         remote.update()
         try:
             payload = {"remote": remote.serialize(), "apds": apds.serialize(), "_v": "dit"}
@@ -240,12 +246,13 @@ def sensor_loop(callback=None):
         time.sleep(0.01)
 
 def sensor_thread(callback):
+    apds, remote = setup()
     try:
-        threading.Thread(target=sensor_loop, args=(callback,), daemon=True).start()
+        threading.Thread(target=sensor_loop, args=(apds, remote, callback), daemon=True).start()
         print('[Gestures] Enabled')
     except ImportError:
         print('[Gestures] Not enabled')
 
 
 if __name__ == "__main__":
-    sensor_loop()
+    sensor_loop(*setup())

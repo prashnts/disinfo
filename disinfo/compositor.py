@@ -50,7 +50,7 @@ def compose_big_frame(fs: FrameState):
     awake = should_turn_on_display(fs)
 
 
-    next_time = fs.now.add(minutes=telermt.remote.encoder.position * 5)
+    next_time = fs.now.add(minutes=telermt.remote.encoder.position * 30)
     fs_next = dc_replace(fs, now=next_time)
 
     # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)

@@ -125,9 +125,6 @@ def main(conf: Config):
     # Without this, we get UnidentifiedImageError later.
     Image.open('test.jpg')
 
-    matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
-    double_buffer = matrix.CreateFrameCanvas()
-
     def _set_telemetry(values: dict):
         nonlocal telemetry
         telemetry = values
@@ -146,6 +143,11 @@ def main(conf: Config):
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
     sensor_thread(_set_telemetry)
+    time.sleep(1)
+    print('[Inial setup done]')
+
+    matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
+    double_buffer = matrix.CreateFrameCanvas()
 
     print('[Matrix Renderer started]')
 
