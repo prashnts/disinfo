@@ -20,6 +20,7 @@ from disinfo.screens.colors import SkyHues
 from disinfo.config import app_config
 from disinfo.utils.func import throttle
 from disinfo.utils.cairo import to_pil
+from disinfo.utils.color import AppColor
 
 
 s_time_tick = [
@@ -59,6 +60,7 @@ p2_interpolator = interp1d(
 class AnalogClockStyle:
     width: int = app_config.width
     height: int = app_config.height
+    background: str = SkyHues.night_background.hex
 
     cx: Optional[int] = None
     cy: Optional[int] = None
@@ -132,7 +134,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     sun_y = cy + sun_path_radius * math.sin(theta)
 
     ctx = cairo.Context(surface)
-    ctx.set_source_rgba(*SkyHues.night_background.rgb, 1)
+    ctx.set_source_rgba(*AppColor(style.background).rgb, 1)
     ctx.rectangle(0, 0, w, h)
     ctx.fill_preserve()
 

@@ -46,11 +46,12 @@ class APDSColor16:
 
     def update(self):
         r, g, b, c = self._sensor.color_data
-        self.red = r
-        self.green = g
-        self.blue = b
-        self.clear = c
-        self.updated_at = time.monotonic()
+        if any([r != self.red, g != self.green, b != self.blue, c != self.clear]):
+            self.red = r
+            self.green = g
+            self.blue = b
+            self.clear = c
+            self.updated_at = time.monotonic()
     
     def __repr__(self):
         return f"Color(hex={self.hex})"
@@ -62,8 +63,10 @@ class APDSProximitySensor:
     updated_at: float = 0.0
 
     def update(self):
-        self.proximity = self._sensor.proximity
-        self.updated_at = time.monotonic()
+        prox = self._sensor.proximity
+        if prox != self.proximity:
+            self.proximity = prox
+            self.updated_at = time.monotonic()
     
     def __repr__(self):
         return f"Proximity(proximity={self.proximity})"
@@ -78,8 +81,9 @@ class APDSGesture:
 
     def update(self):
         gesture = self._sensor.gesture()
-        self.value = gesture
-        self.detected_at = time.monotonic()
+        if gesture != self.value:
+            self.value = gesture
+            self.detected_at = time.monotonic()
 
     @property
     def gesture(self):
@@ -87,6 +91,29 @@ class APDSGesture:
 
     def __repr__(self):
         return f"Gesture(gesture={self.gesture})"
+
+
+@dataclass
+class LightSensor:
+    color: APDSColor16
+    proximity: APDSProximitySensor
+    gesture: APDSGesture
+
+    def update(self):
+        self.color.update()
+        self.proximity.update()
+        self.gesture.update()
+
+    def serialize(self) -> dict:
+        return {
+            'color_hex': self.color.hex,
+            'color_temp': self.color.temp,
+            'lux': self.color.lux,
+            'proximity': self.proximity.proximity,
+            'gesture': self.gesture.gesture,
+            'updated_at': max(self.color.updated_at, self.proximity.updated_at, self.gesture.detected_at),
+        }
+
 
 @dataclass
 class IOButton:
@@ -170,28 +197,6 @@ class AdafruitRemote:
             'updated_at': max(button.updated_at for _, button in self.buttons.iter()),
         }
 
-@dataclass
-class LightSensor:
-    color: APDSColor16
-    proximity: APDSProximitySensor
-    gesture: APDSGesture
-
-    def update(self):
-        self.color.update()
-        self.proximity.update()
-        self.gesture.update()
-    
-    def serialize(self) -> dict:
-        return {
-            'color_hex': self.color.hex,
-            'color_temp': self.color.temp,
-            'lux': self.color.lux,
-            'proximity': self.proximity.proximity,
-            'gesture': self.gesture.gesture,
-            'updated_at': time.monotonic(),
-        }
-
-
 def setup():
     i2c = board.I2C()  # uses board.SCL and board.SDA
     time.sleep(0.05)
@@ -213,8 +218,8 @@ def setup():
 
     apds = APDS9960(i2c)
     apds.enable_proximity = True
-    # apds.enable_color = True
     apds.enable_gesture = True
+    apds.enable_color = True
 
     time.sleep(0.05)
 
@@ -236,7 +241,14 @@ def sensor_loop(apds, remote, callback=None):
             apds.update()
             time.sleep(0.02)
             remote.update()
-            payload = {"remote": remote.serialize(), "light_sensor": apds.serialize(), "_v": "dit"}
+            remote_state = remote.serialize()
+            light_state = apds.serialize()
+            payload = {
+                "remote": remote_state,
+                "light_sensor": light_state,
+                "_v": "dit",
+                "updated_at": time.monotonic(),
+            }
             if callback:
                 callback(payload)
             else:

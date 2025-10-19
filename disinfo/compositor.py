@@ -45,11 +45,12 @@ def p_stack_offset():
 
 
 def compose_big_frame(fs: FrameState):
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
     rmt_state = RemoteStateManager().get_state(fs)
     telermt = TelemetryStateManager().get_state(fs)
     awake = should_turn_on_display(fs)
+    background = telermt.light_sensor.color_hex
 
+    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
     next_time = fs.now.add(minutes=telermt.remote.encoder.position * 30)
     fs_next = dc_replace(fs, now=next_time)
@@ -59,34 +60,32 @@ def compose_big_frame(fs: FrameState):
         publish('di.pubsub.remote', action='btn_debug')
     elif gesture == 'right':
         publish('di.pubsub.remote', action='btn_metro')
-    # elif gesture == '--':
-    #     publish('di.pubsub.remote', action='btn_metro')
+    
+    if telermt.remote.buttons.select.pressed.read('comp'):
+        print("select pressed")
+        fs_next = fs
 
-
-
-    # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
-    # return Frame(image).tag('present')
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     if awake:
-        solar_style = AnalogClockStyle(cx=75 + p_stack_offset(), cy=42 + p_stack_offset(), tick_radius_multiplier=0.40, dial_radius_multiplier=0.40, needle_radius_multiplier=0.45)
-
-        # fs_next = fs
-        # if telermt.remote.encoder.updated_at > fs.tick - 5:
-
-
+        solar_style = AnalogClockStyle(
+            cx=75 + p_stack_offset(),
+            cy=42 + p_stack_offset(),
+            tick_radius_multiplier=0.40,
+            dial_radius_multiplier=0.40,
+            needle_radius_multiplier=0.45,
+            background=background,
+        )
         composite_at(screens.solar.draw(fs_next, solar_style), image, 'mm')
-    composite_at(screens.date_time.flip_clock(fs_next), image, 'tr', dx=-1 * p_stack_offset(), dy=p_stack_offset() + 60, frost=1)
+    composite_at(
+        screens.date_time.flip_clock(fs_next),
+        image,
+        'tr',
+        dx=-1 * p_stack_offset(),
+        dy=p_stack_offset() + 60,
+        frost=1)
     if rmt_state.show_debug:
         composite_at(screens.demo.draw(fs), image, 'mm')
 
-    # composite_at(
-    #     vstack([
-    #         vstack([
-    #             screens.date_time.draw(fs),
-    #             screens.weather.persistent_view(fs),
-    #         ], gap=3, align='right'),
-    #     ], gap=1, align='right'),
-    #     image, 'tr', dy=p_time_offset())
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),
         *screens.aviator.widgets.planes(fs),
@@ -99,7 +98,7 @@ def compose_big_frame(fs: FrameState):
         screens.trash_pickup.widget(fs),
     ])
 
-    if telermt.remote.buttons.down.is_pressed('comp'):
+    if telermt.remote.buttons.down.pressed.read('comp'):
         print("next")
         stack.next_widget()
 

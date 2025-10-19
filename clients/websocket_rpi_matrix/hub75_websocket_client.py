@@ -38,7 +38,6 @@ class RGBMatrixConf(BaseModel):
     def matrix_options(self) -> RGBMatrixOptions:
         options = RGBMatrixOptions()
         for key, value in self.dict().items():
-            print(key, value)
             setattr(options, key, value)
         return options
 

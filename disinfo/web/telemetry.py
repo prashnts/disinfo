@@ -1,29 +1,35 @@
 import json
-from typing import Literal
+from typing import Literal, TypeVar
 from typing_extensions import Annotated
 from pydantic import ValidationError, Field, model_validator, RootModel
 
 from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
+from disinfo.utils.color import AppColor
 
 
-# class Pop
+TriggerType = TypeVar('TriggerType')
 
+
+class EdgeTriggerState(RootModel[TriggerType]):
+    root: TriggerType
+
+    def read(self, key: str) -> TriggerType:
+        if not hasattr(self, '_read_for'):
+            self._read_for = []
+        if key in self._read_for:
+            return ''
+        if self.root:
+            self._read_for.append(key)
+        return self.root
 
 class DitButtonState(AppBaseModel):
-    pressed: bool = False
+    pressed: EdgeTriggerState[bool] = EdgeTriggerState[bool](False)
     pressed_at: float = 0.0
     released_at: float = 0.0
     updated_at: float = 0.0
 
     pressed_for: list[str] = Field(default_factory=list)
-
-    def is_pressed(self, key: str) -> bool:
-        if key in self.pressed_for:
-            return False
-        if self.pressed:
-            self.pressed_for.append(key)
-        return self.pressed
 
 
 class DiRemoteButtons(AppBaseModel):
@@ -43,25 +49,18 @@ class DiRemoteState(AppBaseModel):
     updated_at: float = 0.0
 
 
-class EdgeTriggerState(RootModel):
-    root: str = ''
-
-    def read(self, key: str) -> str:
-        if not hasattr(self, '_read_for'):
-            self._read_for = []
-        if key in self._read_for:
-            return ''
-        if self.root:
-            self._read_for.append(key)
-        return self.root
 
 class DiLightSensorState(AppBaseModel):
-    color_hex: str = '#000000'
+    color_hex: str = '#000000FF'
     color_temp: float = 0.0
     lux: float = 0.0
     proximity: int = 0
-    gesture: EdgeTriggerState = EdgeTriggerState('--')
+    gesture: EdgeTriggerState[str] = EdgeTriggerState[str]('--')
     updated_at: float = 0.0
+
+    @property
+    def color(self) -> AppColor:
+        return AppColor(self.color_hex)
 
 class DiUserState(AppBaseModel):
     motion: bool = False
