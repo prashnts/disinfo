@@ -232,10 +232,10 @@ def setup():
 
 def sensor_loop(apds, remote, callback=None):
     while True:
-        apds.update()
-        time.sleep(0.02)
-        remote.update()
         try:
+            apds.update()
+            time.sleep(0.02)
+            remote.update()
             payload = {"remote": remote.serialize(), "light_sensor": apds.serialize(), "_v": "dit"}
             if callback:
                 callback(payload)
@@ -243,6 +243,7 @@ def sensor_loop(apds, remote, callback=None):
                 print(payload)
         except Exception as e:
             print(f'[DI Remote] Error in sensor loop: {e}')
+            time.sleep(0.8)
         time.sleep(0.01)
 
 def sensor_thread(callback):
