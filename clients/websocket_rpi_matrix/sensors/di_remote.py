@@ -16,7 +16,7 @@ _here = Path(__file__).parent / 'tof_bin'
 
 sys.path.append(_here.as_posix())
 
-from _vl53lxcx import (
+from ._vl53lxcx import (
     DATA_DISTANCE_MM,
     DATA_TARGET_STATUS,
     RESOLUTION_8X8,
