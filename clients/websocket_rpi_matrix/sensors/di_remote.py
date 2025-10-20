@@ -299,25 +299,30 @@ def setup():
         print(f"APDS9960 not found: {e}")
         light = None
 
-    tof = VL53L5CX(i2c)
-    # tof.reset()
+    try:
+        tof = VL53L5CX(i2c)
+        # tof.reset()
 
-    if not tof.is_alive():
-        raise ValueError("VL53L8CX not detected")
+        if not tof.is_alive():
+            raise ValueError("VL53L8CX not detected")
 
-    tof.init()
+        tof.init()
 
-    tof.resolution = RESOLUTION_8X8
-    grid = 7
+        tof.resolution = RESOLUTION_8X8
+        grid = 7
 
-    tof.ranging_freq = 2
+        tof.ranging_freq = 2
 
-    tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
+        tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
+        tof = ToFSensor(tof)
+    except Exception as e:
+        print(f"VL53L5CX not found: {e}")
+        tof = None
 
     return {
         'light_sensor': light,
         'remote': remote,
-        'tof': ToFSensor(tof),
+        'tof': tof,
     }
 
 def sensor_loop(sensors: dict, callback=None):
