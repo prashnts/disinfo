@@ -15,9 +15,8 @@ from adafruit_apds9960 import colorutility
 _here = Path(__file__).parent / 'tof_bin'
 
 sys.path.append(_here.as_posix())
-print(sys.path)
 
-from vl53lxcx import (
+from _vl53lxcx import (
     DATA_DISTANCE_MM,
     DATA_TARGET_STATUS,
     RESOLUTION_8X8,
@@ -327,23 +326,22 @@ def setup():
 
 def sensor_loop(sensors: dict, callback=None):
     while True:
-        try:
-            payload = {
-                "_v": "dit",
-                "updated_at": time.monotonic(),
-            }
-            for name, sensor in sensors.items():
-                if sensor:
+        payload = {
+            "_v": "dit",
+            "updated_at": time.monotonic(),
+        }
+        for name, sensor in sensors.items():
+            if sensor:
+                try:
                     sensor.update()
                     payload[name] = sensor.serialize()
+                except Exception as e:
+                    print(f"[DI Remote] Error updating sensor {name}: {e}")
 
-            if callback:
-                callback(payload)
-            else:
-                print(payload)
-        except Exception as e:
-            print(f'[DI Remote] Error in sensor loop: {e}')
-            time.sleep(0.8)
+        if callback:
+            callback(payload)
+        else:
+            print(payload)
         time.sleep(0.01)
 
 def sensor_thread(callback):
