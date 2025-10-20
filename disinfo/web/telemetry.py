@@ -66,12 +66,20 @@ class DiUserState(AppBaseModel):
     motion: bool = False
     updated_at: float = 0.0
 
+class DiTofState(AppBaseModel):
+    distance_mm: list[int] = []
+    masked_distance_mm: list[int] = []
+    render: list[list[int]] = []
+    grid: int = 7
+    updated_at: float = 0.0
+
+
 class DiTelemetryState(AppBaseModel):
     remote: DiRemoteState = DiRemoteState()
     light_sensor: DiLightSensorState = DiLightSensorState()
     user: DiUserState = DiUserState()
+    tof: DiTofState = DiTofState()
     _v: Literal['dit'] = 'dit'
-
 
 class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
     model = DiTelemetryState
@@ -94,6 +102,9 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
 
             if next_state.user.updated_at > self.state.user.updated_at:
                 self.state.user = next_state.user
+            
+            if next_state.tof.updated_at > self.state.tof.updated_at:
+                self.state.tof = next_state.tof
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
             pass

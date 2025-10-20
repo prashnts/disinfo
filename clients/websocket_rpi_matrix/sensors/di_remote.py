@@ -1,6 +1,9 @@
 import time
+import sys
 import threading
+import json
 
+from pathlib import Path
 from dataclasses import dataclass
 
 import board
@@ -8,6 +11,19 @@ import board
 from adafruit_seesaw import digitalio, rotaryio, seesaw
 from adafruit_apds9960.apds9960 import APDS9960
 from adafruit_apds9960 import colorutility
+
+_here = Path(__file__).parent / 'tof_bin'
+
+sys.path.append(_here.as_posix())
+print(sys.path)
+
+from vl53lxcx import (
+    DATA_DISTANCE_MM,
+    DATA_TARGET_STATUS,
+    RESOLUTION_8X8,
+    STATUS_VALID,
+    VL53L5CX,
+)
 
 
 @dataclass
@@ -197,58 +213,125 @@ class AdafruitRemote:
             'updated_at': max(button.updated_at for _, button in self.buttons.iter()),
         }
 
+@dataclass
+class ToFSensor:
+    tof: VL53L5CX
+    distance_mm: list[int] = None
+    masked_distance_mm: list[int] = None
+    grid: int = 7
+    render: list[list[int]] = None
+    updated_at: float = 0.0
+
+    def update(self):
+        if self.tof.check_data_ready():
+            results = self.tof.get_ranging_data()
+            distance_mm = results.distance_mm
+            target_status = results.target_status
+            grid = 7
+
+            masked_distance_mm = [d if status == STATUS_VALID else 0 for d, status in zip(distance_mm, target_status)]
+
+            self.distance_mm = distance_mm
+            self.masked_distance_mm = masked_distance_mm
+            self.updated_at = time.monotonic()
+            if distance_mm != self.distance_mm:
+                self.distance_mm = distance_mm
+                self.masked_distance_mm = masked_distance_mm
+
+            d_max = max(masked_distance_mm)
+            render = []
+            row = []
+            for i, d in enumerate(masked_distance_mm):
+                scaled = int((d / d_max) * 255) if d_max > 0 else 0
+                row.append(scaled)
+                if (i & grid) == grid:
+                    render.append(row)
+                    row = []
+            self.render = render
+
+    def serialize(self) -> dict:
+        return {
+            'distance_mm': self.distance_mm,
+            'masked_distance_mm': self.masked_distance_mm,
+            'updated_at': self.updated_at,
+            'render': self.render,
+            'grid': self.grid, 
+        }
+
+
 def setup():
     i2c = board.I2C()  # uses board.SCL and board.SDA
-    time.sleep(0.05)
-    ssaw = seesaw.Seesaw(i2c, addr=0x49)
-    time.sleep(0.05)
+    print("i2c devices detected: ", [hex(x) for x in i2c.scan()])
 
-    seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
-    print(f"Found product {seesaw_product}")
-    if seesaw_product != 5740:
-        print("Wrong firmware loaded?  Expected 5740")
+    try:
+        ssaw = seesaw.Seesaw(i2c, addr=0x49)
 
-    ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
-    ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
-    ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
-    ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
-    ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
+        seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
+        print(f"Found product {seesaw_product}")
+        if seesaw_product != 5740:
+            print("Wrong firmware loaded?  Expected 5740")
 
-    time.sleep(0.10)
+        ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
+        ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
+        ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
+        ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
+        ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
+        remote = AdafruitRemote(
+            buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
+            encoder=RotaryEncoder(rotaryio.IncrementalEncoder(ssaw)),
+        )
+    except Exception as e:
+        print(f"Seesaw not found: {e}")
+        remote = None
 
-    apds = APDS9960(i2c)
-    apds.enable_proximity = True
-    apds.enable_gesture = True
-    apds.enable_color = True
+    try:
+        apds = APDS9960(i2c)
+        apds.enable_proximity = True
+        apds.enable_gesture = True
+        apds.enable_color = True
 
-    time.sleep(0.05)
+        light = LightSensor(
+            color=APDSColor16(apds),
+            proximity=APDSProximitySensor(apds),
+            gesture=APDSGesture(apds),
+        )
+    except Exception as e:
+        print(f"APDS9960 not found: {e}")
+        light = None
 
-    remote = AdafruitRemote(
-        buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
-        encoder=RotaryEncoder(rotaryio.IncrementalEncoder(ssaw)),
-    )
-    light = LightSensor(
-        color=APDSColor16(apds),
-        proximity=APDSProximitySensor(apds),
-        gesture=APDSGesture(apds),
-    )
+    tof = VL53L5CX(i2c)
+    # tof.reset()
 
-    return light, remote
+    if not tof.is_alive():
+        raise ValueError("VL53L8CX not detected")
 
-def sensor_loop(apds, remote, callback=None):
+    tof.init()
+
+    tof.resolution = RESOLUTION_8X8
+    grid = 7
+
+    tof.ranging_freq = 2
+
+    tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
+
+    return {
+        'light_sensor': light,
+        'remote': remote,
+        'tof': ToFSensor(tof),
+    }
+
+def sensor_loop(sensors: dict, callback=None):
     while True:
         try:
-            apds.update()
-            time.sleep(0.02)
-            remote.update()
-            remote_state = remote.serialize()
-            light_state = apds.serialize()
             payload = {
-                "remote": remote_state,
-                "light_sensor": light_state,
                 "_v": "dit",
                 "updated_at": time.monotonic(),
             }
+            for name, sensor in sensors.items():
+                if sensor:
+                    sensor.update()
+                    payload[name] = sensor.serialize()
+
             if callback:
                 callback(payload)
             else:
@@ -259,13 +342,17 @@ def sensor_loop(apds, remote, callback=None):
         time.sleep(0.01)
 
 def sensor_thread(callback):
-    apds, remote = setup()
-    try:
-        threading.Thread(target=sensor_loop, args=(apds, remote, callback), daemon=True).start()
-        print('[Gestures] Enabled')
-    except ImportError:
-        print('[Gestures] Not enabled')
+    threading.Thread(target=sensor_loop, args=(setup(), callback), daemon=True).start()
+    print('[Gestures] Enabled')
 
 
 if __name__ == "__main__":
-    sensor_loop(*setup())
+    import redis
+    db = redis.Redis(host='localhost', port=6379, db=0)
+    def publish(channel: str, action: str, payload: dict = {}):
+        db.publish(channel, json.dumps({'_action': action, **payload}))
+
+    def callback(payload):
+        publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
+
+    sensor_loop(setup(), callback)

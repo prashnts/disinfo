@@ -1,3 +1,6 @@
+from PIL import Image, ImageOps
+import numpy as np
+
 from functools import cache
 from .drawer import draw_loop
 from ..components.text import text, TextStyle
@@ -10,6 +13,8 @@ from ..data_structures import FrameState
 from ..drat.app_states import RemoteStateManager
 from disinfo.components.widget import Widget
 from disinfo.components import fonts
+from disinfo.web.telemetry import TelemetryStateManager
+from disinfo.components.elements import Frame
 
 
 sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, pause_offset=18, speed=0.001, delta=3, scrollbar=True)
@@ -48,6 +53,18 @@ A quick brown fox jumps over the lazy dog.
     
     return vstack(samples, gap=spacing, align='left'), False, pauses
 
+def tof_info(fs: FrameState):
+    telem = TelemetryStateManager().get_state(fs)
+    dmm = np.array(telem.tof.masked_distance_mm) / 12
+
+    img = (Image
+           .fromarray(dmm.astype(np.uint8).reshape((8, 8)))
+           .rotate(180))
+
+    # img = ImageOps.autocontrast(img)
+    img = ImageOps.colorize(img, (0, 0, 0, 0), 'red', 'blue').resize((80, 80), Image.NEAREST).convert('RGBA')
+    return Frame(img, hash=('tof_info', 'v1'))
+
 def info_content(fs: FrameState):
     if not RemoteStateManager().get_state(fs).show_debug:
         sample_vscroll.reset_position()
@@ -63,7 +80,13 @@ def info_content(fs: FrameState):
         border_color='#444444',
     ))
     sample_vscroll.set_frame(*font_demo(), pause_offset=header.height + 4)
-    return composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
+    info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
+    try:
+        tof = tof_info(fs)
+        return composite_at(tof, info, 'mm').tag('debug_info')
+    except Exception as e:
+        print(f'[DebugInfo] Error drawing ToF info: {e}')
+        return info.tag('debug_info')
     # return vstack([header, sample_vscroll.draw(fs.tick)], gap=1)
 
 

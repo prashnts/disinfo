@@ -8,6 +8,7 @@ dependencies = [
     "adafruit-blinka>=8.66.2",
     "adafruit-circuitpython-apds9960>=3.1.16",
     "adafruit-circuitpython-seesaw>=1.16.7",
+    "circuitpython-vl53lxcx>=0.0.5",
     "hidapi>=0.14.0.post4",
     "pillow>=11.2.1",
     "pydantic>=2.11.7",

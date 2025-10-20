@@ -116,7 +116,7 @@ class RemoteState(AppBaseModel):
     action: str = 'unknown'
     pressed_at: Optional[datetime] = None
     is_visible: bool = False
-    show_debug: bool = False
+    show_debug: bool = True
 
 class RemoteStateManager(PubSubStateManager[RemoteState]):
     model = RemoteState
