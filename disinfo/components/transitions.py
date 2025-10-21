@@ -154,7 +154,7 @@ class SlideIn(TimedTransition[Frame]):
         self.tick(fs.tick)
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         pos = int(self.max_pos * self.pos)
-        flip_margin = 4
+        flip_margin = 6
 
         if self.edge == 'top':
             place_at(self.slide_frame, dest=i, x=0, y=pos, anchor='ml')
@@ -174,21 +174,19 @@ class SlideIn(TimedTransition[Frame]):
             line = Image.new('RGBA', (self.curr_value.width - 2 * flip_margin, 1), (0, 0, 0, int(self.pos * 255) if self.pos < 0.5 else 80))
             if self.pos <= 0.5:
                 hpos = self.pos * 2
-                d = flip_margin * hpos * 2
-
-
+                d = flip_margin * hpos * 3
                 src_t_pt = [(0, 0), (top_prev.width, 0), (top_prev.width, top_prev.height), (0, top_prev.height)]
                 dst_t_pt = [(-d, 0), (top_prev.width + d, 0), (top_prev.width - d, top_prev.height), (d, top_prev.height)]
                 top_prev = perspective_transform(top_prev, src_t_pt, dst_t_pt)
                 top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - hpos) * top_prev.height)))
                 top_curr = top_curr.crop((0, 0, top_curr.width, top_curr.height - top_prev.height))
-                place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
+                place_at(Frame(top_curr).opacity(hpos + 0.2), dest=i, x=0, y=0, anchor='tl', frost=0)
                 place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
                 place_at(Frame(top_prev), dest=i, x=0, y=mid_y, anchor='bl', frost=0)
             else:
                 place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)
                 hpos =  (self.pos - 0.5) * 2
-                d = flip_margin * (1 - hpos) * 2
+                d = flip_margin * (1 - hpos) * 3
                 if self.pos < 1:
                     src_t_pt = [(-d, 0), (bottom_curr.width + d, 0), (bottom_curr.width - d, bottom_curr.height), (d, bottom_curr.height)]
                     dst_t_pt = [(0, 0), (bottom_curr.width, 0), (bottom_curr.width, bottom_curr.height), (0, bottom_curr.height)]
@@ -196,7 +194,7 @@ class SlideIn(TimedTransition[Frame]):
                     bottom_curr = bottom_curr.resize((bottom_curr.width, ensure_unity_int(hpos * bottom_curr.height)))
                 # if self.pos < 1:
                 bottom_prev = bottom_prev.crop((0, bottom_curr.height, bottom_prev.width, bottom_prev.height))
-                place_at(Frame(bottom_prev), dest=i, x=0, y=i.height, anchor='bl', frost=0)
+                place_at(Frame(bottom_prev).opacity((1 - hpos) - 0.3), dest=i, x=0, y=i.height, anchor='bl', frost=0)
                 place_at(Frame(bottom_curr), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
             place_at(Frame(line), i, flip_margin, mid_y, 'tl')
 

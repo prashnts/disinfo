@@ -63,11 +63,12 @@ def digital_clock(fs: FrameState, seconds=True):
     return hhmm
 
 def ease_seq(t: float):
-    t2 = ease.sin.sin_out(t)
+    t2 = ease.sin.sin_in(t)
     if t2 <= 0.5:
         return t2
     else:
-        return ease.bounce.bounce_out(t2)
+        d = (t2 - t) / 2
+        return ease.bounce.bounce_out(t - d)
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
@@ -77,7 +78,7 @@ def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge
         radius=3,
         border=1,
         border_color='#000000BB')
-    content = text_slide_in(fs, key, value, text_style, edge, duration=0.4, easing=ease_seq, div_style=div_style, together=together)
+    content = text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease_seq, div_style=div_style, together=together)
     content = content.trim(left=2, right=2)
     return content
 
