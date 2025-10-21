@@ -76,7 +76,7 @@ _twilight = get_palette('twilight')
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
-    distance = 512
+    distance = 2000
 
     dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
     dmm *= (255.0 / distance)
@@ -122,7 +122,6 @@ def info_content(fs: FrameState):
         return composite_at(tof, info, 'mm', frost=3).tag('debug_info')
     except Exception as e:
         return info.tag('debug_info')
-    # return vstack([header, sample_vscroll.draw(fs.tick)], gap=1)
 
 
 def widget(fs: FrameState):
