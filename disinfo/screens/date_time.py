@@ -63,10 +63,11 @@ def digital_clock(fs: FrameState, seconds=True):
     return hhmm
 
 def ease_seq(t: float):
-    if t <= 0.5:
-        return ease.cubic.cubic_in(t)
+    t2 = ease.sin.sin_out(t)
+    if t2 <= 0.5:
+        return t2
     else:
-        return ease.bounce.bounce_out(t)
+        return ease.bounce.bounce_out(t2)
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
