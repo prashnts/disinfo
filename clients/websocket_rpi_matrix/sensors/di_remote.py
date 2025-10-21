@@ -287,7 +287,7 @@ def setup():
         apds = APDS9960(i2c)
         apds.enable_proximity = True
         apds.enable_gesture = True
-        apds.enable_color = True
+        apds.enable_color = False
 
         light = LightSensor(
             color=APDSColor16(apds),
@@ -310,7 +310,7 @@ def setup():
         tof.resolution = RESOLUTION_8X8
         grid = 7
 
-        tof.ranging_freq = 2
+        tof.ranging_freq = 10
 
         tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
         tof = ToFSensor(tof)

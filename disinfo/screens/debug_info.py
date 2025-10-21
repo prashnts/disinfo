@@ -1,4 +1,5 @@
-from PIL import Image, ImageOps
+from PIL import Image
+from matplotlib import cm
 import numpy as np
 
 from functools import cache
@@ -53,17 +54,52 @@ A quick brown fox jumps over the lazy dog.
     
     return vstack(samples, gap=spacing, align='left'), False, pauses
 
+def get_palette(name):
+    cmap = cm.get_cmap(name, 256)
+
+    try:
+        colors = cmap.colors
+    except AttributeError:
+        colors = np.array([cmap(i) for i in range(256)], dtype=float)
+
+    arr = np.array(colors * 255).astype('uint8')
+    arr = arr.reshape((16, 16, 4))
+    arr = arr[:, :, 0:3]
+    return arr.tobytes()
+
+_plasma = get_palette('plasma')
+_viridis = get_palette('viridis')
+_inferno = get_palette('inferno')
+_twilight = get_palette('twilight')
+
+
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
-    dmm = np.array(telem.tof.masked_distance_mm) / 12
 
-    img = (Image
-           .fromarray(dmm.astype(np.uint8).reshape((8, 8)))
-           .rotate(180))
+    distance = 512
 
-    # img = ImageOps.autocontrast(img)
-    img = ImageOps.colorize(img, (0, 0, 0, 0), 'red', 'blue').resize((80, 80), Image.NEAREST).convert('RGBA')
-    return Frame(img, hash=('tof_info', 'v1'))
+    dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
+    dmm *= (255.0 / distance)
+    dmm = np.clip(dmm, 0, 255).astype(np.uint8)
+
+    def _make_img(pallette, size, resample):
+        img = Image.frombytes("P", (8, 8), dmm.tobytes())
+        img.putpalette(pallette)
+        img = img.convert('RGBA')
+        img = img.resize((size, size), resample)
+        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}'))
+        return div(frame, style=DivStyle(border=1, border_color='#111111', radius=2))
+
+    img1 = _make_img(_plasma, 20, Image.NEAREST)
+    img2 = _make_img(_viridis, 50, Image.Resampling.LANCZOS)
+    img3 = _make_img(_inferno, 30, Image.Resampling.LANCZOS)
+    img4 = _make_img(_twilight, 30, Image.Resampling.LANCZOS)
+
+    imgs = vstack([
+        hstack([vstack([img1, img3], gap=2), img2], gap=2),
+        hstack([img4], gap=2)
+    ], gap=2)
+    return div(imgs, style=DivStyle(border=1, border_color="#252525", background="#0443048F", radius=2, padding=2))
 
 def info_content(fs: FrameState):
     if not RemoteStateManager().get_state(fs).show_debug:
@@ -83,7 +119,7 @@ def info_content(fs: FrameState):
     info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
     try:
         tof = tof_info(fs)
-        return composite_at(tof, info, 'mm').tag('debug_info')
+        return composite_at(tof, info, 'mm', frost=3).tag('debug_info')
     except Exception as e:
         print(f'[DebugInfo] Error drawing ToF info: {e}')
         return info.tag('debug_info')

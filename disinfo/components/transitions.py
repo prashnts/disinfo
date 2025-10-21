@@ -154,7 +154,7 @@ class SlideIn(TimedTransition[Frame]):
         self.tick(fs.tick)
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         pos = int(self.max_pos * self.pos)
-        flip_margin = 3
+        flip_margin = 4
 
         if self.edge == 'top':
             place_at(self.slide_frame, dest=i, x=0, y=pos, anchor='ml')

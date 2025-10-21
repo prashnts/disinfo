@@ -83,8 +83,8 @@ def compose_big_frame(fs: FrameState):
         dx=-1 * p_stack_offset(),
         dy=p_stack_offset() + 60,
         frost=1)
-    if rmt_state.show_debug:
-        composite_at(screens.demo.draw(fs), image, 'mm')
+    # if rmt_state.show_debug:
+    #     composite_at(screens.demo.draw(fs), image, 'mm')
 
     stack = Stack('main_cards').mut([
         screens.weather.widgets.weather(fs),

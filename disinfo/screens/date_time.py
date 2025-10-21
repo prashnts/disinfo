@@ -21,7 +21,7 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_date_flip = TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0))
-s_time_flip = TextStyle(color='#CCCCCCAA', font=fonts.s16x8, trim=(0, 0, 0, 0))
+s_time_flip = TextStyle(color="#DFD9C98F", font=fonts.s16x8, trim=(0, 0, 0, 0))
 s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -70,9 +70,8 @@ def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge
 
 def flip_info(fs: FrameState, seconds=True):
     t = fs.now
-    bg = '#22222288'
+    bg = "#5E5E5EBE"
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
-    background = '#992222' if t.day_of_week in (5, 6) else '#111111'
     mon_day = hstack([
         _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
         _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
@@ -82,10 +81,9 @@ def flip_info(fs: FrameState, seconds=True):
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
-    bg = '#22222299'
+    bg = "#5E5E5EBE"
     hhmm = hstack([
         _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
-        text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1).trim(left=1),
         _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
         # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
     ], gap=0)
