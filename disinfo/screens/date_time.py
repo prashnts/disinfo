@@ -65,12 +65,13 @@ def digital_clock(fs: FrameState, seconds=True):
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(background=background, margin=(0, 3, 0, 3), padding=(2, 3, 2, 3), radius=2, border=1, border_color='#000000BB')
     content = text_slide_in(fs, key, value, text_style, edge, duration=0.4, easing=ease.circle.circle_in, div_style=div_style, together=together)
+    content = content.trim(left=2, right=2)
     return content
 
 
 def flip_info(fs: FrameState, seconds=True):
     t = fs.now
-    bg = "#5E5E5EBE"
+    bg = "#5E5E5E62"
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
     mon_day = hstack([
         _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
@@ -81,7 +82,7 @@ def flip_info(fs: FrameState, seconds=True):
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
-    bg = "#5E5E5EBE"
+    bg = "#5E5E5E4E"
     hhmm = hstack([
         _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
         _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
