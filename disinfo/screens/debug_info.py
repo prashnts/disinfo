@@ -121,7 +121,6 @@ def info_content(fs: FrameState):
         tof = tof_info(fs)
         return composite_at(tof, info, 'mm', frost=3).tag('debug_info')
     except Exception as e:
-        print(f'[DebugInfo] Error drawing ToF info: {e}')
         return info.tag('debug_info')
     # return vstack([header, sample_vscroll.draw(fs.tick)], gap=1)
 
