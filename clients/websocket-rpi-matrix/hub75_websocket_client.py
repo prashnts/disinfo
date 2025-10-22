@@ -10,7 +10,7 @@ from typing import Callable
 from pydantic import BaseModel
 from PIL import Image, ImageFile
 
-from sensors.di_remote import sensor_thread
+from websocket_rpi_matrix.di_remote import sensor_thread
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore

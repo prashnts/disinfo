@@ -115,7 +115,7 @@ def on_message(client, userdata, msg):
             publish('di.pubsub.remote', action=rmt_ikea_keymap.get(payload['action'], 'unknown'))
 
 
-if __name__ == '__main__':
+def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
@@ -125,3 +125,7 @@ if __name__ == '__main__':
     client.connect(app_config.ha_mqtt_host, app_config.ha_mqtt_port, 60)
 
     client.loop_forever()
+
+
+if __name__ == '__main__':
+    main()

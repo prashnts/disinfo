@@ -14,14 +14,15 @@ def bounce_in(t: float) -> float:
 
 def bounce_out(t: float) -> float:
     t = abs(t)
+    t2 = t
     if t < b1:
         return b0 * t * t
     if t < b3:
         t -= b2
-        return b0 * t * t + b4
+        return b0 * t * t2 + b4
     if t < b6:
         t -= b5
-        return b0 * t * t + b7
+        return b0 * t2 * t + b7
     t -= b8
     return b0 * t * t + b9
 

@@ -105,7 +105,7 @@
             ws.onopen = function (event) {
                 const interval = setInterval(function () {
                     if (ws.readyState === WebSocket.OPEN) {
-                        ws.send('next');
+                        ws.send({'_v': 'dit'});
                     }
                     if (ws.readyState === WebSocket.CLOSED) {
                         clearInterval(interval);

@@ -104,8 +104,7 @@ scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
 # scheduler.every(1).minutes.do(get_washing_machine_info)
 
-
-if __name__ == '__main__':
+def main():
     print('[Data Service] Scheduler Started')
 
     pubsub = PubSubManager()
@@ -118,3 +117,7 @@ if __name__ == '__main__':
     while True:
         scheduler.run_pending()
         time.sleep(1)
+
+
+if __name__ == '__main__':
+    main()

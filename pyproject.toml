@@ -41,10 +41,11 @@ dependencies = [
     "matplotlib>=3.10.3",
 ]
 
-[tool.uv.workspace]
-members = ["clients/websocket_rpi_matrix"]
+[tool.uv.sources]
+websocket-rpi-matrix = { path = "clients/websocket-rpi-matrix", editable = true }
 
 [dependency-groups]
 dev = [
     "watchdog>=6.0.0",
+    "websocket-rpi-matrix",
 ]

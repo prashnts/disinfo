@@ -348,8 +348,7 @@ def sensor_thread(callback):
     threading.Thread(target=sensor_loop, args=(setup(), callback), daemon=True).start()
     print('[Gestures] Enabled')
 
-
-if __name__ == "__main__":
+def main():
     import redis
     db = redis.Redis(host='localhost', port=6379, db=0)
     def publish(channel: str, action: str, payload: dict = {}):
@@ -359,3 +358,7 @@ if __name__ == "__main__":
         publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
 
     sensor_loop(setup(), callback)
+
+
+if __name__ == "__main__":
+    main()
