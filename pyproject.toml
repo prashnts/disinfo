@@ -39,6 +39,7 @@ dependencies = [
     "py-mjpeg>=1.0.1",
     "ipython>=9.6.0",
     "matplotlib>=3.10.3",
+    "redis-om>=0.3.5",
 ]
 
 [tool.uv.sources]

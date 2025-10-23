@@ -19,7 +19,7 @@ def setup_stream():
     bufs = client.request_buffers(965536, 7)
     for b in bufs:
         client.enqueue_buffer(b)
-        
+    
     # Start the client in a background thread
     client.start()
 

@@ -76,7 +76,7 @@ _twilight = get_palette('twilight')
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
-    distance = 2000
+    distance = 1000
 
     dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
     dmm *= (255.0 / distance)

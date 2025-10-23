@@ -114,6 +114,7 @@ class WebsocketClient:
 
 def main(conf: Config):
     frame = None
+    acts = None
     prev_frame = None
     last_ping = 0
     telemetry = {}
@@ -125,13 +126,16 @@ def main(conf: Config):
     Image.open('test.jpg')
 
     def _set_telemetry(values: dict):
-        nonlocal telemetry
+        nonlocal telemetry, acts
         telemetry = values
+        return acts
 
     def _set_frame(ws: WebsocketClient, msg: str):
-        nonlocal frame, last_ping
+        nonlocal frame, last_ping, acts
         try:
-            bytes_ = base64.b64decode(msg)
+            msg = json.loads(msg)
+            acts = msg.get('acts', [])
+            bytes_ = base64.b64decode(msg['img'])
             with io.BytesIO(bytes_) as img_io:
                 frame = Image.open(img_io).convert('RGB')
         except Exception as e:

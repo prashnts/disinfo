@@ -99,7 +99,8 @@
             let ws = new WebSocket(`${protocol}://${window.location.host}/${endpoint}`);
 
             ws.onmessage = function (event) {
-                document.getElementById(img_id).src = `data:image/png;base64,${event.data}`;
+                const data = JSON.parse(event.data)
+                document.getElementById(img_id).src = `data:image/png;base64,${data.img}`;
             };
 
             ws.onopen = function (event) {
@@ -126,9 +127,8 @@
                 ws.close();
             }
         }
-        connect('ws', 'screen');
-        connect('ws-pico', 'pico');
-        connect('ws-salon', 'screen2');
+        connect('ws/dipico', 'pico');
+        connect('ws/disalon', 'screen2');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';

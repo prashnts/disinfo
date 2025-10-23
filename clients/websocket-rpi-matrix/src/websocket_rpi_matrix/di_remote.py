@@ -12,6 +12,8 @@ from adafruit_seesaw import digitalio, rotaryio, seesaw
 from adafruit_apds9960.apds9960 import APDS9960
 from adafruit_apds9960 import colorutility
 
+from .modulino.buzzer import ModulinoBuzzer
+
 _here = Path(__file__).parent / 'tof_bin'
 
 sys.path.append(_here.as_posix())
@@ -257,10 +259,90 @@ class ToFSensor:
             'grid': self.grid, 
         }
 
+def generate_siren(frequency_start, frequency_end, total_duration, steps, iterations):
+    siren = []
+    mid_point = steps // 2
+    duration_rise = total_duration // 2
+    duration_fall = total_duration // 2
 
-def setup():
+    for _ in range(iterations):
+        for i in range(steps):
+            if i < mid_point:
+                # Easing in rising part
+                step_duration = duration_rise // mid_point + (duration_rise // mid_point * (mid_point - i) // mid_point)
+                frequency = int(frequency_start + (frequency_end - frequency_start) * (i / mid_point))
+            else:
+                # Easing in falling part
+                step_duration = duration_fall // mid_point + (duration_fall // mid_point * (i - mid_point) // mid_point)
+                frequency = int(frequency_end - (frequency_end - frequency_start) * ((i - mid_point) / mid_point))
+
+            siren.append((frequency, step_duration))
+
+    return siren
+
+melody = [
+    (ModulinoBuzzer.NOTES["E5"], 125),
+    (ModulinoBuzzer.NOTES["REST"], 25),
+    (ModulinoBuzzer.NOTES["E5"], 125),
+    (ModulinoBuzzer.NOTES["REST"], 125),
+    (ModulinoBuzzer.NOTES["E5"], 125),
+    (ModulinoBuzzer.NOTES["REST"], 125),
+    (ModulinoBuzzer.NOTES["C5"], 125),
+    (ModulinoBuzzer.NOTES["E5"], 125),
+    (ModulinoBuzzer.NOTES["REST"], 125),
+    (ModulinoBuzzer.NOTES["G5"], 125),
+    (ModulinoBuzzer.NOTES["REST"], 375),
+    (ModulinoBuzzer.NOTES["G4"], 250)
+]
+
+@dataclass
+class Buzzer:
+    spk: ModulinoBuzzer
+    active: bool = False
+    note: str = 'E5'
+    duration: int = 125
+    _played_at: float = 0
+
+    def update(self):
+        active = (self._played_at + (self.duration / 1000)) > time.monotonic()
+        if active != self.active:
+            self.active = active
+
+            if self.active:
+                self._played_at = time.monotonic()
+    
+    def serialize(self) -> dict:
+        return {
+            'active': self.active,
+            'note': self.note,
+            'duration': self.duration,
+        }
+
+    def act(self, params: str):
+        if not params:
+            return
+        if params == 'ok':
+            self._play([(ModulinoBuzzer.NOTES['E5'], 125)])
+        if params == 'siren':
+            siren_melody = generate_siren(440, 880, 4000, 200, 2)
+            self._play(siren_melody, True)
+        else:
+            self._play(melody, True)
+    
+    def _play(self, notes, block=False):
+        for note, duration in notes:
+            self.spk.tone(note, duration, blocking=block)
+
+
+def setup(with_tof=False):
     i2c = board.I2C()  # uses board.SCL and board.SDA
     print("i2c devices detected: ", [hex(x) for x in i2c.scan()])
+
+    try:
+        buzzer = ModulinoBuzzer(i2c)
+    except Exception as e:
+        print(f"Buzzer not found: {e}")
+        buzzer = None
 
     try:
         ssaw = seesaw.Seesaw(i2c, addr=0x49)
@@ -285,9 +367,9 @@ def setup():
 
     try:
         apds = APDS9960(i2c)
-        apds.enable_proximity = True
+        apds.enable_proximity = False
         apds.enable_gesture = True
-        apds.enable_color = False
+        apds.enable_color = True
 
         light = LightSensor(
             color=APDSColor16(apds),
@@ -299,19 +381,17 @@ def setup():
         light = None
 
     try:
+        if not with_tof:
+            raise ValueError("Skipping ToF setup")
+
         tof = VL53L5CX(i2c)
-        # tof.reset()
 
         if not tof.is_alive():
             raise ValueError("VL53L8CX not detected")
 
         tof.init()
-
         tof.resolution = RESOLUTION_8X8
-        grid = 7
-
         tof.ranging_freq = 10
-
         tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
         tof = ToFSensor(tof)
     except Exception as e:
@@ -322,6 +402,7 @@ def setup():
         'light_sensor': light,
         'remote': remote,
         'tof': tof,
+        'buzzer': Buzzer(buzzer),
     }
 
 def sensor_loop(sensors: dict, callback=None):
@@ -339,7 +420,10 @@ def sensor_loop(sensors: dict, callback=None):
                     print(f"[DI Remote] Error updating sensor {name}: {e}")
 
         if callback:
-            callback(payload)
+            acts = callback(payload)
+            if acts:
+                for (actuator, cmd) in acts:
+                    sensors[actuator].act(cmd)
         else:
             print(payload)
         time.sleep(0.01)

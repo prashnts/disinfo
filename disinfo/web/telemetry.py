@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Literal, TypeVar
 from typing_extensions import Annotated
 from pydantic import ValidationError, Field, model_validator, RootModel
@@ -6,6 +7,7 @@ from pydantic import ValidationError, Field, model_validator, RootModel
 from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
 from disinfo.utils.color import AppColor
+from disinfo.redis import publish
 
 
 TriggerType = TypeVar('TriggerType')
@@ -18,7 +20,7 @@ class EdgeTriggerState(RootModel[TriggerType]):
         if not hasattr(self, '_read_for'):
             self._read_for = []
         if key in self._read_for:
-            return ''
+            return None
         if self.root:
             self._read_for.append(key)
         return self.root
@@ -108,3 +110,6 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
             pass
+
+def act(res, command):
+    publish('di.pubsub.acts', action='act', payload=dict(cmd=[res, command], dt=time.monotonic()))

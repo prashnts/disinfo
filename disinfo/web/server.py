@@ -15,24 +15,30 @@ from disinfo.config import app_config
 from disinfo.data_structures import FrameState
 from disinfo.epd.m5paper import draw as draw_epd_frame
 from disinfo.utils.imops import dither
-from ..redis import db, publish
+from disinfo.redis import db, publish
+# from disinfo.web.telemetry import 
 
 app = FastAPI()
 
-frame = None
-frame_pico = None
-frame_salon = None
+frames = {}
+acts = None
+
 
 def load_frame(channel_name, message: PubSubMessage):
-    global frame, frame_pico, frame_salon
-    if message.action == 'new-frame-pico':
-        frame_pico = message.payload['img']
-    if message.action == 'new-frame':
-        frame = message.payload['img']
-    if message.action == 'new-frame-salon':
-        frame_salon = message.payload['img']
+    dest = message.action
+    payload = {
+        'img': message.payload['img'],
+        'acts': acts,
+        'd': dest,
+    }
+    frames[dest] = payload
+
+def load_acts(channel_name, message: PubSubMessage):
+    global acts
+    acts = [message.payload['cmd']]
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
+PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)
 
 @app.get('/')
 async def index() -> RedirectResponse:
@@ -55,8 +61,8 @@ async def trigger_actions(tinput: TriggerInput):
         trigger_motion(state='on')
     return {'status': 'ok'}
 
-@app.websocket('/ws-salon')
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket('/ws/{screen}')
+async def websocket_endpoint(websocket: WebSocket, screen: str):
     await websocket.accept()
 
     while True:
@@ -68,26 +74,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 publish('di.pubsub.telemetry', action='update', payload={'data': telemetry})
         except json.JSONDecodeError:
             pass
-        if frame_salon:
-            await websocket.send_text(frame_salon)
-
-@app.websocket('/ws')
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-
-    while True:
-        await websocket.receive_text()
-        if frame:
-            await websocket.send_text(frame)
-
-@app.websocket('/ws-pico')
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-
-    while True:
-        await websocket.receive_text()
-        if frame_pico:
-            await websocket.send_text(frame_pico)
+        if screen in frames:
+            await websocket.send_text(json.dumps(frames[screen]))
+            global acts
+            acts = None
 
 @app.get('/png/salon')
 async def get_png_salon():
