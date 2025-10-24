@@ -72,7 +72,7 @@ def ease_seq(t: float):
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
-        background=bg,
+        background=background,
         margin=(0, 3, 0, 3),
         padding=3,
         radius=3,
