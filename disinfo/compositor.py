@@ -47,19 +47,18 @@ def p_stack_offset():
 
 def compose_big_frame(fs: FrameState):
     rmt_state = RemoteStateManager().get_state(fs)
+    rmt_reader = TelemetryStateManager().remote_reader('comp', fs)
     telermt = TelemetryStateManager().get_state(fs)
     awake = should_turn_on_display(fs)
     background = telermt.light_sensor.color_hex
 
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
-    next_time = fs.now.add(minutes=telermt.remote.encoder.position * 30)
-    fs_next = dc_replace(fs, now=next_time)
     gesture = telermt.light_sensor.gesture.read('comp')
 
-    if gesture == 'left':
+    if rmt_reader('left'):
         publish('di.pubsub.remote', action='btn_debug')
-    elif gesture == 'right':
+    elif rmt_reader('right'):
         publish('di.pubsub.remote', action='btn_metro')
     
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
@@ -95,8 +94,7 @@ def compose_big_frame(fs: FrameState):
         screens.trash_pickup.widget(fs),
     ])
 
-    if telermt.remote.buttons.down.pressed.read('comp'):
-        print("next")
+    if rmt_reader('down'):
         stack.next_widget()
 
     if awake:
@@ -111,10 +109,14 @@ def compose_big_frame(fs: FrameState):
 
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
-    composite_at(screens.date_time.flip_digital_clock(fs_next), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
+    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
 
     s = CursorStateManager().get_state(fs)
-    place_at(cursor_f.opacity(0.4), image, s.x, s.y, 'tl', frost=1)
+    pos = rmt_reader('encoder')
+    y = pos % app_config.width
+    x = pos // y
+
+    place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
     composite_at(timer_app(fs).draw(fs), image, 'mm')
 
