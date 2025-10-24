@@ -10,7 +10,7 @@ dependencies = [
     "adafruit-circuitpython-seesaw>=1.16.7",
     "circuitpython-vl53lxcx>=0.0.5",
     "hidapi>=0.14.0.post4",
-    "pillow>=11.2.1",
+    "pillow==11.2.1",
     "pydantic>=2.11.7",
     "rgbmatrixemulator>=0.13.5",
     "websocket-client>=1.8.0",

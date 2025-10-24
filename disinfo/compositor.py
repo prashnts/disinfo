@@ -62,10 +62,6 @@ def compose_big_frame(fs: FrameState):
     elif gesture == 'right':
         publish('di.pubsub.remote', action='btn_metro')
     
-    if telermt.remote.buttons.select.pressed.read('comp'):
-        print("select pressed")
-        fs_next = fs
-
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     if awake:
         solar_style = AnalogClockStyle(
@@ -76,9 +72,9 @@ def compose_big_frame(fs: FrameState):
             needle_radius_multiplier=0.45,
             background=background,
         )
-        composite_at(screens.solar.draw(fs_next, solar_style), image, 'mm')
+        composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
     composite_at(
-        screens.date_time.flip_clock(fs_next),
+        screens.date_time.flip_clock(fs),
         image,
         'tr',
         dx=-1 * p_stack_offset(),
