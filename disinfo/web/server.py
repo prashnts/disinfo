@@ -79,15 +79,9 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             global acts
             acts = None
 
-@app.get('/png/salon')
-async def get_png_salon():
-    fs = FrameState.create()
-    image = draw_epd_frame(fs)
-
-    with io.BytesIO() as buffer:
-        image.convert("1").save(buffer, format='png')
-        bytes_ = buffer.getvalue()
-
-    return Response(content=bytes_, media_type='image/png')
+@app.get('/png/{screen}')
+async def get_png_salon(screen: str):
+    img = frames[screen]['img']
+    return Response(content=base64.b64decode(img), media_type='image/png')
 
 app.mount('/web', StaticFiles(directory='web'), name='web')
