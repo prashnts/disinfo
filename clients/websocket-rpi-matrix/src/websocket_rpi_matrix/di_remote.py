@@ -294,6 +294,25 @@ melody = [
     (ModulinoBuzzer.NOTES["REST"], 375),
     (ModulinoBuzzer.NOTES["G4"], 250)
 ]
+nokia = [
+    (ModulinoBuzzer.NOTES['E5'], 150),
+    (ModulinoBuzzer.NOTES['D5'], 150),
+    (ModulinoBuzzer.NOTES['FS4'], 200),
+    (ModulinoBuzzer.NOTES['GS4'], 200),
+    (ModulinoBuzzer.NOTES["REST"], 25),
+    (ModulinoBuzzer.NOTES['CS5'], 150),
+    (ModulinoBuzzer.NOTES['B4'], 150),
+    (ModulinoBuzzer.NOTES['D4'], 200),
+    (ModulinoBuzzer.NOTES['E4'], 200),
+    (ModulinoBuzzer.NOTES["REST"], 25),
+    (ModulinoBuzzer.NOTES['B4'], 150),
+    (ModulinoBuzzer.NOTES['A4'], 150),
+    (ModulinoBuzzer.NOTES['CS4'], 200),
+    (ModulinoBuzzer.NOTES['E4'], 200),
+    (ModulinoBuzzer.NOTES["REST"], 10),
+    (ModulinoBuzzer.NOTES['A4'], 400),
+]
+
 
 @dataclass
 class Buzzer:
@@ -323,9 +342,11 @@ class Buzzer:
             return
         if params == 'ok':
             self._play([(ModulinoBuzzer.NOTES['E5'], 125)])
-        if params == 'siren':
+        elif params == 'siren':
             siren_melody = generate_siren(440, 880, 4000, 200, 2)
             self._play(siren_melody, True)
+        elif params == 'nokia':
+            self._play(nokia, True)
         else:
             self._play(melody, True)
     

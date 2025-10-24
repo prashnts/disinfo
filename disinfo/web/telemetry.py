@@ -4,7 +4,7 @@ from typing import Literal, TypeVar
 from typing_extensions import Annotated
 from pydantic import ValidationError, Field, model_validator, RootModel
 
-from disinfo.data_structures import AppBaseModel
+from disinfo.data_structures import AppBaseModel, FrameState
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
 from disinfo.utils.color import AppColor
 from disinfo.redis import publish
@@ -82,6 +82,7 @@ class DiTelemetryState(AppBaseModel):
     user: DiUserState = DiUserState()
     tof: DiTofState = DiTofState()
     _v: Literal['dit'] = 'dit'
+    _readers: set = set()
 
 class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
     model = DiTelemetryState
@@ -110,6 +111,16 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
             pass
+
+    def remote_reader(self, ctx: str, fs: FrameState, exclusive: bool = False):
+        self.state._readers.add((ctx, exclusive))
+        def _read_btn(button: str) -> bool | int:
+            remote_state = self.get_state(fs).remote
+            if button == 'encoder':
+                return remote_state.encoder.position
+            button = getattr(remote_state.buttons, button)
+            return button.pressed.read(ctx)
+        return _read_btn
 
 def act(res, command):
     publish('di.pubsub.acts', action='act', payload=dict(cmd=[res, command], dt=time.monotonic()))

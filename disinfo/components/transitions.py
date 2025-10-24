@@ -180,8 +180,8 @@ class SlideIn(TimedTransition[Frame]):
                 top_prev = perspective_transform(top_prev, src_t_pt, dst_t_pt)
                 top_prev = top_prev.resize((top_prev.width, ensure_unity_int((1 - hpos) * top_prev.height)))
                 top_curr = top_curr.crop((0, 0, top_curr.width, top_curr.height - top_prev.height))
-                place_at(Frame(top_curr).opacity(hpos + 0.2), dest=i, x=0, y=0, anchor='tl', frost=0)
-                place_at(Frame(bottom_prev), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
+                place_at(Frame(top_curr).opacity(self.pos + 0.2), dest=i, x=0, y=-int(2 - (1 * hpos)), anchor='tl', frost=0)
+                place_at(Frame(bottom_prev).opacity(1-(self.pos + 0.2)), dest=i, x=0, y=mid_y, anchor='tl', frost=0)
                 place_at(Frame(top_prev), dest=i, x=0, y=mid_y, anchor='bl', frost=0)
             else:
                 place_at(Frame(top_curr), dest=i, x=0, y=0, anchor='tl', frost=0)

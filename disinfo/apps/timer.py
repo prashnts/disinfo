@@ -22,12 +22,13 @@ class TimerEntry(HashModel):
     overflow: int = 1
     label: str = 'Timer'
 
-def _read_btn(fs: FrameState, button: str):
-    remote_state = TelemetryStateManager().get_state(fs).remote
-    button = getattr(remote_state.buttons, button)
-    return button.pressed.read('timer')
+    @property
+    def start(self):
+        return pendulum.instance(self.start_time)
 
-_state = 'create'
+    @property
+    def end(self):
+        return self.start.add(seconds=self.duration)
 
 @dataclass
 class State:
@@ -38,56 +39,58 @@ class State:
 
 state = State()
 
-
 def timer_app(fs: FrameState):
-    remote_state = TelemetryStateManager().get_state(fs).remote
+    remote = TelemetryStateManager().remote_reader('timer', fs)
 
-    if remote_state.encoder.position != state.last_encoder:
-        if remote_state.encoder.position < 0:
+    if remote('encoder') != state.last_encoder:
+        if remote('encoder') < 0:
             state.mode = 'idle'
-            state.last_encoder = remote_state.encoder.position
+            state.last_encoder = remote('encoder')
             state.duration = 0
         else:
-            state.duration += (remote_state.encoder.position - state.last_encoder)
-            state.last_encoder = remote_state.encoder.position
+            state.duration += (remote('encoder') - state.last_encoder)
+            state.last_encoder = remote('encoder')
             state.mode = 'create'
-
-    next_timer = fs.now.add(seconds=state.duration)
-
-    if _read_btn(fs, 'select') and state.mode == 'create':
-        entry = TimerEntry(start_time=next_timer, duration=state.duration).save()
-        entry.expire(int(state.duration * 1.5))
+    if remote('select') and state.mode == 'create':
+        entry = TimerEntry(start_time=fs.now.add(seconds=state.duration), duration=state.duration).save()
         state.active_pk = entry.pk
         state.mode = 'idle'
         state.duration = 0
-        state.last_encoder = remote_state.encoder.position
+        state.last_encoder = remote('encoder')
         act('buzzer', 'ok')
+
+    if remote('down'):
+        act('buzzer', 'nokia')
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_main = TextStyle(font=fonts.px_op__l)
 
-    def hhmm(dt, duration=None, style=style_list):
-        if isinstance(dt, datetime):
-            dt = pendulum.instance(dt)
-        next_secs = dt.diff(fs.now).in_seconds()
-        t_mm = next_secs // 60
-        sign = ' '
-        if dt < fs.now:
-            sign = '-'
-        t_ss = next_secs % 60
-        return text(f'{sign}{t_mm}:{t_ss}', style=style)
+    def display(secs: int):
+        t_mm = secs // 60
+        t_ss = secs % 60
+        mmss = text(f'{t_mm}:{t_ss}')
+        return mmss
 
-    rows = [hhmm(next_timer, None, style_main)]
-    timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
-    timers.sort(key=lambda t: t.start_time)
-    for timer in timers:
-        dt = timer.start_time
-        rows.append(hstack([
+    def timecard(timer: TimerEntry):
+        next_secs = timer.start.diff(fs.now).in_seconds()
+        t_mm = next_secs // 60
+        t_ss = next_secs % 60
+        sign = '-' if timer.end >= fs.now else ' '
+        hhmm = text(f'{sign}{t_mm}:{t_ss}', style=style_main if timer.pk == state.active_pk else style_list)
+        return hstack([
             text(f'{timer.label} {timer.duration}'),
-            hhmm(timer.start_time, timer.duration, style_main if timer.pk == state.active_pk else style_list),
-        ]))
+            hhmm,
+        ])
+
+    rows = [display(state.duration)]
+    timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
+    timers.sort(key=lambda t: t.end)
+    for timer in timers:
+        rows.append(timecard(timer))
         if fs.now.diff(timer.start_time).in_seconds() == 0:
             act('buzzer', 'tone' if timer.duration < 15 else 'siren')
+        if timer.end.add(seconds=180) > fs.now:
+            timer.expire(1)
 
     view = Frame(vstack(rows).image, hash=('timer', 'main'))
 

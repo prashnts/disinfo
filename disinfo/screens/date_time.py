@@ -72,12 +72,12 @@ def ease_seq(t: float):
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
-        background=background,
+        background="#2D2D2D6E",
         margin=(0, 3, 0, 3),
         padding=3,
         radius=3,
         border=1,
-        border_color='#000000BB')
+        border_color="#2D2D2DB8")
     content = text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease_seq, div_style=div_style, together=together)
     content = content.trim(left=2, right=2)
     return content
