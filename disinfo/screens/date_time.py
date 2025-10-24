@@ -72,7 +72,7 @@ def ease_seq(t: float):
 
 def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
-        background="#2D2D2D6E",
+        background=bg,
         margin=(0, 3, 0, 3),
         padding=3,
         radius=3,
@@ -85,7 +85,7 @@ def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge
 
 def flip_info(fs: FrameState, seconds=True):
     t = fs.now
-    bg = "#5E5E5E62"
+    bg = "#2D2D2D6E"
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
     mon_day = hstack([
         _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
@@ -105,7 +105,7 @@ def flip_digital_clock(fs: FrameState, seconds=True):
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[t.second % 2 == 0], 'flip-top', together=True, background="#33333333"),
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[t.second % 2 == 0], 'flip-top', together=False, background="#33333333"),
         ], gap=2, align='right')
     return hhmm
 
