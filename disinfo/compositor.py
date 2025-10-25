@@ -114,7 +114,7 @@ def compose_big_frame(fs: FrameState):
     s = CursorStateManager().get_state(fs)
     pos = rmt_reader('encoder')
     y = pos % app_config.width
-    x = pos // y
+    x = pos // y if y > 0 else 42
 
     place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
