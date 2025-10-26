@@ -341,7 +341,7 @@ class Buzzer:
         if not params:
             return
         if params == 'ok':
-            self._play([(ModulinoBuzzer.NOTES['E5'], 125)])
+            self._play([(ModulinoBuzzer.NOTES['E5'], 125)], True)
         elif params == 'siren':
             siren_melody = generate_siren(440, 880, 4000, 200, 2)
             self._play(siren_melody, True)

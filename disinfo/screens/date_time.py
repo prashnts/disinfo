@@ -105,7 +105,7 @@ def flip_digital_clock(fs: FrameState, seconds=True):
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[0], 'flip-top', together=False, background=bg),
+            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[0], 'flip-top', together=True, background=bg),
         ], gap=2, align='right')
     return hhmm
 
