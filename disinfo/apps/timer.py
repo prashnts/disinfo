@@ -9,7 +9,7 @@ from disinfo.data_structures import AppBaseModel, FrameState
 from disinfo.components.widget import Widget
 from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack
-from disinfo.components.layers import div
+from disinfo.components.layers import div, DivStyle
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -35,28 +35,39 @@ class State:
     mode: str = 'create'
     duration: int = 0
     last_encoder: int = 0
+    last_encoder_at: float = 0
+    last_timer_at: float = 0
     active_pk: str = ''
 
 state = State()
 
+increments = []
+
 def timer_app(fs: FrameState):
     remote = TelemetryStateManager().remote_reader('timer', fs)
+    encoder = TelemetryStateManager().get_state(fs).remote.encoder
+    encoder_pos = encoder.position
 
-    if remote('encoder') != state.last_encoder:
-        if remote('encoder') < 0:
-            state.mode = 'idle'
-            state.last_encoder = remote('encoder')
+    if encoder.updated_at != state.last_encoder_at:
+        encoder_pos = abs(encoder_pos - state.last_encoder)
+        if encoder_pos == 0:
             state.duration = 0
+            state.mode = 'idle'
         else:
-            state.duration += (remote('encoder') - state.last_encoder)
-            state.last_encoder = remote('encoder')
+            deltat = max(1, encoder.updated_at - state.last_encoder_at)
+            s = (encoder_pos - state.last_encoder)
+            speed = s / deltat
+            state.duration += min(int((speed * deltat) + (0.5 * 2 * (deltat ** 2))), 240)
             state.mode = 'create'
-    if remote('select') and state.mode == 'create':
+        state.last_encoder = encoder.position
+        state.last_encoder_at = encoder.updated_at
+    if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
         entry = TimerEntry(start_time=fs.now.add(seconds=state.duration), duration=state.duration).save()
         state.active_pk = entry.pk
         state.mode = 'idle'
         state.duration = 0
-        state.last_encoder = remote('encoder')
+        state.last_encoder = encoder.position
+        state.last_timer_at = fs.tick
         act('buzzer', 'ok')
 
     if remote('down'):
@@ -75,12 +86,14 @@ def timer_app(fs: FrameState):
         next_secs = timer.start.diff(fs.now).in_seconds()
         t_mm = next_secs // 60
         t_ss = next_secs % 60
+        is_active = timer.pk == state.active_pk
         sign = '-' if timer.end >= fs.now else ' '
-        hhmm = text(f'{sign}{t_mm}:{t_ss}', style=style_main if timer.pk == state.active_pk else style_list)
-        return hstack([
+        hhmm = text(f'{sign}{t_mm}:{t_ss}', style=style_main if is_active else style_list)
+        tc = hstack([
             text(f'{timer.label} {timer.duration}'),
             hhmm,
         ])
+        return div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
 
     rows = [display(state.duration)]
     timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
@@ -92,6 +105,6 @@ def timer_app(fs: FrameState):
         if timer.end.add(seconds=180) > fs.now:
             timer.expire(1)
 
-    view = Frame(vstack(rows).image, hash=('timer', 'main'))
+    view = Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
 
     return Widget('di.timer', view)
