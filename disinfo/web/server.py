@@ -16,6 +16,7 @@ from disinfo.data_structures import FrameState
 from disinfo.epd.m5paper import draw as draw_epd_frame
 from disinfo.utils.imops import dither
 from disinfo.redis import db, publish
+from disinfo.utils.imops import apply_gamma
 # from disinfo.web.telemetry import 
 
 app = FastAPI()
@@ -80,10 +81,11 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             acts = None
 
 @app.get('/png/{screen}')
-async def get_png_salon(screen: str, scale: int = 1):
+async def get_png_salon(screen: str, scale: int = 1, gamma: float = 1):
     bytes_ = base64.b64decode(frames[screen]['img'])
     with io.BytesIO(bytes_) as incoming, io.BytesIO() as outgoing:
         bim = Image.open(incoming).convert('RGB')
+        bim = apply_gamma(bim, gamma)
         bim = bim.resize((bim.width * scale, bim.height * scale), Image.Resampling.NEAREST)
         bim.save(outgoing, format='png')
         img = outgoing.getvalue()
