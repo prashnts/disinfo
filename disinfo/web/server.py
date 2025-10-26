@@ -80,8 +80,14 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             acts = None
 
 @app.get('/png/{screen}')
-async def get_png_salon(screen: str):
-    img = frames[screen]['img']
-    return Response(content=base64.b64decode(img), media_type='image/png')
+async def get_png_salon(screen: str, scale: int = 1):
+    bytes_ = base64.b64decode(frames[screen]['img'])
+    with (io.BytesIO(bytes_) as incoming, io.BytesIO() as outgoing):
+        bim = Image.open(incoming).convert('RGB')
+        bim = bim.resize((bim.width * scale, bim.height * scale), Image.Resampling.NEAREST)
+        bim.save(outgoing, format='png')
+        img = outgoing.getvalue()
+
+    return Response(content=img, media_type='image/png')
 
 app.mount('/web', StaticFiles(directory='web'), name='web')
