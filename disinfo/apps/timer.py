@@ -88,7 +88,7 @@ def timer_app(fs: FrameState):
     for timer in timers:
         rows.append(timecard(timer))
         if fs.now.diff(timer.start_time).in_seconds() == 0:
-            act('buzzer', 'tone' if timer.duration < 15 else 'siren')
+            act('buzzer', 'fmart' if timer.duration < 15 else 'siren')
         if timer.end.add(seconds=180) > fs.now:
             timer.expire(1)
 
