@@ -13,7 +13,7 @@ from .scroller import VScroller
 
 
 class Stack(metaclass=UniqInstance):
-    def __init__(self, name: str):
+    def __init__(self, name: str, size: int=app_config.height):
         self.name = name
         self._widgets = []
         self._prev_widgets = []
@@ -21,7 +21,7 @@ class Stack(metaclass=UniqInstance):
         self.last_step = 0
         self.pos = 0
 
-        self.scroller = VScroller(size=app_config.height, speed=0.001, delta=2, static_if_small=False)
+        self.scroller = VScroller(size=size, speed=0.001, delta=2, static_if_small=False)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._prev_widgets = self._widgets

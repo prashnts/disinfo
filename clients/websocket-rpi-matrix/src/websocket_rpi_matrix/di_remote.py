@@ -347,6 +347,47 @@ class Buzzer:
             self._play(siren_melody, True)
         elif params == 'nokia':
             self._play(nokia, True)
+        elif params == 'fmart':
+            s11 = [
+                ('REST', 400),
+                # ('CS4', 200),
+                # ('FS3', 200),
+                ('D4', 400),
+                ('REST', 50),
+
+                ('D4', 400),
+                ('REST', 50),
+                # ('REST', 400),
+                ('B4', 200),
+                ('CS4', 100),
+                ('D4', 500),
+                ('REST', 100),
+                ('CS4', 200),
+                ('CS4', 200),
+                ('D4', 133),
+                ('CS4', 66),
+                ('E4', 133),
+                ('FS4', 866),
+                ('REST', 100),
+                ('D4', 200),
+                # ('REST', 200),
+                ('D4', 200),
+                ('CS4', 100),
+                ('D4', 300),
+                ('REST', 100),
+                ('D4', 300),
+                ('CS4', 300),
+                ('B4', 200),
+                ('A4', 800),
+            ]
+
+            # notes = [(k, v, 100) for k, v in ModulinoBuzzer.NOTES.items()]
+            # for k, v, t in notes:
+            #     print(k)
+            #     self.spk.tone(v, t, True)
+            #     self.spk.tone(ModulinoBuzzer.NOTES['REST'], t, True)
+
+            self._play([(ModulinoBuzzer.NOTES[n], int(d * 1.25)) for n, d in s11], True)
         else:
             self._play(melody, True)
     
@@ -419,11 +460,15 @@ def setup(with_tof=False):
         print(f"VL53L5CX not found: {e}")
         tof = None
 
+    buzz = Buzzer(buzzer)
+
+    buzz.act('711')
+
     return {
         'light_sensor': light,
         'remote': remote,
         'tof': tof,
-        'buzzer': Buzzer(buzzer),
+        'buzzer': buzz,
     }
 
 def sensor_loop(sensors: dict, callback=None):

@@ -2309,7 +2309,7 @@ requires-dist = [
     { name = "adafruit-circuitpython-seesaw", specifier = ">=1.16.7" },
     { name = "circuitpython-vl53lxcx", specifier = ">=0.0.5" },
     { name = "hidapi", specifier = ">=0.14.0.post4" },
-    { name = "pillow", specifier = ">=11.2.1" },
+    { name = "pillow", specifier = "==11.2.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "rgbmatrixemulator", specifier = ">=0.13.5" },
     { name = "websocket-client", specifier = ">=1.8.0" },

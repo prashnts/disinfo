@@ -60,7 +60,7 @@ def timer_app(fs: FrameState):
         act('buzzer', 'ok')
 
     if remote('down'):
-        act('buzzer', 'nokia')
+        act('buzzer', 'fmart')
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_main = TextStyle(font=fonts.px_op__l)

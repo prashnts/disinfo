@@ -22,6 +22,7 @@ from .config import app_config
 from .web.telemetry import TelemetryStateManager
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
+from disinfo.apps.news import news_app
 
 
 def should_turn_on_display(fs: FrameState) -> bool:
@@ -119,6 +120,7 @@ def compose_big_frame(fs: FrameState):
     place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
     composite_at(timer_app(fs).draw(fs), image, 'mm')
+    # composite_at(news_app(fs).draw(fs), image, 'mm')
 
     return Frame(image).tag(awake)
 
