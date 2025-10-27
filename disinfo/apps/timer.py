@@ -1,8 +1,10 @@
 import pendulum
 import math
+import bisect
 
 from datetime import datetime
 from dataclasses import dataclass
+from collections import namedtuple
 from redis_om import HashModel
 
 from disinfo.data_structures import AppBaseModel, FrameState
@@ -41,7 +43,13 @@ class State:
 
 state = State()
 
-increments = []
+IncrementMap = namedtuple('IncrementMap', ['step', 'delta'])
+
+fast_increments = IncrementMap(
+    # duration, delta
+    [0, 15, 45, 60, 300],
+    [1,  5, 15, 30,  60],
+)
 
 def timer_app(fs: FrameState):
     remote = TelemetryStateManager().remote_reader('timer', fs)
@@ -54,10 +62,8 @@ def timer_app(fs: FrameState):
             state.duration = 0
             state.mode = 'idle'
         else:
-            deltat = max(1, encoder.updated_at - state.last_encoder_at)
-            s = (encoder_pos - state.last_encoder)
-            speed = s / deltat
-            state.duration += min(180, int((speed * deltat) + (0.5 * 3 * (deltat ** 2))))
+            delta = fast_increments.delta[bisect.bisect(fast_increments.step, state.duration)]
+            state.duration += encoder_pos * delta
             state.mode = 'create'
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
