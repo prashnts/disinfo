@@ -57,7 +57,7 @@ def timer_app(fs: FrameState):
             deltat = max(1, encoder.updated_at - state.last_encoder_at)
             s = (encoder_pos - state.last_encoder)
             speed = s / deltat
-            state.duration += max(0, min(180, int((speed * deltat) + (0.5 * 3 * (deltat ** 2)))))
+            state.duration += min(180, int((speed * deltat) + (0.5 * 3 * (deltat ** 2))))
             state.mode = 'create'
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
