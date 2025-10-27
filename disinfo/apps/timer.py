@@ -22,7 +22,7 @@ class TimerEntry(HashModel):
     duration: int = 30   # seconds
     icon: str = 'clock'
     overflow: int = 1
-    label: str = 'Timer'
+    label: str = 'T'
 
     @property
     def start(self):
@@ -65,14 +65,14 @@ def timer_app(fs: FrameState):
         else:
             # posdelta = state.duration
             posdelta = state.duration - state.duration_checkpt
-            if (encoder.updated_at - state.last_encoder_at) > 1:
-                if state.duration_checkpt:
-                    state.duration_checkpt = state.duration
-                else:
-                    state.duration_checkpt = state.duration
-                    posdelta = 0
-            delta = fast_increments.delta[bisect.bisect(fast_increments.step, posdelta) - 1]
+            if (encoder.updated_at - state.last_encoder_at) > 0.5:
+                state.duration_checkpt = state.duration
+                posdelta = 0
+            deltaindex = bisect.bisect(fast_increments.step, posdelta) - 1
+            delta = fast_increments.delta[max(0, deltaindex)]
             state.duration += encoder_pos * delta
+            if state.duration < 0:
+                state.duration = 0
             state.mode = 'create'
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
@@ -95,7 +95,7 @@ def timer_app(fs: FrameState):
     def display(secs: int):
         t_mm = secs // 60
         t_ss = secs % 60
-        mmss = text(f'{t_mm}:{t_ss}', display_style)
+        mmss = text(f'{t_mm:02d}:{t_ss:02d}', display_style)
         return mmss
 
     def timecard(timer: TimerEntry):
@@ -104,7 +104,7 @@ def timer_app(fs: FrameState):
         t_ss = next_secs % 60
         is_active = timer.pk == state.active_pk
         sign = '-' if timer.end < fs.now else ' '
-        hhmm = text(f'{sign}{t_mm}:{t_ss}', style=style_main if is_active else style_list)
+        hhmm = text(f'{sign}{t_mm:02d}:{t_ss:02d}', style=style_main if is_active else style_list)
         tc = hstack([
             text(f'{timer.label} {timer.duration}'),
             hhmm,
