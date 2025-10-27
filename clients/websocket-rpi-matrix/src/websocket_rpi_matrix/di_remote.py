@@ -402,9 +402,10 @@ def setup(with_tof=False):
 
     try:
         buzzer = ModulinoBuzzer(i2c)
+        buzz = Buzzer(buzzer)
     except Exception as e:
         print(f"Buzzer not found: {e}")
-        buzzer = None
+        buzz = None
 
     try:
         ssaw = seesaw.Seesaw(i2c, addr=0x49)
@@ -460,9 +461,6 @@ def setup(with_tof=False):
         print(f"VL53L5CX not found: {e}")
         tof = None
 
-    buzz = Buzzer(buzzer)
-
-    buzz.act('711')
 
     return {
         'light_sensor': light,
@@ -489,7 +487,11 @@ def sensor_loop(sensors: dict, callback=None):
             acts = callback(payload)
             if acts:
                 for (actuator, cmd) in acts:
-                    sensors[actuator].act(cmd)
+                    try:
+                        sensors[actuator].act(cmd)
+                    except:
+                        print(f'Could not actuate {actuator=} for {cmd=}')
+                        pass
         else:
             print(payload)
         time.sleep(0.01)

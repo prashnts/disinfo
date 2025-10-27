@@ -36,6 +36,7 @@ class TimerEntry(HashModel):
 class State:
     mode: str = 'create'
     duration: int = 0
+    duration_checkpt: int = 0
     last_encoder: int = 0
     last_encoder_at: float = 0
     last_timer_at: float = 0
@@ -47,7 +48,7 @@ IncrementMap = namedtuple('IncrementMap', ['step', 'delta'])
 
 fast_increments = IncrementMap(
     # duration, delta
-    [0, 15, 45, 60, 300],
+    [0, 45, 120, 420, 800],
     [1,  5, 15, 30,  60],
 )
 
@@ -62,7 +63,15 @@ def timer_app(fs: FrameState):
             state.duration = 0
             state.mode = 'idle'
         else:
-            delta = fast_increments.delta[bisect.bisect(fast_increments.step, state.duration)]
+            # posdelta = state.duration
+            posdelta = state.duration - state.duration_checkpt
+            if (encoder.updated_at - state.last_encoder_at) > 1:
+                if state.duration_checkpt:
+                    state.duration_checkpt = state.duration
+                else:
+                    state.duration_checkpt = state.duration
+                    posdelta = 0
+            delta = fast_increments.delta[bisect.bisect(fast_increments.step, posdelta) - 1]
             state.duration += encoder_pos * delta
             state.mode = 'create'
         state.last_encoder = encoder.position
@@ -81,11 +90,12 @@ def timer_app(fs: FrameState):
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_main = TextStyle(font=fonts.px_op__l)
+    display_style = TextStyle(font=fonts.px_op__xl)
 
     def display(secs: int):
         t_mm = secs // 60
         t_ss = secs % 60
-        mmss = text(f'{t_mm}:{t_ss}')
+        mmss = text(f'{t_mm}:{t_ss}', display_style)
         return mmss
 
     def timecard(timer: TimerEntry):
@@ -93,14 +103,14 @@ def timer_app(fs: FrameState):
         t_mm = next_secs // 60
         t_ss = next_secs % 60
         is_active = timer.pk == state.active_pk
-        sign = '-' if timer.end >= fs.now else ' '
+        sign = '-' if timer.end < fs.now else ' '
         hhmm = text(f'{sign}{t_mm}:{t_ss}', style=style_main if is_active else style_list)
         tc = hstack([
             text(f'{timer.label} {timer.duration}'),
             hhmm,
-        ])
+        ]).tag(('timerentry', str(timer.pk)))
         itc = div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
-        return Widget(f'di.timer.timecard.{timer.pk}', itc)
+        return Widget(f'di.timer.timecard.{timer.pk}', itc).draw(fs, active=is_active)
 
     rows = [display(state.duration)]
     timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
@@ -109,7 +119,7 @@ def timer_app(fs: FrameState):
         rows.append(timecard(timer))
         if fs.now.diff(timer.start_time).in_seconds() == 0:
             act('buzzer', 'ok' if timer.duration < 15 else 'fmart')
-        if timer.end.add(seconds=180) > fs.now:
+        if timer.end.add(seconds=180) < fs.now:
             timer.expire(1)
 
     view = Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
