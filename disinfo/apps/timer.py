@@ -49,7 +49,7 @@ def timer_app(fs: FrameState):
     encoder_pos = encoder.position
 
     if encoder.updated_at != state.last_encoder_at:
-        encoder_pos = abs(encoder_pos - state.last_encoder)
+        encoder_pos -= state.last_encoder
         if encoder_pos == 0:
             state.duration = 0
             state.mode = 'idle'
@@ -57,7 +57,7 @@ def timer_app(fs: FrameState):
             deltat = max(1, encoder.updated_at - state.last_encoder_at)
             s = (encoder_pos - state.last_encoder)
             speed = s / deltat
-            state.duration += min(int((speed * deltat) + (0.5 * 2 * (deltat ** 2))), 240)
+            state.duration += max(0, min(180, int((speed * deltat) + (0.5 * 0.8 * (deltat ** 2)))))
             state.mode = 'create'
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
@@ -93,7 +93,8 @@ def timer_app(fs: FrameState):
             text(f'{timer.label} {timer.duration}'),
             hhmm,
         ])
-        return div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
+        itc = div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
+        return Widget(f'di.timer.timecard.{timer.pk}', itc)
 
     rows = [display(state.duration)]
     timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
@@ -101,7 +102,7 @@ def timer_app(fs: FrameState):
     for timer in timers:
         rows.append(timecard(timer))
         if fs.now.diff(timer.start_time).in_seconds() == 0:
-            act('buzzer', 'fmart' if timer.duration < 15 else 'siren')
+            act('buzzer', 'ok' if timer.duration < 15 else 'fmart')
         if timer.end.add(seconds=180) > fs.now:
             timer.expire(1)
 
