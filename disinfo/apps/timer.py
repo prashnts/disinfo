@@ -119,7 +119,7 @@ def timer_app(fs: FrameState):
         rows.append(timecard(timer))
         if fs.now.diff(timer.start_time).in_seconds() == 0:
             act('buzzer', 'ok' if timer.duration < 15 else 'fmart')
-        if timer.end.add(seconds=180) < fs.now:
+        if timer.end.add(seconds=180) > fs.now:
             timer.expire(1)
 
     view = Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
