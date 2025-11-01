@@ -52,7 +52,7 @@ fast_increments = IncrementMap(
     [1,  5, 15, 30,  60],
 )
 
-def timer_app(fs: FrameState):
+def timer_view(fs: FrameState):
     remote = TelemetryStateManager().remote_reader('timer', fs)
     encoder = TelemetryStateManager().get_state(fs).remote.encoder
     encoder_pos = encoder.position
@@ -76,6 +76,7 @@ def timer_app(fs: FrameState):
             state.mode = 'create'
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
+        act('buzzer', 'boop', 'beep')
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
         entry = TimerEntry(start_time=fs.now.add(seconds=state.duration), duration=state.duration).save()
         state.active_pk = entry.pk
@@ -83,10 +84,10 @@ def timer_app(fs: FrameState):
         state.duration = 0
         state.last_encoder = encoder.position
         state.last_timer_at = fs.tick
-        act('buzzer', 'ok')
+        act('buzzer', 'ok', 'ok')
 
     if remote('down'):
-        act('buzzer', 'fmart')
+        act('buzzer', 'boop', str(fs.tick))
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_main = TextStyle(font=fonts.px_op__l)
@@ -103,7 +104,7 @@ def timer_app(fs: FrameState):
         t_mm = next_secs // 60
         t_ss = next_secs % 60
         is_active = timer.pk == state.active_pk
-        sign = '-' if timer.end < fs.now else ' '
+        sign = '-' if fs.now.diff(timer.end, False).in_seconds() < 0 else ' '
         hhmm = text(f'{sign}{t_mm:02d}:{t_ss:02d}', style=style_main if is_active else style_list)
         tc = hstack([
             text(f'{timer.label} {timer.duration}'),
@@ -112,16 +113,26 @@ def timer_app(fs: FrameState):
         itc = div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
         return Widget(f'di.timer.timecard.{timer.pk}', itc).draw(fs, active=is_active)
 
-    rows = [display(state.duration)]
+    rows = []
+
+    if state.duration > 0 and state.last_encoder_at + 5 < fs.tick:
+        rows.append(display(state.duration))
+
+
     timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
     timers.sort(key=lambda t: t.end)
     for timer in timers:
         rows.append(timecard(timer))
-        if fs.now.diff(timer.start_time).in_seconds() == 0:
-            act('buzzer', 'ok' if timer.duration < 15 else 'fmart')
-        if timer.end.add(seconds=180) > fs.now:
+        if fs.now.diff(timer.start_time, False).in_seconds() == 0:
+            act('buzzer', 'ok' if timer.duration < 15 else 'fmart', timer.pk)
+        if fs.now.diff(timer.end, False).in_minutes() < 10:
             timer.expire(1)
+        
+    if not rows:
+        return
 
-    view = Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
+    return Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
 
-    return Widget('di.timer', view)
+
+def timer_app(fs: FrameState):
+    return Widget('di.timer', timer_view(fs))

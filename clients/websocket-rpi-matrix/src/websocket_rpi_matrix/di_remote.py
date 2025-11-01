@@ -4,7 +4,7 @@ import threading
 import json
 
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import board
 
@@ -115,8 +115,14 @@ class LightSensor:
     color: APDSColor16
     proximity: APDSProximitySensor
     gesture: APDSGesture
+    update_frequency: int = 10
+    _n_update: int = 0
 
     def update(self):
+        if self._n_update < self.update_frequency:
+            self._n_update += 1
+            return
+        self._n_update = 0
         self.color.update()
         self.proximity.update()
         self.gesture.update()
@@ -199,8 +205,14 @@ class RotaryEncoder:
 class AdafruitRemote:
     buttons: Buttons
     encoder: RotaryEncoder
+    update_frequency: int = 4
+    _n_update: int = 0
 
     def update(self):
+        if self._n_update < self.update_frequency:
+            self._n_update += 1
+            return
+        self._n_update = 0
         self.buttons.update()
         self.encoder.update()
     
@@ -280,132 +292,214 @@ def generate_siren(frequency_start, frequency_end, total_duration, steps, iterat
 
     return siren
 
-melody = [
-    (ModulinoBuzzer.NOTES["E5"], 125),
-    (ModulinoBuzzer.NOTES["REST"], 25),
-    (ModulinoBuzzer.NOTES["E5"], 125),
-    (ModulinoBuzzer.NOTES["REST"], 125),
-    (ModulinoBuzzer.NOTES["E5"], 125),
-    (ModulinoBuzzer.NOTES["REST"], 125),
-    (ModulinoBuzzer.NOTES["C5"], 125),
-    (ModulinoBuzzer.NOTES["E5"], 125),
-    (ModulinoBuzzer.NOTES["REST"], 125),
-    (ModulinoBuzzer.NOTES["G5"], 125),
-    (ModulinoBuzzer.NOTES["REST"], 375),
-    (ModulinoBuzzer.NOTES["G4"], 250)
+mario = [
+    ('E5', 125),
+    ('REST', 25),
+    ('E5', 125),
+    ('REST', 125),
+    ('E5', 125),
+    ('REST', 125),
+    ('C5', 125),
+    ('E5', 125),
+    ('REST', 125),
+    ('G5', 125),
+    ('REST', 375),
+    ('G4', 250)
 ]
 nokia = [
-    (ModulinoBuzzer.NOTES['E5'], 150),
-    (ModulinoBuzzer.NOTES['D5'], 150),
-    (ModulinoBuzzer.NOTES['FS4'], 200),
-    (ModulinoBuzzer.NOTES['GS4'], 200),
-    (ModulinoBuzzer.NOTES["REST"], 25),
-    (ModulinoBuzzer.NOTES['CS5'], 150),
-    (ModulinoBuzzer.NOTES['B4'], 150),
-    (ModulinoBuzzer.NOTES['D4'], 200),
-    (ModulinoBuzzer.NOTES['E4'], 200),
-    (ModulinoBuzzer.NOTES["REST"], 25),
-    (ModulinoBuzzer.NOTES['B4'], 150),
-    (ModulinoBuzzer.NOTES['A4'], 150),
-    (ModulinoBuzzer.NOTES['CS4'], 200),
-    (ModulinoBuzzer.NOTES['E4'], 200),
-    (ModulinoBuzzer.NOTES["REST"], 10),
-    (ModulinoBuzzer.NOTES['A4'], 400),
+    ('E5', 150),
+    ('D5', 150),
+    ('FS4', 200),
+    ('GS4', 200),
+    ('REST', 25),
+    ('CS5', 150),
+    ('B4', 150),
+    ('D4', 200),
+    ('E4', 200),
+    ('REST', 25),
+    ('B4', 150),
+    ('A4', 150),
+    ('CS4', 200),
+    ('E4', 200),
+    ('REST', 10),
+    ('A4', 400),
 ]
-
+family_mart = [
+    ('REST', 400),
+    ('D6', 400),
+    ('REST', 50),
+    ('D6', 400),
+    ('REST', 50),
+    ('B5', 200),
+    ('CS6', 100),
+    ('D6', 500),
+    ('REST', 100),
+    ('CS5', 200),
+    ('CS5', 200),
+    ('D6', 133),
+    ('CS6', 66),
+    ('E6', 133),
+    ('FS6', 866),
+    ('REST', 100),
+    ('D6', 200),
+    ('D6', 200),
+    ('CS6', 100),
+    ('D6', 300),
+    ('REST', 100),
+    ('D6', 300),
+    ('CS6', 300),
+    ('B6', 200),
+    ('A5', 800),
+]
+family_mart_2 = [
+    
+    
+    ('REST',    400),
+    ('D4',      100),
+    ('REST',    200),
+    ('FS5',     100),
+    ('REST',    200),
+    ('A5',      100),
+    ('REST',    100),
+    ('F4',      100),
+    ('REST',    200),
+    ('A5',      100),
+    ('REST',    200),
+    ('D5',      100),
+    ('REST',    100), 
+    ('E4',      100),
+    ('REST',    200),
+    ('GS5',     100),
+    ('REST',    200),
+    ('B5',      100),
+    ('REST',    100),
+    ('C5',      100),
+    ('REST',    100), 
+    ('GS5',     100),
+    ('REST',    100),
+    ('F4',      100),
+    ('REST',    100),
+    ('CS4',     100),
+    ('REST',    100),
+    ('D4',      100),
+    ('REST',    200),
+    ('FS5',     100),
+    ('REST',    200),
+    ('A5',      100),
+    ('REST',    100),
+    ('E4',      100),
+    ('REST',    200),
+    ('GS5',     100),
+    ('REST',    400),
+    ('A4',      100),
+    ('REST',    200),
+    ('A4',      100),
+    ('REST',    200),
+    ('A4',      100),
+    ('REST',    100),
+]
 
 @dataclass
 class Buzzer:
-    spk: ModulinoBuzzer
+    spk: ModulinoBuzzer = None
     active: bool = False
-    note: str = 'E5'
+    notes: tuple[tuple[str, int]] = field(default_factory=tuple)
+    ix: int = 0
     duration: int = 125
-    _played_at: float = 0
+    scale: float = 0.8
+
+    async_rest: bool = False
+
+    _is_resting: bool = False
+    _resting_at: float = 0
+    _rest_for: int = 0
+    _buffer: list[tuple[list, int]] = field(default_factory=list)
 
     def update(self):
-        active = (self._played_at + (self.duration / 1000)) > time.monotonic()
-        if active != self.active:
-            self.active = active
+        if not self.active:
+            if self._buffer:
+                _, notes, scale = self._buffer.pop(0)
+                self.active = True
+                self.ix = 0
+                self.notes = notes
+                self.scale = scale
+            return
 
-            if self.active:
-                self._played_at = time.monotonic()
+        if self._is_resting and time.time() < (self._resting_at + (self._rest_for / 1000)):
+            return
+
+        remaining_notes = list(self.notes)[self.ix:]
+        self._is_resting = False
+
+        for i, (note, dur) in enumerate(remaining_notes):
+            if self.async_rest and note == 'REST' and dur > 40:
+                self.ix += (i + 1)
+                self._rest_for = dur
+                self._resting_at = time.time()
+                self._is_resting = True
+                return
+            note1 = ModulinoBuzzer.NOTES[note]
+            duration = int(dur * self.scale) - 5
+            if self.spk:
+                self.spk.tone(note1, duration, blocking=True)
+
+        self.active = False
     
     def serialize(self) -> dict:
         return {
             'active': self.active,
-            'note': self.note,
             'duration': self.duration,
         }
 
-    def act(self, params: str):
+    def act(self, params: str, hash_: str):
         if not params:
             return
-        if params == 'ok':
-            self._play([(ModulinoBuzzer.NOTES['E5'], 125)], True)
+        if params == 'boop':
+            self._play(hash_, [('D5', 50)])
+        elif params == 'ok':
+            self._play(hash_, [('E5', 125)])
         elif params == 'siren':
-            siren_melody = generate_siren(440, 880, 4000, 200, 2)
-            self._play(siren_melody, True)
+            self._play(hash_, generate_siren(440, 880, 4000, 200, 2))
         elif params == 'nokia':
-            self._play(nokia, True)
+            self._play(hash_, nokia)
         elif params == 'fmart':
-            s11 = [
-                ('REST', 400),
-                # ('CS4', 200),
-                # ('FS3', 200),
-                ('D4', 400),
-                ('REST', 50),
-
-                ('D4', 400),
-                ('REST', 50),
-                # ('REST', 400),
-                ('B4', 200),
-                ('CS4', 100),
-                ('D4', 500),
-                ('REST', 100),
-                ('CS4', 200),
-                ('CS4', 200),
-                ('D4', 133),
-                ('CS4', 66),
-                ('E4', 133),
-                ('FS4', 866),
-                ('REST', 100),
-                ('D4', 200),
-                # ('REST', 200),
-                ('D4', 200),
-                ('CS4', 100),
-                ('D4', 300),
-                ('REST', 100),
-                ('D4', 300),
-                ('CS4', 300),
-                ('B4', 200),
-                ('A4', 800),
-            ]
-
-            # notes = [(k, v, 100) for k, v in ModulinoBuzzer.NOTES.items()]
-            # for k, v, t in notes:
-            #     print(k)
-            #     self.spk.tone(v, t, True)
-            #     self.spk.tone(ModulinoBuzzer.NOTES['REST'], t, True)
-
-            self._play([(ModulinoBuzzer.NOTES[n], int(d * 1.25)) for n, d in s11], True)
-        else:
-            self._play(melody, True)
+            self._play(hash_, family_mart, scale=1.2)
+        elif params == 'fmart2':
+            self._play(hash_, family_mart_2, scale=1.2)
     
-    def _play(self, notes, block=False):
-        for note, duration in notes:
-            self.spk.tone(note, duration, blocking=block)
+    def _play(self, hash_, notes, block=True, scale=1):
+        print(hash_, notes, scale, self._buffer)
+        sig = (hash_, tuple(notes), scale)
+        if sig not in self._buffer:
+            self._buffer.append(sig)
+        # if self.active:
+
+        # else:
+        #     self.active = True
+        #     self.ix = 0
+        #     self.notes = notes
+        #     self.scale = scale
+        #     self._buffer.append(sig)
 
 
 def setup(with_tof=False):
     i2c = board.I2C()  # uses board.SCL and board.SDA
-    print("i2c devices detected: ", [hex(x) for x in i2c.scan()])
+    bus_devs = i2c.scan()
+    print("i2c devices detected: ", [hex(x) for x in bus_devs])
 
     try:
-        buzzer = ModulinoBuzzer(i2c)
-        buzz = Buzzer(buzzer)
+        # buzzer1 = ModulinoBuzzer(i2c) if 0x39 in bus_devs else None
+        buzzer2 = ModulinoBuzzer(i2c, address=0x3d) if 0x3d in bus_devs else None
+        # buzzer.change_address(0x3D)
+        buzz1 = Buzzer(buzzer2)
+        # buzz2 = Buzzer(buzzer2)
+        buzz1.act('fmart', 'init')
+        buzz1.act('fmart2', 'init')
+        # buzz2.act('boop', 'init')
     except Exception as e:
         print(f"Buzzer not found: {e}")
-        buzz = None
+        buzz1 = None
+        buzz2 = None
 
     try:
         ssaw = seesaw.Seesaw(i2c, addr=0x49)
@@ -466,7 +560,8 @@ def setup(with_tof=False):
         'light_sensor': light,
         'remote': remote,
         'tof': tof,
-        'buzzer': buzz,
+        'buzzer': buzz1,
+        # 'buzzer2': buzz2,
     }
 
 def sensor_loop(sensors: dict, callback=None):
@@ -486,15 +581,14 @@ def sensor_loop(sensors: dict, callback=None):
         if callback:
             acts = callback(payload)
             if acts:
-                for (actuator, cmd) in acts:
+                for (actuator, cmd, hash_) in acts:
                     try:
-                        sensors[actuator].act(cmd)
+                        sensors[actuator].act(cmd, hash_)
                     except:
                         print(f'Could not actuate {actuator=} for {cmd=}')
-                        pass
         else:
             print(payload)
-        time.sleep(0.01)
+        time.sleep(0.001)
 
 def sensor_thread(callback):
     threading.Thread(target=sensor_loop, args=(setup(), callback), daemon=True).start()

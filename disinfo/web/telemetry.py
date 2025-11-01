@@ -122,5 +122,5 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
             return button.pressed.read(ctx)
         return _read_btn
 
-def act(res, command):
-    publish('di.pubsub.acts', action='act', payload=dict(cmd=[res, command], dt=time.monotonic()))
+def act(res, command, hash_):
+    publish('di.pubsub.acts', action='act', payload=dict(cmd=[res, command, hash_], dt=time.monotonic()))

@@ -38,7 +38,7 @@ def run_sensors():
 
 
 def run_server():
-    uvicorn.run("disinfo.web.server:app", host="0.0.0.0", port=4215)
+    uvicorn.run("disinfo.web.server:app", host="0.0.0.0", port=4200)
 
 
 if __name__ == "__main__":
