@@ -488,8 +488,8 @@ def setup(with_tof=False):
     print("i2c devices detected: ", [hex(x) for x in bus_devs])
 
     try:
-        # buzzer1 = ModulinoBuzzer(i2c) if 0x39 in bus_devs else None
-        buzzer2 = ModulinoBuzzer(i2c, address=0x3d) if 0x3d in bus_devs else None
+        buzzer2 = ModulinoBuzzer(i2c) if 0x39 in bus_devs else None
+        # buzzer2 = ModulinoBuzzer(i2c, address=0x3d) if 0x3d in bus_devs else None
         # buzzer.change_address(0x3D)
         buzz1 = Buzzer(buzzer2)
         # buzz2 = Buzzer(buzzer2)
