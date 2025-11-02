@@ -34,7 +34,7 @@ A quick brown fox jumps over the lazy dog.
     _p = 0
     font_bg = DivStyle(border=1, border_color='#444444', background="#DDD1AE6A", padding=3, radius=2)
 
-    for fname, font in font_register.items():
+    for fname, font in reversed(font_register.items()):
         license =  div(
             text(font.license, style=TextStyle(font=small_bars, color="#021f19cc")),
             style=DivStyle(

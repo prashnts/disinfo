@@ -5,7 +5,7 @@ import random
 
 from datetime import datetime
 from functools import partial
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError
 
 from disinfo.data_structures import AppBaseModel, FrameState
@@ -116,7 +116,8 @@ class AppState:
     story: NewsStory = None
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 5
+    change_in: float = 8
+    last_stories: set = field(default_factory=set)
 
 state = AppState()
 
@@ -125,8 +126,13 @@ def _news_deck(fs: FrameState):
     div_style = DivStyle(padding=4, radius=4, background="#C7A99377")
 
     if not state.story or (state.changed_at + state.change_in) < fs.tick:
-        state.story = NewsStory.random()
-        state.changed_at = fs.tick
+        story = NewsStory.random()
+        if len(state.last_stories) > 10:
+            state.last_stories = set()
+        if story and story.pk not in state.last_stories:
+            state.story = story
+            state.changed_at = fs.tick
+            state.last_stories.add(story.pk)
 
     st = state.story
 
@@ -134,7 +140,7 @@ def _news_deck(fs: FrameState):
         return
 
     s = vstack([draw_news_story(fs, st)], gap=1)
-    s = composite_at(st.emoji_im, s, 'tr', dx=2)
+    s = composite_at(st.emoji_im, s, 'tr', dx=3, dy=-5)
     return div(s, div_style).tag(('news', st.uid))
 
 
