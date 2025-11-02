@@ -71,6 +71,7 @@ def draw_stream(fs: FrameState):
             print("* stopping client")
             _client.stop()
         try:
+            time.sleep(5)
             _stream = setup_stream()
         except Exception as e:
             return None

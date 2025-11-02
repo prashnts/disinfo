@@ -19,19 +19,15 @@ from disinfo.web.telemetry import TelemetryStateManager, act
 
 
 class TimerEntry(HashModel):
-    start_time: datetime
+    target: datetime
     duration: int = 30   # seconds
     icon: str = 'clock'
     overflow: int = 1
     label: str = 'T'
 
     @property
-    def start(self):
-        return pendulum.instance(self.start_time)
-
-    @property
     def end(self):
-        return self.start.add(seconds=self.duration)
+        return pendulum.instance(self.target)
 
 @dataclass
 class State:
@@ -60,6 +56,8 @@ def timer_view(fs: FrameState):
 
     if encoder.updated_at != state.last_encoder_at:
         encoder_pos -= state.last_encoder
+        if (fs.tick - state.last_encoder_at) > 5:
+            state.mode = 'idle'
         if encoder_pos == 0:
             state.duration = 0
             state.mode = 'idle'
@@ -78,8 +76,10 @@ def timer_view(fs: FrameState):
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
         act('buzzer', 'boop', 'beep')
-    if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
-        entry = TimerEntry(start_time=fs.now.add(seconds=state.duration), duration=state.duration).save()
+
+    if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 2:
+        entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
+        entry.expire(int(state.duration * 1.5))
         state.active_pk = entry.pk
         state.mode = 'idle'
         state.duration = 0
@@ -91,6 +91,7 @@ def timer_view(fs: FrameState):
         act('buzzer', 'boop', str(fs.tick))
 
     style_list = TextStyle(font=fonts.px_op__r)
+    style_done = TextStyle(font=fonts.px_op__r, color="#b7b7b7")
     style_main = TextStyle(font=fonts.px_op__l)
     display_style = TextStyle(font=fonts.px_op__xl)
 
@@ -101,18 +102,24 @@ def timer_view(fs: FrameState):
         return mmss
 
     def timecard(timer: TimerEntry):
-        next_secs = timer.start.diff(fs.now).in_seconds()
+        next_secs = timer.end.diff(fs.now).in_seconds()
+        sign = '-' if fs.now.diff(timer.end, False).in_seconds() < 0 else ' '
         t_mm = next_secs // 60
         t_ss = next_secs % 60
         is_active = timer.pk == state.active_pk
-        sign = '-' if fs.now.diff(timer.end, False).in_seconds() < 0 else ' '
-        hhmm = text(f'{sign}{t_mm:02d}:{t_ss:02d}', style=style_main if is_active else style_list)
+        style = style_main
+        if is_active:
+            style = style_list
+        if sign == '-':
+            style = style_done
+        
+        hhmm = text(f'{sign}{t_mm:02d}:{t_ss:02d}', style=style)
         tc = hstack([
             text(f'{timer.label} {timer.duration}'),
             hhmm,
         ]).tag(('timerentry', str(timer.pk)))
         itc = div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
-        return Widget(f'di.timer.timecard.{timer.pk}', itc).draw(fs, active=is_active)
+        return itc
 
     rows = []
 
@@ -124,15 +131,16 @@ def timer_view(fs: FrameState):
     timers.sort(key=lambda t: t.end)
     for timer in timers:
         rows.append(timecard(timer))
-        if fs.now.diff(timer.start_time, False).in_seconds() == 0:
-            act('buzzer', 'ok' if timer.duration < 15 else 'fmart', timer.pk)
-        if fs.now.diff(timer.end, False).in_minutes() < 10:
-            timer.expire(1)
+        if fs.now.diff(timer.end, False).in_seconds() == 0:
+            melody = 'boop' if timer.duration < 10 else 'ok'
+            melody = 'fmart' if timer.duration > 25 else melody
+            melody = 'fmart.slow' if timer.duration > 180 else melody
+            act('buzzer', melody, timer.pk)
         
     if not rows:
         return
 
-    return Frame(vstack(rows, gap=2).image, hash=('timer', 'main'))
+    return Frame(vstack(rows, gap=2).image, hash=('timer', 'main', state.active_pk, state.mode))
 
 
 def timer_app(fs: FrameState):

@@ -326,34 +326,32 @@ nokia = [
 ]
 family_mart = [
     ('REST', 400),
-    ('D6', 400),
+    ('D5',   400),
     ('REST', 50),
-    ('D6', 400),
+    ('D5',   400),
     ('REST', 50),
-    ('B5', 200),
-    ('CS6', 100),
-    ('D6', 500),
+    ('B5',   200),
+    ('CS5',  100),
+    ('D5',   500),
+    ('REST', 200),
+    ('CS5',  200),
+    ('CS5',  200),
+    ('D5',   133),
+    ('CS5',  66),
+    ('G5',   133),
+    ('FS5',  866),
+    ('REST', 200),
+    ('D5',   200),
+    ('D5',   200),
+    ('CS5',  100),
+    ('D5',   300),
     ('REST', 100),
-    ('CS5', 200),
-    ('CS5', 200),
-    ('D6', 133),
-    ('CS6', 66),
-    ('E6', 133),
-    ('FS6', 866),
-    ('REST', 100),
-    ('D6', 200),
-    ('D6', 200),
-    ('CS6', 100),
-    ('D6', 300),
-    ('REST', 100),
-    ('D6', 300),
-    ('CS6', 300),
-    ('B6', 200),
-    ('A5', 800),
+    ('D5',   300),
+    ('CS5',  300),
+    ('B5',   200),
+    ('A4',   800),
 ]
 family_mart_2 = [
-    
-    
     ('REST',    400),
     ('D4',      100),
     ('REST',    200),
@@ -408,7 +406,7 @@ class Buzzer:
     duration: int = 125
     scale: float = 0.8
 
-    async_rest: bool = False
+    async_rest: bool = True
 
     _is_resting: bool = False
     _resting_at: float = 0
@@ -425,14 +423,13 @@ class Buzzer:
                 self.scale = scale
             return
 
-        if self._is_resting and time.time() < (self._resting_at + (self._rest_for / 1000)):
-            return
+        if self._is_resting and time.time() > (self._resting_at + (self._rest_for / 1000)):
+            self._is_resting = False
 
         remaining_notes = list(self.notes)[self.ix:]
-        self._is_resting = False
 
         for i, (note, dur) in enumerate(remaining_notes):
-            if self.async_rest and note == 'REST' and dur > 40:
+            if self.async_rest and note == 'REST':
                 self.ix += (i + 1)
                 self._rest_for = dur
                 self._resting_at = time.time()
@@ -442,7 +439,6 @@ class Buzzer:
             duration = int(dur * self.scale) - 5
             if self.spk:
                 self.spk.tone(note1, duration, blocking=True)
-
         self.active = False
         self._buffer.pop(0)
     
@@ -456,7 +452,7 @@ class Buzzer:
         if not params:
             return
         if params == 'boop':
-            self._play(hash_, [('D5', 50)])
+            self._play(hash_, [('D5', 70), ('REST', 100)])
         elif params == 'ok':
             self._play(hash_, [('E5', 125)])
         elif params == 'siren':
@@ -464,43 +460,31 @@ class Buzzer:
         elif params == 'nokia':
             self._play(hash_, nokia)
         elif params == 'fmart':
-            self._play(hash_, family_mart, scale=1.2)
+            self._play(hash_, family_mart, scale=1.25)
+        elif params == 'fmart.slow':
+            self._play(hash_, family_mart, scale=2)
         elif params == 'fmart2':
             self._play(hash_, family_mart_2, scale=1.2)
     
     def _play(self, hash_, notes, block=True, scale=1):
-        print(hash_, notes, scale, self._buffer)
         sig = (hash_, tuple(notes), scale)
         if sig not in self._buffer:
             self._buffer.append(sig)
-        # if self.active:
-
-        # else:
-        #     self.active = True
-        #     self.ix = 0
-        #     self.notes = notes
-        #     self.scale = scale
-        #     self._buffer.append(sig)
-
 
 def setup(with_tof=False):
     i2c = board.I2C()  # uses board.SCL and board.SDA
     bus_devs = i2c.scan()
-    print("i2c devices detected: ", [hex(x) for x in bus_devs])
+    print("[i2c devices detected] ", [hex(x) for x in bus_devs if x])
 
     try:
-        buzzer2 = ModulinoBuzzer(i2c) if 0x39 in bus_devs else None
-        # buzzer2 = ModulinoBuzzer(i2c, address=0x3d) if 0x3d in bus_devs else None
-        # buzzer.change_address(0x3D)
-        buzz1 = Buzzer(buzzer2)
-        # buzz2 = Buzzer(buzzer2)
-        buzz1.act('fmart', 'init')
-        buzz1.act('fmart2', 'init')
-        # buzz2.act('boop', 'init')
+        buzzer_address = 0x3D
+        buzzer = ModulinoBuzzer(i2c, address=buzzer_address)
+        buzz1 = Buzzer(buzzer)
+        # buzz1.act('fmart.slow', 'init')
+        buzz1.act('boop', 'init')
     except Exception as e:
         print(f"Buzzer not found: {e}")
         buzz1 = None
-        buzz2 = None
 
     try:
         ssaw = seesaw.Seesaw(i2c, addr=0x49)
@@ -525,9 +509,10 @@ def setup(with_tof=False):
 
     try:
         apds = APDS9960(i2c)
-        apds.enable_proximity = False
+        apds.enable_proximity = True
         apds.enable_gesture = True
         apds.enable_color = True
+        apds.proximity_interrupt_threshold = (0, 0, 0)
 
         light = LightSensor(
             color=APDSColor16(apds),

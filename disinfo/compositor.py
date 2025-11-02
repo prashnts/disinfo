@@ -19,7 +19,7 @@ from .screens.music.shazam import widgets as shazam_widgets
 from .screens.music.shazam import indicators as shazam_indicators
 from .screens.stream import widget as stream_widget
 from .config import app_config
-from .web.telemetry import TelemetryStateManager
+from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
 from disinfo.apps.news import news_app
@@ -56,6 +56,9 @@ def compose_big_frame(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
     gesture = telermt.light_sensor.gesture.read('comp')
+    if gesture and gesture != '--':
+        print(gesture, telermt)
+        act('buzzer', 'boop', 'main')
 
     if rmt_reader('left'):
         publish('di.pubsub.remote', action='btn_debug')

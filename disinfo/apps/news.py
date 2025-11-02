@@ -39,7 +39,7 @@ class NewsStory(HashModel):
         template = f'''<?xml version="1.0" encoding="UTF-8"?>
         <svg width="26px" height="20px" viewBox="0 0 20 30" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <title>dishwasher-segment copy</title>
-            <g id="Artboard" stroke="none" stroke-width="1" fill="#ccc" font-family="AppleColorEmoji, Apple Color Emoji" font-size="20" font-weight="normal">
+            <g id="Artboard" stroke="none" stroke-width="1" fill="#ccc" font-family="AppleColorEmoji, Apple Color Emoji" font-size="18" font-weight="normal">
                 <text id="main">
                     <tspan x="0" y="20">{self.emoji}</tspan>
                 </text>
@@ -65,7 +65,14 @@ class NewsStory(HashModel):
 
 
 KAGI_ENDPOINT = 'https://news.kagi.com/api/batches/latest'
-CATEGORIES = ['france', 'tech']
+CATEGORIES = [
+    'france',
+    'tech',
+    # 'india',
+    'world',
+    'science',
+    'economy',
+]
 STALE_IN = 20 * 60
 
 def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
@@ -102,7 +109,7 @@ def kagi_load_stories(fs: FrameState):
 
 def draw_news_story(fs: FrameState, st: NewsStory):
     title_style = TextStyle(font=fonts.cozette, width=106, color='#1a1817')
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=110, color="#7c7c7b")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=110, color="#979796")
 
     slide = vstack([
         text(st.title, title_style, multiline=True),
@@ -140,7 +147,7 @@ def _news_deck(fs: FrameState):
         return
 
     s = vstack([draw_news_story(fs, st)], gap=1)
-    s = composite_at(st.emoji_im, s, 'tr', dx=3, dy=-5)
+    s = composite_at(st.emoji_im, s, 'tr', dx=3, dy=-2)
     return div(s, div_style).tag(('news', st.uid))
 
 
@@ -155,5 +162,4 @@ def news_app(fs: FrameState):
         transition_duration=.4,
         transition_enter=Resize,
     )
-
     return w
