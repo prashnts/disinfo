@@ -16,7 +16,7 @@ from .scroller import VScroller
 class StackStyle:
     size: int = app_config.height
     offset_top: int = 8
-    speed: float = 0.005
+    speed: float = 0.0001
     scroll_delta: int = 3
     reverse_delta: int = 10
     scrollbar: bool = False

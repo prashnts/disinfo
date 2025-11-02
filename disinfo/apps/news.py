@@ -106,7 +106,7 @@ def draw_news_story(fs: FrameState, st: NewsStory):
 
 def _news_deck(fs: FrameState):
     kagi_load_stories(fs)
-    stack_style = StackStyle(size=95, speed=0.01, scroll_delta=1, scrollbar=True, offset_top=-5)
+    stack_style = StackStyle(size=95, speed=0.001, scroll_delta=2, scrollbar=True, offset_top=-5)
     div_style = DivStyle(padding=4, radius=4, background="#C7A99377")
 
     stories = []
