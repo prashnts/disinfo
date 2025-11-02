@@ -17,9 +17,7 @@ from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils.imops import image_from_url
-from disinfo.utils.cairo import load_svg, load_svg_string
-
-dishwasher_icon = load_svg('assets/emojitest.svg')
+from disinfo.utils.cairo import load_svg_string
 
 
 class NewsStory(HashModel):
