@@ -42,6 +42,9 @@ class Frame(UIElement):
         height = self.height * ratio[1]
         return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
 
+    def resize(self, size: tuple[int, int]) -> 'Frame':
+        return Frame(self.image.resize(size), hash=('resize', size, self))
+
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
         return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self))

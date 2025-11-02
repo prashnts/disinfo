@@ -3,7 +3,7 @@ import math
 from dataclasses import replace as dc_replace
 
 from PIL import Image
-from typing import Literal, Optional, TypeVar, Generic
+from typing import Literal, Optional, TypeVar, Generic, Union
 
 from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.utils import ease
@@ -11,7 +11,7 @@ from disinfo.utils.imops import perspective_transform
 
 from .elements import Frame
 from .layers import DivStyle, div
-from .layouts import hstack, vstack, composite_at, place_at
+from .layouts import hstack, vstack, composite_at, place_at, HorizontalAlignment, VerticalAlignment
 from .text import TextStyle, text
 
 
@@ -106,6 +106,28 @@ class ScaleIn(TimedTransition[Frame]):
             return None
         return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
 
+class Resize(TimedTransition[Frame]):
+    def draw(self, fs: FrameState) -> Optional[Frame]:
+        self.tick(fs.tick)
+        pw, ph = 0, 0
+        if self.prev_value:
+            pw, ph = self.prev_value.size
+        fw, fh = self.curr_value.size
+        dw, dh = fw - pw, fh - ph
+        # amount to change prev size by
+        qw, qh = dw * self.pos, dh * self.pos
+
+        new_size = ensure_unity_int(pw + qw), ensure_unity_int(ph + qh)
+
+        img = Image.new('RGBA', new_size, (0, 0, 0, 0))
+
+        if self.prev_value:
+            composite_at(self.prev_value.opacity(1 - self.pos).resize(new_size), img, 'mm')
+        composite_at(self.curr_value.opacity(self.pos).resize(new_size), img, 'mm')
+
+        return Frame(img, hash=self.hash)
+
+
 class ScaleOut(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self.tick(fs.tick)
@@ -117,14 +139,17 @@ class ScaleOut(TimedTransition[Frame]):
 
 class SlideIn(TimedTransition[Frame]):
     def __init__(
-            self,
-            name: str,
-            duration: float,
-            easing: ease.EasingFn = ease.linear.linear,
-            initial: Optional[Frame] = None,
-            edge: Edges = 'bottom') -> None:
-        super().__init__(name, duration, easing)
+        self,
+        name: str,
+        duration: float,
+        easing: ease.EasingFn = ease.linear.linear,
+        initial: Optional[Frame] = None,
+        edge: Edges = 'bottom',
+        align: Union[HorizontalAlignment, VerticalAlignment] = 'center',
+    ) -> None:
+        super().__init__(name, duration, easing, initial)
         self.edge = edge
+        self.align = align
 
     @property
     def max_pos(self):
@@ -142,13 +167,13 @@ class SlideIn(TimedTransition[Frame]):
             prev_frame = Frame(img)
 
         if self.edge == 'top':
-            return vstack([self.curr_value, prev_frame])
+            return vstack([self.curr_value, prev_frame], align=self.align)
         elif self.edge == 'bottom':
-            return vstack([prev_frame, self.curr_value])
+            return vstack([prev_frame, self.curr_value], align=self.align)
         elif self.edge == 'left':
-            return hstack([self.curr_value, prev_frame])
+            return hstack([self.curr_value, prev_frame], align=self.align)
         elif self.edge == 'right':
-            return hstack([prev_frame, self.curr_value])
+            return hstack([prev_frame, self.curr_value], align=self.align)
 
     def draw(self, fs: FrameState) -> Frame:
         self.tick(fs.tick)
