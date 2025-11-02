@@ -1,6 +1,7 @@
 import random
 
 from typing import Optional
+from dataclasses import dataclass
 
 from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.config import app_config
@@ -11,17 +12,32 @@ from .layers import div, DivStyle
 from .widget import Widget
 from .scroller import VScroller
 
+@dataclass(frozen=True)
+class StackStyle:
+    size: int = app_config.height
+    offset_top: int = 8
+    speed: float = 0.005
+    scroll_delta: int = 3
+    reverse_delta: int = 10
+    scrollbar: bool = False
+    static_if_small: bool = False
 
 class Stack(metaclass=UniqInstance):
-    def __init__(self, name: str, size: int=app_config.height):
+    def __init__(self, name: str, style: StackStyle = StackStyle):
         self.name = name
+        self.style = style
         self._widgets = []
         self._prev_widgets = []
 
         self.last_step = 0
         self.pos = 0
 
-        self.scroller = VScroller(size=size, speed=0.001, delta=2, static_if_small=False)
+        self.scroller = VScroller(
+            size=self.style.size,
+            speed=self.style.speed,
+            delta=self.style.scroll_delta,
+            static_if_small=self.style.static_if_small,
+            scrollbar=self.style.scrollbar)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._prev_widgets = self._widgets
@@ -30,7 +46,7 @@ class Stack(metaclass=UniqInstance):
 
     def surface(self, fs: FrameState):
         frames = [w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)]
-        pos = app_config.height - 8 + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
+        pos = self.style.size - self.style.offset_top + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
         return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
     
     def next_widget(self):
@@ -74,5 +90,8 @@ class Stack(metaclass=UniqInstance):
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self.tick(fs.tick)
         surface, pos = self.surface(fs)
+        delta = self.style.scroll_delta
+        if self.scroller.direction < 0:
+            delta = self.style.reverse_delta
 
-        return self.scroller.set_frame(surface, reset=False).set_target(pos).draw(fs.tick)
+        return self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos).draw(fs.tick)

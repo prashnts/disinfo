@@ -1,10 +1,11 @@
 import bisect
+import math
 
 from PIL import Image
-from typing import Optional, Callable
+from typing import Optional
 
-from .elements import Frame
-from .layers import rounded_rectangle
+from disinfo.components.elements import Frame
+from disinfo.components.layers import rounded_rectangle
 
 class Scroller:
     _horizontal: bool = False
@@ -25,6 +26,7 @@ class Scroller:
         self.delta = delta
         self.speed = speed
         self.pos = 0
+        self.direction = 1
         self.last_step = 0
         self.static_if_small = static_if_small
         self.pauses = []
@@ -58,6 +60,10 @@ class Scroller:
         if self.frame:
             self._init_scroller(self.frame, reset=True)
         return self
+    
+    def set_delta(self, delta: int):
+        self.delta = delta
+        return self
 
     def reset_position(self):
         self.pos = 0
@@ -88,6 +94,7 @@ class Scroller:
 
     def _tick(self, step: float):
         delta = step - self.last_step
+        prev_pos = self.pos
 
         if self.pauses:
             try:
@@ -127,6 +134,7 @@ class Scroller:
                 self.pos += self.delta
             self.pos %= self._get_frame_size()
             self.last_step = step
+        self.direction = 0 if prev_pos == self.pos else math.copysign(1, self.pos - prev_pos)
 
     def draw(self, step: float) -> Frame:
         self._tick(step)
@@ -136,7 +144,7 @@ class Scroller:
         if self.scrollbar:
             ratio = self._get_scroll_ratio()
             thumb = self._get_scrollbar_thumb(5)
-            pos = self.pos // ratio
+            pos = self.pos // (ratio if ratio > 0 else 5)
             if self._vertical:
                 i.alpha_composite(thumb, (i.width - thumb.width, pos))
             if self._horizontal:

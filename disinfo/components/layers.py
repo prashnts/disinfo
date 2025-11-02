@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dc_replace
 from functools import cache
 from PIL import Image, ImageColor, ImageDraw
 
@@ -76,6 +76,7 @@ def rounded_rectangle(
 def div(
     frame: Frame,
     style: DivStyle = DivStyle(),
+    **kwargs,
 ) -> Frame:
     '''
     Acts as a container for other frames.
@@ -85,6 +86,9 @@ def div(
 
     Returns a new Frame.
     '''
+    if kwargs:
+        style = dc_replace(style, **kwargs)
+
     pad = style.padding
     margin = style.margin
     radius = style.radius

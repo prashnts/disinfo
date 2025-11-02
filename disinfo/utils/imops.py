@@ -1,6 +1,11 @@
+import io
+import requests
 import numpy as np
 
+from functools import cache
 from PIL import Image, ImageDraw, ImageEnhance
+
+from disinfo.components.elements import Frame, StillImage
 
 
 def enlarge_pixels(img: Image.Image, scale: int = 4, gap: int = 1, outline_color: str = '#000000'):
@@ -78,3 +83,22 @@ def find_coeffs(pa, pb):
 def perspective_transform(img: Image.Image, src_pts, dst_pts):
     coeffs = find_coeffs(dst_pts, src_pts)
     return img.transform((img.width, img.height), Image.PERSPECTIVE, coeffs, Image.BICUBIC)
+
+
+@cache
+def image_from_url(url: str, resize: tuple[int, int] = (42, 42)):
+    if not url:
+        return None
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        fp = io.BytesIO(r.content)
+        img = Image.open(fp)
+        res_x, res_y = resize
+        ratio = min(res_x/img.width, res_y/img.height)
+        size = (int(img.width*ratio), int(img.height*ratio))
+
+        img = img.quantize().resize(resize).convert('RGBA')
+        return Frame(img)
+    except requests.RequestException:
+        return None

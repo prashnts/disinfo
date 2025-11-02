@@ -418,7 +418,7 @@ class Buzzer:
     def update(self):
         if not self.active:
             if self._buffer:
-                _, notes, scale = self._buffer.pop(0)
+                _, notes, scale = self._buffer[0]
                 self.active = True
                 self.ix = 0
                 self.notes = notes
@@ -444,6 +444,7 @@ class Buzzer:
                 self.spk.tone(note1, duration, blocking=True)
 
         self.active = False
+        self._buffer.pop(0)
     
     def serialize(self) -> dict:
         return {
