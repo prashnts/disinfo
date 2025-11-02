@@ -12,6 +12,7 @@ from disinfo.components.widget import Widget
 from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack
 from disinfo.components.layers import div, DivStyle
+from disinfo.components.transitions import Resize
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -135,4 +136,8 @@ def timer_view(fs: FrameState):
 
 
 def timer_app(fs: FrameState):
-    return Widget('di.timer', timer_view(fs))
+    return Widget(
+        'di.timer',
+        timer_view(fs),
+        transition_enter=Resize,
+    )

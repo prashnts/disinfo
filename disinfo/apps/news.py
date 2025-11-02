@@ -14,7 +14,7 @@ from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack, place_at, composite_at
 from disinfo.components.layers import div, DivStyle
 from disinfo.components.stack import Stack, StackStyle
-from disinfo.components.transitions import SlideIn, ScaleIn, ScaleOut, Resize
+from disinfo.components.transitions import Resize
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -153,7 +153,7 @@ def news_app(fs: FrameState):
         deck,
         ease_in=ease.cubic.cubic_in_out,
         transition_duration=.4,
-        transition_enter=partial(Resize),
+        transition_enter=Resize,
     )
 
     return w

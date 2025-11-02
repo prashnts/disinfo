@@ -117,8 +117,8 @@ def compose_big_frame(fs: FrameState):
 
     place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
-    composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
     composite_at(news_app(fs).draw(fs), image, 'bm', frost=2)
+    composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
 
 
     composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
