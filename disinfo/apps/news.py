@@ -138,7 +138,7 @@ def _news_deck(fs: FrameState):
     return div(s, div_style).tag(('news', st.uid))
 
 
-news_deck = draw_loop(_news_deck, use_threads=False)
+news_deck = draw_loop(_news_deck, use_threads=True)
 
 def news_app(fs: FrameState):
     deck = news_deck(fs)
