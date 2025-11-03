@@ -20,7 +20,7 @@ PubSubManager().attach('maindev', ('di.pubsub.acts',), passthru_acts)
 
 def run_sensors():
     os.environ['BLINKA_MCP2221'] = '1'
-    from websocket_rpi_matrix.di_remote import setup as setup_sensors, sensor_loop
+    from websocket_rpi_matrix.di_remote import setup as setup_sensors, sensor_loop, Config
 
     def callback(payload):
         global acts
@@ -32,7 +32,8 @@ def run_sensors():
             return local_acts
 
     print("[maindev] Setting up sensors")
-    sensors = setup_sensors()
+    conf = Config(buzzer_address='0x3D', apds_proximity_enable=True)
+    sensors = setup_sensors(conf)
     print("[maindev] Starting sensor thread")
     sensor_loop(sensors, callback)
 

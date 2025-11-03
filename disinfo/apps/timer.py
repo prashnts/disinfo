@@ -99,7 +99,7 @@ def timer_view(fs: FrameState):
         t_mm = secs // 60
         t_ss = secs % 60
         mmss = text(f'{t_mm:02d}:{t_ss:02d}', display_style)
-        return mmss
+        return div(mmss, padding=5, margin=1, border=1, border_color="#C7722DFF", radius=3)
 
     def timecard(timer: TimerEntry):
         next_secs = timer.end.diff(fs.now).in_seconds()

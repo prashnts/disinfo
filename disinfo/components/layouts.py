@@ -152,8 +152,8 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
-    if frost > 0:
-        bg = dest.filter(ImageFilter.GaussianBlur(frost))
+    if frost != 0:
+        bg = dest.filter(ImageFilter.GaussianBlur(abs(frost)))
         region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
 
         rg_data = region.getdata()
@@ -161,7 +161,8 @@ def composite_at(
         new_data = []
 
         for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
-            new_data.append((r, g, b, 0 if fa == 0 else a))
+            comp = 255 if frost < 0 else a
+            new_data.append((r, g, b, 0 if fa <= 10 else comp))
         
         region.putdata(new_data)
         dest.alpha_composite(region, (left + dx, top + dy))

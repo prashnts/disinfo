@@ -30,7 +30,7 @@ from ._vl53lxcx import (
 
 class Config(BaseModel):
     buzzer_enable: bool = True
-    buzzer_address: Optional[int] = None
+    buzzer_address: str = '0x3c'
 
     tof_enable: bool = True
 
@@ -41,7 +41,7 @@ class Config(BaseModel):
     apds_proximity_params: list[int] = [20, 80, 1]
 
     seesaw_enable: bool = True
-    seesaw_address: int = 0x49
+    seesaw_address: str = '0x49'
 
 
 @dataclass
@@ -279,7 +279,7 @@ class AdafruitRemote:
         if not conf.seesaw_enable:
             return cls(**kwargs)
         try:
-            ssaw = seesaw.Seesaw(bus, addr=conf.seesaw_address)
+            ssaw = seesaw.Seesaw(bus, addr=int(conf.seesaw_address, base=16))
 
             seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
             print(f"Found product {seesaw_product}")
@@ -299,6 +299,7 @@ class AdafruitRemote:
         except Exception as e:
             print('[Seesaw] Setup failed', str(e))
             return cls(**kwargs)
+        
 @dataclass
 class ToFSensor:
     tof: VL53L5CX = None
@@ -338,13 +339,14 @@ class ToFSensor:
             self.render = render
 
     def serialize(self) -> dict:
+        if not self.tof:
+            return {}
         return {
             'distance_mm': self.distance_mm,
             'masked_distance_mm': self.masked_distance_mm,
             'updated_at': self.updated_at,
             'render': self.render,
             'grid': self.grid,
-            'enabled': self.enabled,
         }
 
     @classmethod
@@ -560,7 +562,7 @@ class Buzzer:
         if not conf.buzzer_enable:
             return cls(**kwargs)
         try:
-            buzzer = ModulinoBuzzer(bus, address=conf.buzzer_address)
+            buzzer = ModulinoBuzzer(bus, address=int(conf.buzzer_address, base=16))
             buzz = cls(spk=buzzer, enabled=True, **kwargs)
             buzz.act('boop', '_init')
             return buzz

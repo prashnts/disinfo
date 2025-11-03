@@ -101,6 +101,15 @@ def tof_info(fs: FrameState):
     ], gap=2)
     return div(imgs, style=DivStyle(border=1, border_color="#252525", background="#0443048F", radius=2, padding=2))
 
+def di_rmt(fs: FrameState):
+    telem = TelemetryStateManager().get_state(fs)
+
+
+    items = hstack([text(f'{telem.light_sensor.proximity}')])
+
+    return div(items)
+
+
 def info_content(fs: FrameState):
     if not RemoteStateManager().get_state(fs).show_debug:
         sample_vscroll.reset_position()
@@ -119,9 +128,14 @@ def info_content(fs: FrameState):
     info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
     try:
         tof = tof_info(fs)
-        return composite_at(tof, info, 'mm', frost=3).tag('debug_info')
-    except Exception as e:
-        return info.tag('debug_info')
+        info = composite_at(tof, info, 'mm', frost=3)
+    except:
+        pass
+
+    
+    info = composite_at(di_rmt(fs), info, 'mm', frost=3)
+        
+    return info.tag(('debug_info', 1))
 
 
 def widget(fs: FrameState):

@@ -63,7 +63,7 @@ class Frame(UIElement):
         return hash(self) == hash(other)
 
     def tag(self, value) -> 'Frame':
-        self.hash = ('tag', value, self.hash)
+        self.hash = ('tag', value)
         return self
 
     @property

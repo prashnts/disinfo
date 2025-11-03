@@ -12,7 +12,7 @@ from disinfo.data_structures import AppBaseModel, FrameState
 from disinfo.components.widget import Widget
 from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack, place_at, composite_at
-from disinfo.components.layers import div, DivStyle
+from disinfo.components.layers import div, DivStyle, styled_div
 from disinfo.components.stack import Stack, StackStyle
 from disinfo.components.transitions import Resize
 from disinfo.components import fonts
@@ -21,7 +21,7 @@ from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils import ease
 from disinfo.utils.imops import image_from_url
-from disinfo.utils.cairo import load_svg_string
+from disinfo.utils.cairo import load_svg_string, render_emoji
 
 
 class NewsStory(HashModel):
@@ -36,16 +36,20 @@ class NewsStory(HashModel):
 
     @property
     def emoji_im(self) -> Frame:
-        template = f'''<?xml version="1.0" encoding="UTF-8"?>
-        <svg width="26px" height="20px" viewBox="0 0 20 30" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-            <title>dishwasher-segment copy</title>
-            <g id="Artboard" stroke="none" stroke-width="1" fill="#ccc" font-family="AppleColorEmoji, Apple Color Emoji" font-size="18" font-weight="normal">
-                <text id="main">
-                    <tspan x="0" y="20">{self.emoji}</tspan>
-                </text>
-            </g>
-        </svg>'''
-        return load_svg_string(template)
+        return render_emoji(self.emoji, size=20)
+
+    @property
+    def category_emoji(self) -> Frame:
+        map = {
+            'france': '🇫🇷',
+            'tech': '👾',
+            'india': '🇮🇳',
+            'world': '🌍',
+            'science': '🧬',
+            'economy': '💶',
+        }
+        cat = hstack([render_emoji(map[self.category], size=10), text(self.category)], gap=1)
+        return div(cat, padding=(1, 2, 1, 2), radius=3, background="#232A5464", border=1, border_color="#120f2cff")
 
     @classmethod
     def iter_items(cls, limit: int = 0):
@@ -130,7 +134,7 @@ state = AppState()
 
 def _news_deck(fs: FrameState):
     kagi_load_stories(fs)
-    div_style = DivStyle(padding=4, radius=4, background="#C7A99377")
+    div_style = DivStyle(padding=4, radius=4, )
 
     if not state.story or (state.changed_at + state.change_in) < fs.tick:
         story = NewsStory.random()
@@ -146,8 +150,10 @@ def _news_deck(fs: FrameState):
     if not st:
         return
 
-    s = vstack([draw_news_story(fs, st)], gap=1)
-    s = composite_at(st.emoji_im, s, 'tr', dx=3, dy=-2)
+    s = div(vstack([draw_news_story(fs, st)], gap=1), margin=2, padding=4, background="#C7A99377", radius=3)
+    s = composite_at(st.emoji_im, s, 'tr', frost=.8)
+    s = composite_at(st.category_emoji, s, 'br', frost=1)
+    return s.tag(('news', st.uid))
     return div(s, div_style).tag(('news', st.uid))
 
 
@@ -159,7 +165,8 @@ def news_app(fs: FrameState):
         'di.news',
         deck,
         ease_in=ease.cubic.cubic_in_out,
-        transition_duration=.4,
+        style=DivStyle(),
+        transition_duration=.8,
         transition_enter=Resize,
     )
     return w
