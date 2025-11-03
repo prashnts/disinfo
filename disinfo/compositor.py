@@ -109,7 +109,6 @@ def compose_big_frame(fs: FrameState):
     if app_config.height > 120:
         composite_at(stream_widget(fs).draw(fs), image, 'bm')
 
-    composite_at(screens.paris_metro.draw(fs), image, 'bm', frost=1.8)
 
     composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
 
@@ -120,11 +119,11 @@ def compose_big_frame(fs: FrameState):
 
     place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
-    composite_at(news_app(fs).draw(fs), image, 'bm', frost=2)
-    composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
-
-
-    composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
+    if awake:
+        composite_at(news_app(fs).draw(fs), image, 'bm', frost=2)
+        composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
+        composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
+        composite_at(screens.paris_metro.draw(fs), image, 'bm', frost=1.8)
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
 
     return Frame(image).tag(awake)

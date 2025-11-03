@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dc_replace
 from textwrap import wrap
 from typing import Optional, Union
 from functools import cache
@@ -109,6 +109,7 @@ class MultiLineText(Text):
         wrapped_value = lambda width: '\n'.join([wrap_paragraph(l, width) for l in self.value.splitlines()])
 
         _dd = ImageDraw.Draw(Image.new('RGBA', (0, 0)))
+        o = self.style.outline
 
         # Basic character width
         l, t, r, b = _dd.multiline_textbbox(
@@ -122,7 +123,7 @@ class MultiLineText(Text):
 
         for width in range(max(_est_line_width - 5, 1), _est_line_width + 20):
             l, t, r, b = _dd.multiline_textbbox(
-                (0, 0),
+                (o, o),
                 wrapped_value(width),
                 font=self.style.font.font,
                 spacing=self.style.spacing,
@@ -134,7 +135,7 @@ class MultiLineText(Text):
             value = wrapped_value(width)
 
         l, t, r, b = _dd.multiline_textbbox(
-            (0, 0),
+            (o, o),
             value,
             font=self.style.font.font,
             spacing=self.style.spacing,
@@ -143,10 +144,10 @@ class MultiLineText(Text):
         # TODO: add anchor.
         w = r + l
         h = b + t
-        im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        im = Image.new('RGBA', (w + (2 * o), h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
         d.multiline_text(
-            (0, 0),
+            (o, o),
             value,
             fill=self.style.color,
             font=self.style.font.font,
@@ -158,7 +159,8 @@ class MultiLineText(Text):
 
 
 @cache
-def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False) -> Text:
+def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False, **kwargs) -> Text:
+    style = dc_replace(style, **kwargs)
     if multiline:
         return MultiLineText(value, style)
     return Text(value, style)

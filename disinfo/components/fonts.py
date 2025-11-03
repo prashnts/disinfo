@@ -138,3 +138,20 @@ small_bars = TTFFont('assets/fonts/smallbars.ttf', 10, license='free')
 # OPN Bit Fuul
 # > License   GNU GPLv3
 opn_bit_fuul = TTFFont('assets/fonts/OPN BitFUUL.ttf', 10, license='GPLv3')
+
+
+# Megan Serif
+# > License   Free
+megan_serif = TTFFont('assets/fonts/Megan_Serif.ttf', 8)
+
+# Pixel Play
+# > License   Free
+pixelplay = TTFFont('assets/fonts/pixelplay.ttf', 16)
+
+mixserif = TTFFont('assets/fonts/MixSerifCondense.ttf', 16)
+dymsmall = TTFFont('assets/fonts/dymsmall.ttf', 10)
+atc = TTFFont('assets/fonts/ATC.ttf', 16)
+pixwriter = TTFFont('assets/fonts/5pixwriter.ttf', 16, license='CC-BY-SA')
+double01 = TTFFont('assets/fonts/double01.ttf', 8, license='free (nc)')
+double01b = TTFFont('assets/fonts/double01b.ttf', 8, license='free (nc)')
+

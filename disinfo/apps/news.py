@@ -14,7 +14,8 @@ from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack, place_at, composite_at
 from disinfo.components.layers import div, DivStyle, styled_div
 from disinfo.components.stack import Stack, StackStyle
-from disinfo.components.transitions import Resize
+from disinfo.components.transitions import Resize, FadeIn, SlideIn
+from disinfo.components.scroller import VScroller
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -36,20 +37,24 @@ class NewsStory(HashModel):
 
     @property
     def emoji_im(self) -> Frame:
-        return render_emoji(self.emoji, size=20)
+        return render_emoji(self.emoji, size=60)
 
     @property
     def category_emoji(self) -> Frame:
         map = {
-            'france': '🇫🇷',
+            'france': '🥖',
             'tech': '👾',
-            'india': '🇮🇳',
+            'india': '🛺',
             'world': '🌍',
             'science': '🧬',
             'economy': '💶',
         }
-        cat = hstack([render_emoji(map[self.category], size=10), text(self.category)], gap=1)
-        return div(cat, padding=(1, 2, 1, 2), radius=3, background="#232A5464", border=1, border_color="#120f2cff")
+        cat = hstack([
+            render_emoji(map[self.category], size=10), 
+            text(self.category.upper(), color="#e5e5e5b0")
+        ], gap=1)
+        stuff = div(cat, padding=(1, 2, 1, 2), radius=3, background="#232A54A3", border=1, border_color="#120f2cff")
+        return stuff
 
     @classmethod
     def iter_items(cls, limit: int = 0):
@@ -72,7 +77,7 @@ KAGI_ENDPOINT = 'https://news.kagi.com/api/batches/latest'
 CATEGORIES = [
     'france',
     'tech',
-    # 'india',
+    'india',
     'world',
     'science',
     'economy',
@@ -112,12 +117,15 @@ def kagi_load_stories(fs: FrameState):
 
 
 def draw_news_story(fs: FrameState, st: NewsStory):
-    title_style = TextStyle(font=fonts.cozette, width=106, color='#1a1817')
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=110, color="#979796")
+    title_style = TextStyle(font=fonts.double01, width=95, color='#1a1817', outline=1, outline_color='#ffffff28')
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#979796")
 
     slide = vstack([
         text(st.title, title_style, multiline=True),
-        text(st.short_summary[:60] + '...', sumry_style, multiline=True),
+        div(
+            text(st.short_summary[:60] + '...', sumry_style, multiline=True),
+            background="#2a38644a",
+        ),
     ], gap=2)
     
     return slide
@@ -127,10 +135,13 @@ class AppState:
     story: NewsStory = None
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 8
+    change_in: float = 15
     last_stories: set = field(default_factory=set)
 
 state = AppState()
+
+summary_vscroll = VScroller(40, speed=0.1, pause_at_loop=True, scrollbar=True)
+
 
 def _news_deck(fs: FrameState):
     kagi_load_stories(fs)
@@ -138,23 +149,51 @@ def _news_deck(fs: FrameState):
 
     if not state.story or (state.changed_at + state.change_in) < fs.tick:
         story = NewsStory.random()
-        if len(state.last_stories) > 10:
+        if len(state.last_stories) > 20:
             state.last_stories = set()
         if story and story.pk not in state.last_stories:
             state.story = story
             state.changed_at = fs.tick
             state.last_stories.add(story.pk)
+            summary_vscroll.reset_position()
 
     st = state.story
 
     if not st:
         return
 
-    s = div(vstack([draw_news_story(fs, st)], gap=1), margin=2, padding=4, background="#C7A99377", radius=3)
-    s = composite_at(st.emoji_im, s, 'tr', frost=.8)
-    s = composite_at(st.category_emoji, s, 'br', frost=1)
+    title_style = TextStyle(font=fonts.double01, width=95, color="#111010", outline=1, outline_color='#ffffff28')
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#2A2A2A")
+
+    summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
+
+    slide = vstack([
+        (FadeIn('news.story.title', .2, delay=.3)
+            .mut(text(st.title, title_style, multiline=True))
+            .draw(fs)),
+        (FadeIn('news.story.sumr', .2, delay=.3)
+            .mut(
+                div(
+                    summary,
+                    background="#b6b8bd49",
+                    padding=2,
+                    radius=2,
+                ))
+            .draw(fs)),
+    ], gap=2)
+
+    s = div(
+        vstack([slide], gap=1),
+        margin=0,
+        padding=4,
+        background="#D9CABF77",
+        radius=3,
+    )
+    f_cat = FadeIn('news.emoji.main', .5, delay=.5).mut(st.emoji_im.opacity(0.9)).draw(fs)
+    f_category = SlideIn('news.story.category', 1, edge='right', delay=1).mut(st.category_emoji).draw(fs)
+    s = composite_at(f_cat, s, 'tr', frost=2, behind=True, dx=-2, dy=10)
+    s = hstack([f_category.rotate(90), s], align='top')
     return s.tag(('news', st.uid))
-    return div(s, div_style).tag(('news', st.uid))
 
 
 news_deck = draw_loop(_news_deck, use_threads=True)
@@ -167,6 +206,6 @@ def news_app(fs: FrameState):
         ease_in=ease.cubic.cubic_in_out,
         style=DivStyle(),
         transition_duration=.8,
-        transition_enter=Resize,
+        transition_enter=partial(Resize),
     )
     return w

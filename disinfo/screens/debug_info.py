@@ -23,7 +23,8 @@ sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, paus
 @cache
 def font_demo():
     sample = """\
-10/20/2023 12:34
+10/20/2023 à 12:34
+Le café.
 A quick brown fox jumps over the lazy dog.
 -> [ ] { } < > # $ % 
 """

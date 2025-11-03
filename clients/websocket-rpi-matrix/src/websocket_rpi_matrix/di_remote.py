@@ -387,6 +387,12 @@ class Buzzer:
     _buffer: list[tuple[list, int]] = field(default_factory=list)
 
 
+    # RTTTL = {
+    #     'family_mart_1': 'melody:d=4,o=6,b=100:8p,8d5,32p,8d5,32p,16h5,32c#5,4d5,16p,16c#5,16c#5,16d5,32c#5,16g5,4f#5,16p,16d5,16d5,32c#5,8d5,32p,8d5,8c#5,16h5,4a4',
+    #     'family_mart_1': 'melody:d=4,o=6,b=100:8p,8d5,32p,8d5,32p,16h5,32c#5,4d5,16p,16c#5,16c#5,16d5,32c#5,16g5,4f#5,16p,16d5,16d5,32c#5,8d5,32p,8d5,8c#5,16h5,4a4',
+    #     'family_mart_2': 'm2:d=4,o=6,b=80:8p,32d4,16p,32f#5,16p,32a5,32p,32f4,16p,32a5,16p,32d5,32p,32e4,16p,32g#5,16p,32h5,32p,32c5,32p,32g#5,32p,32f4,32p,32c#4,32p,32d4,16p,32f#5,16p,32a5,32p,32e4,16p,32g#5,8p,32a4,16p,32a4,16p,32a4,32p',
+    # }
+
     MELODIES = {
         "mario": (
             ('E5', 125),

@@ -106,6 +106,7 @@ def composite_at(
     dx: int = 0,
     dy: int = 0,
     frost: float = 0,
+    behind: bool = False,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -125,6 +126,11 @@ def composite_at(
 
     if isinstance(dest, Frame):
         dest = dest.image.copy()
+
+    original = dest
+    
+    if behind:
+        dest = Image.new('RGBA', dest.size, (0, 0, 0, 0))
 
     dw = dest.width
     dh = dest.height
@@ -168,6 +174,10 @@ def composite_at(
         dest.alpha_composite(region, (left + dx, top + dy))
 
     dest.alpha_composite(frame.image, (left + dx, top + dy))
+
+    if behind:
+        dest.alpha_composite(original, (0, 0))
+
     return Frame(dest, hash=('composite_at', anchor, frame))
 
 def mosaic(

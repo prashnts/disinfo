@@ -38,9 +38,11 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
             duration: float,
             easing: ease.EasingFn = ease.linear.linear,
             initial: Optional[TransitionValue] = None,
+            delay: float = 0,
             reset_on_none: bool = False) -> None:
         self.name = name
         self.duration = duration
+        self.delay = delay
         self.easing_fn = easing
         self.reset_on_none = reset_on_none
 
@@ -50,6 +52,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
         self.curr_value: Optional[TransitionValue] = None
 
         self.last_step = time.time()
+        self.start_at = time.time()
         self.pos = 0
         self.running = False
         self.finished = False
@@ -62,6 +65,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
             self.pos = 0
             self.running = True
             self.finished = False
+            self.start_at = time.time()
         self.curr_value = value
         return self
 
@@ -70,6 +74,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
         self.running = True
         self.finished = False
         self.last_step = time.time()
+        self.start_at = time.time()
         return self
 
     def tick(self, step: float):
@@ -81,6 +86,10 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
         pos = (step - self.last_step) / self.duration
         pos = max(0, min(1, pos))
         self.pos = self.easing_fn(pos)
+
+        if (self.start_at + self.delay) > step:
+            self.pos = 0
+            self.last_step = step
 
         if pos == 1:
             self.pos = 1
@@ -146,8 +155,9 @@ class SlideIn(TimedTransition[Frame]):
         initial: Optional[Frame] = None,
         edge: Edges = 'bottom',
         align: Union[HorizontalAlignment, VerticalAlignment] = 'center',
+        delay: int = 0,
     ) -> None:
-        super().__init__(name, duration, easing, initial)
+        super().__init__(name, duration, easing, initial, delay)
         self.edge = edge
         self.align = align
 
