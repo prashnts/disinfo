@@ -135,9 +135,9 @@ class APDSGesture:
 
 @dataclass
 class LightSensor:
-    color: APDSColor16 = APDSColor16()
-    proximity: APDSProximitySensor = APDSProximitySensor()
-    gesture: APDSGesture = APDSProximitySensor()
+    color: APDSColor16 = field(default_factory=APDSColor16)
+    proximity: APDSProximitySensor = field(default_factory=APDSProximitySensor)
+    gesture: APDSGesture = field(default_factory=APDSProximitySensor)
     update_frequency: int = 10
     _n_update: int = 0
 
@@ -215,11 +215,11 @@ class IOButton:
 
 @dataclass
 class Buttons:
-    select: IOButton = IOButton()
-    up: IOButton = IOButton()
-    left: IOButton = IOButton()
-    down: IOButton = IOButton()
-    right: IOButton = IOButton()
+    select: IOButton = field(default_factory=IOButton)
+    up: IOButton = field(default_factory=IOButton)
+    left: IOButton = field(default_factory=IOButton)
+    down: IOButton = field(default_factory=IOButton)
+    right: IOButton = field(default_factory=IOButton)
 
     def iter(self):
         return [('select', self.select),
@@ -251,8 +251,8 @@ class RotaryEncoder:
 
 @dataclass
 class AdafruitRemote:
-    buttons: Buttons = Buttons()
-    encoder: RotaryEncoder = RotaryEncoder()
+    buttons: Buttons = field(default_factory=Buttons)
+    encoder: RotaryEncoder = field(default_factory=RotaryEncoder)
     update_frequency: int = 4
     _n_update: int = 0
 
