@@ -10,7 +10,7 @@ from typing import Callable
 from pydantic import BaseModel
 from PIL import Image, ImageFile
 
-from websocket_rpi_matrix.di_remote import sensor_thread
+from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
@@ -46,6 +46,7 @@ class Config(BaseModel):
     websocket_url: str = 'wss://disinfo.amd.noop.pw/ws-salon'
     fps: int = 30
     matrix_conf: RGBMatrixConf
+    sensor_conf: SensorConfig = SensorConfig()
 
     @property
     def width(self) -> int:
@@ -145,7 +146,7 @@ def main(conf: Config):
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
-    sensor_thread(_set_telemetry)
+    sensor_thread(_set_telemetry, conf.sensor_conf)
     time.sleep(1)
     print('[Inial setup done]')
 

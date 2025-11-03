@@ -5,12 +5,14 @@ import json
 
 from pathlib import Path
 from dataclasses import dataclass, field
+from typing import Optional
 
 import board
 
 from adafruit_seesaw import digitalio, rotaryio, seesaw
 from adafruit_apds9960.apds9960 import APDS9960
 from adafruit_apds9960 import colorutility
+from pydantic import BaseModel
 
 from .modulino.buzzer import ModulinoBuzzer
 
@@ -26,10 +28,25 @@ from ._vl53lxcx import (
     VL53L5CX,
 )
 
+class Config(BaseModel):
+    buzzer_enable: bool = True
+    buzzer_address: Optional[int] = None
+
+    tof_enable: bool = True
+
+    apds_enable: bool = True
+    apds_color_enable: bool = True
+    apds_gesture_enable: bool = False
+    apds_proximity_enable: bool = False
+    apds_proximity_params: list[int] = [20, 80, 1]
+
+    seesaw_enable: bool = True
+    seesaw_address: int = 0x49
+
 
 @dataclass
 class APDSColor16:
-    _sensor: APDS9960
+    _sensor: APDS9960 = None
     red: int = 0
     green: int = 0
     blue: int = 0
@@ -62,6 +79,8 @@ class APDSColor16:
         return f'#{r:02X}{g:02X}{b:02X}{a:02X}'
 
     def update(self):
+        if not self._sensor:
+            return
         r, g, b, c = self._sensor.color_data
         if any([r != self.red, g != self.green, b != self.blue, c != self.clear]):
             self.red = r
@@ -75,11 +94,13 @@ class APDSColor16:
 
 @dataclass
 class APDSProximitySensor:
-    _sensor: APDS9960
+    _sensor: APDS9960 = None
     proximity: int = 0
     updated_at: float = 0.0
 
     def update(self):
+        if not self._sensor:
+            return
         prox = self._sensor.proximity
         if prox != self.proximity:
             self.proximity = prox
@@ -90,13 +111,15 @@ class APDSProximitySensor:
 
 @dataclass
 class APDSGesture:
-    _sensor: APDS9960
+    _sensor: APDS9960 = None
     value: int = 0
     detected_at: float = 0.0
 
     gesture_map = ['--', 'up', 'down', 'left', 'right']
 
     def update(self):
+        if not self._sensor:
+            return
         gesture = self._sensor.gesture()
         if gesture != self.value:
             self.value = gesture
@@ -112,9 +135,9 @@ class APDSGesture:
 
 @dataclass
 class LightSensor:
-    color: APDSColor16
-    proximity: APDSProximitySensor
-    gesture: APDSGesture
+    color: APDSColor16 = APDSColor16()
+    proximity: APDSProximitySensor = APDSProximitySensor()
+    gesture: APDSGesture = APDSProximitySensor()
     update_frequency: int = 10
     _n_update: int = 0
 
@@ -137,16 +160,39 @@ class LightSensor:
             'updated_at': max(self.color.updated_at, self.proximity.updated_at, self.gesture.detected_at),
         }
 
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        if not conf.apds_enable:
+            return cls(**kwargs)
+        try:
+            apds = APDS9960(bus)
+            apds.enable_proximity = conf.apds_proximity_enable
+            apds.enable_gesture = conf.apds_gesture_enable
+            apds.enable_color = conf.apds_color_enable
+            apds.proximity_interrupt_threshold = tuple(conf.apds_proximity_params)
+
+            return cls(
+                color=APDSColor16(apds),
+                proximity=APDSProximitySensor(apds),
+                gesture=APDSGesture(apds),
+                **kwargs
+            )
+        except Exception as e:
+            print('[APDS] Setup failed', str(e))
+            return cls(**kwargs)
+
 
 @dataclass
 class IOButton:
-    io_pin: digitalio.DigitalIO
+    io_pin: digitalio.DigitalIO = None
     pressed: bool = False
     pressed_at: float = 0.0
     released_at: float = 0.0
     updated_at: float = 0.0
 
     def update(self):
+        if not self.io_pin:
+            return
         current_value = self.io_pin.value
         if not current_value and not self.pressed:
             self.pressed = True
@@ -169,11 +215,11 @@ class IOButton:
 
 @dataclass
 class Buttons:
-    select: IOButton
-    up: IOButton
-    left: IOButton
-    down: IOButton
-    right: IOButton
+    select: IOButton = IOButton()
+    up: IOButton = IOButton()
+    left: IOButton = IOButton()
+    down: IOButton = IOButton()
+    right: IOButton = IOButton()
 
     def iter(self):
         return [('select', self.select),
@@ -188,11 +234,13 @@ class Buttons:
 
 @dataclass
 class RotaryEncoder:
-    encoder: rotaryio.IncrementalEncoder
+    encoder: rotaryio.IncrementalEncoder = None
     position: int = 0
     updated_at: float = 0.0
 
     def update(self):
+        if not self.encoder:
+            return
         current_position = self.encoder.position
         if current_position != self.position:
             self.position = current_position
@@ -203,8 +251,8 @@ class RotaryEncoder:
 
 @dataclass
 class AdafruitRemote:
-    buttons: Buttons
-    encoder: RotaryEncoder
+    buttons: Buttons = Buttons()
+    encoder: RotaryEncoder = RotaryEncoder()
     update_frequency: int = 4
     _n_update: int = 0
 
@@ -226,9 +274,34 @@ class AdafruitRemote:
             'updated_at': max(button.updated_at for _, button in self.buttons.iter()),
         }
 
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        if not conf.seesaw_enable:
+            return cls(**kwargs)
+        try:
+            ssaw = seesaw.Seesaw(bus, addr=conf.seesaw_address)
+
+            seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
+            print(f"Found product {seesaw_product}")
+            if seesaw_product != 5740:
+                print("Wrong firmware loaded?  Expected 5740")
+
+            ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
+            ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
+            ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
+            ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
+            ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
+            return cls(
+                buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
+                encoder=RotaryEncoder(rotaryio.IncrementalEncoder(ssaw)),
+                **kwargs,
+            )
+        except Exception as e:
+            print('[Seesaw] Setup failed', str(e))
+            return cls(**kwargs)
 @dataclass
 class ToFSensor:
-    tof: VL53L5CX
+    tof: VL53L5CX = None
     distance_mm: list[int] = None
     masked_distance_mm: list[int] = None
     grid: int = 7
@@ -236,6 +309,8 @@ class ToFSensor:
     updated_at: float = 0.0
 
     def update(self):
+        if not self.tof:
+            return
         if self.tof.check_data_ready():
             results = self.tof.get_ranging_data()
             distance_mm = results.distance_mm
@@ -268,138 +343,34 @@ class ToFSensor:
             'masked_distance_mm': self.masked_distance_mm,
             'updated_at': self.updated_at,
             'render': self.render,
-            'grid': self.grid, 
+            'grid': self.grid,
+            'enabled': self.enabled,
         }
 
-def generate_siren(frequency_start, frequency_end, total_duration, steps, iterations):
-    siren = []
-    mid_point = steps // 2
-    duration_rise = total_duration // 2
-    duration_fall = total_duration // 2
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        if not conf.tof_enable:
+            return cls(**kwargs)
+        try:
+            tof = VL53L5CX(bus)
 
-    for _ in range(iterations):
-        for i in range(steps):
-            if i < mid_point:
-                # Easing in rising part
-                step_duration = duration_rise // mid_point + (duration_rise // mid_point * (mid_point - i) // mid_point)
-                frequency = int(frequency_start + (frequency_end - frequency_start) * (i / mid_point))
-            else:
-                # Easing in falling part
-                step_duration = duration_fall // mid_point + (duration_fall // mid_point * (i - mid_point) // mid_point)
-                frequency = int(frequency_end - (frequency_end - frequency_start) * ((i - mid_point) / mid_point))
+            if not tof.is_alive():
+                raise ValueError("VL53L8CX not detected")
 
-            siren.append((frequency, step_duration))
-
-    return siren
-
-mario = [
-    ('E5', 125),
-    ('REST', 25),
-    ('E5', 125),
-    ('REST', 125),
-    ('E5', 125),
-    ('REST', 125),
-    ('C5', 125),
-    ('E5', 125),
-    ('REST', 125),
-    ('G5', 125),
-    ('REST', 375),
-    ('G4', 250)
-]
-nokia = [
-    ('E5', 150),
-    ('D5', 150),
-    ('FS4', 200),
-    ('GS4', 200),
-    ('REST', 25),
-    ('CS5', 150),
-    ('B4', 150),
-    ('D4', 200),
-    ('E4', 200),
-    ('REST', 25),
-    ('B4', 150),
-    ('A4', 150),
-    ('CS4', 200),
-    ('E4', 200),
-    ('REST', 10),
-    ('A4', 400),
-]
-family_mart = [
-    ('REST', 400),
-    ('D5',   400),
-    ('REST', 50),
-    ('D5',   400),
-    ('REST', 50),
-    ('B5',   200),
-    ('CS5',  100),
-    ('D5',   500),
-    ('REST', 200),
-    ('CS5',  200),
-    ('CS5',  200),
-    ('D5',   133),
-    ('CS5',  66),
-    ('G5',   133),
-    ('FS5',  866),
-    ('REST', 200),
-    ('D5',   200),
-    ('D5',   200),
-    ('CS5',  100),
-    ('D5',   300),
-    ('REST', 100),
-    ('D5',   300),
-    ('CS5',  300),
-    ('B5',   200),
-    ('A4',   800),
-]
-family_mart_2 = [
-    ('REST',    400),
-    ('D4',      100),
-    ('REST',    200),
-    ('FS5',     100),
-    ('REST',    200),
-    ('A5',      100),
-    ('REST',    100),
-    ('F4',      100),
-    ('REST',    200),
-    ('A5',      100),
-    ('REST',    200),
-    ('D5',      100),
-    ('REST',    100), 
-    ('E4',      100),
-    ('REST',    200),
-    ('GS5',     100),
-    ('REST',    200),
-    ('B5',      100),
-    ('REST',    100),
-    ('C5',      100),
-    ('REST',    100), 
-    ('GS5',     100),
-    ('REST',    100),
-    ('F4',      100),
-    ('REST',    100),
-    ('CS4',     100),
-    ('REST',    100),
-    ('D4',      100),
-    ('REST',    200),
-    ('FS5',     100),
-    ('REST',    200),
-    ('A5',      100),
-    ('REST',    100),
-    ('E4',      100),
-    ('REST',    200),
-    ('GS5',     100),
-    ('REST',    400),
-    ('A4',      100),
-    ('REST',    200),
-    ('A4',      100),
-    ('REST',    200),
-    ('A4',      100),
-    ('REST',    100),
-]
+            tof.init()
+            tof.resolution = RESOLUTION_8X8
+            tof.ranging_freq = 10
+            tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
+            return cls(tof, **kwargs)
+        except Exception as e:
+            print(f"[VL53L5CX] not found: {e}")
+            return cls(**kwargs)
 
 @dataclass
 class Buzzer:
     spk: ModulinoBuzzer = None
+    enabled: bool = False
+
     active: bool = False
     notes: tuple[tuple[str, int]] = field(default_factory=tuple)
     ix: int = 0
@@ -413,7 +384,118 @@ class Buzzer:
     _rest_for: int = 0
     _buffer: list[tuple[list, int]] = field(default_factory=list)
 
+
+    MELODIES = {
+        "mario": (
+            ('E5', 125),
+            ('REST', 25),
+            ('E5', 125),
+            ('REST', 125),
+            ('E5', 125),
+            ('REST', 125),
+            ('C5', 125),
+            ('E5', 125),
+            ('REST', 125),
+            ('G5', 125),
+            ('REST', 375),
+            ('G4', 250)
+        ),
+        "nokia": (
+            ('E5', 150),
+            ('D5', 150),
+            ('FS4', 200),
+            ('GS4', 200),
+            ('REST', 25),
+            ('CS5', 150),
+            ('B4', 150),
+            ('D4', 200),
+            ('E4', 200),
+            ('REST', 25),
+            ('B4', 150),
+            ('A4', 150),
+            ('CS4', 200),
+            ('E4', 200),
+            ('REST', 10),
+            ('A4', 400),
+        ),
+        "family_mart": (
+            ('REST', 400),
+            ('D5',   400),
+            ('REST', 50),
+            ('D5',   400),
+            ('REST', 50),
+            ('B5',   200),
+            ('CS5',  100),
+            ('D5',   500),
+            ('REST', 200),
+            ('CS5',  200),
+            ('CS5',  200),
+            ('D5',   133),
+            ('CS5',  66),
+            ('G5',   133),
+            ('FS5',  866),
+            ('REST', 200),
+            ('D5',   200),
+            ('D5',   200),
+            ('CS5',  100),
+            ('D5',   300),
+            ('REST', 100),
+            ('D5',   300),
+            ('CS5',  300),
+            ('B5',   200),
+            ('A4',   800),
+        ),
+        "family_mart_2": (
+            ('REST',    400),
+            ('D4',      100),
+            ('REST',    200),
+            ('FS5',     100),
+            ('REST',    200),
+            ('A5',      100),
+            ('REST',    100),
+            ('F4',      100),
+            ('REST',    200),
+            ('A5',      100),
+            ('REST',    200),
+            ('D5',      100),
+            ('REST',    100), 
+            ('E4',      100),
+            ('REST',    200),
+            ('GS5',     100),
+            ('REST',    200),
+            ('B5',      100),
+            ('REST',    100),
+            ('C5',      100),
+            ('REST',    100), 
+            ('GS5',     100),
+            ('REST',    100),
+            ('F4',      100),
+            ('REST',    100),
+            ('CS4',     100),
+            ('REST',    100),
+            ('D4',      100),
+            ('REST',    200),
+            ('FS5',     100),
+            ('REST',    200),
+            ('A5',      100),
+            ('REST',    100),
+            ('E4',      100),
+            ('REST',    200),
+            ('GS5',     100),
+            ('REST',    400),
+            ('A4',      100),
+            ('REST',    200),
+            ('A4',      100),
+            ('REST',    200),
+            ('A4',      100),
+            ('REST',    100),
+        ),
+    }
+
+
     def update(self):
+        if not self.enabled:
+            return
         if not self.active:
             if self._buffer:
                 _, notes, scale = self._buffer[0]
@@ -449,6 +531,8 @@ class Buzzer:
         }
 
     def act(self, params: str, hash_: str):
+        if not self.enabled:
+            return
         if not params:
             return
         if params == 'boop':
@@ -456,99 +540,68 @@ class Buzzer:
         elif params == 'ok':
             self._play(hash_, [('E5', 125)])
         elif params == 'siren':
-            self._play(hash_, generate_siren(440, 880, 4000, 200, 2))
+            self._play(hash_, self.generate_siren(440, 880, 4000, 200, 2))
         elif params == 'nokia':
-            self._play(hash_, nokia)
+            self._play(hash_, self.MELODIES['nokia'])
         elif params == 'fmart':
-            self._play(hash_, family_mart, scale=1.25)
+            self._play(hash_, self.MELODIES['family_mart'], scale=1.25)
         elif params == 'fmart.slow':
-            self._play(hash_, family_mart, scale=2)
+            self._play(hash_, self.MELODIES['family_mart'], scale=2)
         elif params == 'fmart2':
-            self._play(hash_, family_mart_2, scale=1.2)
+            self._play(hash_, self.MELODIES['family_mart_2'], scale=1.2)
     
     def _play(self, hash_, notes, block=True, scale=1):
         sig = (hash_, tuple(notes), scale)
         if sig not in self._buffer:
             self._buffer.append(sig)
 
-def setup(with_tof=False):
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        if not conf.buzzer_enable:
+            return cls(**kwargs)
+        try:
+            buzzer = ModulinoBuzzer(bus, address=conf.buzzer_address)
+            buzz = cls(spk=buzzer, enabled=True, **kwargs)
+            buzz.act('boop', '_init')
+            return buzz
+        except Exception as e:
+            print('[Buzzer] Setup failed', str(e))
+            return cls(**kwargs)
+
+    @staticmethod
+    def generate_siren(frequency_start, frequency_end, total_duration, steps, iterations):
+        siren = []
+        mid_point = steps // 2
+        duration_rise = total_duration // 2
+        duration_fall = total_duration // 2
+
+        for _ in range(iterations):
+            for i in range(steps):
+                if i < mid_point:
+                    # Easing in rising part
+                    step_duration = duration_rise // mid_point + (duration_rise // mid_point * (mid_point - i) // mid_point)
+                    frequency = int(frequency_start + (frequency_end - frequency_start) * (i / mid_point))
+                else:
+                    # Easing in falling part
+                    step_duration = duration_fall // mid_point + (duration_fall // mid_point * (i - mid_point) // mid_point)
+                    frequency = int(frequency_end - (frequency_end - frequency_start) * ((i - mid_point) / mid_point))
+
+                siren.append((frequency, step_duration))
+
+        return siren
+
+def setup(conf: Config = None):
+    if conf is None:
+        conf = Config()     # use default conf
     i2c = board.I2C()  # uses board.SCL and board.SDA
     bus_devs = i2c.scan()
     print("[i2c devices detected] ", [hex(x) for x in bus_devs if x])
 
-    try:
-        buzzer_address = None
-        # buzzer_address = 0x3D
-        buzzer = ModulinoBuzzer(i2c, address=buzzer_address)
-        buzz1 = Buzzer(buzzer)
-        # buzz1.act('fmart.slow', 'init')
-        buzz1.act('boop', 'init')
-    except Exception as e:
-        print(f"Buzzer not found: {e}")
-        buzz1 = None
-
-    try:
-        ssaw = seesaw.Seesaw(i2c, addr=0x49)
-
-        seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
-        print(f"Found product {seesaw_product}")
-        if seesaw_product != 5740:
-            print("Wrong firmware loaded?  Expected 5740")
-
-        ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
-        ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
-        ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
-        ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
-        ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
-        remote = AdafruitRemote(
-            buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
-            encoder=RotaryEncoder(rotaryio.IncrementalEncoder(ssaw)),
-        )
-    except Exception as e:
-        print(f"Seesaw not found: {e}")
-        remote = None
-
-    try:
-        apds = APDS9960(i2c)
-        apds.enable_proximity = True
-        apds.enable_gesture = True
-        apds.enable_color = True
-        apds.proximity_interrupt_threshold = (0, 0, 0)
-
-        light = LightSensor(
-            color=APDSColor16(apds),
-            proximity=APDSProximitySensor(apds),
-            gesture=APDSGesture(apds),
-        )
-    except Exception as e:
-        print(f"APDS9960 not found: {e}")
-        light = None
-
-    try:
-        if not with_tof:
-            raise ValueError("Skipping ToF setup")
-
-        tof = VL53L5CX(i2c)
-
-        if not tof.is_alive():
-            raise ValueError("VL53L8CX not detected")
-
-        tof.init()
-        tof.resolution = RESOLUTION_8X8
-        tof.ranging_freq = 10
-        tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
-        tof = ToFSensor(tof)
-    except Exception as e:
-        print(f"VL53L5CX not found: {e}")
-        tof = None
-
-
     return {
-        'light_sensor': light,
-        'remote': remote,
-        'tof': tof,
-        'buzzer': buzz1,
-        # 'buzzer2': buzz2,
+        'buzzer': Buzzer.setup(i2c, conf),
+        'remote': AdafruitRemote.setup(i2c, conf),
+        'tof': ToFSensor.setup(i2c, conf),
+        'light_sensor': LightSensor.setup(i2c, conf),
     }
 
 def sensor_loop(sensors: dict, callback=None):
@@ -577,8 +630,8 @@ def sensor_loop(sensors: dict, callback=None):
             print(payload)
         time.sleep(0.001)
 
-def sensor_thread(callback):
-    threading.Thread(target=sensor_loop, args=(setup(), callback), daemon=True).start()
+def sensor_thread(callback, conf: Config):
+    threading.Thread(target=sensor_loop, args=(setup(conf), callback), daemon=True).start()
     print('[Gestures] Enabled')
 
 def main():
@@ -590,7 +643,7 @@ def main():
     def callback(payload):
         publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
 
-    sensor_loop(setup(), callback)
+    sensor_loop(setup(Config()), callback)
 
 
 if __name__ == "__main__":

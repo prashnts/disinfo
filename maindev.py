@@ -32,7 +32,7 @@ def run_sensors():
             return local_acts
 
     print("[maindev] Setting up sensors")
-    sensors = setup_sensors(with_tof=False)
+    sensors = setup_sensors()
     print("[maindev] Starting sensor thread")
     sensor_loop(sensors, callback)
 
