@@ -477,7 +477,8 @@ def setup(with_tof=False):
     print("[i2c devices detected] ", [hex(x) for x in bus_devs if x])
 
     try:
-        buzzer_address = 0x3D
+        buzzer_address = None
+        # buzzer_address = 0x3D
         buzzer = ModulinoBuzzer(i2c, address=buzzer_address)
         buzz1 = Buzzer(buzzer)
         # buzz1.act('fmart.slow', 'init')
