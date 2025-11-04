@@ -107,6 +107,7 @@ def composite_at(
     dy: int = 0,
     frost: float = 0,
     behind: bool = False,
+    vibrant: float = 0,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -158,20 +159,29 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
+    def blend(left: Image.Image, right: Image.Image, threshold=1):
+        new_data = []
+        for (r, g, b, a), (_, _, _, fa) in zip(left.getdata(), right.getdata()):
+            comp = 255 if frost < 0 else a
+            alpha = 0 if fa <= threshold else comp
+            new_data.append((r, g, b, alpha))
+        left.putdata(new_data)
+        return left
+
     if frost != 0:
+        if behind:
+            bg = composite_at(frame, dest.copy(), anchor, dx, dy).image.filter(ImageFilter.GaussianBlur(abs(frost)))
+            fg = composite_at(Frame(original), dest.copy()).image
+
+            # if not vibrant:
+            dest.alpha_composite(frame.opacity(1 if not vibrant else vibrant).image, (left + dx, top + dy))
+            dest.alpha_composite(blend(bg, fg, 2), (0, 0))
+
+            return composite_at(Frame(fg), dest, anchor)
+        
         bg = dest.filter(ImageFilter.GaussianBlur(abs(frost)))
         region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
-
-        rg_data = region.getdata()
-        fr_data = frame.image.getdata()
-        new_data = []
-
-        for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
-            comp = 255 if frost < 0 else a
-            new_data.append((r, g, b, 0 if fa <= 10 else comp))
-        
-        region.putdata(new_data)
-        dest.alpha_composite(region, (left + dx, top + dy))
+        dest.alpha_composite(blend(region, frame.image), (left + dx, top + dy))
 
     dest.alpha_composite(frame.image, (left + dx, top + dy))
 

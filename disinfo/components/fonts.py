@@ -5,12 +5,13 @@ from pathlib import Path
 register = {}
 
 class TTFFont:
-    def __init__(self, path: str, size: int, license: str = 'unknown'):
+    def __init__(self, path: str, size: int, license: str = 'unknown', credit: str = ''):
         self.path = Path(path)
         self.filename = self.path.name
         self.size = size
         self.font = ImageFont.truetype(path, size)
         self.license = license
+        self.credit = credit
         if not self.filename in register:
             register[self.filename] = self
 
@@ -154,4 +155,16 @@ atc = TTFFont('assets/fonts/ATC.ttf', 16)
 pixwriter = TTFFont('assets/fonts/5pixwriter.ttf', 16, license='CC-BY-SA')
 double01 = TTFFont('assets/fonts/double01.ttf', 8, license='free (nc)')
 double01b = TTFFont('assets/fonts/double01b.ttf', 8, license='free (nc)')
+everyday = TTFFont('assets/fonts/Everyday.ttf', 10, license='free (nc)') # no accents
+exsmall = TTFFont('assets/fonts/Extremely-Small-Fonts.ttf', 4, license='free (nc)')
+fffextra = TTFFont('assets/fonts/FFFEXTRA.TTF', 8, license='free (nc)') # cloverleaf
+gaiatype = TTFFont('assets/fonts/Gaiatype.ttf', 16, license='CC0')
+mecha_cond = TTFFont('assets/fonts/Mecha_Condensed.ttf', 16, license='free (nc)')
+mecha_bold = TTFFont('assets/fonts/Mecha_Bold.ttf', 16, license='free (nc)')
+mecha_cb = TTFFont('assets/fonts/Mecha_Condensed_Bold.ttf', 16, license='free (nc)')
+mecha = TTFFont('assets/fonts/Mecha.ttf', 16, license='free (nc)')
+serifpx7 = TTFFont('assets/fonts/serif_pixel-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
+zx_spectrum = TTFFont('assets/fonts/zx_spectrum-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
+zx_spectrum_b = TTFFont('assets/fonts/zx_spectrum-7_bold.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
+
 

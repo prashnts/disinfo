@@ -32,8 +32,12 @@
             filter: url('#gamma');
         }
 
-        img#pico, img#screen2 {
+        img#pico {
             height: 240px;
+        }
+
+        img#screen2 {
+            width: 240px;
         }
 
         img#screen {
@@ -55,16 +59,27 @@
         #controls {
             margin: 15px 0;
             text-align: center;
+            max-width: 300px;
+        }
+
+        .main {
+            display: flex;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
     <h1>disinfo!</h1>
-    <img src='' id='screen'/>
-    <img src='' id='screen2'/>
-    <img src='' id='pico'/>
-    <div id='controls'>
+    <div class="main">
+        <div class="screens">
+            <img src='' id='screen'/>
+            <img src='' id='screen2'/>
+            <img src='' id='pico'/>
+        </div>
+        <div id='controls'>
+        </div>
     </div>
+
     <svg height="0">
         <filter id="gamma">
             <feComponentTransfer>

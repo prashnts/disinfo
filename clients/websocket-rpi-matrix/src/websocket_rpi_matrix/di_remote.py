@@ -302,6 +302,7 @@ class AdafruitRemote:
         
 @dataclass
 class ToFSensor:
+    # Add: 0x29
     tof: VL53L5CX = None
     distance_mm: list[int] = None
     masked_distance_mm: list[int] = None
@@ -553,6 +554,8 @@ class Buzzer:
             self._play(hash_, self.MELODIES['nokia'])
         elif params == 'fmart':
             self._play(hash_, self.MELODIES['family_mart'], scale=1.25)
+        elif params == 'fmart.mid':
+            self._play(hash_, self.MELODIES['family_mart'], scale=1.35)
         elif params == 'fmart.slow':
             self._play(hash_, self.MELODIES['family_mart'], scale=2)
         elif params == 'fmart2':
@@ -570,6 +573,7 @@ class Buzzer:
         try:
             buzzer = ModulinoBuzzer(bus, address=int(conf.buzzer_address, base=16))
             buzz = cls(spk=buzzer, enabled=True, **kwargs)
+            # buzz.act('fmart.mid', '_init')
             buzz.act('boop', '_init')
             return buzz
         except Exception as e:

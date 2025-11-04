@@ -53,7 +53,12 @@ class NewsStory(HashModel):
             render_emoji(map[self.category], size=10), 
             text(self.category.upper(), color="#e5e5e5b0")
         ], gap=1)
-        stuff = div(cat, padding=(1, 2, 1, 2), radius=3, background="#232A54A3", border=1, border_color="#120f2cff")
+        stuff = div(cat,
+                    padding=(1, 2, 1, 2),
+                    radius=(2, 0, 0, 2),
+                    background="#232A54A3",
+                    border=1,
+                    border_color="#120f2cff",)
         return stuff
 
     @classmethod
@@ -116,20 +121,6 @@ def kagi_load_stories(fs: FrameState):
     act('buzzer', 'ok', 'news')
 
 
-def draw_news_story(fs: FrameState, st: NewsStory):
-    title_style = TextStyle(font=fonts.double01, width=95, color='#1a1817', outline=1, outline_color='#ffffff28')
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#979796")
-
-    slide = vstack([
-        text(st.title, title_style, multiline=True),
-        div(
-            text(st.short_summary[:60] + '...', sumry_style, multiline=True),
-            background="#2a38644a",
-        ),
-    ], gap=2)
-    
-    return slide
-
 @dataclass
 class AppState:
     story: NewsStory = None
@@ -145,25 +136,29 @@ summary_vscroll = VScroller(40, speed=0.1, pause_at_loop=True, scrollbar=True)
 
 def _news_deck(fs: FrameState):
     kagi_load_stories(fs)
-    div_style = DivStyle(padding=4, radius=4, )
 
-    if not state.story or (state.changed_at + state.change_in) < fs.tick:
+    if (state.changed_at + state.change_in) < fs.tick:
         story = NewsStory.random()
         if len(state.last_stories) > 20:
             state.last_stories = set()
         if story and story.pk not in state.last_stories:
-            state.story = story
+            if random.random() > 0:
+                state.story = story
+                state.last_stories.add(story.pk)
+                state.change_in = min(len(story.title) // 10, 15) + 3
+            else:
+                state.story = None
+                state.change_in = 60
+            
             state.changed_at = fs.tick
-            state.last_stories.add(story.pk)
             summary_vscroll.reset_position()
 
     st = state.story
-
     if not st:
         return
 
-    title_style = TextStyle(font=fonts.double01, width=95, color="#111010", outline=1, outline_color='#ffffff28')
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#2A2A2A")
+    title_style = TextStyle(font=fonts.serifpx7, width=95, color="#A3A7A8", outline=1, outline_color="#00000091")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#151515")
 
     summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
 
@@ -173,12 +168,10 @@ def _news_deck(fs: FrameState):
             .draw(fs)),
         (FadeIn('news.story.sumr', .2, delay=.3)
             .mut(
-                div(
-                    summary,
+                div(summary,
                     background="#b6b8bd49",
                     padding=2,
-                    radius=2,
-                ))
+                    radius=2))
             .draw(fs)),
     ], gap=2)
 
@@ -186,12 +179,13 @@ def _news_deck(fs: FrameState):
         vstack([slide], gap=1),
         margin=0,
         padding=4,
-        background="#D9CABF77",
-        radius=3,
-    )
-    f_cat = FadeIn('news.emoji.main', .5, delay=.5).mut(st.emoji_im.opacity(0.9)).draw(fs)
+        background="#50453D00",
+        radius=3)
+    f_cat = FadeIn('news.emoji.main', .5, delay=.5).mut(st.emoji_im).draw(fs)
     f_category = SlideIn('news.story.category', 1, edge='right', delay=1).mut(st.category_emoji).draw(fs)
-    s = composite_at(f_cat, s, 'tr', frost=2, behind=True, dx=-2, dy=10)
+    s = div(composite_at(f_cat, s, 'tr', behind=True, vibrant=0.8, dx=10, dy=10, frost=-2.5),
+        background="#5A4F3C82",
+        radius=(3, 0, 0, 0))
     s = hstack([f_category.rotate(90), s], align='top')
     return s.tag(('news', st.uid))
 
