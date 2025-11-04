@@ -54,8 +54,8 @@ fast_increments = IncrementMap(
 
 display_font_map = DisplayFontMap(
     # duration, delta
-    [0, 30, 420],
-    [fonts.px_op__l, fonts.px_op__xl, fonts.px_op__xxl],
+    [0, 30, 120],
+    [fonts.px_op__xl, fonts.px_op__xl, fonts.zx_spectrum],
 )
 
 def timer_view(fs: FrameState):
@@ -103,7 +103,6 @@ def timer_view(fs: FrameState):
     style_list = TextStyle(font=fonts.px_op__r)
     style_done = TextStyle(font=fonts.px_op__r, color="#b7b7b7")
     style_main = TextStyle(font=fonts.px_op__l)
-    display_style = TextStyle(font=fonts.px_op__xl)
 
     def display(secs: int):
         fontix = bisect.bisect(display_font_map.step, secs) - 1
@@ -138,7 +137,7 @@ def timer_view(fs: FrameState):
 
     rows = []
 
-    if state.last_encoder_at + 5 < fs.tick:
+    if state.mode != 'idle' and state.last_encoder_at + 5 < fs.tick:
         rows.append(display(max(state.duration, 0)))
 
 
@@ -146,7 +145,7 @@ def timer_view(fs: FrameState):
     timers.sort(key=lambda t: t.end)
     for timer in timers:
         rows.append(timecard(timer))
-        trigger = 7 if timer.duration > 10 else 0
+        trigger = 7 if timer.duration > 10 else 1
         if not timer.triggerred and fs.now.diff(timer.end, False).in_seconds() < trigger:
             timer.triggerred = 1
             timer.save()
