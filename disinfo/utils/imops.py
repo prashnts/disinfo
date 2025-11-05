@@ -87,8 +87,10 @@ def perspective_transform(img: Image.Image, src_pts, dst_pts):
 
 @cache
 def image_from_url(url: str, resize: tuple[int, int] = (42, 42)):
+    hash_ = ('img_from_url', url, resize) 
+    fallback = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)), hash_)
     if not url:
-        return None
+        return fallback
     try:
         r = requests.get(url)
         r.raise_for_status()
@@ -98,7 +100,7 @@ def image_from_url(url: str, resize: tuple[int, int] = (42, 42)):
         ratio = min(res_x/img.width, res_y/img.height)
         size = (int(img.width*ratio), int(img.height*ratio))
 
-        img = img.quantize().resize(resize).convert('RGBA')
-        return Frame(img)
-    except requests.RequestException:
-        return None
+        img = img.quantize().resize(size).convert('RGBA')
+        return Frame(img, hash_)
+    except requests.RequestException as e:
+        return fallback

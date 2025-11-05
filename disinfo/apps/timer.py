@@ -55,7 +55,7 @@ fast_increments = IncrementMap(
 display_font_map = DisplayFontMap(
     # duration, delta
     [0, 30, 120],
-    [fonts.px_op__xl, fonts.px_op__xl, fonts.zx_spectrum],
+    [fonts.zx_spectrum, fonts.px_op__r, fonts.px_op__l],
 )
 
 def timer_view(fs: FrameState):
@@ -137,7 +137,7 @@ def timer_view(fs: FrameState):
 
     rows = []
 
-    if state.mode != 'idle' and state.last_encoder_at + 5 < fs.tick:
+    if state.duration > 0 and state.last_encoder_at + 5 < fs.tick:
         rows.append(display(max(state.duration, 0)))
 
 

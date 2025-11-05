@@ -39,7 +39,7 @@ def load_svg_string(svg: str) -> Frame:
 
 def render_emoji(text: str, size: int = 14):
     fontsize = size * 0.8
-    w = size * 1.2
+    w = size * 1
     h = size * 1
     template = f'''<?xml version="1.0" encoding="UTF-8"?>
 <svg width="{w}px" height="{h}px" viewBox="0 0 {w} {h}" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">

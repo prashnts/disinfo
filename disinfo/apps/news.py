@@ -1,5 +1,5 @@
 import pendulum
-import math
+import json
 import requests
 import random
 
@@ -34,10 +34,13 @@ class NewsStory(HashModel):
     created_at: datetime
     primary_image_url: str
     primary_image_caption: str
+    raw: str
 
-    @property
-    def emoji_im(self) -> Frame:
-        return render_emoji(self.emoji, size=60)
+    def emoji_im(self, size=60) -> Frame:
+        return div(render_emoji(self.emoji, size=size), background="#B9A8A8D6", padding=2, radius=2)
+    
+    def cover_im(self, resize=(80, 80)) -> Frame:
+        return image_from_url(self.primary_image_url, resize=resize)
 
     @property
     def category_emoji(self) -> Frame:
@@ -117,6 +120,7 @@ def kagi_load_stories(fs: FrameState):
                 created_at=datetime.now(),
                 primary_image_url=story.get('primary_image', {}).get('url', ''),
                 primary_image_caption=story.get('primary_image', {}).get('caption', ''),
+                raw=json.dumps(story),
             ).save().expire(STALE_IN)
     act('buzzer', 'ok', 'news')
 
@@ -166,27 +170,35 @@ def _news_deck(fs: FrameState):
         (FadeIn('news.story.title', .2, delay=.3)
             .mut(text(st.title, title_style, multiline=True))
             .draw(fs)),
-        (FadeIn('news.story.sumr', .2, delay=.3)
-            .mut(
-                div(summary,
-                    background="#b6b8bd49",
-                    padding=2,
-                    radius=2))
-            .draw(fs)),
+        # (FadeIn('news.story.sumr', .2, delay=.3)
+        #     .mut(
+        #         div(summary,
+        #             background="#b6b8bd49",
+        #             padding=2,
+        #             radius=2))
+        #     .draw(fs)),
     ], gap=2)
 
-    s = div(
-        vstack([slide], gap=1),
+    s = div(vstack([slide], gap=1),
         margin=0,
-        padding=4,
+        padding=(20, 4, 4, 4),
         background="#50453D00",
         radius=3)
-    f_cat = FadeIn('news.emoji.main', .5, delay=.5).mut(st.emoji_im).draw(fs)
-    f_category = SlideIn('news.story.category', 1, edge='right', delay=1).mut(st.category_emoji).draw(fs)
-    s = div(composite_at(f_cat, s, 'tr', behind=True, vibrant=0.7, dx=10, dy=10, frost=-2.5),
-        background="#5A4F3C82",
-        radius=(3, 0, 0, 0))
-    s = hstack([f_category.rotate(90), s], align='top')
+    f_emoji = (FadeIn('news.emoji.main', .5, delay=.5)
+        .mut(div(render_emoji(st.emoji, size=26), background="#29365B36", padding=2, radius=4, border=1, border_color="#0e1f5677"))
+        .draw(fs))
+    f_category = SlideIn('news.story.category', 1, edge='left', delay=1).mut(st.category_emoji).draw(fs)
+    s = composite_at(f_emoji, s, 'tr', behind=True, vibrant=0.7, dx=1, dy=1, frost=.8)
+    f_img = (FadeIn('news.img.main', .5, delay=.5)
+        .mut(st.cover_im((max(s.size), max(s.size))).opacity(0.8))
+        .draw(fs))
+    s = composite_at(f_img, s, 'tl', behind=True, vibrant=0.7, dx=0, dy=0, frost=2.5)
+    s = composite_at(f_category, s, 'tl', dx=3, dy=3)
+    s = div(s, background="#5A4F3C82", radius=(3, 0, 0, 3))
+    # s = hstack([
+    #     f_category,
+    #     div(s, background="#5A4F3C82", radius=(3, 0, 0, 0)),
+    # ], align='top')
     return s.tag(('news', st.uid))
 
 
@@ -199,7 +211,7 @@ def news_app(fs: FrameState):
         deck,
         ease_in=ease.cubic.cubic_in_out,
         style=DivStyle(),
-        transition_duration=.8,
+        transition_duration=.5,
         transition_enter=partial(Resize),
     )
     return w

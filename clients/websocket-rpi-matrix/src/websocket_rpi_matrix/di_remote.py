@@ -30,7 +30,7 @@ from ._vl53lxcx import (
 
 class Config(BaseModel):
     buzzer_enable: bool = True
-    buzzer_address: str = '0x3c'
+    buzzer_address: str = '0x1e'
 
     tof_enable: bool = True
 

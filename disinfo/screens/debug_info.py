@@ -77,7 +77,7 @@ _twilight = get_palette('twilight')
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
-    distance = 1000
+    distance = 3000
 
     dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
     dmm *= (255.0 / distance)
@@ -88,7 +88,7 @@ def tof_info(fs: FrameState):
         img.putpalette(pallette)
         img = img.convert('RGBA')
         img = img.resize((size, size), resample)
-        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}'))
+        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
         return div(frame, style=DivStyle(border=1, border_color='#111111', radius=2))
 
     img1 = _make_img(_plasma, 20, Image.NEAREST)
