@@ -546,6 +546,12 @@ class Buzzer:
             return
         if params == 'boop':
             self._play(hash_, [('D5', 70), ('REST', 100)])
+        elif params == 'rest_1s':
+            self._play(hash_, [('REST', 1000)])
+        elif params == 'encoder':
+            self._play(hash_, [('A5', 10), ('REST', 10)])
+        elif params == 'encoder-':
+            self._play(hash_, [('D5', 10), ('REST', 10)])
         elif params == 'ok':
             self._play(hash_, [('E5', 125)])
         elif params == 'siren':
@@ -574,7 +580,9 @@ class Buzzer:
             buzzer = ModulinoBuzzer(bus, address=int(conf.buzzer_address, base=16))
             buzz = cls(spk=buzzer, enabled=True, **kwargs)
             # buzz.act('fmart.mid', '_init')
+            buzz.act('encoder', '_init')
             buzz.act('boop', '_init')
+            buzz.act('encoder', '_init')
             return buzz
         except Exception as e:
             print('[Buzzer] Setup failed', str(e))
@@ -631,13 +639,13 @@ def sensor_loop(sensors: dict, callback=None):
                     print(f"[DI Remote] Error updating sensor {name}: {e}")
 
         if callback:
-            acts = callback(payload)
-            if acts:
-                for (actuator, cmd, hash_) in acts:
-                    try:
-                        sensors[actuator].act(cmd, hash_)
-                    except:
-                        print(f'Could not actuate {actuator=} for {cmd=}')
+            acts = callback(payload) or []
+            # print(acts)
+            for (actuator, cmd, hash_) in acts:
+                try:
+                    sensors[actuator].act(cmd, hash_)
+                except:
+                    print(f'Could not actuate {actuator=} for {cmd=}')
         else:
             print(payload)
         time.sleep(0.001)

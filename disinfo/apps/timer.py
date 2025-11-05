@@ -85,7 +85,7 @@ def timer_view(fs: FrameState):
         state.direction = encoder_pos > 0
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
-        act('buzzer', 'boop', 'beep')
+        act('buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
 
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
         entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
@@ -146,11 +146,13 @@ def timer_view(fs: FrameState):
     for timer in timers:
         rows.append(timecard(timer))
         trigger = 7 if timer.duration > 10 else 1
-        if timer.triggerred < 2 and fs.now.diff(timer.end, False).in_seconds() < trigger:
+        if timer.triggerred < trigger and fs.now.diff(timer.end, False).in_seconds() <= trigger:
             melody = 'boop' if timer.duration < 10 else 'ok'
             melody = 'fmart' if timer.duration > 25 else melody
             melody = 'fmart.slow' if timer.duration > 180 else melody
             act('buzzer', melody, timer.pk)
+            act('buzzer', 'boop', timer.pk)
+            act('buzzer', 'rest_1s', timer.pk)
             timer.triggerred += 1
             timer.save()
         

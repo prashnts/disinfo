@@ -22,7 +22,7 @@ from disinfo.utils.imops import apply_gamma
 app = FastAPI()
 
 frames = {}
-acts = None
+acts = []
 
 
 def load_frame(channel_name, message: PubSubMessage):
@@ -36,7 +36,7 @@ def load_frame(channel_name, message: PubSubMessage):
 
 def load_acts(channel_name, message: PubSubMessage):
     global acts
-    acts = [message.payload['cmd']]
+    acts = message.payload['cmd']
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)
@@ -77,8 +77,8 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             pass
         if screen in frames:
             await websocket.send_text(json.dumps(frames[screen]))
-            global acts
-            acts = None
+        global acts
+        acts = []
 
 @app.get('/png/{screen}')
 async def get_png_salon(screen: str, scale: int = 1, gamma: float = 1, fmt: str = 'png'):

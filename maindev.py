@@ -10,11 +10,11 @@ from disinfo.drat.data_service import main as data_service_main
 from disinfo.drat.ha_service import main as ha_service_main
 from disinfo.redis import publish
 
-acts = None
+acts = []
 
 def passthru_acts(channel_name, message: PubSubMessage):
     global acts
-    acts = [message.payload['cmd']]
+    acts.append(message.payload['cmd'])
 
 PubSubManager().attach('maindev', ('di.pubsub.acts',), passthru_acts)
 
@@ -26,9 +26,9 @@ def run_sensors():
         global acts
         # print(f"[maindev] Sensor payload: {payload}")
         publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
-        if acts:
+        if len(acts):
             local_acts = acts.copy()
-            acts = None
+            acts = []
             return local_acts
 
     print("[maindev] Setting up sensors")
