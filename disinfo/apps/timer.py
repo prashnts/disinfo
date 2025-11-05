@@ -32,7 +32,7 @@ class TimerEntry(HashModel):
 
 @dataclass
 class State:
-    mode: str = 'create'
+    mode: str = 'init'
     duration: int = 0
     duration_checkpt: int = 0
     last_encoder: int = 0

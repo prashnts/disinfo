@@ -175,7 +175,7 @@ def composite_at(
 
             # if not vibrant:
             dest.alpha_composite(frame.opacity(1 if not vibrant else vibrant).image, (left + dx, top + dy))
-            dest.alpha_composite(blend(bg, fg, 2), (0, 0))
+            dest.alpha_composite(blend(bg, fg, 8), (0, 0))
 
             return composite_at(Frame(fg), dest, anchor)
         
