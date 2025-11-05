@@ -1,9 +1,11 @@
 import io
 import base64
 import json
+import time
 
-from PIL import Image, ImageDraw, ImageEnhance
 from typing import Annotated
+from collections import defaultdict
+from PIL import Image, ImageDraw, ImageEnhance
 from fastapi import FastAPI, WebSocket, Body, Response
 from starlette.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
@@ -17,26 +19,24 @@ from disinfo.epd.m5paper import draw as draw_epd_frame
 from disinfo.utils.imops import dither
 from disinfo.redis import db, publish
 from disinfo.utils.imops import apply_gamma
-# from disinfo.web.telemetry import 
 
 app = FastAPI()
 
 frames = {}
-acts = []
+action_buffer = defaultdict(list)
 
 
 def load_frame(channel_name, message: PubSubMessage):
     dest = message.action
     payload = {
         'img': message.payload['img'],
-        'acts': acts,
+        'acts': action_buffer[dest],
         'd': dest,
     }
     frames[dest] = payload
 
 def load_acts(channel_name, message: PubSubMessage):
-    global acts
-    acts = message.payload['cmd']
+    action_buffer[message.payload['dest']].append(message.payload['cmd'])
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)
@@ -72,13 +72,12 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             msg = json.loads(data)
             telemetry = msg.get('telemetry')
             if telemetry:
+                action_buffer[screen] = []
                 publish('di.pubsub.telemetry', action='update', payload={'data': telemetry})
         except json.JSONDecodeError:
             pass
         if screen in frames:
             await websocket.send_text(json.dumps(frames[screen]))
-        global acts
-        acts = []
 
 @app.get('/png/{screen}')
 async def get_png_salon(screen: str, scale: int = 1, gamma: float = 1, fmt: str = 'png'):

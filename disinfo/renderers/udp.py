@@ -44,7 +44,7 @@ def publish_frame(img):
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
     
-    publish('di.pubsub.frames', action='new-frame' if app_config.name == 'salon' else 'new-frame-pico', payload=dict(img=encoded_img))
+    publish('di.pubsub.frames', action=app_config.name, payload=dict(img=encoded_img))
 
 prev_img = defaultdict(bytes)
 duplicate_timeout = defaultdict(int)

@@ -7,13 +7,14 @@ from io import BytesIO
 from ..compositor import compose_frame
 from ..data_structures import FrameState
 from ..redis import publish
+from disinfo.config import app_config
 
 def publish_frame(img):
     with BytesIO() as buffer:
         img.save(buffer, format='png')
         encoded_img = base64.b64encode(buffer.getvalue()).decode()
 
-    publish('di.pubsub.frames', action='disalon', payload=dict(img=encoded_img))
+    publish('di.pubsub.frames', action=app_config.name, payload=dict(img=encoded_img))
 
 
 def main(fps: int = 60, stats: bool = False):

@@ -8,6 +8,7 @@ from disinfo.data_structures import AppBaseModel, FrameState
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
 from disinfo.utils.color import AppColor
 from disinfo.redis import publish
+from disinfo.config import app_config
 
 
 TriggerType = TypeVar('TriggerType')
@@ -123,4 +124,8 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
         return _read_btn
 
 def act(res, command, hash_):
-    publish('di.pubsub.acts', action='act', payload=dict(cmd=[res, command, hash_], dt=time.monotonic()))
+    publish('di.pubsub.acts',
+        action='act',
+        payload=dict(cmd=[res, command, hash_],
+        dt=time.monotonic(),
+        dest=app_config.name))

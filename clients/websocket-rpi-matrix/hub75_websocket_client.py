@@ -139,7 +139,7 @@ def main(conf: Config):
         try:
             msg = json.loads(msg)
             if msg.get('acts'):
-                acts.append(msg.get('acts'))
+                acts.extend(msg.get('acts'))
 
             bytes_ = base64.b64decode(msg['img'])
             with io.BytesIO(bytes_) as img_io:
