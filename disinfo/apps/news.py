@@ -158,7 +158,7 @@ def _news_deck(fs: FrameState):
         return
 
     title_style = TextStyle(font=fonts.serifpx7, width=95, color="#A3A7A8", outline=1, outline_color="#00000091")
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#151515")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#8B8B8B")
 
     summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
 
@@ -183,7 +183,7 @@ def _news_deck(fs: FrameState):
         radius=3)
     f_cat = FadeIn('news.emoji.main', .5, delay=.5).mut(st.emoji_im).draw(fs)
     f_category = SlideIn('news.story.category', 1, edge='right', delay=1).mut(st.category_emoji).draw(fs)
-    s = div(composite_at(f_cat, s, 'tr', behind=True, vibrant=0.8, dx=10, dy=10, frost=-2.5),
+    s = div(composite_at(f_cat, s, 'tr', behind=True, vibrant=0.7, dx=10, dy=10, frost=-2.5),
         background="#5A4F3C82",
         radius=(3, 0, 0, 0))
     s = hstack([f_category.rotate(90), s], align='top')
