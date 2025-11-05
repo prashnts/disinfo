@@ -147,12 +147,12 @@ def timer_view(fs: FrameState):
         rows.append(timecard(timer))
         trigger = 7 if timer.duration > 10 else 1
         if not timer.triggerred and fs.now.diff(timer.end, False).in_seconds() < trigger:
-            timer.triggerred = 1
-            timer.save()
             melody = 'boop' if timer.duration < 10 else 'ok'
             melody = 'fmart' if timer.duration > 25 else melody
             melody = 'fmart.slow' if timer.duration > 180 else melody
             act('buzzer', melody, timer.pk)
+            timer.triggerred = 1
+            timer.save()
         
     if not rows:
         return
