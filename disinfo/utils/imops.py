@@ -1,6 +1,7 @@
 import io
 import requests
 import numpy as np
+import time
 
 from functools import cache
 from PIL import Image, ImageDraw, ImageEnhance
@@ -86,21 +87,25 @@ def perspective_transform(img: Image.Image, src_pts, dst_pts):
 
 
 @cache
-def image_from_url(url: str, resize: tuple[int, int] = (42, 42)):
+def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
     hash_ = ('img_from_url', url, resize) 
-    fallback = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)), hash_)
+    fallback = Frame(Image.new('RGBA', (2, 2), (0, 0, 0, 0)), hash_)
     if not url:
         return fallback
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=4)
         r.raise_for_status()
-        fp = io.BytesIO(r.content)
-        img = Image.open(fp)
-        res_x, res_y = resize
-        ratio = min(res_x/img.width, res_y/img.height)
-        size = (int(img.width*ratio), int(img.height*ratio))
+        with io.BytesIO(r.content) as fp:
 
-        img = img.quantize().resize(size).convert('RGBA')
+            img = Image.open(fp)
+            res_x, res_y = resize
+            ratio = ratio_fn(res_x/img.width, res_y/img.height)
+            size = (int(img.width*ratio), int(img.height*ratio))
+            midsize = (int(1.5 * size[0]), int(1.5 * size[1]))
+            img = (img
+                .resize(midsize, resample=Image.Resampling.LANCZOS)
+                .resize(size)
+                .convert('RGBA'))
         return Frame(img, hash_)
     except requests.RequestException as e:
         return fallback

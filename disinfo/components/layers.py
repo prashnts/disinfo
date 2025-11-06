@@ -19,6 +19,7 @@ class DivStyle:
     background: str = '#00000000'
     border: int = 0
     border_color: str = '#00000000'
+    clip: bool = True
 
 
 @cache
@@ -110,18 +111,39 @@ def div(
 
     if sum(radius) == 0 and sum(margin) == 0:
         i = Image.new('RGBA', (w, h), ImageColor.getrgb(style.background))
+        i.alpha_composite(frame.image, (o_x, o_y))
     else:
-        i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-        bg = rounded_rectangle(
-            width=w_inner,
-            height=h_inner,
-            radius=radius,
-            fill=style.background,
-            border=style.border,
-            border_color=style.border_color)
-        i.alpha_composite(bg, (margin[1], margin[0]))
+        frame_div = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        frame_div.alpha_composite(frame.image, (o_x, o_y))
 
-    i.alpha_composite(frame.image, (o_x, o_y))
+        i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        i.alpha_composite(
+            rounded_rectangle(
+                width=w_inner,
+                height=h_inner,
+                radius=radius,
+                fill=style.background,
+                border=style.border,
+                border_color=style.border_color),
+            (margin[1], margin[0]))
+        
+        if style.clip:
+            mask = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+            mask.alpha_composite(
+                rounded_rectangle(
+                    width=w_inner,
+                    height=h_inner,
+                    radius=radius,
+                    fill='#FFFFFF',
+                    border=style.border,
+                    border_color='#FFFFFF00'),
+                (margin[1], margin[0]))
+            masked_frame = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+            masked_frame = Image.composite(frame_div, masked_frame, mask)
+            i.alpha_composite(masked_frame, (0, 0))
+        else:
+            i.alpha_composite(frame_div, (0, 0))
+
     return Frame(i, hash=('div', style, frame))
 
 def styled_div(**kwargs):

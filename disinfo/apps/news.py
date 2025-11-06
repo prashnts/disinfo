@@ -58,10 +58,10 @@ class NewsStory(HashModel):
         ], gap=1)
         stuff = div(cat,
                     padding=(1, 2, 1, 2),
-                    radius=(2, 0, 0, 2),
+                    radius=2,
                     background="#232A54A3",
                     border=1,
-                    border_color="#120f2cff",)
+                    border_color="#120f2cff",).tag(self.category)
         return stuff
 
     @classmethod
@@ -93,7 +93,7 @@ CATEGORIES = [
 STALE_IN = 20 * 60
 
 def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
-    cats = requests.get(f'{KAGI_ENDPOINT}/categories').json()['categories']
+    cats = requests.get(f'{KAGI_ENDPOINT}/categories', timeout=10).json()['categories']
     mapping = {}
     for cat in cats:
         if cat['categoryId'] in categories:
@@ -108,7 +108,7 @@ def kagi_load_stories(fs: FrameState):
 
 
     for cat, cid in kagi_get_category_ids(CATEGORIES).items():
-        stories = requests.get(f'{KAGI_ENDPOINT}/categories/{cid}/stories').json()['stories']
+        stories = requests.get(f'{KAGI_ENDPOINT}/categories/{cid}/stories', timeout=10).json()['stories']
         
         for story in stories:
             NewsStory(
@@ -146,13 +146,15 @@ def _news_deck(fs: FrameState):
         if len(state.last_stories) > 20:
             state.last_stories = set()
         if story and story.pk not in state.last_stories:
-            if random.random() > 0:
+            if random.random() > -1:
                 state.story = story
                 state.last_stories.add(story.pk)
-                state.change_in = min(len(story.title) // 10, 15) + 3
+                state.change_in = min(len(story.title) // 10, 15) + 10
             else:
                 state.story = None
-                state.change_in = 60
+                state.change_in = 30
+                state.changed_at = fs.tick
+                return
             
             state.changed_at = fs.tick
             summary_vscroll.reset_position()
@@ -161,8 +163,8 @@ def _news_deck(fs: FrameState):
     if not st:
         return
 
-    title_style = TextStyle(font=fonts.serifpx7, width=95, color="#A3A7A8", outline=1, outline_color="#00000091")
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=95, color="#8B8B8B")
+    title_style = TextStyle(font=fonts.serifpx7, width=100, color="#A3A7A8", outline=1, outline_color="#00000091")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=100, color="#8B8B8B")
 
     summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
 
@@ -170,35 +172,40 @@ def _news_deck(fs: FrameState):
         (FadeIn('news.story.title', .2, delay=.3)
             .mut(text(st.title, title_style, multiline=True))
             .draw(fs)),
-        # (FadeIn('news.story.sumr', .2, delay=.3)
-        #     .mut(
-        #         div(summary,
-        #             background="#b6b8bd49",
-        #             padding=2,
-        #             radius=2))
-        #     .draw(fs)),
+        (FadeIn('news.story.sumr', .2, delay=.3)
+            .mut(
+                div(summary,
+                    background="#0a0e188b",
+                    padding=2,
+                    radius=3))
+            .draw(fs)),
     ], gap=2)
 
-    s = div(vstack([slide], gap=1),
+    s = div(
+        vstack([slide], gap=1),
         margin=0,
         padding=(20, 4, 4, 4),
         background="#50453D00",
         radius=3)
-    f_emoji = (FadeIn('news.emoji.main', .5, delay=.5)
-        .mut(div(render_emoji(st.emoji, size=26), background="#29365B36", padding=2, radius=4, border=1, border_color="#0e1f5677"))
+
+    f_emoji = (FadeIn('news.emoji.main', .5, delay=1)
+        .mut(render_emoji(st.emoji, size=22))
         .draw(fs))
-    f_category = SlideIn('news.story.category', 1, edge='left', delay=1).mut(st.category_emoji).draw(fs)
-    s = composite_at(f_emoji, s, 'tr', behind=True, vibrant=0.7, dx=1, dy=1, frost=.8)
-    f_img = (FadeIn('news.img.main', .5, delay=.5)
-        .mut(st.cover_im((max(s.size), max(s.size))).opacity(0.8))
+    f_img = (FadeIn('news.img.main', 1, delay=.5)
+        .mut(st.cover_im(s.size).opacity(0.7))
         .draw(fs))
-    s = composite_at(f_img, s, 'tl', behind=True, vibrant=0.7, dx=0, dy=0, frost=2.5)
-    s = composite_at(f_category, s, 'tl', dx=3, dy=3)
-    s = div(s, background="#5A4F3C82", radius=(3, 0, 0, 3))
-    # s = hstack([
-    #     f_category,
-    #     div(s, background="#5A4F3C82", radius=(3, 0, 0, 0)),
-    # ], align='top')
+    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=2.5)
+    f_category = Resize('news.story.category', .5, delay=1).mut(st.category_emoji).draw(fs)
+    s = composite_at(f_category, s, 'tr', dx=-3, dy=3)
+    s = div(
+        s,
+        background="#5A4F3C82",
+        radius=(4, 0, 0, 4),
+        margin=(5, 5, 0, 5),
+        border=1,
+        border_color="#7F848F9B")
+    s = composite_at(f_emoji, s, 'tl', dx=10)
+
     return s.tag(('news', st.uid))
 
 

@@ -6,7 +6,7 @@ from disinfo.data_structures import FrameState
 from disinfo.utils import ease
 
 from .elements import Frame
-from .transitions import ScaleIn, ScaleOut, TimedTransition
+from .transitions import ScaleIn, ScaleOut, TimedTransition, Resize
 from .layers import DivStyle, div
 
 
@@ -20,8 +20,8 @@ class Widget:
     wait_time: float = 2
     transition_duration: float = 0.25
     style: DivStyle = DivStyle(padding=3, radius=2, background="#00000085", border=1, border_color="#00000088")
-    transition_enter: TimedTransition[Frame] = ScaleIn
-    transition_exit: TimedTransition[Frame] = ScaleOut
+    transition_enter: TimedTransition[Frame] = Resize
+    transition_exit: TimedTransition[Frame] = Resize
     ease_in: ease.EasingFn = ease.cubic.cubic_in
     ease_out: ease.EasingFn = ease.cubic.cubic_out
 
