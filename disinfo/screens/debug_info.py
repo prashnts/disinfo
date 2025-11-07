@@ -130,7 +130,7 @@ def ir_cam_info(fs: FrameState):
         frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
         return div(frame, style=DivStyle(border=1, border_color='#11111188', radius=2))
 
-    img2 = _make_img(get_palette('managua'), (48, 64), Image.Resampling.LANCZOS)
+    img2 = _make_img(get_palette('twilight'), (48, 64), Image.Resampling.LANCZOS)
 
     info = vstack([
         text(f'MIN: {mint:.1f}'),
