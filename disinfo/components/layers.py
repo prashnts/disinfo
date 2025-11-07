@@ -90,7 +90,7 @@ def div(
     if kwargs:
         style = dc_replace(style, **kwargs)
     if not frame:
-        frame = Frame.fallback(('div', style))
+        return None
 
     pad = style.padding
     margin = style.margin
