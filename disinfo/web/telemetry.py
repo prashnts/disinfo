@@ -79,6 +79,7 @@ class DiTofState(AppBaseModel):
 class DiIRCamState(AppBaseModel):
     render: list[list[float]] = []
     updated_at: float = 0.0
+    enabled: bool = False
 
 
 class DiTelemetryState(AppBaseModel):

@@ -382,13 +382,13 @@ class ToFSensor:
 @dataclass
 class IRCamera:
     mlx: MLX90640 = None
+    enabled: bool = False
     width: int = 32
     height: int = 24
     data: list[int] = field(default_factory=list)
     render: list[list[int]] = field(default_factory=lambda: [[0 for _ in range(24)] for _ in range(32)])
-    refresh_rate: int = RefreshRate.REFRESH_16_HZ
     updated_at: float = 0.0
-    update_frequency: int = 40
+    update_frequency: int = 30
     _n_update: int = 0
 
     def update(self):
@@ -397,7 +397,7 @@ class IRCamera:
             return
         self._n_update = 0
 
-        if not self.mlx:
+        if not self.mlx or self.enabled:
             return
         data = [0] * 768
         try:
@@ -418,6 +418,7 @@ class IRCamera:
             'active': bool(self.mlx),
             'updated_at': self.updated_at,
             'render': self.render,
+            'enabled': self.enabled,
         }
 
     @classmethod
@@ -429,6 +430,12 @@ class IRCamera:
         except Exception as e:
             print(f"[MLX90640] not found: {e}")
             return cls(**kwargs)
+
+    def act(self, params: str, hash_: str):
+        if params == 'start':
+            self.enabled = True
+        elif params == 'stop':
+            self.enabled = False
 
 @dataclass
 class Buzzer:

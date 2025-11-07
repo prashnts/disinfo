@@ -14,7 +14,7 @@ from ..data_structures import FrameState
 from ..drat.app_states import RemoteStateManager
 from disinfo.components.widget import Widget
 from disinfo.components import fonts
-from disinfo.web.telemetry import TelemetryStateManager
+from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.components.elements import Frame
 
 
@@ -78,10 +78,12 @@ _brbg = get_palette('BrBG')
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
-    distance = 3000
-
     dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
-    dmm *= (255.0 / distance)
+    mind = dmm.min()
+    maxd = dmm.max()
+    dmm -= mind
+
+    dmm *= (255.0 / (maxd - mind))
     dmm = np.clip(dmm, 0, 255).astype(np.uint8)
 
     def _make_img(pallette, size, resample):
@@ -92,20 +94,25 @@ def tof_info(fs: FrameState):
         frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
         return div(frame, style=DivStyle(border=1, border_color='#111111', radius=2))
 
-    img1 = _make_img(_plasma, 20, Image.NEAREST)
-    img2 = _make_img(_viridis, 50, Image.Resampling.LANCZOS)
-    img3 = _make_img(_inferno, 30, Image.Resampling.LANCZOS)
-    img4 = _make_img(_twilight, 30, Image.Resampling.LANCZOS)
+    img2 = _make_img(get_palette('viridis'), 32, Image.Resampling.LANCZOS)
+
+    info = vstack([
+        text(f'MIN: {mind:.1f}'),
+        text(f'MAX: {maxd:.1f}'),
+    ])
 
     imgs = vstack([
-        hstack([vstack([img1, img3], gap=2), img2], gap=2),
-        hstack([img4], gap=2)
+        text('ToF'),
+        hstack([img2, info], gap=2),
     ], gap=2)
     return div(imgs, style=DivStyle(border=1, border_color="#252525", background="#0443048F", radius=2, padding=2))
 
 
 def ir_cam_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
+
+    if not telem.ircam.enabled:
+        act('ircam', 'start', str(fs.tick))
 
     if not telem.ircam.render:
         return
@@ -114,9 +121,8 @@ def ir_cam_info(fs: FrameState):
 
     dmm = np.flipud(np.array(telem.ircam.render)).astype('float64')
 
-    span = dmm.flatten()
-    maxt = span.max()
-    mint = span.min()
+    maxt = dmm.max()
+    mint = dmm.min()
 
     dmm = maxt - dmm
     dmm *= (255.0 / (maxt - mint))
@@ -127,7 +133,7 @@ def ir_cam_info(fs: FrameState):
         img.putpalette(pallette)
         img = img.convert('RGBA')
         img = img.resize(size, resample)
-        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
+        frame = Frame(img, hash=('ircam_info', f'v1_{size}_{resample}')).rotate(180)
         return div(frame, style=DivStyle(border=1, border_color='#11111188', radius=2))
 
     img2 = _make_img(get_palette('twilight'), (48, 64), Image.Resampling.LANCZOS)
@@ -154,8 +160,11 @@ def di_rmt(fs: FrameState):
 
 
 def info_content(fs: FrameState):
+    telem = TelemetryStateManager().get_state(fs)
     if not RemoteStateManager().get_state(fs).show_debug:
         sample_vscroll.reset_position()
+        if telem.ircam.enabled:
+            act('ircam', 'stop', str(fs.tick))
         return
 
     header = div(hstack([
@@ -170,8 +179,9 @@ def info_content(fs: FrameState):
     sample_vscroll.set_frame(*font_demo(), pause_offset=header.height + 4)
     info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
     try:
-        tof = ir_cam_info(fs)
-        info = composite_at(tof, info, 'mm', frost=3)
+        tof = tof_info(fs)
+        irc = ir_cam_info(fs)
+        info = composite_at(vstack([tof, irc]), info, 'mm', frost=3)
     except Exception as e:
         print(e)
         pass
