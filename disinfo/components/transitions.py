@@ -121,9 +121,13 @@ class Resize(TimedTransition[Frame]):
         pw, ph = 0, 0
         current = self.curr_value
         pos = self.pos
+        opacity_prev = 1 - pos
+        opacity_curr = pos
         if not self.curr_value:
             current = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)))
             pos = 1 - self.pos
+            opacity_prev = pos
+            opacity_curr = 1 - pos
         if self.prev_value:
             pw, ph = self.prev_value.size
         fw, fh = current.size
@@ -136,8 +140,8 @@ class Resize(TimedTransition[Frame]):
         img = Image.new('RGBA', new_size, (0, 0, 0, 0))
 
         if self.prev_value:
-            composite_at(self.prev_value.opacity(1 - pos).resize(new_size), img, 'mm')
-        composite_at(current.opacity(pos).resize(new_size), img, 'mm')
+            composite_at(self.prev_value.opacity(opacity_prev).resize(new_size), img, 'mm')
+        composite_at(current.opacity(opacity_curr).resize(new_size), img, 'mm')
 
         return Frame(img, hash=self.hash)
 
