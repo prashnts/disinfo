@@ -120,22 +120,24 @@ class Resize(TimedTransition[Frame]):
         self.tick(fs.tick)
         pw, ph = 0, 0
         current = self.curr_value
+        pos = self.pos
         if not self.curr_value:
             current = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)))
+            pos = 1 - self.pos
         if self.prev_value:
             pw, ph = self.prev_value.size
         fw, fh = current.size
         dw, dh = fw - pw, fh - ph
         # amount to change prev size by
-        qw, qh = dw * self.pos, dh * self.pos
+        qw, qh = dw * pos, dh * pos
 
         new_size = ensure_unity_int(pw + qw), ensure_unity_int(ph + qh)
 
         img = Image.new('RGBA', new_size, (0, 0, 0, 0))
 
         if self.prev_value:
-            composite_at(self.prev_value.opacity(1 - self.pos).resize(new_size), img, 'mm')
-        composite_at(current.opacity(self.pos).resize(new_size), img, 'mm')
+            composite_at(self.prev_value.opacity(1 - pos).resize(new_size), img, 'mm')
+        composite_at(current.opacity(pos).resize(new_size), img, 'mm')
 
         return Frame(img, hash=self.hash)
 
