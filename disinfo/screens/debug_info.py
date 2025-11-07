@@ -72,6 +72,7 @@ _plasma = get_palette('plasma')
 _viridis = get_palette('viridis')
 _inferno = get_palette('inferno')
 _twilight = get_palette('twilight')
+_brbg = get_palette('BrBG')
 
 
 def tof_info(fs: FrameState):
@@ -102,6 +103,47 @@ def tof_info(fs: FrameState):
     ], gap=2)
     return div(imgs, style=DivStyle(border=1, border_color="#252525", background="#0443048F", radius=2, padding=2))
 
+
+def ir_cam_info(fs: FrameState):
+    telem = TelemetryStateManager().get_state(fs)
+
+    if not telem.ircam.render:
+        return
+
+    shape = (24, 32)
+
+    dmm = np.flipud(np.array(telem.ircam.render)).astype('float64')
+
+    span = dmm.flatten()
+    maxt = span.max()
+    mint = span.min()
+
+    dmm = maxt - dmm
+    dmm *= (255.0 / (maxt - mint))
+    dmm = np.clip(dmm, 0, 255).astype(np.uint8)
+
+    def _make_img(pallette, size, resample):
+        img = Image.frombytes("P", shape, dmm.tobytes())
+        img.putpalette(pallette)
+        img = img.convert('RGBA')
+        img = img.resize(size, resample)
+        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
+        return div(frame, style=DivStyle(border=1, border_color='#11111188', radius=2))
+
+    img2 = _make_img(get_palette('managua'), (48, 64), Image.Resampling.LANCZOS)
+
+    info = vstack([
+        text(f'MIN: {mint:.1f}'),
+        text(f'MAX: {maxt:.1f}'),
+    ])
+
+    imgs = vstack([
+        text('IR Cam'),
+        hstack([img2, info], gap=2),
+    ], gap=2)
+    return div(imgs, style=DivStyle(border=1, border_color="#252525", background="#0443048F", radius=2, padding=2))
+
+
 def di_rmt(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
@@ -128,9 +170,10 @@ def info_content(fs: FrameState):
     sample_vscroll.set_frame(*font_demo(), pause_offset=header.height + 4)
     info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
     try:
-        tof = tof_info(fs)
+        tof = ir_cam_info(fs)
         info = composite_at(tof, info, 'mm', frost=3)
-    except:
+    except Exception as e:
+        print(e)
         pass
 
     

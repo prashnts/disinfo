@@ -135,7 +135,7 @@ class AppState:
 
 state = AppState()
 
-summary_vscroll = VScroller(40, speed=0.1, pause_at_loop=True, scrollbar=True)
+summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
 
 
 def _news_deck(fs: FrameState):
@@ -163,8 +163,8 @@ def _news_deck(fs: FrameState):
     if not st:
         return
 
-    title_style = TextStyle(font=fonts.serifpx7, width=100, color="#A3A7A8", outline=1, outline_color="#00000091")
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=100, color="#8B8B8B")
+    title_style = TextStyle(font=fonts.serifpx7, width=112, color="#A3A7A8", outline=1, outline_color="#00000091")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B")
 
     summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
 
@@ -172,19 +172,19 @@ def _news_deck(fs: FrameState):
         (FadeIn('news.story.title', .2, delay=.3)
             .mut(text(st.title, title_style, multiline=True))
             .draw(fs)),
-        (FadeIn('news.story.sumr', .2, delay=.3)
-            .mut(
-                div(summary,
-                    background="#0a0e188b",
-                    padding=2,
-                    radius=3))
-            .draw(fs)),
+        # (FadeIn('news.story.sumr', .2, delay=.3)
+        #     .mut(
+        #         div(summary,
+        #             background="#0a0e188b",
+        #             padding=2,
+        #             radius=3))
+        #     .draw(fs)),
     ], gap=2)
 
     s = div(
         vstack([slide], gap=1),
         margin=0,
-        padding=(20, 4, 4, 4),
+        padding=(24, 4, 4, 4),
         background="#50453D00",
         radius=3)
 
@@ -201,7 +201,7 @@ def _news_deck(fs: FrameState):
         s,
         background="#5A4F3C82",
         radius=(4, 0, 0, 4),
-        margin=(5, 5, 0, 5),
+        margin=(8, 5, 0, 5),
         border=1,
         border_color="#7F848F9B")
     s = composite_at(f_emoji, s, 'tl', dx=10)

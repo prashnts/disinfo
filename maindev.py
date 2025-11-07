@@ -32,7 +32,7 @@ def run_sensors():
             return local_acts
 
     print("[maindev] Setting up sensors")
-    conf = Config(buzzer_address='0x1e', apds_proximity_enable=True)
+    conf = Config(buzzer_address='0x1e', apds_proximity_enable=True, tof_enable=False)
     sensors = setup_sensors(conf)
     print("[maindev] Starting sensor thread")
     sensor_loop(sensors, callback)

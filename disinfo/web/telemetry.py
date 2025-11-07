@@ -76,12 +76,17 @@ class DiTofState(AppBaseModel):
     grid: int = 7
     updated_at: float = 0.0
 
+class DiIRCamState(AppBaseModel):
+    render: list[list[float]] = []
+    updated_at: float = 0.0
+
 
 class DiTelemetryState(AppBaseModel):
     remote: DiRemoteState = DiRemoteState()
     light_sensor: DiLightSensorState = DiLightSensorState()
     user: DiUserState = DiUserState()
     tof: DiTofState = DiTofState()
+    ircam: DiIRCamState = DiIRCamState()
     _v: Literal['dit'] = 'dit'
     _readers: set = set()
 
@@ -109,6 +114,9 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
             
             if next_state.tof.updated_at > self.state.tof.updated_at:
                 self.state.tof = next_state.tof
+            
+            if next_state.ircam.updated_at > self.state.ircam.updated_at:
+                self.state.ircam = next_state.ircam
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
             pass

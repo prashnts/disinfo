@@ -5,6 +5,7 @@ import json
 
 from pathlib import Path
 from dataclasses import dataclass, field
+from collections import defaultdict
 from typing import Optional
 
 import board
@@ -12,6 +13,7 @@ import board
 from adafruit_seesaw import digitalio, rotaryio, seesaw
 from adafruit_apds9960.apds9960 import APDS9960
 from adafruit_apds9960 import colorutility
+from adafruit_mlx90640 import MLX90640, RefreshRate
 from pydantic import BaseModel
 
 from .modulino.buzzer import ModulinoBuzzer
@@ -137,7 +139,7 @@ class APDSGesture:
 class LightSensor:
     color: APDSColor16 = field(default_factory=APDSColor16)
     proximity: APDSProximitySensor = field(default_factory=APDSProximitySensor)
-    gesture: APDSGesture = field(default_factory=APDSProximitySensor)
+    gesture: APDSGesture = field(default_factory=APDSGesture)
     update_frequency: int = 10
     _n_update: int = 0
 
@@ -309,8 +311,15 @@ class ToFSensor:
     grid: int = 7
     render: list[list[int]] = None
     updated_at: float = 0.0
+    update_frequency: int = 10
+    _n_update: int = 0
 
     def update(self):
+        if self._n_update < self.update_frequency:
+            self._n_update += 1
+            return
+        self._n_update = 0
+
         if not self.tof:
             return
         if self.tof.check_data_ready():
@@ -367,6 +376,58 @@ class ToFSensor:
             return cls(tof, **kwargs)
         except Exception as e:
             print(f"[VL53L5CX] not found: {e}")
+            return cls(**kwargs)
+
+
+@dataclass
+class IRCamera:
+    mlx: MLX90640 = None
+    width: int = 32
+    height: int = 24
+    data: list[int] = field(default_factory=list)
+    render: list[list[int]] = field(default_factory=lambda: [[0 for _ in range(24)] for _ in range(32)])
+    refresh_rate: int = RefreshRate.REFRESH_16_HZ
+    updated_at: float = 0.0
+    update_frequency: int = 40
+    _n_update: int = 0
+
+    def update(self):
+        if self._n_update < self.update_frequency:
+            self._n_update += 1
+            return
+        self._n_update = 0
+
+        if not self.mlx:
+            return
+        data = [0] * 768
+        try:
+            self.mlx.getFrame(data)
+        except ValueError:
+            return
+
+        self.data = data
+        for h in range(self.height):
+            for w in range(self.width):
+                self.render[w][h] = data[h * 32 + w]
+        self.updated_at = time.time()
+
+    def serialize(self) -> dict:
+        if not self.mlx:
+            return {}
+        return {
+            'active': bool(self.mlx),
+            'updated_at': self.updated_at,
+            'render': self.render,
+        }
+
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        try:
+            mlx = MLX90640(bus)
+            mlx.refresh_rate = RefreshRate.REFRESH_2_HZ
+            return cls(mlx, **kwargs)
+        except Exception as e:
+            print(f"[MLX90640] not found: {e}")
             return cls(**kwargs)
 
 @dataclass
@@ -622,6 +683,7 @@ def setup(conf: Config = None):
         'remote': AdafruitRemote.setup(i2c, conf),
         'tof': ToFSensor.setup(i2c, conf),
         'light_sensor': LightSensor.setup(i2c, conf),
+        'ircam': IRCamera.setup(i2c, conf),
     }
 
 def sensor_loop(sensors: dict, callback=None):
