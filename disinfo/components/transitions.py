@@ -119,9 +119,12 @@ class Resize(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self.tick(fs.tick)
         pw, ph = 0, 0
+        current = self.curr_value
+        if not self.curr_value:
+            current = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)))
         if self.prev_value:
             pw, ph = self.prev_value.size
-        fw, fh = self.curr_value.size
+        fw, fh = current.size
         dw, dh = fw - pw, fh - ph
         # amount to change prev size by
         qw, qh = dw * self.pos, dh * self.pos
@@ -132,7 +135,7 @@ class Resize(TimedTransition[Frame]):
 
         if self.prev_value:
             composite_at(self.prev_value.opacity(1 - self.pos).resize(new_size), img, 'mm')
-        composite_at(self.curr_value.opacity(self.pos).resize(new_size), img, 'mm')
+        composite_at(current.opacity(self.pos).resize(new_size), img, 'mm')
 
         return Frame(img, hash=self.hash)
 
