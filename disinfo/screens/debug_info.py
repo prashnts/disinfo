@@ -111,8 +111,8 @@ def tof_info(fs: FrameState):
 def ir_cam_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
-    if not telem.ircam.enabled:
-        act('ircam', 'start', str(fs.tick))
+    # if not telem.ircam.enabled:
+    act('ircam', 'start', str(fs.tick))
 
     if not telem.ircam.render:
         return
