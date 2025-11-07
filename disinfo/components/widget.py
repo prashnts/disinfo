@@ -28,7 +28,7 @@ class Widget:
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
 
-        if isinstance(self.transition_enter, Resize):
+        if type(self.transition_enter) == Resize:
             transition = self.transition_enter(f'{self.name}.resize', self.transition_duration, self.ease_in)
             return transition.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
 
