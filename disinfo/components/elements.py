@@ -70,6 +70,10 @@ class Frame(UIElement):
     def size(self):
         return self.image.size
 
+    @classmethod
+    def fallback(cls, hash: Any = None, size: tuple[int, int] = (1, 1)) -> 'Frame':
+        return Frame(Image.new('RGBA', size, (0, 0, 0, 0)), hash)
+
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')

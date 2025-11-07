@@ -26,10 +26,15 @@ class Widget:
     ease_out: ease.EasingFn = ease.cubic.cubic_out
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
+        style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
+
+        if isinstance(self.transition_enter, Resize):
+            transition = self.transition_enter(f'{self.name}.resize', self.transition_duration, self.ease_in)
+            return transition.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
+
         enter = self.transition_enter(f'{self.name}.scalein', self.transition_duration, self.ease_in)
         exit = self.transition_exit(f'{self.name}.scaleout', self.transition_duration, self.ease_out)
         if self.frame:
-            style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
             exit.reset()
             return enter.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
         else:
