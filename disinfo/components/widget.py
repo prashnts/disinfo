@@ -27,17 +27,17 @@ class Widget:
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
+        transition = self.transition_enter(f'{self.name}.resize', self.transition_duration, self.ease_in)
+        hash_ = self.frame.hash if self.frame else ('widgetframe', self.name)
 
-        if type(self.transition_enter) == Resize:
-            transition = self.transition_enter(f'{self.name}.resize', self.transition_duration, self.ease_in)
-            return transition.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
+        if type(transition) == Resize:
+            return transition.mut(div(self.frame, style).tag(hash_)).draw(fs)
 
-        enter = self.transition_enter(f'{self.name}.scalein', self.transition_duration, self.ease_in)
         exit = self.transition_exit(f'{self.name}.scaleout', self.transition_duration, self.ease_out)
         if self.frame:
             exit.reset()
-            return enter.mut(div(self.frame, style).tag(self.frame.hash)).draw(fs)
+            return transition.mut(div(self.frame, style).tag(hash_)).draw(fs)
         else:
-            enter.reset()
-            if enter.curr_value and not exit.finished:
-                return exit.mut(enter.curr_value).draw(fs)
+            transition.reset()
+            if transition.curr_value and not exit.finished:
+                return exit.mut(transition.curr_value).draw(fs)
