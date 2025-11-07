@@ -397,7 +397,7 @@ class IRCamera:
             return
         self._n_update = 0
 
-        if not self.mlx or self.enabled:
+        if not self.mlx or not self.enabled:
             return
         data = [0] * 768
         try:
