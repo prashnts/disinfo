@@ -68,13 +68,6 @@ def get_palette(name):
     arr = arr[:, :, 0:3]
     return arr.tobytes()
 
-_plasma = get_palette('plasma')
-_viridis = get_palette('viridis')
-_inferno = get_palette('inferno')
-_twilight = get_palette('twilight')
-_brbg = get_palette('BrBG')
-
-
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
 
