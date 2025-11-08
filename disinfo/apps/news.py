@@ -22,7 +22,7 @@ from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils import ease
 from disinfo.utils.imops import image_from_url
-from disinfo.utils.cairo import load_svg_string, render_emoji
+from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 
 
 class NewsStory(HashModel):
@@ -136,6 +136,7 @@ class AppState:
 state = AppState()
 
 summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
+kagi_news = load_svg('assets/kagi_news_full.svg', 0.2)
 
 
 def _news_deck(fs: FrameState):
@@ -184,7 +185,7 @@ def _news_deck(fs: FrameState):
     s = div(
         vstack([slide], gap=1),
         margin=0,
-        padding=(24, 4, 4, 4),
+        padding=(16, 4, 10, 4),
         background="#50453D00",
         radius=3)
 
@@ -201,10 +202,11 @@ def _news_deck(fs: FrameState):
         s,
         background="#5A4F3C82",
         radius=(4, 0, 0, 4),
-        margin=(8, 5, 0, 5),
+        margin=(8, 0, 0, 0),
         border=1,
         border_color="#7F848F9B")
     s = composite_at(f_emoji, s, 'tl', dx=10)
+    s = composite_at(div(kagi_news.trim(upper=2, lower=2), background='#ffffff55', padding=(0, 2, 0, 2), radius=2).opacity(0.7), s, 'br', dx=-2, dy=-2, frost=2)
 
     return s.tag(('news', st.uid))
 
