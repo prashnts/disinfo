@@ -14,7 +14,7 @@ from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack, place_at, composite_at
 from disinfo.components.layers import div, DivStyle, styled_div
 from disinfo.components.stack import Stack, StackStyle
-from disinfo.components.transitions import Resize, FadeIn, SlideIn
+from disinfo.components.transitions import Resize, FadeIn, SlideIn, ScaleIn, ScaleOut
 from disinfo.components.scroller import VScroller
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
@@ -61,6 +61,7 @@ class NewsStory(HashModel):
                     radius=2,
                     background="#232A54A3",
                     border=1,
+                    margin=2,
                     border_color="#120f2cff",).tag(self.category)
         return stuff
 
@@ -79,6 +80,10 @@ class NewsStory(HashModel):
         items = list(cls.iter_items())
         if items:
             return random.choice(items)
+
+    @classmethod
+    def count(cls) -> int:
+        return len(cls.all_pks())
 
 
 KAGI_ENDPOINT = 'https://news.kagi.com/api/batches/latest'
@@ -130,13 +135,16 @@ class AppState:
     story: NewsStory = None
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 15
+    change_in: float = 25
+    min_change_in: float = 15
+    details: bool = False
+    detail_in: float = 10
     last_stories: set = field(default_factory=set)
 
 state = AppState()
 
 summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
-kagi_news = load_svg('assets/kagi_news_full.svg', 0.2)
+kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=2)
 
 
 def _news_deck(fs: FrameState):
@@ -150,54 +158,75 @@ def _news_deck(fs: FrameState):
             if random.random() > -1:
                 state.story = story
                 state.last_stories.add(story.pk)
-                state.change_in = min(len(story.title) // 10, 15) + 10
+                state.change_in = min(len(story.title) // 10, 15) + state.min_change_in
             else:
                 state.story = None
-                state.change_in = 30
+                state.change_in = state.min_change_in
                 state.changed_at = fs.tick
                 return
             
             state.changed_at = fs.tick
             summary_vscroll.reset_position()
 
-    st = state.story
+    st: NewsStory = state.story
     if not st:
         return
 
-    title_style = TextStyle(font=fonts.serifpx7, width=112, color="#A3A7A8", outline=1, outline_color="#00000091")
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B")
+    state.details = (state.changed_at + state.detail_in) < fs.tick
 
-    summary = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
 
-    slide = vstack([
-        (FadeIn('news.story.title', .2, delay=.3)
+    title_style = TextStyle(
+        font=fonts.mixserif if not state.details else fonts.scientifica__r,
+        width=112,
+        color="#A3A7A8",
+        outline=1,
+        spacing=2,
+        outline_color="#000000AF")
+    sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B", spacing=2)
+
+    divblock = styled_div(
+        background='#ffffff55',
+        padding=(0, 2, 0, 2),
+        radius=2,
+        margin=2)
+
+    sum_scroll = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
+    summary = div(sum_scroll,
+        background="#0a0e188b",
+        padding=2,
+        radius=3)
+    
+    if not state.details:
+        summary = summary.resize((1, 1))
+        summary_vscroll.reset_position()
+
+
+    slides = [
+        (Resize('news.story.title', .3)
             .mut(text(st.title, title_style, multiline=True))
             .draw(fs)),
-        # (FadeIn('news.story.sumr', .2, delay=.3)
-        #     .mut(
-        #         div(summary,
-        #             background="#0a0e188b",
-        #             padding=2,
-        #             radius=3))
-        #     .draw(fs)),
-    ], gap=2)
+        (Resize('news.story.sumr', .4)
+            .mut(summary)
+            .draw(fs))
+    ]
 
     s = div(
-        vstack([slide], gap=1),
+        vstack(slides, gap=2),
         margin=0,
-        padding=(16, 4, 10, 4),
+        padding=(16, 4, 6, 4),
         background="#50453D00",
         radius=3)
 
-    f_emoji = (FadeIn('news.emoji.main', .5, delay=1)
-        .mut(render_emoji(st.emoji, size=22))
+    f_img = (Resize('news.img.main', .5)
+        .mut(st.cover_im(s.size).opacity(0.2 if state.details else 1).tag(('storycover', st.pk)))
         .draw(fs))
-    f_img = (FadeIn('news.img.main', 1, delay=.5)
-        .mut(st.cover_im(s.size).opacity(0.7))
-        .draw(fs))
-    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=2.5)
     f_category = Resize('news.story.category', .5, delay=1).mut(st.category_emoji).draw(fs)
-    s = composite_at(f_category, s, 'tr', dx=-3, dy=3)
+    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
+    s = composite_at(f_category, s, 'tl')
+    f_emoji = (Resize('news.emoji.main', .2, delay=1)
+        .mut(render_emoji(st.emoji, size=26) if state.details else None)
+        .draw(fs))
+    s = composite_at(f_emoji, s, 'tr', dx=-5, dy=10, behind=True)
     s = div(
         s,
         background="#5A4F3C82",
@@ -205,10 +234,9 @@ def _news_deck(fs: FrameState):
         margin=(8, 0, 0, 0),
         border=1,
         border_color="#7F848F9B")
-    s = composite_at(f_emoji, s, 'tl', dx=10)
-    s = composite_at(div(kagi_news.trim(upper=2, lower=2), background='#ffffff55', padding=(0, 2, 0, 2), radius=2).opacity(0.7), s, 'br', dx=-2, dy=-2, frost=2)
+    s = composite_at(divblock(kagi_news_icon).opacity(0.7), s, 'br', frost=2)
 
-    return s.tag(('news', st.uid))
+    return s.tag(('news', st.pk))
 
 
 news_deck = draw_loop(_news_deck, use_threads=True)
@@ -221,6 +249,5 @@ def news_app(fs: FrameState):
         ease_in=ease.cubic.cubic_in_out,
         style=DivStyle(),
         transition_duration=.5,
-        transition_enter=partial(Resize),
     )
     return w

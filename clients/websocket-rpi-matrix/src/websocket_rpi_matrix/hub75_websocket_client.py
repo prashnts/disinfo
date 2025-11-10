@@ -37,7 +37,7 @@ class RGBMatrixConf(BaseModel):
 
     def matrix_options(self) -> RGBMatrixOptions:
         options = RGBMatrixOptions()
-        for key, value in self.dict().items():
+        for key, value in self.model_dump().items():
             setattr(options, key, value)
         return options
 
@@ -45,7 +45,7 @@ class RGBMatrixConf(BaseModel):
 class Config(BaseModel):
     websocket_url: str = 'wss://disinfo.amd.noop.pw/ws-salon'
     fps: int = 30
-    matrix_conf: RGBMatrixConf
+    matrix_conf: RGBMatrixConf = RGBMatrixConf()
     sensor_conf: SensorConfig = SensorConfig()
 
     @property

@@ -1,7 +1,7 @@
 import os
 import json
 
-from hub75_websocket_client import Config, RGBMatrixConf, main
+from websocket_rpi_matrix.hub75_websocket_client import Config, main
 
 
 if __name__ == "__main__":
@@ -9,6 +9,6 @@ if __name__ == "__main__":
         with open(os.environ.get('DI_WEBSOCKET_CLIENT_CONFIG', '.config.json')) as fp:
             conf = Config(**json.load(fp))
     except FileNotFoundError:
-        conf = Config(matrix_conf=RGBMatrixConf())
+        conf = Config()
 
     main(conf)

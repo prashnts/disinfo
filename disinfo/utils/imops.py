@@ -86,6 +86,13 @@ def perspective_transform(img: Image.Image, src_pts, dst_pts):
     return img.transform((img.width, img.height), Image.PERSPECTIVE, coeffs, Image.BICUBIC)
 
 
+
+@cache
+def _fetch_image(url: str) -> bytes:
+    r = requests.get(url, timeout=4)
+    r.raise_for_status()
+    return r.content
+
 @cache
 def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
     hash_ = ('img_from_url', url, resize) 
@@ -93,10 +100,8 @@ def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
     if not url:
         return fallback
     try:
-        r = requests.get(url, timeout=4)
-        r.raise_for_status()
-        with io.BytesIO(r.content) as fp:
-
+        r = _fetch_image(url)
+        with io.BytesIO(r) as fp:
             img = Image.open(fp)
             res_x, res_y = resize
             ratio = ratio_fn(res_x/img.width, res_y/img.height)

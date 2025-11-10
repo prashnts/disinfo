@@ -52,8 +52,11 @@ A quick brown fox jumps over the lazy dog.
         pauses.append(_p)
         samples.append(demo)
 
-    
-    return vstack(samples, gap=spacing, align='left'), False, pauses
+    demoslide = vstack(samples, gap=spacing, align='left')
+
+    demoslide.image.save('./.debugdemo.png')
+
+    return demoslide, False, pauses
 
 def get_palette(name):
     cmap = cm.get_cmap(name, 256)
