@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageEnhance
 from abc import ABCMeta
 from collections import namedtuple
 from typing import Optional, Union, Any
@@ -48,6 +48,24 @@ class Frame(UIElement):
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
         return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self))
+
+    def brightness(self, factor: float = 1) -> 'Frame':
+        img = self.image.copy()
+        enhance = ImageEnhance.Brightness(img)
+        img = enhance.enhance(factor)
+        return Frame(img, hash=('brightness', factor, self))
+
+    def contrast(self, factor: float = 1) -> 'Frame':
+        img = self.image.copy()
+        enhance = ImageEnhance.Contrast(img)
+        img = enhance.enhance(factor)
+        return Frame(img, hash=('contrast', factor, self))
+
+    def color_(self, factor: float = 1) -> 'Frame':
+        img = self.image.copy()
+        enhance = ImageEnhance.Color(img)
+        img = enhance.enhance(factor)
+        return Frame(img, hash=('color', factor, self))
 
     def __repr__(self) -> str:
         return f'{self.hash}'

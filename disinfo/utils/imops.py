@@ -109,7 +109,7 @@ def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
             midsize = (int(1.5 * size[0]), int(1.5 * size[1]))
             img = (img
                 .resize(midsize, resample=Image.Resampling.LANCZOS)
-                .resize(size)
+                .resize(size, resample=Image.Resampling.BICUBIC)
                 .convert('RGBA'))
         return Frame(img, hash_)
     except requests.RequestException as e:

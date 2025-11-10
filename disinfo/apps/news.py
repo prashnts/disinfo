@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import partial
 from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError
+from pydantic import ValidationError
 
 from disinfo.data_structures import AppBaseModel, FrameState
 from disinfo.components.widget import Widget
@@ -29,12 +30,14 @@ class NewsStory(HashModel):
     title: str
     short_summary: str
     uid: str
+    index: int
     emoji: str
     category: str
     created_at: datetime
     primary_image_url: str
     primary_image_caption: str
     raw: str
+    seen_at: float = 0
 
     def emoji_im(self, size=60) -> Frame:
         return div(render_emoji(self.emoji, size=size), background="#B9A8A8D6", padding=2, radius=2)
@@ -74,6 +77,8 @@ class NewsStory(HashModel):
                 yield cls.get(pk)
             except NotFoundError:
                 continue
+            except ValidationError:
+                continue
     
     @classmethod
     def random(cls):
@@ -83,7 +88,7 @@ class NewsStory(HashModel):
 
     @classmethod
     def count(cls) -> int:
-        return len(cls.all_pks())
+        return len(list(cls.all_pks()))
 
 
 KAGI_ENDPOINT = 'https://news.kagi.com/api/batches/latest'
@@ -107,19 +112,20 @@ def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
 
 
 def kagi_load_stories(fs: FrameState):
-    existing_pk = [pk for pk in NewsStory.all_pks()]
-    if existing_pk:
+    if any(x for x in NewsStory.iter_items()):
         return
 
-
+    ix = 0
     for cat, cid in kagi_get_category_ids(CATEGORIES).items():
-        stories = requests.get(f'{KAGI_ENDPOINT}/categories/{cid}/stories', timeout=10).json()['stories']
+        data = requests.get(f'{KAGI_ENDPOINT}/categories/{cid}/stories', timeout=10).json()
+        stories = data['stories']
         
         for story in stories:
             NewsStory(
                 title=story['title'],
                 short_summary=story['short_summary'],
                 uid=story['id'],
+                index=ix,
                 emoji=story['emoji'],
                 category=cat,
                 created_at=datetime.now(),
@@ -127,6 +133,7 @@ def kagi_load_stories(fs: FrameState):
                 primary_image_caption=story.get('primary_image', {}).get('caption', ''),
                 raw=json.dumps(story),
             ).save().expire(STALE_IN)
+            ix += 1
     act('buzzer', 'ok', 'news')
 
 
@@ -140,6 +147,8 @@ class AppState:
     details: bool = False
     detail_in: float = 10
     last_stories: set = field(default_factory=set)
+    story_timeout: int = 6000
+    count: int = 0
 
 state = AppState()
 
@@ -154,9 +163,12 @@ def _news_deck(fs: FrameState):
         story = NewsStory.random()
         if len(state.last_stories) > 20:
             state.last_stories = set()
-        if story and story.pk not in state.last_stories:
+        if story and (story.seen_at > fs.tick + state.story_timeout or not story.seen_at):
             if random.random() > -1:
                 state.story = story
+                story.seen_at = fs.tick
+                story.save()
+                state.count = NewsStory.count()
                 state.last_stories.add(story.pk)
                 state.change_in = min(len(story.title) // 10, 15) + state.min_change_in
             else:
@@ -213,12 +225,12 @@ def _news_deck(fs: FrameState):
     s = div(
         vstack(slides, gap=2),
         margin=0,
-        padding=(16, 4, 6, 4),
+        padding=(16, 4, 10, 4),
         background="#50453D00",
         radius=3)
 
     f_img = (Resize('news.img.main', .5)
-        .mut(st.cover_im(s.size).opacity(0.2 if state.details else 1).tag(('storycover', st.pk)))
+        .mut(st.cover_im(s.size).brightness(0.3 if state.details else 0.8).opacity(0.7).color_(0.2 if state.details else 0.6).tag(('storycover', st.pk)))
         .draw(fs))
     f_category = Resize('news.story.category', .5, delay=1).mut(st.category_emoji).draw(fs)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
@@ -234,7 +246,11 @@ def _news_deck(fs: FrameState):
         margin=(8, 0, 0, 0),
         border=1,
         border_color="#7F848F9B")
-    s = composite_at(divblock(kagi_news_icon).opacity(0.7), s, 'br', frost=2)
+    s = composite_at(
+        hstack([
+            divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
+            divblock(kagi_news_icon),
+        ]).opacity(0.7), s, 'br', frost=2)
 
     return s.tag(('news', st.pk))
 

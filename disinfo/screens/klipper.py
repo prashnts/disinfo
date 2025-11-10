@@ -103,8 +103,11 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
             self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
 
             if data.payload.get('eta'):
-                eta = pendulum.parse(data.payload['eta'])
-                self.state.completion_time = eta.strftime('%H:%M')
+                try:
+                    eta = pendulum.parse(data.payload['eta'])
+                    self.state.completion_time = eta.strftime('%H:%M')
+                except Exception:
+                    pass
 
 @cache
 def thumbnail_image(thumb_url: str = None):

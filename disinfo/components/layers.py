@@ -152,6 +152,6 @@ def styled_div(**kwargs):
     style = DivStyle(**kwargs)
     def div_(frame: Frame, style=style, **moreargs):
         if moreargs:
-            style = dc_replace(style, **kwargs)
+            style = dc_replace(style, **moreargs)
         return div(frame, style)
     return div_
