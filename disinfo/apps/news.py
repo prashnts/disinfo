@@ -167,7 +167,7 @@ def _news_deck(fs: FrameState):
             if random.random() > -1:
                 state.story = story
                 story.seen_at = fs.tick
-                story.save()
+                story.save().expire(STALE_IN)
                 state.count = NewsStory.count()
                 state.last_stories.add(story.pk)
                 state.change_in = min(len(story.title) // 10, 15) + state.min_change_in
