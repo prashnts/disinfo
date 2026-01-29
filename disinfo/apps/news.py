@@ -22,6 +22,7 @@ from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils import ease
+from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 
@@ -111,6 +112,7 @@ def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
     return mapping
 
 
+@throttle(5000)
 def kagi_load_stories(fs: FrameState):
     if any(x for x in NewsStory.iter_items()):
         return
