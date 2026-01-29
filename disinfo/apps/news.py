@@ -157,7 +157,11 @@ kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=
 
 
 def _news_deck(fs: FrameState):
-    kagi_load_stories(fs)
+    try:
+        kagi_load_stories(fs)
+    except Exception as e:
+        print("Can't load news", str(e))
+        return
 
     if (state.changed_at + state.change_in) < fs.tick:
         story = NewsStory.random()
