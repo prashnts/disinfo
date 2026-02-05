@@ -1,10 +1,8 @@
-import pendulum
 import json
 import requests
 import random
 
 from datetime import datetime
-from functools import partial
 from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError
 from pydantic import ValidationError
@@ -82,6 +80,13 @@ class NewsStory(HashModel):
                 continue
     
     @classmethod
+    def get_by_index(cls, ix: int):
+        try:
+            return [i for i in cls.iter_items() if i.index == ix][0]
+        except IndexError:
+            return None
+
+    @classmethod
     def random(cls):
         items = list(cls.iter_items())
         if items:
@@ -112,10 +117,10 @@ def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
     return mapping
 
 
-@throttle(5000)
-def kagi_load_stories(fs: FrameState):
+@throttle(15000)
+def kagi_load_stories(fs: FrameState) -> bool:
     if any(x for x in NewsStory.iter_items()):
-        return
+        return False
 
     ix = 0
     for cat, cid in kagi_get_category_ids(CATEGORIES).items():
@@ -137,19 +142,20 @@ def kagi_load_stories(fs: FrameState):
             ).save().expire(STALE_IN)
             ix += 1
     act('buzzer', 'ok', 'news')
+    return True
 
 
 @dataclass
 class AppState:
     story: NewsStory = None
+    shuffled: list[int] = None
+    story_index: int = 0
     prev_frame: Frame = None
     changed_at: float = 0
     change_in: float = 25
     min_change_in: float = 15
     details: bool = False
     detail_in: float = 10
-    last_stories: set = field(default_factory=set)
-    story_timeout: int = 6000
     count: int = 0
 
 state = AppState()
@@ -157,6 +163,7 @@ state = AppState()
 summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
 kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=2)
 
+sysrandom = random.SystemRandom()
 
 def _news_deck(fs: FrameState):
     try:
@@ -164,30 +171,24 @@ def _news_deck(fs: FrameState):
     except Exception as e:
         print("Can't load news", str(e))
         return
+    state.count = NewsStory.count()
+    if not state.shuffled:
+        indices = list(range(state.count + 1))
+        sysrandom.shuffle(indices)
+        state.shuffled = indices
 
     if (state.changed_at + state.change_in) < fs.tick:
-        story = NewsStory.random()
-        if len(state.last_stories) > 20:
-            state.last_stories = set()
-        if story and (story.seen_at > fs.tick + state.story_timeout or not story.seen_at):
-            if random.random() > -1:
-                state.story = story
-                story.seen_at = fs.tick
-                story.save().expire(STALE_IN)
-                state.count = NewsStory.count()
-                state.last_stories.add(story.pk)
-                state.change_in = min(len(story.title) // 10, 15) + state.min_change_in
-            else:
-                state.story = None
-                state.change_in = state.min_change_in
-                state.changed_at = fs.tick
-                return
-            
-            state.changed_at = fs.tick
-            summary_vscroll.reset_position()
+        state.count = NewsStory.count()
+        state.story_index += 1
+        state.changed_at = fs.tick
+        summary_vscroll.reset_position()
 
-    st: NewsStory = state.story
+    story_index = state.shuffled[state.story_index]
+
+    st: NewsStory = NewsStory.get_by_index(story_index)
     if not st:
+        state.story_index = 0
+        state.shuffled = None
         return
 
     state.details = (state.changed_at + state.detail_in) < fs.tick
@@ -203,10 +204,10 @@ def _news_deck(fs: FrameState):
     sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B", spacing=2)
 
     divblock = styled_div(
-        background='#ffffff55',
+        background="#ffffff49",
         padding=(0, 2, 0, 2),
         radius=2,
-        margin=2)
+        margin=1)
 
     sum_scroll = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
     summary = div(sum_scroll,
@@ -231,12 +232,12 @@ def _news_deck(fs: FrameState):
     s = div(
         vstack(slides, gap=2),
         margin=0,
-        padding=(16, 4, 10, 4),
+        padding=(16, 4, 5, 4),
         background="#50453D00",
         radius=3)
 
     f_img = (Resize('news.img.main', .5)
-        .mut(st.cover_im(s.size).brightness(0.3 if state.details else 0.8).opacity(0.7).color_(0.2 if state.details else 0.6).tag(('storycover', st.pk)))
+        .mut(st.cover_im(s.size).brightness(0.3 if state.details else 0.8).opacity(0.9).color_(0.2 if state.details else 0.6).tag(('storycover', st.pk)))
         .draw(fs))
     f_category = Resize('news.story.category', .5, delay=1).mut(st.category_emoji).draw(fs)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
@@ -251,12 +252,12 @@ def _news_deck(fs: FrameState):
         radius=(4, 0, 0, 4),
         margin=(8, 0, 0, 0),
         border=1,
-        border_color="#7F848F9B")
+        border_color="#15501A9B")
     s = composite_at(
-        hstack([
-            divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
+        vstack([
             divblock(kagi_news_icon),
-        ]).opacity(0.7), s, 'br', frost=2)
+            divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
+        ], align='right', gap=1).opacity(1), s, 'tr', frost=2, dy=2)
 
     return s.tag(('news', st.pk))
 
