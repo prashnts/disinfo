@@ -1,4 +1,5 @@
 import json
+import time
 import requests
 import random
 
@@ -139,7 +140,7 @@ def kagi_load_stories(fs: FrameState) -> bool:
                 primary_image_url=story.get('primary_image', {}).get('url', ''),
                 primary_image_caption=story.get('primary_image', {}).get('caption', ''),
                 raw=json.dumps(story),
-            ).save().expire(STALE_IN)
+            ).save()
             ix += 1
     act('buzzer', 'ok', 'news')
     return True
@@ -164,6 +165,7 @@ summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
 kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=2)
 
 sysrandom = random.SystemRandom()
+sysrandom.seed(time.time())
 
 def _news_deck(fs: FrameState):
     try:
@@ -171,8 +173,8 @@ def _news_deck(fs: FrameState):
     except Exception as e:
         print("Can't load news", str(e))
         return
-    state.count = NewsStory.count()
     if not state.shuffled:
+        state.count = NewsStory.count()
         indices = list(range(state.count + 1))
         sysrandom.shuffle(indices)
         state.shuffled = indices
@@ -182,6 +184,8 @@ def _news_deck(fs: FrameState):
         state.story_index += 1
         state.changed_at = fs.tick
         summary_vscroll.reset_position()
+        if state.story:
+            state.story.expire(1)
 
     story_index = state.shuffled[state.story_index]
 
@@ -191,6 +195,7 @@ def _news_deck(fs: FrameState):
         state.shuffled = None
         return
 
+    state.story = st
     state.details = (state.changed_at + state.detail_in) < fs.tick
 
 
@@ -199,7 +204,7 @@ def _news_deck(fs: FrameState):
         width=112,
         color="#A3A7A8",
         outline=1,
-        spacing=2,
+        spacing=1,
         outline_color="#000000AF")
     sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B", spacing=2)
 
