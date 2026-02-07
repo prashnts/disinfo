@@ -5,7 +5,7 @@ import random
 
 from datetime import datetime
 from dataclasses import dataclass, field
-from redis_om import HashModel, NotFoundError
+from redis_om import HashModel, NotFoundError, Field
 from pydantic import ValidationError
 
 from disinfo.data_structures import AppBaseModel, FrameState
@@ -26,18 +26,17 @@ from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 
 
-class NewsStory(HashModel):
+class NewsStory(HashModel, index=True):
     title: str
     short_summary: str
-    uid: str
-    index: int
+    uid: str = Field(primary_key=True)
+    index: int = Field(index=True, sortable=True)
     emoji: str
-    category: str
+    category: str = Field(index=True, sortable=True)
     created_at: datetime
     primary_image_url: str
     primary_image_caption: str
     raw: str
-    seen_at: float = 0
 
     def emoji_im(self, size=60) -> Frame:
         return div(render_emoji(self.emoji, size=size), background="#B9A8A8D6", padding=2, radius=2)
@@ -87,11 +86,13 @@ class NewsStory(HashModel):
         except IndexError:
             return None
 
-    @classmethod
-    def random(cls):
-        items = list(cls.iter_items())
-        if items:
-            return random.choice(items)
+    @staticmethod
+    def shuffled_indices():
+        sysrandom = random.SystemRandom()
+        sysrandom.seed(time.time())
+        items = [i.index for i in NewsStory.iter_items()]
+        sysrandom.shuffle(items)
+        return items
 
     @classmethod
     def count(cls) -> int:
@@ -120,8 +121,12 @@ def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
 
 @throttle(15000)
 def kagi_load_stories(fs: FrameState) -> bool:
-    if any(x for x in NewsStory.iter_items()):
-        return False
+    try:
+        if any(x for x in NewsStory.iter_items()):
+            print("[*] Skipping News Update")
+            return False
+    except Exception as e:
+        print(e)
 
     ix = 0
     for cat, cid in kagi_get_category_ids(CATEGORIES).items():
@@ -161,11 +166,9 @@ class AppState:
 
 state = AppState()
 
-summary_vscroll = VScroller(35, speed=0.1, pause_at_loop=True, scrollbar=True)
+summary_vscroll = VScroller(42, speed=0.1, pause_at_loop=True, scrollbar=True)
 kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=2)
 
-sysrandom = random.SystemRandom()
-sysrandom.seed(time.time())
 
 def _news_deck(fs: FrameState):
     try:
@@ -174,14 +177,13 @@ def _news_deck(fs: FrameState):
         print("Can't load news", str(e))
         return
     if not state.shuffled:
-        state.count = NewsStory.count()
-        indices = list(range(state.count + 1))
-        sysrandom.shuffle(indices)
-        state.shuffled = indices
+        state.shuffled = NewsStory.shuffled_indices()
+        state.story_index = 0
 
     if (state.changed_at + state.change_in) < fs.tick:
         state.count = NewsStory.count()
         state.story_index += 1
+        state.story_index %= len(state.shuffled)
         state.changed_at = fs.tick
         summary_vscroll.reset_position()
         if state.story:
@@ -191,7 +193,6 @@ def _news_deck(fs: FrameState):
 
     st: NewsStory = NewsStory.get_by_index(story_index)
     if not st:
-        state.story_index = 0
         state.shuffled = None
         return
 
@@ -200,13 +201,11 @@ def _news_deck(fs: FrameState):
 
 
     title_style = TextStyle(
-        font=fonts.mixserif if not state.details else fonts.scientifica__r,
+        font=fonts.cozette if not state.details else fonts.greybeard,
         width=112,
         color="#A3A7A8",
-        outline=1,
-        spacing=1,
-        outline_color="#000000AF")
-    sumry_style = TextStyle(font=fonts.tamzen__rs, width=112, color="#8B8B8B", spacing=2)
+        spacing=3)
+    sumry_style = TextStyle(font=fonts.scientifica__r, width=112, color="#8B8B8B", spacing=2)
 
     divblock = styled_div(
         background="#ffffff49",
