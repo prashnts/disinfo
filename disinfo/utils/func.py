@@ -1,3 +1,6 @@
+import inspect
+from pathlib import Path
+
 from pydash import py_
 
 
@@ -9,3 +12,10 @@ def throttle(duration: int):
         return py_.throttle(func, duration)
 
     return decorator
+
+
+def uname(level: int = 4):
+    finfo = ''
+    for fi in inspect.stack()[1:level]:
+        finfo += f'<{fi.function}@{fi.lineno}!{Path(fi.filename).name}>'
+    return finfo

@@ -20,6 +20,8 @@ class DivStyle:
     border: int = 0
     border_color: str = '#00000000'
     clip: bool = True
+    height: int | None = None
+    width: int | None = None
 
 
 @cache
@@ -103,8 +105,8 @@ def div(
     if isinstance(style.radius, int):
         radius = (style.radius,) * 4
 
-    w = frame.width + (pad[1] + pad[3]) + (margin[1] + margin[3])
-    h = frame.height + (pad[0] + pad[2]) + (margin[0] + margin[2])
+    w = style.width or frame.width + (pad[1] + pad[3]) + (margin[1] + margin[3])
+    h = style.height or frame.height + (pad[0] + pad[2]) + (margin[0] + margin[2])
     w_inner = frame.width + (pad[1] + pad[3])
     h_inner = frame.height + (pad[0] + pad[2])
 

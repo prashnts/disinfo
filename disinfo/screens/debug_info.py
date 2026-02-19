@@ -25,6 +25,7 @@ def font_demo():
     sample = """\
 10/20/2023 à 12:34
 Le café.
+£€«″"′˝
 A quick brown fox jumps over the lazy dog.
 -> [ ] { } < > # $ % 
 """

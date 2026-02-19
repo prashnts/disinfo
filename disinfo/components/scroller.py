@@ -6,13 +6,16 @@ from typing import Optional
 
 from disinfo.components.elements import Frame
 from disinfo.components.layers import rounded_rectangle
+from disinfo.data_structures import UniqInstance
+from disinfo.utils.func import uname
 
-class Scroller:
+class Scroller(metaclass=UniqInstance):
     _horizontal: bool = False
     _vertical: bool = False
 
     def __init__(self,
         size: int,
+        name: str = None,
         frame: Optional[Frame] = None,
         delta: int = 1,
         speed: float = 0.01,
@@ -37,6 +40,9 @@ class Scroller:
         self.scrollbar = scrollbar
         self.pause_offset = pause_offset
         self._last_target = 0
+        if not name:
+            name = uname()
+        self.name = name
         if frame:
             self._init_scroller(frame, True)
 
@@ -65,8 +71,9 @@ class Scroller:
         self.delta = delta
         return self
 
-    def reset_position(self):
-        self.pos = 0
+    def reset_position(self, confirm: bool = True):
+        if confirm:
+            self.pos = 0
         return self
 
     def _init_scroller(self, frame: Frame, reset: bool):

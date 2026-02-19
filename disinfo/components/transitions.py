@@ -8,6 +8,7 @@ from typing import Literal, Optional, TypeVar, Generic, Union
 from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.utils import ease
 from disinfo.utils.imops import perspective_transform
+from disinfo.utils.func import uname
 
 from .elements import Frame
 from .layers import DivStyle, div
@@ -34,12 +35,14 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
 
     def __init__(
             self,
-            name: str,
-            duration: float,
+            name: str = None,
+            duration: float = .5,
             easing: ease.EasingFn = ease.linear.linear,
             initial: Optional[TransitionValue] = None,
             delay: float = 0,
             reset_on_none: bool = False) -> None:
+        if not name:
+            name = uname()
         self.name = name
         self.duration = duration
         self.delay = delay
@@ -57,7 +60,7 @@ class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
         self.running = False
         self.finished = False
 
-    def mut(self, value: TransitionValue) -> 'TimedTransition':
+    def mut(self, value: TransitionValue) -> 'TimedTransition[TransitionValue]':
         if self.curr_value != value:
             self.pos = 0
             self.running = True
@@ -155,8 +158,8 @@ class ScaleOut(TimedTransition[Frame]):
 class SlideIn(TimedTransition[Frame]):
     def __init__(
         self,
-        name: str,
-        duration: float,
+        name: str = None,
+        duration: float = None,
         easing: ease.EasingFn = ease.linear.linear,
         initial: Optional[Frame] = None,
         edge: Edges = 'bottom',
@@ -250,14 +253,16 @@ class NumberTransition(TimedTransition[float]):
 
 def text_slide_in(
     fs: FrameState,
-    name: str,
     value: str,
     style=TextStyle(),
     edge='bottom',
     duration=0.25,
     easing=ease.linear.linear,
     div_style=None,
-    together=False) -> Frame:
+    together=False,
+    name: str = None) -> Frame:
+    if not name:
+        name = uname(6)
     frames: list[Frame] = []
     if together:
         slide = text(value, style)
@@ -277,7 +282,7 @@ def text_slide_in(
             slide = div(frame, style=div_style)
             frames[i] = slide
     for i, frame in enumerate(frames):
-        slide = (SlideIn(f'txtslidein.{name}.{i}', duration=duration, edge=edge, easing=easing)
+        slide = (SlideIn(f'{name}.{i}', duration=duration, edge=edge, easing=easing)
                 .mut(frame)
                 .draw(fs))
         frames[i] = slide

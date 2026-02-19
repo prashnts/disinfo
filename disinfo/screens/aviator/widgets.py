@@ -71,15 +71,15 @@ def airplane_widget(fs: FrameState, plane: dict) -> Widget:
     frame = hstack([
         flight_icon(plane.get('category', 'A3'), plane.get('alt_baro'), plane.get('track', 0)),
         vstack([
-            text_slide_in(fs, f'avi.w.{plane["hex"]}.flight', plane.get('flight').strip(), TextStyle(font=fonts.px_op_mono_8, color='#106822')),
+            text_slide_in(fs, plane.get('flight').strip(), name=f'avi.w.{plane["hex"]}.flight', style=TextStyle(font=fonts.px_op_mono_8, color='#106822')),
             hstack([
                 flag(hexname),
                 hstack([
-                    text_slide_in(fs, f'avi.w.{plane["hex"]}.dist', f"{plane.get('distance'):0.1f}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
+                    text_slide_in(fs, f"{plane.get('distance'):0.1f}", name=f'avi.w.{plane["hex"]}.dist', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
                     text('km', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
                 ], align='bottom', gap=1),
                 hstack([
-                    text_slide_in(fs, f'avi.w.{plane["hex"]}.alt', f"{alt:0d}", TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
+                    text_slide_in(fs, f"{alt:0d}", name=f'avi.w.{plane["hex"]}.alt', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
                     text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
                 ], align='bottom', gap=1),
             ], gap=2),

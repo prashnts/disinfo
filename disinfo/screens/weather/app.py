@@ -2,22 +2,18 @@ import numpy as np
 
 from colour import Color
 from functools import cache
-from pydash import once
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from disinfo.components import fonts
 from disinfo.components.elements import Frame, StillImage
 from disinfo.components.text import TextStyle, text
-from disinfo.components.transitions import FadeIn
 from disinfo.components.layers import div, DivStyle
 from disinfo.components.layouts import hstack, vstack, composite_at, place_at
 from disinfo.components.spriteim import SpriteIcon
 from disinfo.data_structures import FrameState
 from disinfo.screens.colors import light_gray
-from disinfo.redis import publish
-from disinfo.utils.weather_icons import get_icon_for_condition
 
-from .state import WeatherStateManager, WeatherState
+from .state import get_weather_data
 from .assets import temperature_color
 
 
@@ -36,7 +32,6 @@ s_moon_phase = TextStyle(font=fonts.bitocra7, color='#818284')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 
 
-fetch_on_start = once(lambda: publish('di.pubsub.dataservice', action='fetch_weather'))
 
 @cache
 def moon_phase_image(phase: int) -> StillImage:
@@ -44,9 +39,7 @@ def moon_phase_image(phase: int) -> StillImage:
 
 
 def astronomical_info(fs: FrameState):
-    state = WeatherStateManager().get_state(fs)
-
-    if not state.show_moon_phase:
+    if not (state := get_weather_data(fs)):
         return
     s = state.data
     phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='#000000d0'))
@@ -116,8 +109,8 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
 
 
 def composer(fs: FrameState):
-    fetch_on_start()
-    state = WeatherStateManager().get_state(fs)
+    if not (state := get_weather_data(fs)):
+        return
     s = state.data
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
@@ -126,27 +119,9 @@ def composer(fs: FrameState):
         hstack([
             composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick).rescale(1), 'br'),
             hstack([
-                text(f'{round(s.temperature)}', style=s_temp_value),
+                text(f'{s.temperature}', style=s_temp_value),
                 text('°', style=s_deg_c),
             ], gap=0, align='top'),
         ], gap=2, align='bottom'),
         draw_temp_range(s.temperature, s.t_high, s.t_low),
     ], gap=3, align='center')
-
-
-def persistent_view(fs: FrameState):
-    fetch_on_start()
-    state = WeatherStateManager().get_state(fs)
-    s = state.data
-    icon = Frame(get_icon_for_condition(s.icon_name))
-    weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
-    return div(
-        hstack([
-            icon,
-            hstack([
-                text(f'{round(s.temperature)}', style=s_temp_value),
-                text('°', style=s_deg_c),
-            ], gap=0, align='top'),
-        ], gap=1),
-        style=DivStyle(padding=1, radius=1),
-    ).tag('weather-persistent')

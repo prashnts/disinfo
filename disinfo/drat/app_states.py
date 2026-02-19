@@ -67,6 +67,15 @@ class PubSubManager(metaclass=UniqInstance):
             self.subscribers[uid] = (channels, callback)
         return self
 
+class StateManager(Generic[StateModel], metaclass=UniqInstance):
+    model: StateModel
+
+    def __init__(self):
+        self.state = self.model()
+
+    def get_state(self, fs: Optional[FrameState] = None) -> StateModel:
+        return self.state
+
 class PubSubStateManager(Generic[StateModel], metaclass=UniqInstance):
     model: StateModel
     channels: tuple[str]

@@ -2,7 +2,7 @@ import typer
 import pendulum
 
 from ..redis import set_dict, db, publish
-from .data_service import get_weather, get_random_text, get_metro_info
+from .data_service import get_random_text, get_metro_info
 from disinfo.config import app_config
 
 app = typer.Typer()
@@ -19,10 +19,6 @@ def trigger_metro():
 @trigger_app.command(name='twentytwo')
 def trigger_twenty_two():
     ...
-
-@sync_app.command(name='weather')
-def sync_weather():
-    get_weather()
 
 @sync_app.command(name='numbers')
 def sync_numbers():

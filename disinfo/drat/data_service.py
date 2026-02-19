@@ -41,18 +41,6 @@ class SafeScheduler(Scheduler):
             job.last_run = datetime.datetime.now()
             job._schedule_next_run()
 
-def get_weather():
-    '''Fetch Weather from PirateWeather API.'''
-    forecast_url = f'https://api.pirateweather.net/forecast/{app_config.pw_api_key}/{app_config.latitude},{app_config.longitude}?units={app_config.pw_unit}'
-    try:
-        print('[i] [fetch] weather')
-        r = requests.get(forecast_url)
-        r.raise_for_status()
-        data = r.json()
-        # write out the forecast.
-        publish('di.pubsub.weather', action='update', payload=data)
-    except requests.exceptions.RequestException as e:
-        print('[e] weather', e)
 
 def get_random_text():
     '''Fetch trivia from Numbers API.'''
@@ -91,15 +79,12 @@ def get_washing_machine_info():
 def on_pubsub(channel_name: str, message: PubSubMessage):
     if message.action == 'fetch_metro':
         get_metro_info(force=True)
-    if message.action == 'fetch_weather':
-        get_weather()
     if message.action == 'fetch_numbers':
         get_random_text()
 
 
 scheduler = SafeScheduler(reschedule_on_failure=True)
 
-scheduler.every(15).minutes.do(get_weather)
 scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
 # scheduler.every(1).minutes.do(get_washing_machine_info)

@@ -1,9 +1,10 @@
 from PIL import Image
-from dataclasses import dataclass, replace as dc_replace
+from dataclasses import dataclass, replace as dc_replace, field
 from typing import Optional
 
 from disinfo.data_structures import FrameState
 from disinfo.utils import ease
+from disinfo.utils.func import uname
 
 from .elements import Frame
 from .transitions import ScaleIn, ScaleOut, TimedTransition, Resize
@@ -12,7 +13,7 @@ from .layers import DivStyle, div
 
 @dataclass
 class Widget:
-    name: str
+    name: str = field(default_factory=lambda: uname(5))
     frame: Optional[Frame] = None
     priority: int = 1
     active: bool = True

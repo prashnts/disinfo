@@ -21,6 +21,8 @@ from ..utils.func import throttle
 from ..utils import ease
 from ..data_structures import FrameState
 
+from disinfo.utils.hass import get_entity
+
 scroll_media_title = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
 scroll_artist_name = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
 scroll_album_title = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
@@ -39,10 +41,12 @@ def get_state():
     state = {}
     state['is_visible'] = False
 
-    s = get_dict(rkeys['ha_sonos_beam']).get('new_state')
+    s = get_entity(app_config.speaker_entity)
 
     if not s:
         return state
+    
+    s = s.model_dump()
 
     state['playing'] = s['state'] == 'playing'
     state['paused'] = s['state'] == 'paused'

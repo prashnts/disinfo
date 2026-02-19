@@ -51,14 +51,14 @@ s_colon_2 = [
 def digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
-        text_slide_in(fs, 'dt.dc.hr', t.strftime('%H'), s_hour, 'top'),
+        text_slide_in(fs, t.strftime('%H'), s_hour, 'top'),
         text(':', s_colon[t.microsecond <= 500_000]).reposition(x=1, y=-1),
-        text_slide_in(fs, 'dt.dc.min', t.strftime('%M'), s_minute, 'top'),
+        text_slide_in(fs, t.strftime('%M'), s_minute, 'top'),
     ])
     if seconds:
         return hstack([
             hhmm,
-            text_slide_in(fs, 'dt.dc.sec', t.strftime('%S'), s_seconds, 'top'),
+            text_slide_in(fs, t.strftime('%S'), s_seconds, 'top'),
         ], gap=1)
     return hhmm
 
@@ -70,7 +70,7 @@ def ease_seq(t: float):
         d = (t2 - t) / 2
         return ease.bounce.bounce_out(t - d)
 
-def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
+def _flip_text(fs: FrameState, value: str, text_style: TextStyle, edge: str, background: str = '#111111', together: bool = False):
     div_style = DivStyle(
         background=background,
         margin=(0, 3, 0, 3),
@@ -78,7 +78,7 @@ def _flip_text(fs: FrameState, key: str, value: str, text_style: TextStyle, edge
         radius=3,
         border=1,
         border_color="#2D2D2DB8")
-    content = text_slide_in(fs, key, value, text_style, edge, duration=0.3, easing=ease_seq, div_style=div_style, together=together)
+    content = text_slide_in(fs, value, text_style, edge, duration=0.3, easing=ease_seq, div_style=div_style, together=together)
     content = content.trim(left=2, right=2)
     return content
 
@@ -88,24 +88,24 @@ def flip_info(fs: FrameState, seconds=True):
     bg = "#2D2D2D6E"
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
     mon_day = hstack([
-        _flip_text(fs, 'dt.fi.day', t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
-        _flip_text(fs, 'dt.fi.month', t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
+        _flip_text(fs, t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
+        _flip_text(fs, t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
     ], gap=0)
-    none_day = _flip_text(fs, 'dt.fi.dow', t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True)
+    none_day = _flip_text(fs, t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True)
     return vstack([mon_day, none_day], gap=2, align='right')
 
 def flip_digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     bg = "#5E5E5E4E"
     hhmm = hstack([
-        _flip_text(fs, 'dt.fd.hr', t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
-        _flip_text(fs, 'dt.fd.mn', t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
+        _flip_text(fs, t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
+        _flip_text(fs, t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
         # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
     ], gap=0)
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, 'dt.fd.sec', t.strftime('%S'), s_colon_2[0], 'flip-top', together=True, background=bg),
+            _flip_text(fs, t.strftime('%S'), s_colon_2[0], 'flip-top', together=True, background=bg),
         ], gap=2, align='right')
     return hhmm
 
@@ -117,19 +117,19 @@ def world_clock(fs: FrameState):
                 TextStyle(color=black.hex, font=fonts.tamzen__rs)
             ),
             DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=(1, 1, 1, 2))),
-        text_slide_in(fs, 'dt.wc', t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7), 'top'),
+        text_slide_in(fs, t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7), 'top'),
     ], gap=2)
 
 def day_of_the_week(fs: FrameState):
     t = fs.now
     style = s_day['weekend' if t.day_of_week in (6, 7) else 'weekday']
-    return div(text_slide_in(fs, 'dt.dow', t.strftime('%a').upper(), style['text'], 'top'), style['div'])
+    return div(text_slide_in(fs, t.strftime('%a').upper(), style['text'], 'top'), style['div'])
 
 def date(fs: FrameState):
     t = fs.now
     return hstack([
         day_of_the_week(fs),
-        text_slide_in(fs, 'dt.date', t.strftime('%d/%m'), s_date, 'top'),
+        text_slide_in(fs, t.strftime('%d/%m'), s_date, 'top'),
     ], gap=2, align='bottom')
 
 def glitterify(frame: Frame):
@@ -169,17 +169,17 @@ def date_pattern(fs: FrameState):
 
 def simple(fs: FrameState):
     return div(vstack([
-        text_slide_in(fs, 'dt.sm.clk.h', fs.now.strftime('%H'), edge='right'),
-        text_slide_in(fs, 'dt.sm.clk.m', fs.now.strftime('%M'), edge='right'),
-        text_slide_in(fs, 'dt.sm.clk.s', fs.now.strftime('%S'), edge='right'),
+        text_slide_in(fs, fs.now.strftime('%H'), edge='right'),
+        text_slide_in(fs, fs.now.strftime('%M'), edge='right'),
+        text_slide_in(fs, fs.now.strftime('%S'), edge='right'),
     ]))
 
 def sticky_widget(fs: FrameState):
     return div(
         vstack([
-            text_slide_in(fs, 'dt.sk.clk.h', fs.now.strftime('%H'), s_sticky_h, 'right'),
-            text_slide_in(fs, 'dt.sk.clk.m', fs.now.strftime('%M'), s_sticky_h, 'right'),
-            text_slide_in(fs, 'dt.sk.clk.s', fs.now.strftime('%S'), s_sticky, 'right'),
+            text_slide_in(fs, fs.now.strftime('%H'), s_sticky_h, 'right'),
+            text_slide_in(fs, fs.now.strftime('%M'), s_sticky_h, 'right'),
+            text_slide_in(fs, fs.now.strftime('%S'), s_sticky, 'right'),
         ]),
         style=DivStyle(background='#112244', padding=(1, 1, 1, 2), radius=(0, 0, 2, 2)))
 

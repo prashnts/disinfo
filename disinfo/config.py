@@ -2,6 +2,7 @@ import os
 import json
 
 from typing import Optional
+from pydantic import SecretStr
 
 from .data_structures import AppBaseModel
 
@@ -46,6 +47,10 @@ class Config(AppBaseModel):
     ha_mqtt_username: str
     ha_mqtt_password: str
 
+    # Homeassistant Websocket
+    ha_websocket_url: str = 'wss://hass.amd.noop.pw/api/websocket'
+    ha_token: SecretStr | None = None
+
     # idf mobilité
     idfm_api_key: str
 
@@ -72,7 +77,7 @@ class Config(AppBaseModel):
     udp_panel: list[UDPPanel] = []
 
     # Klipper
-    klipper_host: str = '10.0.1.91'
+    klipper_host: str = 'limn.go.malow.im'
 
     # Bambu
     bambu_printer_id: str = 'ender3'
@@ -81,6 +86,10 @@ class Config(AppBaseModel):
     adsbx_host: str = '10.0.1.131:8080'
 
     shazam: ShazamConfig = ShazamConfig()
+
+    # Music Widget
+    speaker_entity: str = 'media_player.sonos_beam'
+    weather_entity: str = 'weather.reuilly'
 
 
     def replace(self, **kwargs):

@@ -109,7 +109,7 @@ def timer_view(fs: FrameState):
         display_style = TextStyle(font=display_font_map.font[fontix])
         t_mm = secs // 60
         t_ss = secs % 60
-        mmss = text_slide_in(fs, 'timer.main.display', f'{t_mm:02d}:{t_ss:02d}', display_style, edge='top' if state.direction > 0 else 'bottom')
+        mmss = text_slide_in(fs, f'{t_mm:02d}:{t_ss:02d}', display_style, edge='top' if state.direction > 0 else 'bottom')
         return div(mmss, padding=5, margin=1, border=1, border_color="#C7722DFF", radius=3)
 
     def timecard(timer: TimerEntry):

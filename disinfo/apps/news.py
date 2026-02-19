@@ -21,7 +21,7 @@ from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils import ease
-from disinfo.utils.func import throttle
+from disinfo.utils.func import throttle, uname
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 
@@ -81,10 +81,7 @@ class NewsStory(HashModel, index=True):
     
     @classmethod
     def get_by_index(cls, ix: int):
-        try:
-            return [i for i in cls.iter_items() if i.index == ix][0]
-        except IndexError:
-            return None
+        return [i for i in cls.iter_items() if i.index == ix][0]
 
     @staticmethod
     def shuffled_indices():
@@ -121,12 +118,9 @@ def kagi_get_category_ids(categories: list[str]) -> dict[str, str]:
 
 @throttle(15000)
 def kagi_load_stories(fs: FrameState) -> bool:
-    try:
-        if any(x for x in NewsStory.iter_items()):
-            print("[*] Skipping News Update")
-            return False
-    except Exception as e:
-        print(e)
+    if any(x for x in NewsStory.iter_items()):
+        print("[*] Skipping News Update")
+        return False
 
     ix = 0
     for cat, cid in kagi_get_category_ids(CATEGORIES).items():
@@ -158,15 +152,14 @@ class AppState:
     story_index: int = 0
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 35
+    change_in: float = 45
     min_change_in: float = 15
     details: bool = False
-    detail_in: float = 10
+    detail_in: float = 6
     count: int = 0
 
 state = AppState()
 
-summary_vscroll = VScroller(42, speed=0.1, pause_at_loop=True, scrollbar=True)
 kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=2)
 
 
@@ -183,16 +176,13 @@ def _news_deck(fs: FrameState):
     if (state.changed_at + state.change_in) < fs.tick:
         state.count = NewsStory.count()
         state.story_index += 1
-        state.story_index %= len(state.shuffled)
         state.changed_at = fs.tick
-        summary_vscroll.reset_position()
         if state.story:
             state.story.expire(1)
 
-    story_index = state.shuffled[state.story_index]
-
-    st: NewsStory = NewsStory.get_by_index(story_index)
-    if not st:
+    try:
+        st: NewsStory = NewsStory.get_by_index(state.shuffled[state.story_index])
+    except IndexError:
         state.shuffled = None
         return
 
@@ -201,7 +191,7 @@ def _news_deck(fs: FrameState):
 
 
     title_style = TextStyle(
-        font=fonts.cozette if not state.details else fonts.greybeard,
+        font=fonts.cozette if not state.details else fonts.tamzen__rs,
         width=112,
         color="#A3A7A8",
         spacing=3)
@@ -213,43 +203,49 @@ def _news_deck(fs: FrameState):
         radius=2,
         margin=1)
 
-    sum_scroll = summary_vscroll.set_frame(text(st.short_summary, sumry_style, multiline=True)).draw(fs.tick)
-    summary = div(sum_scroll,
-        background="#0a0e188b",
-        padding=2,
+    summary = div(
+        (VScroller(52, speed=0.1, delta=1, pause_at_loop=True, scrollbar=True)
+            .set_frame(text(st.short_summary, sumry_style, multiline=True))
+            .reset_position(not state.details)
+            .draw(fs.tick)),
+        background="#BEB9C928",
+        padding=0,
         radius=3)
-    
+
     if not state.details:
-        summary = summary.resize((1, 1))
-        summary_vscroll.reset_position()
+        summary = summary.resize((summary.width, 1)).opacity(0)
 
-
-    slides = [
-        (Resize('news.story.title', .3)
-            .mut(text(st.title, title_style, multiline=True))
-            .draw(fs)),
-        (Resize('news.story.sumr', .4)
-            .mut(summary)
-            .draw(fs))
-    ]
+    story_title = div(Resize(duration=.2)
+        .mut(text(st.title, title_style, multiline=True))
+        .draw(fs))
+    story_summary = div(
+        Resize(delay=.3).mut(summary).draw(fs),
+        padding=0,
+        radius=2,
+    )
 
     s = div(
-        vstack(slides, gap=2),
+        vstack([story_title, story_summary], gap=4),
         margin=0,
-        padding=(16, 4, 5, 4),
+        padding=(14, 4, 4, 4),
         background="#50453D00",
         radius=3)
+    
 
-    f_img = (Resize('news.img.main', .5)
-        .mut(st.cover_im(s.size).brightness(0.3 if state.details else 0.8).opacity(0.9).color_(0.2 if state.details else 0.6).tag(('storycover', st.pk)))
+    f_img = (Resize()
+        .mut(st.cover_im(s.size)
+             .brightness(0.3 if state.details else 0.8)
+             .opacity(0.9)
+             .color_(0.5 if state.details else 0.8)
+             .tag(('storycover', st.pk)))
         .draw(fs))
-    f_category = Resize('news.story.category', .5, delay=1).mut(st.category_emoji).draw(fs)
-    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
-    s = composite_at(f_category, s, 'tl')
-    f_emoji = (Resize('news.emoji.main', .2, delay=1)
+    f_category = Resize(delay=1).mut(st.category_emoji).draw(fs)
+    f_emoji = (Resize(duration=.2, delay=1)
         .mut(render_emoji(st.emoji, size=26) if state.details else None)
         .draw(fs))
-    s = composite_at(f_emoji, s, 'tr', dx=-5, dy=10, behind=True)
+    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
+    s = composite_at(f_emoji, s, 'mr', dx=-5, dy=10, behind=True, frost=-2)
+    s = composite_at(f_emoji, s, 'mr', dx=-5, dy=10, frost=-2)
     s = div(
         s,
         background="#5A4F3C82",
@@ -262,6 +258,7 @@ def _news_deck(fs: FrameState):
             divblock(kagi_news_icon),
             divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
         ], align='right', gap=1).opacity(1), s, 'tr', frost=2, dy=2)
+    s = composite_at(f_category, s, 'tl', frost=2)
 
     return s.tag(('news', st.pk))
 
@@ -270,11 +267,10 @@ news_deck = draw_loop(_news_deck, use_threads=True)
 
 def news_app(fs: FrameState):
     deck = news_deck(fs)
-    w = Widget(
+    return Widget(
         'di.news',
         deck,
         ease_in=ease.cubic.cubic_in_out,
         style=DivStyle(),
         transition_duration=.5,
     )
-    return w

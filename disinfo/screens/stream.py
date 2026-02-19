@@ -11,6 +11,7 @@ from ..data_structures import FrameState, AppBaseModel
 from ..components.widget import Widget
 
 url = "https://kvm.amd.noop.pw/streamer/stream"
+url = "http://pi-webcam.local/html/cam_pic_new.php?time=1764173339202&pDelay=40000"
 
 def setup_stream():
     client = MJPEGClient(url)

@@ -145,7 +145,7 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     segments = [(s, l) for s, l in segments if s > 0]
 
     return hstack([
-        *[hstack([text_slide_in(fs, f'kl.tr.{state._id}.{l}', f'{int(s)}', muted_small_style), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
+        *[hstack([text_slide_in(fs, f'{int(s)}', muted_small_style, name=f'kl.tr.{state._id}.{l}'), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
     ], gap=2).tag(('klipper.eta', eta))
 
 
@@ -154,8 +154,8 @@ def composer(fs: FrameState, state: PrinterState):
         return
 
     if not state.is_done:
-        completion_time = text_slide_in(fs, 'op.eta', f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'))
-        time_left = text_slide_in(fs, 'op.time_left', f'{state.time_left}', muted_small_style)
+        completion_time = text_slide_in(fs, f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'), name='op.eta')
+        time_left = text_slide_in(fs, f'{state.time_left}', muted_small_style, name='op.time_left')
     else:
         completion_time = None
         time_left = text('Done!', style=muted_small_style)
@@ -167,7 +167,7 @@ def composer(fs: FrameState, state: PrinterState):
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
-            text_slide_in(fs, 'op.progress', f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#888888'), name='op.progress'),
             text_percent_sign,
         ], gap=1, align='top'),
     ], gap=4)
@@ -178,8 +178,8 @@ def composer(fs: FrameState, state: PrinterState):
     ], gap=2)
 
     temp_detail = hstack([
-        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state.extruder_temp)}', muted_small_style)], gap=2),
-        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state.bed_temp)}', muted_small_style)], gap=2),
+        hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name='op.toolt')], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name='op.bedt')], gap=2),
     ], gap=4)
 
     elements = [
@@ -220,13 +220,13 @@ def full_screen_composer(fs: FrameState):
         ]
         verb = verbs[int(fs.tick // 5 % len(verbs))]
 
-        offline_info = text_slide_in(fs, 'op.offline', verb, TextStyle(font=fonts.creep, color='#888888'))
+        offline_info = text_slide_in(fs, verb, TextStyle(font=fonts.creep, color='#888888'), name='op.offline')
         return div(vstack([let_s, offline_info], gap=3, align='center'), style=DivStyle(padding=1, background='#00003f51'))
 
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
-            text_slide_in(fs, 'op.progress', f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888')),
+            text_slide_in(fs, f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888'), name='op.progress'),
             text_percent_sign,
         ], gap=1, align='top'),
     ], gap=4)
@@ -237,8 +237,8 @@ def full_screen_composer(fs: FrameState):
     ], gap=2)
 
     temp_detail = hstack([
-        hstack([toolt_icon, text_slide_in(fs, 'op.toolt', f'{round(state.extruder_temp)}', muted_small_style)], gap=2),
-        hstack([bedt_icon, text_slide_in(fs, 'op.bedt', f'{round(state.bed_temp)}', muted_small_style)], gap=2),
+        hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name='op.toolt')], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name='op.bedt')], gap=2),
     ], gap=4)
 
     elements = [
