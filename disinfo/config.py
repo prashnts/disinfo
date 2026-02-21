@@ -49,6 +49,7 @@ class Config(AppBaseModel):
 
     # Homeassistant Websocket
     ha_websocket_url: str = 'wss://hass.amd.noop.pw/api/websocket'
+    ha_base_url: str = 'https://hass.amd.noop.pw'
     ha_token: SecretStr | None = None
 
     # idf mobilité
@@ -79,8 +80,9 @@ class Config(AppBaseModel):
     # Klipper
     klipper_host: str = 'limn.go.malow.im'
 
+
     # Bambu
-    bambu_printer_id: str = 'ender3'
+    printer_ids: list[str] = ''
 
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'

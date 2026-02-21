@@ -86,18 +86,7 @@ def on_message(client, userdata, msg):
             event['_timestamp'] = arrow.now().isoformat()
             if event['entity_id'] in app_config.monitors.ambient_light_sensors:
                 notify('di.pubsub.lux', action='update', payload=event)
-            if event['entity_id'] == 'sensor.driplant_soil_cap':
-                set_dict(rkeys['ha_driplant_volts'], event)
-            if event['entity_id'] in app_config.monitors.presence_sensors:
-                print(event)
-                notify('di.pubsub.presence', action='update', payload=event)
             on_bambu_message(event)
-    if msg.topic == 'octoPrint/hass/printing':
-        set_dict(rkeys['octoprint_printing'], payload)
-    if msg.topic == 'octoPrint/temperature/bed':
-        set_dict(rkeys['octoprint_bedt'], payload)
-    if msg.topic == 'octoPrint/temperature/tool0':
-        set_dict(rkeys['octoprint_toolt'], payload)
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:
@@ -105,10 +94,6 @@ def on_message(client, userdata, msg):
     if msg.topic == 'zigbee2mqtt/aqara.contact.dishwasher':
         # print('Dishwasher contact:', payload)
         publish('di.pubsub.dishwasher', action='trigger')
-    if msg.topic == 'zigbee2mqtt/ikea.rmt.0x01':
-        if payload['action']:
-            # db.set(rkeys['ha_ikea_rmt_0x01'], msg.payload, px=ttl)
-            publish('di.pubsub.remote', action=rmt_ikea_keymap.get(payload['action'], 'unknown'))
 
 
 def main():

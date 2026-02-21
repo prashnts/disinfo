@@ -2,6 +2,7 @@ import inspect
 from pathlib import Path
 
 from pydash import py_
+from pydash import throttle as py_throttle
 
 
 def throttle(duration: int):
@@ -9,7 +10,7 @@ def throttle(duration: int):
     - duration: (milliseconds) during which func is cached.
     '''
     def decorator(func):
-        return py_.throttle(func, duration)
+        return py_throttle(func, duration)
 
     return decorator
 

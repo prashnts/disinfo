@@ -104,24 +104,3 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
     weather_state.show_moon_phase = True
     weather_state.is_outdated = not data.service_response
     return weather_state
-
-
-class WeatherStateManager(PubSubStateManager[WeatherState]):
-    model = WeatherState
-    channels = ('di.pubsub.weather',)
-
-    def get_state(self, fs: FrameState) -> WeatherState:
-        if not self.state.valid:
-            return self.state
-        s = self.state.data
-        # Sunset time is shown 5 hours before sunset.
-        self.state.show_sunset = s.sunset_time > fs.now > s.sunset_time.subtract(hours=5)
-
-        # Sunrise time is shown after sunset.
-        self.state.show_sunrise = fs.now > s.sunset_time
-
-        # Moon Phase is when sunset is shown and until 3 hours after sunset. (Always shown)
-        self.state.show_moon_phase = True
-        # If the state is not updated for 30 minutes, it's outdated.
-        self.state.is_outdated = (fs.now - s.updated_at).total_seconds() > 30 * 60  # 30 mins.
-        return self.state

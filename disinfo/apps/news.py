@@ -8,20 +8,19 @@ from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError, Field
 from pydantic import ValidationError
 
-from disinfo.data_structures import AppBaseModel, FrameState
+from disinfo.data_structures import FrameState
 from disinfo.components.widget import Widget
 from disinfo.components.text import text, TextStyle
 from disinfo.components.layouts import vstack, hstack, place_at, composite_at
 from disinfo.components.layers import div, DivStyle, styled_div
-from disinfo.components.stack import Stack, StackStyle
-from disinfo.components.transitions import Resize, FadeIn, SlideIn, ScaleIn, ScaleOut
+from disinfo.components.transitions import Resize
 from disinfo.components.scroller import VScroller
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
-from disinfo.web.telemetry import TelemetryStateManager, act
+from disinfo.web.telemetry import act
 from disinfo.screens.drawer import draw_loop
 from disinfo.utils import ease
-from disinfo.utils.func import throttle, uname
+from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 
@@ -195,7 +194,7 @@ def _news_deck(fs: FrameState):
         width=112,
         color="#A3A7A8",
         spacing=3)
-    sumry_style = TextStyle(font=fonts.scientifica__r, width=112, color="#8B8B8B", spacing=2)
+    sumry_style = TextStyle(font=fonts.scientifica__r, width=112, color="#DDDDDD", spacing=2)
 
     divblock = styled_div(
         background="#ffffff49",
@@ -204,11 +203,11 @@ def _news_deck(fs: FrameState):
         margin=1)
 
     summary = div(
-        (VScroller(52, speed=0.1, delta=1, pause_at_loop=True, scrollbar=True)
-            .set_frame(text(st.short_summary, sumry_style, multiline=True))
+        (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=True)
+            .set_frame(div(text(st.short_summary, sumry_style, multiline=True), padding=3))
             .reset_position(not state.details)
             .draw(fs.tick)),
-        background="#BEB9C928",
+        background="#7D7B8128",
         padding=0,
         radius=3)
 
@@ -244,8 +243,6 @@ def _news_deck(fs: FrameState):
         .mut(render_emoji(st.emoji, size=26) if state.details else None)
         .draw(fs))
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
-    s = composite_at(f_emoji, s, 'mr', dx=-5, dy=10, behind=True, frost=-2)
-    s = composite_at(f_emoji, s, 'mr', dx=-5, dy=10, frost=-2)
     s = div(
         s,
         background="#5A4F3C82",
@@ -253,12 +250,17 @@ def _news_deck(fs: FrameState):
         margin=(8, 0, 0, 0),
         border=1,
         border_color="#15501A9B")
+    infos = vstack([
+        divblock(kagi_news_icon),
+        divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
+    ], align='right', gap=1)
     s = composite_at(
-        vstack([
-            divblock(kagi_news_icon),
-            divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
-        ], align='right', gap=1).opacity(1), s, 'tr', frost=2, dy=2)
+        (Resize(duration=.5, delay=.4)
+            .mut(infos if not state.details else None)
+            .draw(fs))
+        , s, 'tr', frost=2, dy=2)
     s = composite_at(f_category, s, 'tl', frost=2)
+    s = composite_at(f_emoji, s, 'tr', dx=-2, dy=2, frost=-2)
 
     return s.tag(('news', st.pk))
 

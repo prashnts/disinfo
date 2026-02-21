@@ -11,7 +11,7 @@ from itertools import chain
 from PIL import Image, ImageDraw, ImageEnhance
 
 from ..compositor import compose_frame
-from ..drat.app_states import LightSensorStateManager, RemoteStateManager
+from ..drat.app_states import LightSensorStateManager, RuntimeStateManager
 from ..data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
@@ -38,7 +38,7 @@ def reencode_frame(img: Image.Image, brightness: float = 1):
 
 # @throttle()
 def publish_frame(img):
-    if not RemoteStateManager().state.action == 'screencap':
+    if not RuntimeStateManager().state.screen_capture:
         return
     with BytesIO() as buffer:
         img.save(buffer, format='png')

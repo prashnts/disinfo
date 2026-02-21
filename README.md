@@ -8,15 +8,16 @@ Lots of things are currently undocumented and unstable.
 
 Connections:
 
-- Homeassistant (over MQTT)
-- Pirate Weather
+- Homeassistant (over Websocket (ongoing))
 - Numbers API
 - IDFM (Paris Metro)
+- Kagi News
 
 Hardware:
 
-- 2x HUB75 RGB LED Matrix 64x64
-- Raspberry Pi (3B+ or better)
+- 6x HUB75 RGB LED Matrix 64x64
+- Raspberry Pi 4B
+- Adafruit Matrix Bonnet
 - Interface to connect the matrix to GPIOs
 - Power Supply
 
@@ -24,16 +25,14 @@ Refer to rgb-led-matrix library for details.
 
 Notes:
 
-- Upgrade pillow (apt is too old) via `pip install --upgrade pillow`
-
-
-Licenses:
-
-- Tamzen
-- Scientifica
-- Pixel Operator
-
-(todo: Attributions)
+- We use `uv` as the package manager. Additional dependencies for cairo and others would require system packages.
+- A demo/dev script is available to start the whole stack:
+    `uv run maindev.py`
+- The following command also sets up an auto-reload dev env:
+    `uv run watchmedo auto-restart -d disinfo -d clients -d assets --patterns="*.py"  --recursive -- uv run maindev.py`
+- The websocket client in clients/ dir is what runs on the Raspberry Pi. A supervisor config handles runtime.
+- We use [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) to communicate with the panels, and there is a vast documentation available there.
+- Fonts are collected from various sources and accompany the licenses.
 
 
 HUB75 Connections to Pi

@@ -1,37 +1,21 @@
 '''
-State managers
+State managers hold runtime-persistent states.
 
-Data Source: A place where we fetch or receive certain data.
-Sources: Periodic / On demand HTTP Requests, MQTT
-State Store: Redis is used to cache the states. Also used to connect multiple processes together.
-Application State
-
-Need: PubSub
-
-A subscriber thread is created. The thread hold a slot for state variable and updates it in background.
-
-
-
+PubSubStateManager uses redis pubsub for inter-process communication.
 '''
-
-import pendulum
 import json
-import time
 
-from datetime import datetime
-from typing import Optional, Generic, TypeVar, Callable, Union
+from typing import Generic, TypeVar, Callable
 from scipy.interpolate import interp1d
 
-from . import idfm
-from ..config import app_config
-from ..redis import get_dict, rkeys, db, publish
-from ..data_structures import FrameState, AppBaseModel, UniqInstance
-from ..utils.time import is_expired
+from disinfo.config import app_config
+from disinfo.redis import db
+from disinfo.data_structures import FrameState, AppBaseModel, UniqInstance
 
 StateModel = TypeVar('StateModel')
 class PubSubMessage(AppBaseModel):
     action: str
-    payload: Optional[dict]
+    payload: dict | None
 
 
 class PubSubManager(metaclass=UniqInstance):
@@ -73,7 +57,7 @@ class StateManager(Generic[StateModel], metaclass=UniqInstance):
     def __init__(self):
         self.state = self.model()
 
-    def get_state(self, fs: Optional[FrameState] = None) -> StateModel:
+    def get_state(self, fs: FrameState | None = None) -> StateModel:
         return self.state
 
 class PubSubStateManager(Generic[StateModel], metaclass=UniqInstance):
@@ -93,84 +77,49 @@ class PubSubStateManager(Generic[StateModel], metaclass=UniqInstance):
     def process_message(self, channel: str, data: PubSubMessage):
         raise NotImplemented
 
-    def get_state(self, fs: Optional[FrameState] = None) -> StateModel:
+    def get_state(self, fs: FrameState | None = None) -> StateModel:
         return self.state
 
 
 
-class CursorState(AppBaseModel):
+class RuntimeState(AppBaseModel):
     x: int = 120
     y: int = 42
 
-class CursorStateManager(PubSubStateManager[CursorState]):
-    model = CursorState
+    # Simulate Motion
+    motion_override: bool = app_config.devmode
+    # Debug info
+    show_debug: bool = False
+    screen_capture: bool = False
+
+    # Extras
+    show_twentytwo: bool = False
+
+class RuntimeStateManager(PubSubStateManager[RuntimeState]):
+    model = RuntimeState
     channels = ('di.pubsub.remote',)
 
-    # TODO: acceleration
-
     def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'up':
-            self.state.y -= 1
-        if data.action == 'down':
-            self.state.y += 1
-        if data.action == 'left':
-            self.state.x -= 1
-        if data.action == 'right':
-            self.state.x += 1
+        match data.action:
+            case 'up':
+                self.state.y -= 1
+            case 'down':
+                self.state.y += 1
+            case 'left':
+                self.state.x -= 1
+            case 'right':
+                self.state.x += 1
+            case 'motion_toggle':
+                self.state.motion_override = not self.state.motion_override
+            case 'show_debug':
+                self.state.show_debug = not self.state.show_debug
+            case 'screencap':
+                self.state.screen_capture = not self.state.screen_capture
+            case 'btn_twentytwo':
+                self.state.show_twentytwo = not self.state.show_twentytwo
+
         self.state.x %= app_config.width
         self.state.y %= app_config.height
-
-
-class RemoteState(AppBaseModel):
-    action: str = 'unknown'
-    pressed_at: Optional[datetime] = None
-    is_visible: bool = False
-    show_debug: bool = False
-
-class RemoteStateManager(PubSubStateManager[RemoteState]):
-    model = RemoteState
-    channels = ('di.pubsub.remote',)
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        if data.action != self.state.action and data.action != 'unknown':
-            self.state.show_debug = data.action == 'btn_debug'
-        self.state.action = data.action
-        self.state.pressed_at = pendulum.now()
-        self.state.is_visible = not self.state.is_visible
-
-    def get_state(self, fs: FrameState) -> RemoteState:
-        s = self.state
-        if is_expired(s.pressed_at, seconds=1, now=fs.now):
-            self.state.action = 'unknown'
-        return s
-
-class PresenceSensorState(AppBaseModel):
-    detected: bool = True
-    detected_at: Optional[datetime] = None
-
-    def present_at(self, now: datetime) -> bool:
-        expired = is_expired(self.detected_at, minutes=app_config.presence_lag_minutes, now=now)
-        return not expired
-
-class PresenceSensorStateManager(PubSubStateManager[PresenceSensorState]):
-    model = PresenceSensorState
-    channels = ('di.pubsub.presence',)
-
-    def __init__(self, entity_id: str):
-        self.entity_id = entity_id
-        super().__init__()
-
-    def _uid(self) -> str:
-        return f'{self.__class__.__name__}.{self.entity_id}'
-
-    def initial_state(self) -> PresenceSensorState:
-        return PresenceSensorState(detected=True, detected_at=pendulum.now())
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update' and data.payload['entity_id'] == self.entity_id:
-            self.state.detected = data.payload['new_state']['state'] == 'on'
-            if self.state.detected:
-                self.state.detected_at = pendulum.now()
 
 
 brightness_min: float = 10

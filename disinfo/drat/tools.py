@@ -31,27 +31,8 @@ def sync_metro():
 
 @trigger_app.command(name='motion')
 def trigger_motion(state: str = 'off'):
-    for entity in app_config.monitors.presence_sensors:
-        payload = {
-            'new_state': {
-                'state': state,
-            },
-            '_timestamp': pendulum.now().isoformat(),
-            'entity_id': entity,
-        }
-        publish('di.pubsub.presence', action='update', payload=payload)
+    publish('di.pubsub.remote', action='motion_toggle')
 
-@trigger_app.command(name='als')
-def trigger_als(state: int = 100):
-    for entity in app_config.monitors.ambient_light_sensors:
-        payload = {
-            'new_state': {
-                'state': state,
-            },
-            '_timestamp': pendulum.now().isoformat(),
-            'entity_id': entity,
-        }
-        publish('di.pubsub.lux', action='update', payload=payload)
 
 if __name__=='__main__':
     app()

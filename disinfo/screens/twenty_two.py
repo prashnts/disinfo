@@ -8,7 +8,7 @@ from ..components.elements import Frame
 from ..components.layouts import composite_at
 from ..components.text import TextStyle, text
 from ..data_structures import FrameState
-from ..drat.app_states import RemoteStateManager
+from ..drat.app_states import RuntimeStateManager
 from ..config import app_config
 
 
@@ -19,7 +19,7 @@ def composer(fs: FrameState):
     twentytwo = t.hour == t.minute == 22
     all_equal = t.hour == t.minute == t.second
 
-    if RemoteStateManager().get_state(fs).action == 'btn_twentytwo':
+    if RuntimeStateManager().get_state(fs).show_twentytwo:
         twentytwo == True
         equal_elements = True
         all_equal = True

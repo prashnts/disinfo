@@ -11,7 +11,7 @@ from ..components.scroller import VScroller
 from ..components.layers import div, DivStyle
 from ..utils.func import throttle
 from ..data_structures import FrameState
-from ..drat.app_states import RemoteStateManager
+from ..drat.app_states import RuntimeStateManager
 from disinfo.components.widget import Widget
 from disinfo.components import fonts
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -158,7 +158,7 @@ def di_rmt(fs: FrameState):
 
 def info_content(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
-    if not RemoteStateManager().get_state(fs).show_debug:
+    if not RuntimeStateManager().get_state(fs).show_debug:
         sample_vscroll.reset_position()
         if telem.ircam.enabled:
             act('ircam', 'stop', str(fs.tick))

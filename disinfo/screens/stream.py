@@ -5,13 +5,13 @@ from PIL import Image
 from mjpeg.client import MJPEGClient
 
 from .drawer import draw_loop
-from ..components.layers import div, DivStyle
-from ..components.elements import Frame, StillImage
-from ..data_structures import FrameState, AppBaseModel
+from ..components.elements import Frame
+from ..data_structures import FrameState
 from ..components.widget import Widget
 
 url = "https://kvm.amd.noop.pw/streamer/stream"
 url = "http://pi-webcam.local/html/cam_pic_new.php?time=1764173339202&pDelay=40000"
+url = None
 
 def setup_stream():
     client = MJPEGClient(url)
@@ -47,12 +47,11 @@ def setup_stream():
 _stream = None
 _client = None
 _last_update = None
-_lock = True
+_prev_url = None
 
 def stream_frame(fs):
-    global _last_update, _stream
-    if _lock or not _stream:
-        print(f"* {_lock=}, {_stream=}")
+    global _last_update, _stream, _prev_url
+    if not _stream:
         return
     try:
         img = next(_stream)
@@ -63,22 +62,22 @@ def stream_frame(fs):
     return Frame(img, hash=('mjpeg', url)).tag('stream')
 
 def draw_stream(fs: FrameState):
-    global _stream, _client, _lock, _last_update
-    if (_last_update and _last_update < (fs.tick - 20)) or not _stream:
+    global _stream, _client, _last_update, _prev_url
+    if (_last_update and _last_update < (fs.tick - 20)) or not _stream or _prev_url != url:
         print("* no updates")
         # reset stream
-        _lock = True
         if _client:
             print("* stopping client")
             _client.stop()
         try:
             time.sleep(5)
+            print(url)
             _stream = setup_stream()
         except Exception as e:
             return None
         _client = next(_stream)
-        _lock = False
         _last_update = fs.tick
+        _prev_url = url
         print("* client started")
     return stream_frame(fs)
 

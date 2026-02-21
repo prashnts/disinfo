@@ -11,7 +11,7 @@ from .components.transitions import FadeIn
 from .components.elements import Frame
 from .components.stack import Stack
 from .data_structures import FrameState
-from .drat.app_states import CursorStateManager, PresenceSensorStateManager, RemoteStateManager
+from .drat.app_states import RuntimeStateManager
 
 from . import screens
 from .screens.solar import AnalogClockStyle
@@ -23,17 +23,21 @@ from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
 from disinfo.apps.news import news_app
+from disinfo.utils.hass import get_entity
 
 
 def should_turn_on_display(fs: FrameState) -> bool:
-    sensors = app_config.presence_sensors
+    s = RuntimeStateManager().get_state(fs)
+    if s.motion_override:
+        return True
 
-    return any([PresenceSensorStateManager(s).state.detected for s in sensors])
+    sensors = [get_entity(x) for x in app_config.presence_sensors]
+    return any(s and s.state == 'on' for s in sensors)
 
 cursor_f = Frame(render_icon(cursor, 3), hash=('cursor', 'v1'))
 
 def draw_btn_test(image, fs: FrameState):
-    s = CursorStateManager().get_state(fs)
+    s = RuntimeStateManager().get_state(fs)
     return place_at(cursor_f.opacity(0.3), image, s.x, s.y, 'tl', frost=1)
 
 @throttle(15_000)
@@ -47,7 +51,6 @@ def p_stack_offset():
 
 
 def compose_big_frame(fs: FrameState):
-    rmt_state = RemoteStateManager().get_state(fs)
     rmt_reader = TelemetryStateManager().remote_reader('comp', fs)
     telermt = TelemetryStateManager().get_state(fs)
     awake = should_turn_on_display(fs)
@@ -108,7 +111,7 @@ def compose_big_frame(fs: FrameState):
 
     composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
 
-    s = CursorStateManager().get_state(fs)
+    s = RuntimeStateManager().get_state(fs)
     pos = rmt_reader('encoder')
     y = pos % app_config.width
     x = pos // y if y > 0 else 42
@@ -120,7 +123,7 @@ def compose_big_frame(fs: FrameState):
         composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
         composite_at(screens.paris_metro.draw(fs), image, 'bm', frost=1.8)
 
-        if app_config.height > 120:
+        if app_config.height >= 120:
             composite_at(stream_widget(fs).draw(fs), image, 'bm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)

@@ -24,6 +24,8 @@ from ..redis import rkeys, get_dict
 from ..utils.func import throttle
 from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..data_structures import FrameState, AppBaseModel
+from disinfo.utils.hass import HaWS
+from disinfo.screens import stream
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
@@ -108,6 +110,13 @@ class BambuStateManager(PubSubStateManager[PrinterState]):
                     self.state.completion_time = eta.strftime('%H:%M')
                 except Exception:
                     pass
+
+def get_state():
+    for printer_id in app_config.printer_ids:
+        cam = HaWS().get_entity(f'camera.{printer_id}_camera')
+
+        if cam:
+            stream.url = app_config.ha_base_url + cam.attributes.get('entity_picture')
 
 @cache
 def thumbnail_image(thumb_url: str = None):
@@ -251,6 +260,7 @@ def full_screen_composer(fs: FrameState):
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
 
 def widget(fs: FrameState):
+    get_state()
     klipper_frame = compose_klipper_state(fs)
     bambu_frame = compose_bambu_state(fs)
 
