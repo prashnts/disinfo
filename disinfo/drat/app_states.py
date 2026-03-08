@@ -94,6 +94,8 @@ class RuntimeState(AppBaseModel):
 
     # Extras
     show_twentytwo: bool = False
+    show_news: bool = False
+    show_metro: bool = False
 
 class RuntimeStateManager(PubSubStateManager[RuntimeState]):
     model = RuntimeState
@@ -111,12 +113,12 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.x += 1
             case 'motion_toggle':
                 self.state.motion_override = not self.state.motion_override
-            case 'show_debug':
-                self.state.show_debug = not self.state.show_debug
             case 'screencap':
                 self.state.screen_capture = not self.state.screen_capture
-            case 'btn_twentytwo':
+            case 'show_twentytwo':
                 self.state.show_twentytwo = not self.state.show_twentytwo
+            case action if action.startswith('show_'):
+                setattr(self.state, action, not getattr(self.state, action))
 
         self.state.x %= app_config.width
         self.state.y %= app_config.height

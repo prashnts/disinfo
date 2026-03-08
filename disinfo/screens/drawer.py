@@ -21,7 +21,8 @@ def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False)
 
     Returns a function which returns the latest frame.
     '''
-    current_state: Optional[FrameState] = None
+    current_args: Optional[tuple] = None
+    current_kwargs: Optional[dict] = dict()
     previous_state: Optional[FrameState] = None
     current_frame: Optional[Frame] = None
 
@@ -32,18 +33,19 @@ def draw_loop(composer: ComposerFn, sleepms: int = 1, use_threads: bool = False)
         nonlocal current_frame, previous_state
         while True:
             with adaptive_delay(sleepms):
-                if current_state and current_state != previous_state:
-                    current_frame = composer(current_state)
-                    previous_state = current_state
+                if current_args and current_args != previous_state:
+                    current_frame = composer(*current_args, **current_kwargs)
+                    previous_state = current_args
 
     t = threading.Thread(target=painter, daemon=True)
 
-    def draw(fs: FrameState) -> Optional[Frame]:
+    def draw(*args, **kwargs) -> Optional[Frame]:
         if not t.is_alive():
             t.start()
 
-        nonlocal current_state
-        current_state = fs
+        nonlocal current_args, current_kwargs
+        current_args = args
+        current_kwargs = kwargs
         return current_frame
 
     return draw

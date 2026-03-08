@@ -1,5 +1,5 @@
 import io
-import arrow
+import time
 import pendulum
 import requests
 
@@ -26,6 +26,7 @@ from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..data_structures import FrameState, AppBaseModel
 from disinfo.utils.hass import HaWS
 from disinfo.screens import stream
+from disinfo.utils.imops import image_from_url
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
@@ -48,17 +49,21 @@ class PrinterState(AppBaseModel):
     extruder_temp: Optional[float] = None
     progress: Optional[float] = None
     state: Optional[str] = None
+    current_stage: Optional[str] = None
     filename: Optional[str] = None
     thumbnail: Optional[str] = None
+    cover_image: Optional[str] = None
+    pick_image: Optional[str] = None
 
     online: bool = False
     is_definitely_online: bool = False
+    printer_name: str | None = None
 
     eta: Optional[str] = None
 
     completion_time: Optional[str] = ''
     time_left: Optional[str] = ''
-    source_timezone: str = 'UTC'
+    source_timezone: str = 'local'
 
     is_on: bool = False
     is_visible: bool = False
@@ -91,48 +96,51 @@ class KlipperStateManager(PubSubStateManager[PrinterState]):
                 eta = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local')
                 self.state.completion_time = eta.strftime('%H:%M')
 
-class BambuStateManager(PubSubStateManager[PrinterState]):
-    model = PrinterState
-    channels = ('di.pubsub.bambu',)
 
-    def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update':
-            self.state = PrinterState(**data.payload, source_timezone='local', _id='bambu')
-            self.state.is_on = self.state.state in ('running', 'printing', 'paused', 'standby') or (2 <= self.state.progress  <= 98)
-            self.state.is_printing = self.state.state == 'running'
-            self.state.is_done = self.state.state == 'complete'
-            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete', 'running') and self.state.online
-            self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
+def get_moonraker_state():
+    ...
 
-            if data.payload.get('eta'):
-                try:
-                    eta = pendulum.parse(data.payload['eta'])
-                    self.state.completion_time = eta.strftime('%H:%M')
-                except Exception:
-                    pass
+def get_bambulab_state(printer_id: str):
+    cam = HaWS().get_entity(f'camera.{printer_id}_camera')
+    cover = HaWS().get_entity(f'image.{printer_id}_cover_image')
+    pick_img = HaWS().get_entity(f'image.{printer_id}_pick_image')
+    cachebuster = int(time.time()) # change every minute
+    thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
+    coverurl = (app_config.ha_base_url + cover.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cover else None
+    pickurl = (app_config.ha_base_url + pick_img.attributes.get('entity_picture', '') + f'&t={cachebuster}') if pick_img else None
+    get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state != 'unavailable' else None
+
+    state = PrinterState(
+        bed_temp=float(get_sensor('bed_temperature') or '-42'),
+        extruder_temp=float(get_sensor('nozzle_temperature') or '-42'),
+        progress=int(get_sensor('print_progress') or '0'),
+        state=get_sensor('print_status'),
+        filename=get_sensor('task_name'),
+        thumbnail=thumburl,
+        online=True,
+        is_on=get_sensor('print_status') not in ('offline', 'unknown'),
+        is_printing=get_sensor('print_status') in ('printing', 'pause', 'running'),
+        is_done=get_sensor('print_status') == 'finish',
+        completion_time=pendulum.parse(x).strftime('%H:%M') if (x := get_sensor('end_time')) else None,
+        time_left=get_sensor('remaining_time'),
+        eta=get_sensor('end_time'),
+        printer_name=get_sensor('printer_name'),
+        cover_image=coverurl,
+        pick_image=pickurl,
+        current_stage=get_sensor('current_stage'),
+    )
+    state.is_visible=get_sensor('print_status') not in ('offline', 'unknown') and state.state is not None,
+    return state
 
 def get_state():
-    for printer_id in app_config.printer_ids:
-        cam = HaWS().get_entity(f'camera.{printer_id}_camera')
-
-        if cam:
-            stream.url = app_config.ha_base_url + cam.attributes.get('entity_picture')
-
-@cache
-def thumbnail_image(thumb_url: str = None):
-    if not thumb_url:
-        return None
-
-    try:
-        r = requests.get(thumb_url)
-        r.raise_for_status()
-        fp = io.BytesIO(r.content)
-        img = Image.open(fp)
-        # Dithering helps? .quantize()
-        frame = Frame(img.resize((150, 150)).quantize().resize((32, 32)).convert('RGBA'))
-        return frame
-    except requests.RequestException:
-        return None
+    printers = []
+    for printer in app_config.printer_ids:
+        model, printer_id = printer.split(':')
+        if model == 'bambu':
+            printers.append(get_bambulab_state(printer_id))
+        elif model == 'moonraker':
+            printers.append(get_moonraker_state())
+    return printers
 
 
 def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
@@ -190,25 +198,31 @@ def composer(fs: FrameState, state: PrinterState):
         hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name='op.toolt')], gap=2),
         hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name='op.bedt')], gap=2),
     ], gap=4)
+    printer_name = text(state.printer_name or '', TextStyle(font=fonts.bitocra7, color='#888888'))
 
     elements = [
-        info_elem,
-        # completion_text,
         file_detail,
-        completion_eta,
-        time_remaining(fs, state),
-        temp_detail,
+        text(state.state),
+        text(state.current_stage),
     ]
+    bg = div(image_from_url(state.thumbnail, resize=(120, 90)), radius=3).tag(('klipper.thumb', state.printer_name))
+    covimg = div(image_from_url(state.cover_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.coverimg', state.printer_name))
+    pickimg = div(image_from_url(state.pick_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.pickimg', state.printer_name))
 
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1))
+    card = div(
+        vstack([covimg, vstack(elements, gap=1, align='left')], align='left', gap=4),
+        width=95,
+        padding=(10, 0, 2, 2),
+        margin=0,
+        radius=3,
+        background_frame=bg)
+    
+    top_info = hstack([
+        vstack([info_elem, time_remaining(fs, state)], gap=4, align='left'),
+        vstack([printer_name, temp_detail, completion_eta], gap=2, align='left'),
+    ], gap=6, align='bottom')
 
-def compose_klipper_state(fs: FrameState):
-    state = KlipperStateManager().get_state(fs)
-    return composer(fs, state)
-
-def compose_bambu_state(fs: FrameState):
-    state = BambuStateManager().get_state(fs)
-    return composer(fs, state)
+    return vstack([top_info, card], gap=4)
 
 def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
@@ -259,16 +273,18 @@ def full_screen_composer(fs: FrameState):
 
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
 
+widget_style = DivStyle(padding=3, radius=3, background="#0455233D", border=1, border_color="#00000088")
+
+draw = draw_loop(composer, use_threads=True)
+
 def widget(fs: FrameState):
-    get_state()
-    klipper_frame = compose_klipper_state(fs)
-    bambu_frame = compose_bambu_state(fs)
+    printers = get_state()
+    widgets = []
+    for i, state in enumerate(printers):
+        if not state.is_visible:
+            continue
+        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=15)
+        widgets.append(widget)
+    return widgets
 
-    return [
-        Widget('octoprint', frame=klipper_frame, priority=15, wait_time=90 if klipper_frame else 0),
-        Widget('bambu', frame=bambu_frame, priority=15, wait_time=90 if bambu_frame else 0),
-    ]
-
-
-draw = draw_loop(composer, sleepms=10)
 draw_full_screen = draw_loop(full_screen_composer, sleepms=10)

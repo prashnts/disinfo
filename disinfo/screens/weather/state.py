@@ -25,6 +25,7 @@ ICON_MAP = {
     'windy': 'wind',
     'windy-variant': 'wind',
     'exceptional': 'none',
+    'unavailable': 'none',
 }
 MOON_PHASE_MAP = {
     'new_moon': 00,

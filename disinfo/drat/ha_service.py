@@ -83,10 +83,10 @@ def on_message(client, userdata, msg):
         # filter.
         if payload['event_type'] == 'state_changed':
             event = payload['event_data']
-            event['_timestamp'] = arrow.now().isoformat()
-            if event['entity_id'] in app_config.monitors.ambient_light_sensors:
-                notify('di.pubsub.lux', action='update', payload=event)
-            on_bambu_message(event)
+            # event['_timestamp'] = arrow.now().isoformat()
+            # if event['entity_id'] in app_config.monitors.ambient_light_sensors:
+            #     notify('di.pubsub.lux', action='update', payload=event)
+            # on_bambu_message(event)
     if msg.topic == 'zigbee2mqtt/enki.rmt.0x03':
         # We will retain the messages with a timeout.
         if payload['action']:

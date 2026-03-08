@@ -56,7 +56,7 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
             if data.action == 'toggle':
                 self.toggle()
         if channel.endswith('.remote'):
-            if data.action == 'btn_metro':
+            if data.action == 'show_metro':
                 self.toggle()
 
     def initial_state(self) -> MetroAppState:

@@ -22,6 +22,7 @@ class DivStyle:
     clip: bool = True
     height: int | None = None
     width: int | None = None
+    background_frame: Frame | None = None
 
 
 @cache
@@ -107,17 +108,25 @@ def div(
 
     w = style.width or frame.width + (pad[1] + pad[3]) + (margin[1] + margin[3])
     h = style.height or frame.height + (pad[0] + pad[2]) + (margin[0] + margin[2])
-    w_inner = frame.width + (pad[1] + pad[3])
-    h_inner = frame.height + (pad[0] + pad[2])
+    w_inner = style.width or frame.width + (pad[1] + pad[3])
+    h_inner = style.height or frame.height + (pad[0] + pad[2])
 
     o_x = margin[3] + pad[3]    # Origin of the frame in div.
     o_y = margin[0] + pad[0]
 
     if sum(radius) == 0 and sum(margin) == 0:
         i = Image.new('RGBA', (w, h), ImageColor.getrgb(style.background))
+        if style.background_frame:
+            bg = style.background_frame.resize((w, h), ratio_fn=max)
+            i.alpha_composite(bg.image, (0, 0))
         i.alpha_composite(frame.image, (o_x, o_y))
     else:
         frame_div = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+
+        if style.background_frame:
+            bg = style.background_frame.resize((w, h), ratio_fn=max)
+            frame_div.alpha_composite(bg.image, (0, 0))
+
         frame_div.alpha_composite(frame.image, (o_x, o_y))
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))

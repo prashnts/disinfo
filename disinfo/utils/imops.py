@@ -96,21 +96,13 @@ def _fetch_image(url: str) -> bytes:
 @cache
 def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
     hash_ = ('img_from_url', url, resize) 
-    fallback = Frame(Image.new('RGBA', (2, 2), (0, 0, 0, 0)), hash_)
+    fallback = Frame(Image.new('RGBA', resize, (0, 0, 0, 0)), hash_)
     if not url:
         return fallback
     try:
         r = _fetch_image(url)
         with io.BytesIO(r) as fp:
             img = Image.open(fp)
-            res_x, res_y = resize
-            ratio = ratio_fn(res_x/img.width, res_y/img.height)
-            size = (int(img.width*ratio), int(img.height*ratio))
-            midsize = (int(1.5 * size[0]), int(1.5 * size[1]))
-            img = (img
-                .resize(midsize, resample=Image.Resampling.LANCZOS)
-                .resize(size, resample=Image.Resampling.BICUBIC)
-                .convert('RGBA'))
-        return Frame(img, hash_)
+            return Frame(img, hash_).resize(resize, ratio_fn=ratio_fn)
     except requests.RequestException as e:
         return fallback

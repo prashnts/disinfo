@@ -34,6 +34,9 @@ class Frame(UIElement):
 
     def trim(self, left: int = 0, upper: int = 0, right: int = 0, lower: int = 0) -> 'Frame':
         return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)), hash=('trim', (left, upper, right, lower), self))
+    
+    def crop_even(self, horizontal: int = 0, vertical: int = 0) -> 'Frame':
+        return Frame(self.image.crop((horizontal, vertical, self.width - horizontal, self.height - vertical)), hash=('crop_even', (horizontal, vertical), self))
 
     def rescale(self, ratio: Union[float, tuple[float, float]]) -> 'Frame':
         if not isinstance(ratio, tuple):
@@ -42,8 +45,16 @@ class Frame(UIElement):
         height = self.height * ratio[1]
         return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
 
-    def resize(self, size: tuple[int, int]) -> 'Frame':
-        return Frame(self.image.resize(size), hash=('resize', size, self))
+    def resize(self, size: tuple[int, int], ratio_fn=None) -> 'Frame':
+        res_x, res_y = size
+        img = self.image
+        if ratio_fn:
+            ratio = ratio_fn(res_x/img.width, res_y/img.height)
+            size = (int(img.width*ratio), int(img.height*ratio))
+        img = (img
+            .resize(size, resample=Image.Resampling.BICUBIC)
+            .convert('RGBA'))
+        return Frame(img, hash=('resize', size, self))
 
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))

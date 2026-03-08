@@ -23,6 +23,7 @@ from disinfo.utils import ease
 from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
+from disinfo.drat.app_states import RuntimeStateManager
 
 
 class NewsStory(HashModel, index=True):
@@ -163,6 +164,9 @@ kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=
 
 
 def _news_deck(fs: FrameState):
+    if not RuntimeStateManager().get_state(fs).show_news:
+        return None
+
     try:
         kagi_load_stories(fs)
     except Exception as e:
