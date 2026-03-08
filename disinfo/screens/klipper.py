@@ -218,11 +218,11 @@ def composer(fs: FrameState, state: PrinterState):
         background_frame=bg)
     
     top_info = hstack([
-        vstack([info_elem, time_remaining(fs, state)], gap=4, align='left'),
+        vstack([info_elem, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
         vstack([printer_name, temp_detail, completion_eta], gap=2, align='left'),
     ], gap=6, align='bottom')
 
-    return vstack([top_info, card], gap=4)
+    return vstack([top_info, card if state.is_printing else None], gap=4)
 
 def full_screen_composer(fs: FrameState):
     state = KlipperStateManager().get_state(fs)
@@ -283,7 +283,7 @@ def widget(fs: FrameState):
     for i, state in enumerate(printers):
         if not state.is_visible:
             continue
-        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=15)
+        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=23 if state.is_printing else 5)
         widgets.append(widget)
     return widgets
 
