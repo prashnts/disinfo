@@ -275,7 +275,7 @@ def full_screen_composer(fs: FrameState):
 
 widget_style = DivStyle(padding=3, radius=3, background="#0455233D", border=1, border_color="#00000088")
 
-draw = draw_loop(composer, use_threads=True)
+draw = draw_loop(composer, sleepms=10, use_threads=True)
 
 def widget(fs: FrameState):
     printers = get_state()
@@ -283,7 +283,8 @@ def widget(fs: FrameState):
     for i, state in enumerate(printers):
         if not state.is_visible:
             continue
-        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=23 if state.is_printing else 5)
+        wait_time=23 if state.is_printing else 5
+        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=wait_time)
         widgets.append(widget)
     return widgets
 
