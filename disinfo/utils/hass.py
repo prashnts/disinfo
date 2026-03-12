@@ -160,11 +160,15 @@ class HaWS(metaclass=UniqInstance):
         self.client.connect()
     
     def get_entity(self, entity_id: str) -> Entity | None:
-        return self.client.db.get(entity_id)
+        try:
+            return self.client.db[entity_id]
+        except KeyError:
+            print(f'Entity {entity_id} not found in HA database.')
+            return None
     
     def grep_entities(self, pattern: str) -> list[Entity]:
         expr = re.compile(pattern)
-        keys = [k for k in self.client.db.keys() if expr.match(k)]
+        keys = [k for k in self.client.db if expr.match(k)]
         return [self.client.db[k] for k in keys]
     
     def call_service(self, name: str, **kwargs) -> bool:

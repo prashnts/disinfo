@@ -104,7 +104,7 @@ def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
     cover = HaWS().get_entity(f'image.{printer_id}_cover_image')
     pick_img = HaWS().get_entity(f'image.{printer_id}_pick_image')
-    cachebuster = int(time.time()) # change every minute
+    cachebuster = int(time.time()) % 5 # change every minute
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
     coverurl = (app_config.ha_base_url + cover.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cover else None
     pickurl = (app_config.ha_base_url + pick_img.attributes.get('entity_picture', '') + f'&t={cachebuster}') if pick_img else None
