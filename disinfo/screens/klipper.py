@@ -186,7 +186,6 @@ def composer(fs: FrameState, state: PrinterState):
 
     printer_name = text(state.printer_name or '', TextStyle(font=fonts.bitocra7, color='#888888'))
     info_elem = hstack([
-        printer_name,
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
             text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#888888'), name='op.progress'),
@@ -227,7 +226,7 @@ def composer(fs: FrameState, state: PrinterState):
     # imgstack = hstack([covimg], gap=2)
     
     top_info = hstack([
-        vstack([info_elem, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
+        vstack([info_elem, printer_name, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
         vstack([file_detail, completion_eta], gap=2, align='left'),
     ], gap=6, align='bottom')
 
