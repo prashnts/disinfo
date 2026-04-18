@@ -172,10 +172,11 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
 def composer(fs: FrameState, state: PrinterState):
     if not state.is_visible:
         return
+    uname = lambda x: f'{x}_{state.printer_id}'
 
     if not state.is_done:
-        completion_time = text_slide_in(fs, f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'), name=f'name_eta__{state.printer_id}')
-        time_left = text_slide_in(fs, f'{state.time_left}', muted_small_style, name=f'name_time_left__{state.printer_id}')
+        completion_time = text_slide_in(fs, f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'), name=uname('completion_time'))
+        time_left = text_slide_in(fs, f'{state.time_left}', muted_small_style, name=uname('time_left'))
     else:
         completion_time = None
         time_left = text('Done!', style=muted_small_style)
@@ -188,7 +189,7 @@ def composer(fs: FrameState, state: PrinterState):
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([
-            text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#888888'), name='op.progress'),
+            text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#888888'), name=uname('progress')),
             text_percent_sign,
         ], gap=1, align='top'),
     ], gap=4)
@@ -197,14 +198,14 @@ def composer(fs: FrameState, state: PrinterState):
 
     file_detail = hstack([
         file_icon,
-        (HScroller(size=33, pause_at_loop=True, name=f'name_hscroll__{state.printer_id}')
+        (HScroller(size=33, pause_at_loop=True, name=uname('filename'))
             .set_frame(text(state.filename, muted_small_style))
             .draw(fs.tick)),
     ], gap=2)
 
     temp_detail = hstack([
-        hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name='op.toolt')], gap=2),
-        hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name='op.bedt')], gap=2),
+        hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name=uname('toolt'))], gap=2),
+        hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name=uname('bedt'))], gap=2),
     ], gap=4)
 
     elements = [
