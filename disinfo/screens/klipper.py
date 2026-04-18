@@ -165,7 +165,7 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     segments = [(s, l) for s, l in segments if s > 0]
 
     return hstack([
-        *[hstack([text_slide_in(fs, f'{int(s)}', muted_small_style, name=f'kl.tr.{state._id}.{l}'), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
+        *[hstack([text_slide_in(fs, f'{int(s)}', muted_small_style, name=f'kl.tr.{state.printer_id}.{l}'), text(f'{l}', muted_small_style)], gap=1) for s, l in segments]
     ], gap=2).tag(('klipper.eta', eta))
 
 
@@ -174,8 +174,8 @@ def composer(fs: FrameState, state: PrinterState):
         return
 
     if not state.is_done:
-        completion_time = text_slide_in(fs, f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'), name='op.eta')
-        time_left = text_slide_in(fs, f'{state.time_left}', muted_small_style, name='op.time_left')
+        completion_time = text_slide_in(fs, f'{state.completion_time}', style=TextStyle(font=fonts.bitocra7, color='#888888'), name=f'name_eta__{state.printer_id}')
+        time_left = text_slide_in(fs, f'{state.time_left}', muted_small_style, name=f'name_time_left__{state.printer_id}')
     else:
         completion_time = None
         time_left = text('Done!', style=muted_small_style)
