@@ -18,7 +18,7 @@ from disinfo.components.scroller import VScroller
 from disinfo.components import fonts
 from disinfo.components.elements import Frame
 from disinfo.web.telemetry import act
-from disinfo.screens.drawer import draw_loop
+from disinfo.utils.drawer import draw_loop
 from disinfo.utils import ease
 from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url

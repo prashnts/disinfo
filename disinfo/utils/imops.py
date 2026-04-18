@@ -3,7 +3,7 @@ import requests
 import numpy as np
 import time
 
-from functools import cache
+from functools import cache, lru_cache
 from PIL import Image, ImageDraw, ImageEnhance
 
 from disinfo.components.elements import Frame, StillImage
@@ -87,13 +87,13 @@ def perspective_transform(img: Image.Image, src_pts, dst_pts):
 
 
 
-@cache
+@lru_cache(maxsize=256)
 def _fetch_image(url: str) -> bytes:
     r = requests.get(url, timeout=4)
     r.raise_for_status()
     return r.content
 
-@cache
+@lru_cache(maxsize=256)
 def image_from_url(url: str, resize: tuple[int, int] = (42, 42), ratio_fn=max):
     hash_ = ('img_from_url', url, resize) 
     fallback = Frame(Image.new('RGBA', resize, (0, 0, 0, 0)), hash_)

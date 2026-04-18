@@ -6,7 +6,7 @@ from PIL import Image
 from functools import cache
 from datetime import timedelta
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..config import app_config
 from ..components import fonts
 from ..components.elements import Frame, StillImage

@@ -4,7 +4,7 @@ from typing import Optional, Callable
 
 from ..components.elements import Frame
 from ..data_structures import FrameState
-from ..utils.time import adaptive_delay
+from .time import adaptive_delay
 
 
 DrawerFn = Callable[[FrameState], Optional[Frame]]

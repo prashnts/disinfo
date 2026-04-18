@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw
 
 from disinfo.utils import ease
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from .colors import gray, amber_red, black, light_gray, light_blue, orange_red, minute_green
 from ..data_structures import FrameState
 from ..components import fonts

@@ -72,6 +72,7 @@ class Msg(AppBaseModel):
 class HaWSClient(metaclass=UniqInstance):
     def __init__(self):
         self.connected = False
+        self.connecting = False
         self._retries = 0
         self.retry_delay_before_max_retries = 5 # seconds
         self.retry_delay_after_max_retries = 25 # seconds
@@ -109,11 +110,13 @@ class HaWSClient(metaclass=UniqInstance):
 
     def on_open(self, ws):
         self.connected = True
+        self.connecting = False
         self._retries = 0
         print(f'Connected to {self.host}')
     
     def on_close(self, *args):
         self.connected = False
+        self.connecting = False
         print(f'Disconnected to {self.host}, will retry.')
         self.retry_connect()
     
@@ -141,9 +144,10 @@ class HaWSClient(metaclass=UniqInstance):
         
         self.ws_thread = threading.Thread(target=self.ws.run_forever, daemon=True)
         self.ws_thread.start()
+        self.connecting = True
     
     def retry_connect(self):
-        if self.connected:
+        if self.connected or self.connecting:
             return
         if self._retries > self.max_retries:
             time.sleep(self.retry_delay_after_max_retries)

@@ -1,4 +1,4 @@
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from .colors import gray
 from ..components.elements import StillImage
 from ..components.layers import div, DivStyle

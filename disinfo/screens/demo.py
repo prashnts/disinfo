@@ -6,7 +6,7 @@ from collections import defaultdict
 from colour import Color
 from PIL import Image, ImageDraw
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..config import app_config
 from ..data_structures import FrameState
 from ..components.elements import Frame

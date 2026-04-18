@@ -3,7 +3,7 @@ from matplotlib import cm
 import numpy as np
 
 from functools import cache
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..components.text import text, TextStyle
 from ..components.layouts import vstack, composite_at, hstack
 from ..components.fonts import register as font_register, small_bars

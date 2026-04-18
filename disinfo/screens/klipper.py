@@ -9,7 +9,7 @@ from pydash import py_
 from typing import Optional
 from PIL import Image
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..components.text import Text, TextStyle, text
 from ..components.elements import StillImage, Frame
 from ..components.layouts import vstack, hstack
@@ -45,6 +45,8 @@ hscroller_fname = HScroller(size=33, pause_at_loop=True)
 
 
 class PrinterState(AppBaseModel):
+    printer_id: str
+
     bed_temp: Optional[float] = None
     extruder_temp: Optional[float] = None
     progress: Optional[float] = None
@@ -104,13 +106,14 @@ def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
     cover = HaWS().get_entity(f'image.{printer_id}_cover_image')
     pick_img = HaWS().get_entity(f'image.{printer_id}_pick_image')
-    cachebuster = int(time.time()) % 5 # change every minute
+    cachebuster = int(time.time() // 15)
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
     coverurl = (app_config.ha_base_url + cover.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cover else None
     pickurl = (app_config.ha_base_url + pick_img.attributes.get('entity_picture', '') + f'&t={cachebuster}') if pick_img else None
     get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state != 'unavailable' else None
 
     state = PrinterState(
+        printer_id=printer_id,
         bed_temp=float(get_sensor('bed_temperature') or '-42'),
         extruder_temp=float(get_sensor('nozzle_temperature') or '-42'),
         progress=int(get_sensor('print_progress') or '0'),
@@ -189,9 +192,13 @@ def composer(fs: FrameState, state: PrinterState):
         ], gap=1, align='top'),
     ], gap=4)
 
+    
+
     file_detail = hstack([
         file_icon,
-        hscroller_fname.set_frame(text(state.filename, muted_small_style)).draw(fs.tick),
+        (HScroller(size=33, pause_at_loop=True, name=f'name_hscroll__{state.printer_id}')
+            .set_frame(text(state.filename, muted_small_style))
+            .draw(fs.tick)),
     ], gap=2)
 
     temp_detail = hstack([
@@ -201,68 +208,35 @@ def composer(fs: FrameState, state: PrinterState):
     printer_name = text(state.printer_name or '', TextStyle(font=fonts.bitocra7, color='#888888'))
 
     elements = [
-        file_detail,
-        text(state.state),
+        temp_detail,
         text(state.current_stage),
+        text(state.state),
     ]
-    bg = div(image_from_url(state.thumbnail, resize=(120, 90)), radius=3).tag(('klipper.thumb', state.printer_name))
+    bg = div(image_from_url(state.thumbnail, resize=(92, 92)), radius=3).tag(('klipper.thumb', state.printer_name))
     covimg = div(image_from_url(state.cover_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.coverimg', state.printer_name))
-    pickimg = div(image_from_url(state.pick_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.pickimg', state.printer_name))
+    # pickimg = div(image_from_url(state.pick_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.pickimg', state.printer_name))
 
     card = div(
-        vstack([covimg, vstack(elements, gap=1, align='left')], align='left', gap=4),
+        vstack([vstack(elements, gap=1, align='left')], align='left', gap=4),
         width=95,
         padding=(10, 0, 2, 2),
         margin=0,
         radius=3,
         background_frame=bg)
+    imgstack = hstack([covimg], gap=2)
     
     top_info = hstack([
-        vstack([info_elem, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
-        vstack([printer_name, temp_detail, completion_eta], gap=2, align='left'),
+        vstack([printer_name, info_elem, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
+        vstack([file_detail, completion_eta], gap=2, align='left'),
     ], gap=6, align='bottom')
 
-    return vstack([top_info, card if state.is_printing else None], gap=4)
+    return vstack([top_info, card if state.is_printing else None], gap=4).tag(('printer_card', state.printer_name))
 
-def full_screen_composer(fs: FrameState):
-    state = KlipperStateManager().get_state(fs)
+def full_screen_composer(fs: FrameState, state: PrinterState):
+    if not state.is_visible:
+        return
 
 
-    if not state.is_definitely_online:
-        let_s = text('let\'s', TextStyle(font=fonts.bitocra7, color='#888888'))
-        verbs = [
-            ' print',
-            ' make ',
-            'create',
-            ' build',
-            ' craft',
-            ' forge',
-            ' shape',
-            'design',
-            '  fab ',
-        ]
-        verb = verbs[int(fs.tick // 5 % len(verbs))]
-
-        offline_info = text_slide_in(fs, verb, TextStyle(font=fonts.creep, color='#888888'), name='op.offline')
-        return div(vstack([let_s, offline_info], gap=3, align='center'), style=DivStyle(padding=1, background='#00003f51'))
-
-    info_elem = hstack([
-        threed_icon.draw(fs.tick) if state.is_printing else done_icon,
-        hstack([
-            text_slide_in(fs, f'{state.progress:0.1f}', TextStyle(font=fonts.cozette, color='#888888'), name='op.progress'),
-            text_percent_sign,
-        ], gap=1, align='top'),
-    ], gap=4)
-
-    file_detail = hstack([
-        file_icon,
-        hscroller_fname.set_frame(text(state.filename, muted_small_style)).draw(fs.tick),
-    ], gap=2)
-
-    temp_detail = hstack([
-        hstack([toolt_icon, text_slide_in(fs, f'{round(state.extruder_temp)}', muted_small_style, name='op.toolt')], gap=2),
-        hstack([bedt_icon, text_slide_in(fs, f'{round(state.bed_temp)}', muted_small_style, name='op.bedt')], gap=2),
-    ], gap=4)
 
     elements = [
         info_elem,
@@ -283,9 +257,9 @@ def widget(fs: FrameState):
     for i, state in enumerate(printers):
         if not state.is_visible:
             continue
-        wait_time=23 if state.is_printing else 5
-        widget = Widget(f'printer_{i}', frame=draw(fs, state), style=widget_style, wait_time=wait_time)
-        widgets.append(widget)
+        wait_time=13 if state.is_printing else 5
+        w = Widget(f'printer_{state.printer_name}', frame=composer(fs, state), style=widget_style, wait_time=wait_time)
+        widgets.append(w)
     return widgets
 
 draw_full_screen = draw_loop(full_screen_composer, sleepms=10)

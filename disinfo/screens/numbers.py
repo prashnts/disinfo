@@ -1,4 +1,4 @@
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..config import app_config
 from ..components import fonts
 from ..components.text import Text, TextStyle

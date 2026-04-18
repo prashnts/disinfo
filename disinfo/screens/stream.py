@@ -4,7 +4,7 @@ import queue
 from PIL import Image
 from mjpeg.client import MJPEGClient
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from ..components.elements import Frame
 from ..data_structures import FrameState
 from ..components.widget import Widget

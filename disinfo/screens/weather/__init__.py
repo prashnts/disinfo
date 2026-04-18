@@ -1,4 +1,4 @@
-from ..drawer import draw_loop
+from ...utils.drawer import draw_loop
 from .app import composer
 from . import widgets
 

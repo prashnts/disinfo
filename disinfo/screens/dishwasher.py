@@ -5,7 +5,7 @@ from functools import cache
 from typing import Optional
 from datetime import datetime
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from .colors import gray, amber_red, minute_green
 from ..components import fonts
 from ..components.layers import div, DivStyle

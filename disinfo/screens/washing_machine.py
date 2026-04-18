@@ -1,7 +1,7 @@
 from pyquery import PyQuery as pq
 from functools import cache
 
-from .drawer import draw_loop
+from ..utils.drawer import draw_loop
 from .colors import gray, amber_red
 from ..components import fonts
 from ..components.layers import div, DivStyle
