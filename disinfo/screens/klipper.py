@@ -214,7 +214,7 @@ def composer(fs: FrameState, state: PrinterState):
         text(state.state),
     ]
     bg = div(image_from_url(state.thumbnail, resize=(92, 92)), radius=3).tag(('klipper.thumb', state.printer_name))
-    covimg = div(image_from_url(state.cover_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.coverimg', state.printer_name))
+    # covimg = div(image_from_url(state.cover_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.coverimg', state.printer_name))
     # pickimg = div(image_from_url(state.pick_image, resize=(42, 42)).crop_even(5, 10), radius=3, background="#cccccc3f").tag(('klipper.pickimg', state.printer_name))
 
     card = div(
@@ -224,7 +224,7 @@ def composer(fs: FrameState, state: PrinterState):
         margin=0,
         radius=3,
         background_frame=bg)
-    imgstack = hstack([covimg], gap=2)
+    # imgstack = hstack([covimg], gap=2)
     
     top_info = hstack([
         vstack([info_elem, time_remaining(fs, state) if state.is_printing else None], gap=4, align='left'),
