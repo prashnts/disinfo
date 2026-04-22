@@ -99,8 +99,32 @@ class KlipperStateManager(PubSubStateManager[PrinterState]):
                 self.state.completion_time = eta.strftime('%H:%M')
 
 
-def get_moonraker_state():
-    ...
+def get_moonraker_state(printer_id: str):
+    cam = HaWS().get_entity(f'camera.{printer_id}_libcamera')
+    cachebuster = int(time.time() // 15)
+    ignored_states = ['unknown', 'unavailable']
+    thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
+    get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state not in ignored_states else None
+
+    state = PrinterState(
+        printer_id=printer_id,
+        bed_temp=float(get_sensor('bed_temperature') or '-42'),
+        extruder_temp=float(get_sensor('nozzle_temperature') or '-42'),
+        progress=int(float(get_sensor('progress') or '0')),
+        state=get_sensor('current_print_state'),
+        filename=get_sensor('filename'),
+        thumbnail=thumburl,
+        online=True,
+        is_on=get_sensor('printer_state') not in ('offline', 'unknown'),
+        is_printing=get_sensor('printer_state') in ('printing', 'pause', 'running'),
+        is_done=get_sensor('printer_state') == 'finish',
+        completion_time=pendulum.parse(x).strftime('%H:%M') if (x := get_sensor('print_eta')) else None,
+        time_left=get_sensor('print_time_left'),
+        eta=get_sensor('print_eta'),
+        printer_name=printer_id,
+    )
+    state.is_visible=get_sensor('printer_state') not in ('offline', 'unknown') and state.state is not None,
+    return state
 
 def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
@@ -141,8 +165,8 @@ def get_state():
         model, printer_id = printer.split(':')
         if model == 'bambu':
             printers.append(get_bambulab_state(printer_id))
-        elif model == 'moonraker':
-            printers.append(get_moonraker_state())
+        elif model == 'klipper':
+            printers.append(get_moonraker_state(printer_id))
     return printers
 
 

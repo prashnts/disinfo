@@ -7,6 +7,7 @@ are in the same container.
 from PIL import Image, ImageFilter
 from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
+from functools import lru_cache
 
 from .elements import Frame
 
@@ -100,6 +101,11 @@ def vstack(
 
     return Frame(img, hash=('vstack', gap, align, tuple(elements)))
 
+@lru_cache(maxsize=256)
+def apply_blur(frame: Frame, radius: float) -> Frame:
+    return Frame(frame.image.filter(ImageFilter.GaussianBlur(radius)), hash=('blur', radius, frame))
+
+
 def composite_at(
     frame: Optional[Frame],
     dest: Union[Image.Image, Frame],
@@ -173,7 +179,7 @@ def composite_at(
 
     if frost != 0:
         if behind:
-            bg = composite_at(frame, dest.copy(), anchor, dx, dy).image.filter(ImageFilter.GaussianBlur(abs(frost)))
+            bg = apply_blur(composite_at(frame, dest.copy(), anchor, dx, dy), abs(frost))
             fg = composite_at(Frame(original), dest.copy()).image
 
             # if not vibrant:
