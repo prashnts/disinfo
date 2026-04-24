@@ -179,7 +179,7 @@ def composite_at(
 
     if frost != 0:
         if behind:
-            bg = apply_blur(composite_at(frame, dest.copy(), anchor, dx, dy), abs(frost))
+            bg = apply_blur(composite_at(frame, dest.copy(), anchor, dx, dy), abs(frost)).image
             fg = composite_at(Frame(original), dest.copy()).image
 
             # if not vibrant:
@@ -188,8 +188,9 @@ def composite_at(
 
             return composite_at(Frame(fg), dest, anchor)
         
-        bg = dest.filter(ImageFilter.GaussianBlur(abs(frost)))
-        region = bg.crop((left + dx, top + dy, left + dx + fw, top + dy + fh))
+        bg = apply_blur(Frame(dest), abs(frost)).image
+        # bg = dest.filter(ImageFilter.GaussianBlur(abs(frost)))
+        region = bg.crop((left + dx, top + dy, left + dx  + fw, top + dy + fh))
         dest.alpha_composite(blend(region, frame.image), (left + dx, top + dy))
 
     dest.alpha_composite(frame.image, (left + dx, top + dy))
