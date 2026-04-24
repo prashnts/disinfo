@@ -167,7 +167,7 @@ class HaWS(metaclass=UniqInstance):
         try:
             return self.client.db[entity_id]
         except KeyError:
-            print(f'Entity {entity_id} not found in HA database.')
+            # print(f'Entity {entity_id} not found in HA database.')
             return None
     
     def grep_entities(self, pattern: str) -> list[Entity]:

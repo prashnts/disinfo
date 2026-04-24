@@ -6,10 +6,15 @@ from ..utils.drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
 from ..components.layouts import composite_at
+from ..components.layers import div
 from ..components.text import TextStyle, text
+from ..components.spriteim import SpriteIcon
 from ..data_structures import FrameState
 from ..drat.app_states import RuntimeStateManager
 from ..config import app_config
+
+
+nyan_gif = SpriteIcon('assets/raster/nyan.png', step_time=0.1)
 
 
 def composer(fs: FrameState):
@@ -20,27 +25,28 @@ def composer(fs: FrameState):
     all_equal = t.hour == t.minute == t.second
 
     if RuntimeStateManager().get_state(fs).show_twentytwo:
-        twentytwo == True
         equal_elements = True
-        all_equal = True
 
     if not equal_elements:
         return
 
-    font = fonts.px_op__xl
+    font = fonts.mecha_cb
+    font = fonts.pix_tall
     fill = '#2FB21B'
     if twentytwo:
         fill = '#CF8C13'
-        font = fonts.px_op__xl if app_config.width < 128 else fonts.px_op__xxl
+        # font = fonts.px_op__l if app_config.width < 128 else fonts.px_op__l
     if all_equal:
         fill = '#CF3F13'
 
     text_timestr = text(t.strftime('%H:%M'), style=TextStyle(font=font, color=fill, outline=1))
+    content = div(text_timestr, background='#5010A088', padding=2, radius=2)
 
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 0))
+    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 50))
     draw = ImageDraw.Draw(image)
 
-    composite_at(text_timestr, image, 'mm')
+    composite_at(nyan_gif.draw(fs.tick), image, 'bm', dx=20)
+    composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
 
     # glittering colors if it's the magic hour
     if not (twentytwo or all_equal):
@@ -58,7 +64,7 @@ def composer(fs: FrameState):
     # draw some shimmering leds everywhere!
     for x in range(app_config.width):
         for y in range(app_config.height):
-            if random.random() < .003:
+            if random.random() < .001:
                 pts = [(x, y)]
                 if random.random() < 0.2:
                     # "bigger" points (four pixels)

@@ -9,7 +9,7 @@ class SpriteImage:
         self._init_sprites(filename)
 
     def _init_sprites(self, filename: str):
-        img = Image.open(filename)
+        img = Image.open(filename).convert('RGBA')
         self.filename = filename
         self.nframes = img.height // img.width
         self.width = img.width

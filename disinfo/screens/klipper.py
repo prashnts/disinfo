@@ -1,13 +1,9 @@
 import io
 import time
 import pendulum
-import requests
 
 from functools import cache
-from datetime import timedelta
-from pydash import py_
 from typing import Optional
-from PIL import Image
 
 from ..utils.drawer import draw_loop
 from ..components.text import Text, TextStyle, text
@@ -20,13 +16,10 @@ from ..components.widget import Widget
 from ..components.transitions import text_slide_in
 from ..components import fonts
 from ..config import app_config
-from ..redis import rkeys, get_dict
-from ..utils.func import throttle
-from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..data_structures import FrameState, AppBaseModel
 from disinfo.utils.hass import HaWS
-from disinfo.screens import stream
 from disinfo.utils.imops import image_from_url
+
 
 threed_icon = SpriteIcon('assets/raster/nozzle-alt-9x9.png', step_time=0.1)
 done_icon = StillImage('assets/raster/nozzle-9x9-done.png')
@@ -41,8 +34,7 @@ tail_arrow_left         = text(f'⤙', style=tail_arrow_style)
 tail_arrow_right        = text(f'⤚', style=tail_arrow_style)
 text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
 
-hscroller_fname = HScroller(size=33, pause_at_loop=True)
-
+widget_style = DivStyle(padding=3, radius=3, background="#0455233D", border=1, border_color="#00000088")
 
 class PrinterState(AppBaseModel):
     printer_id: str
@@ -80,23 +72,6 @@ class PrinterState(AppBaseModel):
 
         eta = pendulum.parse(self.eta, tz=self.source_timezone).in_tz(tz='local')
         return (eta - now).total_seconds()
-
-class KlipperStateManager(PubSubStateManager[PrinterState]):
-    model = PrinterState
-    channels = ('di.pubsub.klipper',)
-
-    def process_message(self, channel: str, data: PubSubMessage):
-        if data.action == 'update':
-            self.state = PrinterState(**data.payload)
-            self.state.is_on = self.state.state in ('printing', 'paused', 'standby')
-            self.state.is_printing = self.state.state == 'printing'
-            self.state.is_done = self.state.state == 'complete'
-            self.state.is_visible = self.state.state in ('printing', 'paused', 'complete') and self.state.online
-            self.state.is_definitely_online = self.state.online and self.state.bed_temp != 0
-
-            if data.payload.get('eta'):
-                eta = pendulum.parse(data.payload['eta'], tz='UTC').in_tz(tz='local')
-                self.state.completion_time = eta.strftime('%H:%M')
 
 
 def get_moonraker_state(printer_id: str):
@@ -272,18 +247,28 @@ def full_screen_composer(fs: FrameState, state: PrinterState):
 
     return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
 
-widget_style = DivStyle(padding=3, radius=3, background="#0455233D", border=1, border_color="#00000088")
 
-draw = draw_loop(composer, sleepms=10, use_threads=True)
+@cache
+def get_draw_loops(n: int):
+    loops = []
+    for i in range(n):
+        loop = draw_loop(composer, sleepms=10, use_threads=True)
+        loops.append(loop)
+    return loops
 
 def widget(fs: FrameState):
     printers = get_state()
+    loops = get_draw_loops(len(printers))
     widgets = []
     for i, state in enumerate(printers):
         if not state.is_visible:
             continue
         wait_time=13 if state.is_printing else 5
-        w = Widget(f'printer_{state.printer_name}', frame=composer(fs, state), style=widget_style, wait_time=wait_time)
+        w = Widget(
+            f'printer_{state.printer_name}',
+            frame=loops[i](fs, state),
+            style=widget_style,
+            wait_time=wait_time)
         widgets.append(w)
     return widgets
 

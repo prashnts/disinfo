@@ -43,7 +43,7 @@ s_colon = [
     TextStyle(color=light_blue.hex, font=fonts.bitocra7),
 ]
 s_colon_2 = [
-    TextStyle(color=gray.darken(.1).hex, font=fonts.dansk, trim=(0, 0, 0, 0)),
+    TextStyle(color="#DFD9C98F", font=fonts.dansk, trim=(0, 0, 0, 0)),
     TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0)),
 ]
 
