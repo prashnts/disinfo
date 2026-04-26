@@ -148,6 +148,7 @@
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
+        import { useState } from 'https://esm.sh/preact@10/hooks';
         import htm from 'https://esm.sh/htm@3';
 
         // Initialize htm with Preact
@@ -159,6 +160,7 @@
                     method: 'POST',
                     body: JSON.stringify({
                         action: props.action,
+                        payload: props.payload,
                     }),
                     headers: {
                         'Content-Type': 'application/json'
@@ -168,6 +170,15 @@
                 })
             }
             return html`<button onClick=${didClick} class='remote_button'>${props.action}</button>`;
+        }
+
+        function StreamURL(props) {
+            const [url, setUrl] = useState('')
+            const didChange = e => setUrl(e.currentTarget.value)
+            return html`<div>
+                <input onChange=${didChange} />
+                <${RemoteButton} action="set_stream_url" payload=${{url}} />
+            </div>`
         }
 
         function TriggerButton(props) {
@@ -203,6 +214,10 @@
                     <${RemoteButton} action="show_debug" />
                     <${RemoteButton} action="show_news" />
                     <${RemoteButton} action="motion_toggle" />
+                </div>
+                <div>
+                    <${RemoteButton} action="show_stream" />
+                    <${StreamURL}/>
                 </div>`;
         }
 

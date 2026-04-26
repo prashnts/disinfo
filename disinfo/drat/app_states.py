@@ -97,6 +97,10 @@ class RuntimeState(AppBaseModel):
     show_news: bool = False
     show_metro: bool = False
 
+    # Streaming MJPEG
+    show_stream: bool = False
+    stream_url: str = "https://ikvm.amd.noop.pw/streamer/stream"
+
 class RuntimeStateManager(PubSubStateManager[RuntimeState]):
     model = RuntimeState
     channels = ('di.pubsub.remote',)
@@ -117,6 +121,8 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.screen_capture = not self.state.screen_capture
             case 'show_twentytwo':
                 self.state.show_twentytwo = not self.state.show_twentytwo
+            case 'set_stream_url':
+                self.state.stream_url = data.payload['url']
             case action if action.startswith('show_'):
                 setattr(self.state, action, not getattr(self.state, action))
 

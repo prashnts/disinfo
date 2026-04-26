@@ -76,7 +76,7 @@ class PrinterState(AppBaseModel):
 
 def get_moonraker_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_libcamera')
-    cachebuster = int(time.time() // 15)
+    cachebuster = int(time.time() // 7)
     ignored_states = ['unknown', 'unavailable']
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
     get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state not in ignored_states else None
@@ -105,7 +105,7 @@ def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
     cover = HaWS().get_entity(f'image.{printer_id}_cover_image')
     pick_img = HaWS().get_entity(f'image.{printer_id}_pick_image')
-    cachebuster = int(time.time() // 15)
+    cachebuster = int(time.time() // 6)
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
     coverurl = (app_config.ha_base_url + cover.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cover else None
     pickurl = (app_config.ha_base_url + pick_img.attributes.get('entity_picture', '') + f'&t={cachebuster}') if pick_img else None
@@ -252,7 +252,7 @@ def full_screen_composer(fs: FrameState, state: PrinterState):
 def get_draw_loops(n: int):
     loops = []
     for i in range(n):
-        loop = draw_loop(composer, sleepms=200, use_threads=True)
+        loop = draw_loop(composer, sleepms=100, use_threads=True)
         loops.append(loop)
     return loops
 

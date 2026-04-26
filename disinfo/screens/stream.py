@@ -8,12 +8,9 @@ from ..utils.drawer import draw_loop
 from ..components.elements import Frame
 from ..data_structures import FrameState
 from ..components.widget import Widget
+from ..drat.app_states import RuntimeStateManager
 
-url = "https://kvm.amd.noop.pw/streamer/stream"
-url = "http://pi-webcam.local/html/cam_pic_new.php?time=1764173339202&pDelay=40000"
-url = None
-
-def setup_stream():
+def setup_stream(url: str):
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
@@ -49,7 +46,7 @@ _client = None
 _last_update = None
 _prev_url = None
 
-def stream_frame(fs):
+def stream_frame(fs, url):
     global _last_update, _stream, _prev_url
     if not _stream:
         return
@@ -63,6 +60,15 @@ def stream_frame(fs):
 
 def draw_stream(fs: FrameState):
     global _stream, _client, _last_update, _prev_url
+    state = RuntimeStateManager().get_state(fs)
+    url = state.stream_url
+    if not state.show_stream:
+        if _client:
+            print("* stopping client")
+            _client.stop()
+        _stream = None
+        return None
+
     if (_last_update and _last_update < (fs.tick - 20)) or not _stream or _prev_url != url:
         print("* no updates")
         # reset stream
@@ -71,15 +77,14 @@ def draw_stream(fs: FrameState):
             _client.stop()
         try:
             time.sleep(5)
-            print(url)
-            _stream = setup_stream()
+            _stream = setup_stream(url)
         except Exception as e:
             return None
         _client = next(_stream)
         _last_update = fs.tick
         _prev_url = url
         print("* client started")
-    return stream_frame(fs)
+    return stream_frame(fs, url)
 
 draw = draw_loop(draw_stream, use_threads=True)
 

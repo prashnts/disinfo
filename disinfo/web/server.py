@@ -47,10 +47,11 @@ async def index() -> RedirectResponse:
 
 class RemoteInput(AppBaseModel):
     action: str
+    payload: dict[str, str] | None = None
 
 @app.post('/remote')
 async def trigger_remote(rinput: RemoteInput):
-    publish('di.pubsub.remote', action=rinput.action)
+    publish('di.pubsub.remote', action=rinput.action, payload=rinput.payload or {})
     return {'status': 'ok'}
 
 class TriggerInput(AppBaseModel):
