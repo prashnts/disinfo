@@ -269,7 +269,7 @@ def _news_deck(fs: FrameState):
     return s.tag(('news', st.pk))
 
 
-news_deck = draw_loop(_news_deck, use_threads=True)
+news_deck = draw_loop(_news_deck, sleepms=120, use_threads=True)
 
 def news_app(fs: FrameState):
     deck = news_deck(fs)

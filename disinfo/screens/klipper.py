@@ -252,7 +252,7 @@ def full_screen_composer(fs: FrameState, state: PrinterState):
 def get_draw_loops(n: int):
     loops = []
     for i in range(n):
-        loop = draw_loop(composer, sleepms=10, use_threads=True)
+        loop = draw_loop(composer, sleepms=200, use_threads=True)
         loops.append(loop)
     return loops
 

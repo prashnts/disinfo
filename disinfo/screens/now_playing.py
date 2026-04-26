@@ -141,4 +141,4 @@ def composer(fs: FrameState):
 def widget(fs: FrameState):
     return Widget('music', composer(fs))
 
-draw = draw_loop(composer, sleepms=10)
+draw = draw_loop(composer)
