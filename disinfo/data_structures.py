@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 from typing import Optional, Protocol
 from PIL import Image
+from lru import LRU
 
 
 class AppBaseModel(BaseModel):
@@ -33,7 +34,7 @@ class Drawable(Protocol):
 
 
 class UniqInstance(type):
-    _instances = {}
+    _instances = LRU(1024)
 
     def __call__(cls, *args, **kwargs):
         key = (cls, args, tuple(kwargs.items()))

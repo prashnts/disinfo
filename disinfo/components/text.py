@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace as dc_replace
 from textwrap import wrap
 from typing import Optional, Union
-from functools import cache
+from functools import lru_cache
 
 from PIL import Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
@@ -158,7 +158,7 @@ class MultiLineText(Text):
         self.populate_frame(im)
 
 
-@cache
+@lru_cache(maxsize=1024)
 def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False, **kwargs) -> Text:
     style = dc_replace(style, **kwargs)
     if multiline:

@@ -184,7 +184,7 @@ def composer(fs: FrameState, state: PrinterState):
     completion_text = hstack([tail_arrow_right, time_left], gap=2, align='center')
     completion_eta = hstack([tail_arrow_left, completion_time], gap=2, align='center') if completion_time else None
 
-    printer_name = text(state.printer_name or '', TextStyle(font=fonts.bitocra7, color='#888888'))
+    printer_name = text((state.printer_name or '')[:12], TextStyle(font=fonts.bitocra7, color='#888888'))
     info_elem = hstack([
         threed_icon.draw(fs.tick) if state.is_printing else done_icon,
         hstack([

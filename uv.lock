@@ -612,6 +612,7 @@ dependencies = [
     { name = "geopy" },
     { name = "idfm-api" },
     { name = "ipython" },
+    { name = "lru-dict" },
     { name = "matplotlib" },
     { name = "paho-mqtt" },
     { name = "pendulum" },
@@ -657,6 +658,7 @@ requires-dist = [
     { name = "geopy", specifier = ">=2.4.1" },
     { name = "idfm-api", specifier = ">=1.1.1" },
     { name = "ipython" },
+    { name = "lru-dict", specifier = ">=1.4.1" },
     { name = "matplotlib" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
     { name = "pendulum", specifier = ">=2.1.2" },
@@ -1009,6 +1011,30 @@ name = "libsixel-python"
 version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/06/0a/cd92860866ee7ef363a78f446121b92a0f9ceee259ab203c2f890bb84aae/libsixel-python-0.5.0.tar.gz", hash = "sha256:030666378be9c42f9843ab3f0715c7819f54e4e4fb81cbb845dee269ca3013f0", size = 11055, upload-time = "2018-06-07T17:33:41.592Z" }
+
+[[package]]
+name = "lru-dict"
+version = "1.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/0a/dec86efe38b350314c49a8d39ef01ba7cf8bbbef1d177646320eedea7159/lru_dict-1.4.1.tar.gz", hash = "sha256:cc518ff2d38cc7a8ab56f9a6ae557f91e2e1524b57ed8e598e97f45a2bd708fc", size = 13439, upload-time = "2025-11-02T10:02:13.548Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/95/ee171a68ae381ab988c50e3b7b136b1c598f5f683ba4a1e10c51e2480408/lru_dict-1.4.1-cp313-cp313-android_21_arm64_v8a.whl", hash = "sha256:2a5644bb1db0514abdad5e2f3d8f1beb6f7560c8cceb62079c40a4269de34b3c", size = 12248, upload-time = "2025-11-02T10:01:24.291Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/82/8de8e8fd96c44d46891415834ceb9f51c552840bda2d118394aca5e3153a/lru_dict-1.4.1-cp313-cp313-android_21_x86_64.whl", hash = "sha256:4209864be09ec20f6059fef8544697eb3d3729d63a983bf66457054bf3e40601", size = 12243, upload-time = "2025-11-02T10:01:25.254Z" },
+    { url = "https://files.pythonhosted.org/packages/53/97/251cfb357c547a8fd06c2bc40db8a7f7eed7dbacef30d8d7e543522360e1/lru_dict-1.4.1-cp313-cp313-ios_13_0_arm64_iphoneos.whl", hash = "sha256:8fef8dd72484b4280799c502c116acfdfcf0dedf3508bc9d0d19e684a6a23267", size = 10938, upload-time = "2025-11-02T10:01:25.89Z" },
+    { url = "https://files.pythonhosted.org/packages/58/14/602791d219bc87197ae80f5fa0f77ca0af8e83e9a06c7cdb89db5575839e/lru_dict-1.4.1-cp313-cp313-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:d64ddbe4c426fdc4cfc1abaea71d587d439397386a7b35d588f4fd64b695a83d", size = 11261, upload-time = "2025-11-02T10:01:26.879Z" },
+    { url = "https://files.pythonhosted.org/packages/10/5d/a30a6fad150f20f084de8e243882a0488ad4929db41a2c8ce9be6cf56563/lru_dict-1.4.1-cp313-cp313-ios_13_0_x86_64_iphonesimulator.whl", hash = "sha256:000ba9a2ab4dd1ad2d91764a6d5cce75a59de51534cdda478d1ddaa3cd8d5c48", size = 10801, upload-time = "2025-11-02T10:01:27.553Z" },
+    { url = "https://files.pythonhosted.org/packages/64/4d/cee327e024d42972c598b7e0cd5063a1b1d7451efba31f7de7b6ca91e7d0/lru_dict-1.4.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:ffad2758ce21d8fd6f0ae2628b31330732db8429a4b5994d2e107bed0ee11e68", size = 16688, upload-time = "2025-11-02T10:01:28.17Z" },
+    { url = "https://files.pythonhosted.org/packages/58/c8/2f86a1e448c5257b31424b96bf1385e7f96ec7841c2376db02811bbd395f/lru_dict-1.4.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:1671e8d92fe35dfb38d3505a56338792d3e225032f8e94888b6e95b323120380", size = 11214, upload-time = "2025-11-02T10:01:28.888Z" },
+    { url = "https://files.pythonhosted.org/packages/06/41/507c615cffaba67c35affd77dec25d3183bb87f404b41c8bb2b3053481ac/lru_dict-1.4.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d5f01ada0cf0c1aa2bdc684e5ac0f6548be7eccc3ce8b4c0361db8445f867f04", size = 11689, upload-time = "2025-11-02T10:01:29.508Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/c1/35aa1359f80174016b389f8be5fd48c4a5af0a04a73afb4906e5d4279f4a/lru_dict-1.4.1-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:74204239e30b8ec7976257c5b64565d7e3e8aea0cad0dd50a9b99e171aaf3898", size = 32034, upload-time = "2025-11-02T10:01:30.164Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/93/46301015bddd4552a1b76982ef788a7fb2a886efff83ad2c178cc7e68349/lru_dict-1.4.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a7da0e451faa4d6dcae21c0f2527c540000b2f23ed8326a0bc1d870130fd12b1", size = 32919, upload-time = "2025-11-02T10:01:30.971Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/cb/6d67145619d8ec3bba15fe145ff702ecf44991e33345d38c763501c1608a/lru_dict-1.4.1-cp313-cp313-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:071468a716768a9afca64659c390c1abb6d937b1897e07a0b70383f75637fce0", size = 34334, upload-time = "2025-11-02T10:01:31.663Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/44/50daaec6793ec2042079ed6a8b6a687b4be51b270b1d8ec5efd280116493/lru_dict-1.4.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:e77d209bcd396eb236c197bf4c95fab6848c61e0c1a5031cdde7f5c787e209f4", size = 32211, upload-time = "2025-11-02T10:01:32.468Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/53/355397949215e6b77b6771b973ee1dbc21fdd9f955925e47dce50d9d4727/lru_dict-1.4.1-cp313-cp313-musllinux_1_2_ppc64le.whl", hash = "sha256:b21688fd7ece56d04c0c13b42fd9f904d46fc9ff21e3de87d98f3f5a14c67f74", size = 33461, upload-time = "2025-11-02T10:01:33.2Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/fa/d660fa63144f38a0fd5b437a140517e3cff482d955ef6b9b4cf7651b9d85/lru_dict-1.4.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:989ef7352b347c82e5d5047f3b7ddf34b5a938e3f7b08775cacc9f28e97dd2a8", size = 31651, upload-time = "2025-11-02T10:01:33.874Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/77/0fae8d0702f7546f436efe06a684b301aad5c8a167bb2df6e42b0f821de5/lru_dict-1.4.1-cp313-cp313-win32.whl", hash = "sha256:a36e6e95b5d474ef90d04a5e3ad81ca362b473ec9534ed964222f3c0444138b8", size = 13120, upload-time = "2025-11-02T10:01:34.595Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/20/56a3f0d74c8fe32c01d3978387f66c9fb180c7f15bfd9fcecaa01b4e7736/lru_dict-1.4.1-cp313-cp313-win_amd64.whl", hash = "sha256:8e73a1ec2d0f476d666ce7c91464b22854086951b319544d1850c508f5ce381f", size = 14112, upload-time = "2025-11-02T10:01:35.268Z" },
+]
 
 [[package]]
 name = "lxml"

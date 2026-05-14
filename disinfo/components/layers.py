@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace as dc_replace
-from functools import cache
+from functools import lru_cache
 from PIL import Image, ImageColor, ImageDraw
 
 from typing import Union, Optional
@@ -25,7 +25,7 @@ class DivStyle:
     background_frame: Frame | None = None
 
 
-@cache
+@lru_cache(maxsize=1024)
 def rounded_rectangle(
     width: int,
     height: int,
