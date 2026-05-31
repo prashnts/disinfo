@@ -255,7 +255,7 @@ class RotaryEncoder:
 class AdafruitRemote:
     buttons: Buttons = field(default_factory=Buttons)
     encoder: RotaryEncoder = field(default_factory=RotaryEncoder)
-    update_frequency: int = 15
+    update_frequency: int = 1
     _n_update: int = 0
 
     def update(self):
