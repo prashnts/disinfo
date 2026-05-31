@@ -37,16 +37,6 @@ class UDPPanel(AppBaseModel):
 class Config(AppBaseModel):
     devmode: bool = False
 
-    pw_api_key: str
-    pw_unit: str = 'ca'
-
-    # Homeassistant MQTT
-    ha_base_url: str
-    ha_mqtt_host: str
-    ha_mqtt_port: int
-    ha_mqtt_username: str
-    ha_mqtt_password: str
-
     # Homeassistant Websocket
     ha_websocket_url: str = 'wss://hass.amd.noop.pw/api/websocket'
     ha_base_url: str = 'https://hass.amd.noop.pw'
