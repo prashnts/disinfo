@@ -28,7 +28,7 @@ class TimerEntry(HashModel, index=True):
 
     @property
     def end(self):
-        return pendulum.instance(self.target)
+        return pendulum.instance(self.target).in_tz('local')
 
 @dataclass
 class State:
