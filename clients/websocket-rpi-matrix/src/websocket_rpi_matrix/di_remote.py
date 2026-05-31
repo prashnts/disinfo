@@ -244,7 +244,7 @@ class RotaryEncoder:
         if not self.encoder:
             return
         current_position = self.encoder.position
-        if abs(current_position - self.position) >= 5:
+        if abs(current_position - self.position) >= 1:
             self.position = current_position
             self.updated_at = time.monotonic()
     
@@ -296,8 +296,8 @@ class AdafruitRemote:
                 ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(6, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(15, ssaw.INPUT_PULLDOWN)
-                ssaw.pin_mode(16, ssaw.INPUT_PULLDOWN)
+                ssaw.pin_mode(15, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(16, ssaw.INPUT_PULLUP)
 
                 return ssaw
             except Exception as e:
