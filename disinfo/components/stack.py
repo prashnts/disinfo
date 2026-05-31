@@ -103,4 +103,7 @@ class Stack(metaclass=UniqInstance):
         if self.scroller.direction < 0:
             delta = self.style.reverse_delta
 
+        # pin to middle
+        pos = pos - 32
+
         return self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos).draw(fs.tick)
