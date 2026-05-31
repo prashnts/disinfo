@@ -244,7 +244,7 @@ class RotaryEncoder:
         if not self.encoder:
             return
         current_position = self.encoder.position
-        if current_position != self.position:
+        if abs(current_position - self.position) >= 5:
             self.position = current_position
             self.updated_at = time.monotonic()
     
@@ -703,7 +703,7 @@ def setup(conf: Config = None):
         'buzzer': Buzzer.setup(i2c, conf),
         'remote': AdafruitRemote.setup(i2c, conf),
         'tof': ToFSensor.setup(i2c, conf),
-        'light_sensor': LightSensor.setup(i2c, conf),
+        # 'light_sensor': LightSensor.setup(i2c, conf),
         # 'ircam': IRCamera.setup(i2c, conf),
     }
 
