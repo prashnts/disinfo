@@ -255,7 +255,7 @@ class RotaryEncoder:
 class AdafruitRemote:
     buttons: Buttons = field(default_factory=Buttons)
     encoder: RotaryEncoder = field(default_factory=RotaryEncoder)
-    update_frequency: int = 4
+    update_frequency: int = 15
     _n_update: int = 0
 
     def update(self):
@@ -700,10 +700,10 @@ def setup(conf: Config = None):
     print("[i2c devices detected] ", [hex(x) for x in bus_devs if x])
 
     return {
-        'buzzer': Buzzer.setup(i2c, conf),
         'remote': AdafruitRemote.setup(i2c, conf),
+        'buzzer': Buzzer.setup(i2c, conf),
         'tof': ToFSensor.setup(i2c, conf),
-        # 'light_sensor': LightSensor.setup(i2c, conf),
+        'light_sensor': LightSensor.setup(i2c, conf),
         # 'ircam': IRCamera.setup(i2c, conf),
     }
 
