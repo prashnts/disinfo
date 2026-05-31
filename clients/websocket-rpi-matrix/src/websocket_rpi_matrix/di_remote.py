@@ -5,7 +5,7 @@ import json
 
 from pathlib import Path
 from dataclasses import dataclass, field
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Optional
 
 import board
@@ -239,12 +239,17 @@ class RotaryEncoder:
     encoder: rotaryio.IncrementalEncoder = None
     position: int = 0
     updated_at: float = 0.0
+    last_values: list[int] = field(default_factory=list)
 
     def update(self):
         if not self.encoder:
             return
-        current_position = self.encoder.position
-        if abs(current_position - self.position) >= 1:
+        self.last_values.append(self.encoder.position)
+        current_position = self.position
+        if len(self.last_values) > 5:
+            current_position = Counter(self.last_values).most_common(1)[0][0]
+            self.last_values = []
+        if abs(current_position - self.position) >= 4:
             self.position = current_position
             self.updated_at = time.monotonic()
     
