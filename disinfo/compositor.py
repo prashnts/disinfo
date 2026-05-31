@@ -61,7 +61,7 @@ def compose_big_frame(fs: FrameState):
     gesture = telermt.light_sensor.gesture.read('comp')
     if gesture and gesture != '--':
         print(gesture, telermt)
-        act('buzzer', 'boop', 'main')
+        act('buzzer', 'fmart', 'main')
 
     if rmt_reader('left'):
         publish('di.pubsub.remote', action='btn_debug')
