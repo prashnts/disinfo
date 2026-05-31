@@ -297,11 +297,8 @@ class AdafruitRemote:
                 ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(6, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(7, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(8, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(9, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(10, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(11, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(12, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(0, ssaw.INPUT_PULLUP)
+
                 return ssaw
             except Exception as e:
                 print('[Seesaw] Initialization failed', str(e))
