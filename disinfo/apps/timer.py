@@ -18,7 +18,7 @@ from disinfo.components.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
 
 
-class TimerEntry(HashModel):
+class TimerEntry(HashModel, index=True):
     target: datetime
     duration: int = 30   # seconds
     icon: str = 'clock'
