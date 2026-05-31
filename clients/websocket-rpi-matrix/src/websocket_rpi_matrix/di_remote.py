@@ -296,8 +296,8 @@ class AdafruitRemote:
                 ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(6, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(7, ssaw.INPUT_PULLUP)
-                ssaw.pin_mode(0, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(15, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(16, ssaw.INPUT_PULLUP)
 
                 return ssaw
             except Exception as e:
