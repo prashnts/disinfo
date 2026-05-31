@@ -1,5 +1,6 @@
 from PIL import Image
 from matplotlib import cm
+from typing import Callable
 import numpy as np
 
 from functools import cache
@@ -156,12 +157,29 @@ def di_rmt(fs: FrameState):
     return div(items)
 
 
-def info_content(fs: FrameState):
+def info_sensors(fs: FrameState):
     telem = TelemetryStateManager().get_state(fs)
-    if not RuntimeStateManager().get_state(fs).show_debug:
-        sample_vscroll.reset_position()
+    if not RuntimeStateManager().get_state(fs).show_sensors:
         if telem.ircam.enabled:
             act('ircam', 'stop', str(fs.tick))
+        return
+
+    try:
+        tof = tof_info(fs)
+        irc = ir_cam_info(fs)
+        info = vstack([tof, irc])
+    except Exception as e:
+        print(e)
+        info = text('Error reading sensors')
+        pass
+
+    info = composite_at(di_rmt(fs), info, 'mm', frost=3)
+        
+    return info.tag(('debug_info', 1))
+
+def info_fonts(fs: FrameState):
+    if not RuntimeStateManager().get_state(fs).show_fonts_credit:
+        sample_vscroll.reset_position()
         return
 
     header = div(hstack([
@@ -175,22 +193,11 @@ def info_content(fs: FrameState):
     ))
     sample_vscroll.set_frame(*font_demo(), pause_offset=header.height + 4)
     info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
-    try:
-        tof = tof_info(fs)
-        irc = ir_cam_info(fs)
-        info = composite_at(vstack([tof, irc]), info, 'mm', frost=3)
-    except Exception as e:
-        print(e)
-        pass
-
-    
-    info = composite_at(di_rmt(fs), info, 'mm', frost=3)
-        
-    return info.tag(('debug_info', 1))
+    return info.tag(('info_fonts', 1))
 
 
-def widget(fs: FrameState):
-    return Widget('debug_info', info_content(fs), style=DivStyle(
+def fonts_demo(fs: FrameState):
+    return Widget('fonts_demo', info_fonts(fs), style=DivStyle(
         background="#100F1D88",
         padding=3,
         margin=0,
@@ -198,3 +205,15 @@ def widget(fs: FrameState):
         border=1,
         border_color='#b196ce'
     ))
+
+def widgets(fs: FrameState):
+    return [
+        Widget('info_sensors', info_sensors(fs), priority=20, wait_time=25, style=DivStyle(
+            background="#100F1D88",
+            padding=3,
+            margin=0,
+            radius=(3, 0, 0, 3),
+            border=1,
+            border_color='#b196ce'
+        )),
+    ]

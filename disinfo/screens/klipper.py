@@ -6,6 +6,7 @@ from functools import cache
 from typing import Optional
 
 from ..utils.drawer import draw_loop
+from ..drat.app_states import RuntimeStateManager
 from ..components.text import Text, TextStyle, text
 from ..components.elements import StillImage, Frame
 from ..components.layouts import vstack, hstack
@@ -169,6 +170,8 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
 
 
 def composer(fs: FrameState, state: PrinterState):
+    if not RuntimeStateManager().get_state(fs).show_printers:
+        return None
     if not state.is_visible:
         return
     uname = lambda x: f'{x}_{state.printer_id}'
@@ -232,21 +235,6 @@ def composer(fs: FrameState, state: PrinterState):
 
     return vstack([top_info, card if state.is_printing else None], gap=4).tag(('printer_card', state.printer_name))
 
-def full_screen_composer(fs: FrameState, state: PrinterState):
-    if not state.is_visible:
-        return
-
-
-
-    elements = [
-        info_elem,
-        time_remaining(fs, state) if state.eta else None,
-        file_detail if state.online else None,
-        temp_detail if state.online else None,
-    ]
-
-    return div(vstack(elements, gap=1, align='left'), style=DivStyle(padding=1, background='#00103f71'))
-
 
 @cache
 def get_draw_loops(n: int):
@@ -272,4 +260,3 @@ def widget(fs: FrameState):
         widgets.append(w)
     return widgets
 
-draw_full_screen = draw_loop(full_screen_composer, sleepms=10)

@@ -90,6 +90,9 @@ class RuntimeState(AppBaseModel):
     motion_override: bool = app_config.devmode
     # Debug info
     show_debug: bool = False
+    show_fonts_credit: bool = False
+    show_sensors: bool = False
+    show_printers: bool = False
     screen_capture: bool = False
 
     # Extras

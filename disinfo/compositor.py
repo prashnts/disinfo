@@ -99,6 +99,7 @@ def compose_big_frame(fs: FrameState):
         screens.washing_machine.widget(fs),
         *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
+        *screens.debug_info.widgets(fs),
     ])
 
     if rmt_reader('down'):
@@ -120,7 +121,7 @@ def compose_big_frame(fs: FrameState):
 
     if awake:
         composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        composite_at(screens.debug_info.widget(fs).draw(fs), image, 'bm', frost=1.8)  
+        composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)  
         composite_at(screens.paris_metro.draw(fs), image, 'bm', frost=1.8)
 
         if app_config.height >= 120:
@@ -170,27 +171,3 @@ def compose_frame(fs: FrameState):
     else:
         frame = compose_big_frame(fs)
     return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image
-
-
-def compose_epd_frame(fs: FrameState):
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not should_turn_on_display(fs):
-        # do not draw if nobody is there.
-        return Frame(image).tag('not_present')
-
-    stack = Stack('main_cards').mut([
-        *screens.aviator.widgets.planes(fs),
-        *shazam_widgets(fs),
-        screens.weather.widgets.weather(fs),
-        screens.dishwasher.widget(fs),
-        screens.weather.widgets.moon_phase(fs),
-        screens.now_playing.widget(fs),
-        *screens.klipper.widget(fs),
-        screens.trash_pickup.widget(fs),
-        screens.date_time.calendar_widget(fs),
-    ])
-    composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
-
-    composite_at(screens.date_time.simple(fs), image, 'tr')
-
-    return Frame(image).tag('present')
