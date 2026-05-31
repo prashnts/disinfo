@@ -255,7 +255,7 @@ class RotaryEncoder:
 class AdafruitRemote:
     buttons: Buttons = field(default_factory=Buttons)
     encoder: RotaryEncoder = field(default_factory=RotaryEncoder)
-    update_frequency: int = 1
+    update_frequency: int = 4
     _n_update: int = 0
 
     def update(self):
@@ -295,6 +295,8 @@ class AdafruitRemote:
                 ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
                 ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(6, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(7, ssaw.INPUT_PULLUP)
                 return ssaw
             except Exception as e:
                 print('[Seesaw] Initialization failed', str(e))
