@@ -45,9 +45,12 @@ class Stack(metaclass=UniqInstance):
         return self
 
     def surface(self, fs: FrameState):
-        frames = [w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets) if w.frame and (w.frame.width + w.frame.height) > 2]
-        frames = [f for f in frames if f and (f.width + f.height) > 2]
-        pos = self.style.size - self.style.offset_top + sum([f.height for f in frames[0:self.pos] if f]) + (self.pos - 1 * 2)
+        _visible = lambda f: f and (f.width + f.height) > 2
+        curr_widget = self._widgets[self.pos]
+        visible_widgets = [w for w in self._widgets if w.frame and (w.frame.width + w.frame.height) > 2]
+        pos = visible_widgets.index(curr_widget) if curr_widget in visible_widgets else 0
+        frames = [w.draw(fs, active=i == pos and self.scroller.on_target) for i, w in enumerate(visible_widgets)]
+        pos = self.style.size - self.style.offset_top + sum([f.height for f in frames[0:pos]]) + (pos - 1 * 2)
         return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
     
     def next_widget(self):
@@ -69,7 +72,11 @@ class Stack(metaclass=UniqInstance):
             self.last_step = step
             return
 
-        if not self.scroller.on_target:
+        if not self.scroller.on_target and _visible(curr_widget):
+            return
+        
+        if not _visible(curr_widget):
+            self.pos = 0
             return
 
         if step - self.last_step > curr_widget.wait_time + 1:
