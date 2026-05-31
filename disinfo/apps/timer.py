@@ -88,7 +88,7 @@ def timer_view(fs: FrameState):
         act('buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
 
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
-        entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
+        entry = TimerEntry(target=fs.now.add(seconds=state.duration).in_tz('UTC'), duration=state.duration).save()
         entry.expire(int(state.duration * 1.5))
         state.active_pk = entry.pk
         state.mode = 'idle'
