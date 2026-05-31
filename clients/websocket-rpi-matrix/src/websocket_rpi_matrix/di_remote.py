@@ -280,19 +280,33 @@ class AdafruitRemote:
     def setup(cls, bus: board.I2C, conf: Config, **kwargs):
         if not conf.seesaw_enable:
             return cls(**kwargs)
+
+        def _get_ssaw():
+            try:
+                ssaw = seesaw.Seesaw(bus, addr=int(conf.seesaw_address, base=16))
+
+                seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
+                print(f"Found product {seesaw_product}")
+                if seesaw_product != 5740:
+                    print("Wrong firmware loaded?  Expected 5740")
+
+                ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
+                ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
+                return ssaw
+            except Exception as e:
+                print('[Seesaw] Initialization failed', str(e))
+                return None
+
         try:
-            ssaw = seesaw.Seesaw(bus, addr=int(conf.seesaw_address, base=16))
+            for _ in range(5):
+                ssaw = _get_ssaw()
+                if ssaw:
+                    break
+                time.sleep(1)
 
-            seesaw_product = (ssaw.get_version() >> 16) & 0xFFFF
-            print(f"Found product {seesaw_product}")
-            if seesaw_product != 5740:
-                print("Wrong firmware loaded?  Expected 5740")
-
-            ssaw.pin_mode(1, ssaw.INPUT_PULLUP)
-            ssaw.pin_mode(2, ssaw.INPUT_PULLUP)
-            ssaw.pin_mode(3, ssaw.INPUT_PULLUP)
-            ssaw.pin_mode(4, ssaw.INPUT_PULLUP)
-            ssaw.pin_mode(5, ssaw.INPUT_PULLUP)
             return cls(
                 buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),
                 encoder=RotaryEncoder(rotaryio.IncrementalEncoder(ssaw)),
@@ -690,7 +704,7 @@ def setup(conf: Config = None):
         'remote': AdafruitRemote.setup(i2c, conf),
         'tof': ToFSensor.setup(i2c, conf),
         'light_sensor': LightSensor.setup(i2c, conf),
-        'ircam': IRCamera.setup(i2c, conf),
+        # 'ircam': IRCamera.setup(i2c, conf),
     }
 
 def sensor_loop(sensors: dict, callback=None):
