@@ -1,7 +1,7 @@
 import random
 from dataclasses import replace as dc_replace
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from .utils.weather_icons import render_icon, cursor
 from .utils.func import throttle
@@ -116,7 +116,7 @@ def compose_big_frame(fs: FrameState):
     y = pos % app_config.width
     x = pos // y if y > 0 else 42
 
-    place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
+    # place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
     if awake:
         composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
@@ -127,6 +127,11 @@ def compose_big_frame(fs: FrameState):
             composite_at(stream_widget(fs).draw(fs), image, 'bm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
     composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
+
+    if app_config.name == 'distudy':
+        # dead pixel on border.
+        draw = ImageDraw.Draw(image)
+        draw.rectangle(((0, 0), (app_config.width - 1, app_config.height - 1)), outline=(0, 0, 0), width=1)
 
     return Frame(image).tag(awake)
 
@@ -158,49 +163,10 @@ def compose_small_frame(fs: FrameState):
 
     return Frame(image).tag('present')
 
-def compose_3dp_frame(fs: FrameState):
-    state = screens.klipper.KlipperStateManager().get_state(fs)
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not should_turn_on_display(fs):
-        # do not draw if nobody is there.
-        return Frame(image).tag('not_present')
-
-    # composite_at(screens.solar.draw(fs), image, 'mm')
-    # composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=2)
-    # stack = Stack('main_cards').mut([
-    #     screens.klipper.widget(fs),
-    # ])
-    background = rounded_rectangle(
-        app_config.width,
-        app_config.height,
-        radius=(3,)*4,
-        fill='#08223c00',
-        border=1,
-        border_color='#91642176')
-    composite_at(screens.klipper.draw_full_screen(fs), image, 'ml')
-    composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(Frame(background), image, 'mm')
-
-    return Frame(image).tag('present')
-
-def compose_tiny_frame(fs: FrameState):
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
-    if not should_turn_on_display(fs):
-        # do not draw if nobody is there.
-        return Frame(image).tag('not_present')
-
-    composite_at(screens.date_time.simple(fs), image, 'tr')
-
-    return Frame(image).tag('present')
-
 
 def compose_frame(fs: FrameState):
     if app_config.name == 'picowpanel':
         frame = compose_small_frame(fs)
-    elif app_config.name == 'frekvens':
-        frame = compose_tiny_frame(fs)
-    elif app_config.name == '3dpanel':
-        frame = compose_3dp_frame(fs)
     else:
         frame = compose_big_frame(fs)
     return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image
