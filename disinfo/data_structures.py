@@ -25,7 +25,7 @@ class FrameState:
 
     @classmethod
     def create(cls):
-        return cls(tick=time.time(), now=pendulum.now())
+        return cls(tick=time.time(), now=pendulum.now(tz='local'))
 
 
 class Drawable(Protocol):

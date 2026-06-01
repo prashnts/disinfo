@@ -83,7 +83,7 @@ def _flip_text(fs: FrameState, value: str, text_style: TextStyle, edge: str, bac
     return content
 
 
-def flip_info(fs: FrameState, seconds=True):
+def flip_info(fs: FrameState, seconds=True, align='right'):
     t = fs.now
     bg = "#2D2D2D6E"
     week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
@@ -92,9 +92,9 @@ def flip_info(fs: FrameState, seconds=True):
         _flip_text(fs, t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
     ], gap=0)
     none_day = _flip_text(fs, t.strftime('%a'), s_day_flip, 'flip-top', week_day_bg, together=True)
-    return vstack([mon_day, none_day], gap=2, align='right')
+    return vstack([mon_day, none_day], gap=2, align=align)
 
-def flip_digital_clock(fs: FrameState, seconds=True):
+def flip_digital_clock(fs: FrameState, seconds=True, align='right'):
     t = fs.now
     bg = "#5E5E5E4E"
     hhmm = hstack([
@@ -106,7 +106,7 @@ def flip_digital_clock(fs: FrameState, seconds=True):
         return vstack([
             hhmm,
             _flip_text(fs, t.strftime('%S'), s_colon_2[0], 'flip-top', together=True, background=bg),
-        ], gap=2, align='right')
+        ], gap=2, align=align)
     return hhmm
 
 def world_clock(fs: FrameState):
@@ -199,9 +199,9 @@ def calendar_widget(fs: FrameState):
     ], gap=2)
     return Widget('dt.calendar', contents, priority=0.1)
 
-def flip_clock(fs: FrameState):
+def flip_clock(fs: FrameState, align='right'):
     return div(
-        flip_info(fs),
+        flip_info(fs, align=align),
         style=DivStyle(background='#00000000', padding=1, radius=2)
     )
 

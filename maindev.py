@@ -7,7 +7,6 @@ from multiprocessing import Process
 from disinfo.renderers.background import main as background_renderer
 from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.data_service import main as data_service_main
-from disinfo.drat.ha_service import main as ha_service_main
 from disinfo.redis import publish
 
 acts = []
@@ -32,7 +31,7 @@ def run_sensors():
             return local_acts
 
     print("[maindev] Setting up sensors")
-    conf = Config(buzzer_address='0x1e', apds_proximity_enable=True, tof_enable=False)
+    conf = Config(buzzer_address='0x3d', apds_proximity_enable=True, tof_enable=False)
     sensors = setup_sensors(conf)
     print("[maindev] Starting sensor thread")
     sensor_loop(sensors, callback)
@@ -47,7 +46,6 @@ if __name__ == "__main__":
         'webserver': run_server,
         'renderer': background_renderer,
         # 'data_loop': data_service_main,
-        'ha_loop': ha_service_main, 
         'sensor_loop': run_sensors,
     }
     processes = []

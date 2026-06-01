@@ -5,7 +5,7 @@ import json
 
 from pathlib import Path
 from dataclasses import dataclass, field
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, deque
 from typing import Optional
 
 import board
@@ -239,17 +239,16 @@ class RotaryEncoder:
     encoder: rotaryio.IncrementalEncoder = None
     position: int = 0
     updated_at: float = 0.0
-    last_values: list[int] = field(default_factory=list)
+    last_values: list[int] = field(default_factory=lambda: deque(maxlen=5))
 
     def update(self):
         if not self.encoder:
             return
         self.last_values.append(self.encoder.position)
         current_position = self.position
-        if len(self.last_values) > 5:
+        if len(self.last_values) == 5:
             current_position = Counter(self.last_values).most_common(1)[0][0]
-            self.last_values = []
-        if abs(current_position - self.position) >= 4:
+        if abs(current_position - self.position) >= 1:
             self.position = current_position
             self.updated_at = time.monotonic()
     
@@ -260,7 +259,7 @@ class RotaryEncoder:
 class AdafruitRemote:
     buttons: Buttons = field(default_factory=Buttons)
     encoder: RotaryEncoder = field(default_factory=RotaryEncoder)
-    update_frequency: int = 4
+    update_frequency: int = 1
     _n_update: int = 0
 
     def update(self):

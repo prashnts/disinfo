@@ -21,6 +21,7 @@ class StackStyle:
     reverse_delta: int = 10
     scrollbar: bool = False
     static_if_small: bool = False
+    align: str = 'left'
 
 class Stack(metaclass=UniqInstance):
     def __init__(self, name: str, style: StackStyle = StackStyle):
@@ -45,13 +46,12 @@ class Stack(metaclass=UniqInstance):
         return self
 
     def surface(self, fs: FrameState):
-        _visible = lambda f: f and (f.width + f.height) > 2
         curr_widget = self._widgets[self.pos]
         visible_widgets = [w for w in self._widgets if w.frame and (w.frame.width + w.frame.height) > 2]
         pos = visible_widgets.index(curr_widget) if curr_widget in visible_widgets else 0
         frames = [w.draw(fs, active=i == pos and self.scroller.on_target) for i, w in enumerate(visible_widgets)]
         pos = self.style.size - self.style.offset_top + sum([f.height for f in frames[0:pos]]) + (pos - 1 * 2)
-        return div(vstack(frames, gap=2), DivStyle(padding=(0, 0, 0, 2))), pos
+        return div(vstack(frames, gap=2, align=self.style.align), DivStyle(padding=(0, 0, 0, 2))), pos
     
     def next_widget(self):
         self.pos += 1

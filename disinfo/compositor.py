@@ -6,10 +6,9 @@ from PIL import Image, ImageDraw
 from .utils.weather_icons import render_icon, cursor
 from .utils.func import throttle
 from .components.layouts import hstack, vstack, composite_at, place_at
-from .components.layers import div, DivStyle, rounded_rectangle
-from .components.transitions import FadeIn
+from .components.transitions import FadeIn, Resize
 from .components.elements import Frame
-from .components.stack import Stack
+from .components.stack import Stack, StackStyle
 from .data_structures import FrameState
 from .drat.app_states import RuntimeStateManager
 
@@ -55,6 +54,8 @@ def compose_big_frame(fs: FrameState):
     telermt = TelemetryStateManager().get_state(fs)
     awake = should_turn_on_display(fs)
     background = telermt.light_sensor.color_hex
+    _leftward = app_config.name == 'distudy'
+    _clock_align = 'left' if _leftward else 'right'
 
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 255))
 
@@ -78,18 +79,22 @@ def compose_big_frame(fs: FrameState):
             needle_radius_multiplier=0.45,
             background=background,
         )
-        composite_at(screens.solar.draw(fs, solar_style), image, 'mm')
+        solar_frame = screens.solar.draw(fs, solar_style)
+        
+        composite_at(FadeIn('solar', duration=0.3).mut(solar_frame).draw(fs), image, 'mm')
     composite_at(
-        screens.date_time.flip_clock(fs),
+        screens.date_time.flip_clock(fs, align=_clock_align),
         image,
-        'tr',
-        dx=-1 * p_stack_offset(),
+        'tl' if _leftward else 'tr',
+        dx=p_stack_offset() * (1 if _leftward else -1),
         dy=p_stack_offset() + 60,
         frost=1)
     # if rmt_state.show_debug:
     #     composite_at(screens.demo.draw(fs), image, 'mm')
 
-    stack = Stack('main_cards').mut([
+    stack_conf = StackStyle(scrollbar=_leftward, align='right' if _leftward else 'left')
+
+    stack = Stack('main_cards', style=stack_conf).mut([
         screens.weather.widgets.weather(fs),
         *screens.aviator.widgets.planes(fs),
         *shazam_widgets(fs),
@@ -106,11 +111,11 @@ def compose_big_frame(fs: FrameState):
         stack.next_widget()
 
     if awake:
-        composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
+        composite_at(stack.draw(fs), image, 'mr' if _leftward else 'ml', dx=p_stack_offset(), frost=1.8)
         composite_at(shazam_indicators(fs).draw(fs), image, 'br')
         # composite_at(screens.numbers.draw(fs), image, 'bl')
 
-    composite_at(screens.date_time.flip_digital_clock(fs), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
+    composite_at(screens.date_time.flip_digital_clock(fs, align=_clock_align), image, 'tl' if _leftward else 'tr', dy=p_time_offset(), dx=1 if _leftward else -1, frost=1.8)
 
     s = RuntimeStateManager().get_state(fs)
     pos = rmt_reader('encoder')
@@ -127,7 +132,7 @@ def compose_big_frame(fs: FrameState):
         if app_config.height >= 120:
             composite_at(stream_widget(fs).draw(fs), image, 'bm')
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(timer_app(fs).draw(fs), image, 'br', frost=2)
+    composite_at(timer_app(fs).draw(fs), image, 'br' if _leftward else 'bl', frost=2)
 
     if app_config.name == 'distudy':
         # dead pixel on border.

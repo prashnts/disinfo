@@ -213,7 +213,7 @@ def analog_clock(fs, style: AnalogClockStyle):
 
     # Reduce brightness of the background.
     pat_dark_ring = cairo.RadialGradient(cx, cy, sun_path_radius, cx, cy, hyp)
-    color = (.03, .04, .09)
+    color = AppColor(style.background).clamp(0, 0.4).rgb
     pat_dark_ring.add_color_stop_rgba(0, *color, 0)
     pat_dark_ring.add_color_stop_rgba(.4, *color, 0)
     pat_dark_ring.add_color_stop_rgba(.9, *color, 1)
@@ -346,4 +346,4 @@ def analog_clock(fs, style: AnalogClockStyle):
     return Frame(i)
 
 def composer(fs: FrameState, style: AnalogClockStyle = AnalogClockStyle()):
-    return div(analog_clock(fs, style))
+    return div(analog_clock(fs, style)).tag(('solar', style.background))

@@ -28,7 +28,7 @@ class TimerEntry(HashModel, index=True):
 
     @property
     def end(self):
-        return pendulum.instance(self.target).in_tz('local')
+        return pendulum.instance(self.target, tz='local')
 
 @dataclass
 class State:
@@ -48,7 +48,7 @@ DisplayFontMap = namedtuple('DisplayFontMap', ['step', 'font'])
 
 fast_increments = IncrementMap(
     # duration, delta
-    [0, 45, 120, 420, 800],
+    [1, 45, 120, 420, 800],
     [1,  5, 15, 30,  60],
 )
 
@@ -88,7 +88,7 @@ def timer_view(fs: FrameState):
         act('buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
 
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
-        entry = TimerEntry(target=fs.now.add(seconds=state.duration).in_tz('UTC'), duration=state.duration).save()
+        entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
         entry.expire(int(state.duration * 1.5))
         state.active_pk = entry.pk
         state.mode = 'idle'

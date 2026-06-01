@@ -25,6 +25,12 @@ class AppColor(Color):
         c.luminance = constrain(luminance)
         return c
 
+    def clamp(self, minval=0, maxval=1):
+        c = Color(self)
+        # c.saturation = constrain(c.saturation, minval, maxval)
+        c.luminance = constrain(c.luminance, minval, maxval)
+        return c
+
     def get_rgba(self):
         return (*self.rgb, self.alpha)
     
