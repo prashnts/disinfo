@@ -175,7 +175,7 @@
             const [url, setUrl] = useState('')
             const didChange = e => setUrl(e.currentTarget.value)
             return html`<div>
-                <input onChange=${didChange} />
+                <input onChange=${didChange} name="link" />
                 <${RemoteButton} action="set_stream_url" payload=${{url}} />
             </div>`
         }

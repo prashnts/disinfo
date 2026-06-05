@@ -14,7 +14,7 @@ def setup_stream(url: str):
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
-    bufs = client.request_buffers(965536, 7)
+    bufs = client.request_buffers(965536, 3)
     for b in bufs:
         client.enqueue_buffer(b)
     
@@ -25,8 +25,8 @@ def setup_stream(url: str):
     yield client
 
     while True:
-        buf = client.dequeue_buffer(timeout=3)
-        if buf.timestamp < time.time() - 2:
+        buf = client.dequeue_buffer(timeout=5)
+        if buf.timestamp < time.time() - 3:
             client.enqueue_buffer(buf)
             print('[skipping old frame]')
             continue
