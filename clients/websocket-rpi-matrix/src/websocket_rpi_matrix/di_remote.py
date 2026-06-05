@@ -17,7 +17,7 @@ from adafruit_mlx90640 import MLX90640, RefreshRate
 from pydantic import BaseModel
 
 from .modulino.buzzer import ModulinoBuzzer
-from .lib import sparkfun_da7280 as sf_haptic
+from .libs import sparkfun_da7280 as sf_haptic
 
 _here = Path(__file__).parent / 'tof_bin'
 
