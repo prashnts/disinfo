@@ -17,6 +17,7 @@ from adafruit_mlx90640 import MLX90640, RefreshRate
 from pydantic import BaseModel
 
 from .modulino.buzzer import ModulinoBuzzer
+from .lib import sparkfun_da7280 as sf_haptic
 
 _here = Path(__file__).parent / 'tof_bin'
 
@@ -244,10 +245,8 @@ class RotaryEncoder:
     def update(self):
         if not self.encoder:
             return
-        self.last_values.append(self.encoder.position)
-        current_position = self.position
-        if len(self.last_values) == 5:
-            current_position = Counter(self.last_values).most_common(1)[0][0]
+        current_position = self.encoder.position
+
         if abs(current_position - self.position) >= 1:
             self.position = current_position
             self.updated_at = time.monotonic()
@@ -700,6 +699,60 @@ class Buzzer:
 
         return siren
 
+@dataclass
+class Haptics:
+    da7280: sf_haptic.DA7280 = None
+    enabled: bool = False
+    running: bool = False
+    triggered_at: float = 0.0
+    duration: float = 1.0
+    update_frequency: int = 1
+    _n_update: int = 0
+    
+    @classmethod
+    def setup(cls, bus: board.I2C, conf: Config, **kwargs):
+        driver = sf_haptic.DA7280(bus)
+        if driver.begin():
+            driver.set_operation_mode(sf_haptic.DRO_MODE)
+            haptics = cls(da7280=driver, enabled=True, **kwargs)
+            haptics.act('boop', '_init')
+            return haptics
+        return cls(**kwargs)
+    
+    def serialize(self) -> dict:
+        return {
+            'active': bool(self.da7280),
+        }
+
+    def act(self, params: str, hash_: str):
+        if not self.da7280:
+            return
+
+        def _set_trigger(stength, duration):
+            self.da7280.set_vibrate(stength)
+            self.running = True
+            self.triggered_at = time.monotonic()
+            self.duration = duration
+
+        if params == 'boop':
+            _set_trigger(50, 1)
+        elif params == 'stop':
+            _set_trigger(0, 0)
+        elif params == 'tap':
+            _set_trigger(20, 0.05)
+
+    def update(self):
+        if not self.enabled:
+            return
+        if self._n_update < self.update_frequency:
+            self._n_update += 1
+            return
+        self._n_update = 0
+        if self.running and (self.triggered_at + self.duration) < time.monotonic():
+            self.da7280.set_vibrate(0)
+            self.running = False
+
+
 def setup(conf: Config = None):
     if conf is None:
         conf = Config()     # use default conf
@@ -712,6 +765,7 @@ def setup(conf: Config = None):
         'buzzer': Buzzer.setup(i2c, conf),
         'tof': ToFSensor.setup(i2c, conf),
         'light_sensor': LightSensor.setup(i2c, conf),
+        'haptics': Haptics.setup(i2c, conf),
         # 'ircam': IRCamera.setup(i2c, conf),
     }
 

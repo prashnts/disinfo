@@ -25,8 +25,8 @@ def setup_stream(url: str):
     yield client
 
     while True:
-        buf = client.dequeue_buffer(timeout=5)
-        if buf.timestamp < time.time() - 3:
+        buf = client.dequeue_buffer(timeout=3)
+        if buf.timestamp < time.time() - 2:
             client.enqueue_buffer(buf)
             print('[skipping old frame]')
             continue

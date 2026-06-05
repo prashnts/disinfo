@@ -87,7 +87,7 @@ def timer_view(fs: FrameState):
         state.last_encoder_at = encoder.updated_at
         act('buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
 
-    if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 1:
+    if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 2:
         entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
         entry.expire(int(state.duration * 1.5))
         state.active_pk = entry.pk
