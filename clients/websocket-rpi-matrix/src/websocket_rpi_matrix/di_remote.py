@@ -735,7 +735,7 @@ class Haptics:
             self.duration = duration
 
         if params == 'boop':
-            _set_trigger(50, 1)
+            _set_trigger(20, 2)
         elif params == 'stop':
             _set_trigger(0, 0)
         elif params == 'tap':
