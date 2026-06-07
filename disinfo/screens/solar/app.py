@@ -136,7 +136,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     ctx = cairo.Context(surface)
     bgcolor = AppColor(style.background)
     bgcolor.red *= 0.8
-    bgcolor.blue *= 1.5
+    bgcolor.blue *= 1.3
     bgcolor.green *= 1.2
     bgcolor = bgcolor.clamp(0, 0.6)
 
@@ -158,20 +158,21 @@ def analog_clock(fs, style: AnalogClockStyle):
     ctx.fill_preserve()
 
     p2 = p2_interpolator(solar_pos['altitude'])
-    # Violet Streak
-    pathorange = cairo.LinearGradient(pay, pbx, pby, pax)
-    pathorange.add_color_stop_rgba(0.2, 0, 0, 0, 0)
-    pathorange.add_color_stop_rgba(.5, *SkyHues.evening_streak_3.rgb, p2)
-    pathorange.add_color_stop_rgba(0.8, 0, 0, 0, 0)
-    ctx.set_source(pathorange)
-    ctx.fill_preserve()
+    # # Violet Streak
+    # pathorange = cairo.LinearGradient(pay, pbx, pby, pax)
+    # pathorange.add_color_stop_rgba(0.2, 0, 0, 0, 0)
+    # pathorange.add_color_stop_rgba(.5, *SkyHues.evening_streak_3.rgb, p2)
+    # pathorange.add_color_stop_rgba(0.8, 0, 0, 0, 0)
+    # ctx.set_source(pathorange)
+    # ctx.fill_preserve()
 
     # Yellow Streak
-    pathorizon = cairo.LinearGradient(pay, pbx, pby, pax)
-    pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
-    pathorizon.add_color_stop_rgba(.2, *SkyHues.evening_streak_2.rgb, p2 / 2)
-    pathorizon.add_color_stop_rgba(.5, *SkyHues.evening_streak.rgb, p2)
-    pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, p2 / 2)
+    pathorizon = cairo.RadialGradient(sun_x, sun_y, 0, cx, cy, rcontain * 1.2)
+    # pathorizon = cairo.LinearGradient(pay, pbx, pby, pax)
+    # pathorizon.add_color_stop_rgba(0, 0, 0, 0, 0)
+    pathorizon.add_color_stop_rgba(0, *SkyHues.evening_streak_2.rgb, p2)
+    pathorizon.add_color_stop_rgba(.4, *SkyHues.evening_streak_2.rgb, p2 / 3)
+    pathorizon.add_color_stop_rgba(.7, *SkyHues.evening_streak_2.rgb, p2 / 5)
     pathorizon.add_color_stop_rgba(1, 0, 0, 0, 0)
     ctx.set_source(pathorizon)
     ctx.fill_preserve()
