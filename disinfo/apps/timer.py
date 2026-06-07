@@ -95,6 +95,7 @@ def timer_view(fs: FrameState):
         state.duration = 0
         state.last_encoder = encoder.position
         state.last_timer_at = fs.tick
+        act('haptics', 'boop', 'ok')
         act('buzzer', 'ok', 'ok')
 
     if remote('down'):

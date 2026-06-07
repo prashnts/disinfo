@@ -1,16 +1,20 @@
 import io
 import time
 import queue
+from urllib.parse import urlparse, parse_qs
 from PIL import Image
 from mjpeg.client import MJPEGClient
 
 from ..utils.drawer import draw_loop
+from ..components import fonts
+from ..components.layouts import composite_at
 from ..components.elements import Frame
+from ..components.text import text
 from ..data_structures import FrameState
 from ..components.widget import Widget
 from ..drat.app_states import RuntimeStateManager
 
-def setup_stream(url: str):
+def setup_stream(url: str, width: int=80):
     client = MJPEGClient(url)
 
     # Allocate memory buffers for frames
@@ -32,7 +36,7 @@ def setup_stream(url: str):
             continue
         with io.BytesIO(buf.data) as buffer:
             img = Image.open(buffer)
-            ratio = min(120/img.width, 120/img.height)
+            ratio = min(width/img.width, width/img.height)
             size = (int(img.width*ratio), int(img.height*ratio))
             size_mid = (2 * size[0], 2 * size[1])
             img = img.resize(size_mid).quantize()
@@ -50,13 +54,15 @@ def stream_frame(fs, url):
     global _last_update, _stream, _prev_url
     if not _stream:
         return
+    name = parse_qs(urlparse(url).query).get('src', [url])[0]
     try:
         img = next(_stream)
     except queue.Empty:
         _stream = None
         return
     _last_update = fs.tick
-    return Frame(img, hash=('mjpeg', url)).tag('stream')
+    frame = composite_at(text(name, font=fonts.two_slice), Frame(img), 'bl')
+    return frame.tag('stream')
 
 def draw_stream(fs: FrameState):
     global _stream, _client, _last_update, _prev_url
@@ -64,8 +70,9 @@ def draw_stream(fs: FrameState):
     url = state.stream_url
     if not state.show_stream:
         if _client:
-            print("* stopping client")
+            print("* stopping clients")
             _client.stop()
+            _client = None
         _stream = None
         return None
 
@@ -76,8 +83,8 @@ def draw_stream(fs: FrameState):
             print("* stopping client")
             _client.stop()
         try:
-            time.sleep(5)
-            _stream = setup_stream(url)
+            time.sleep(0.5)
+            _stream = setup_stream(url, width=120)
         except Exception as e:
             return None
         _client = next(_stream)

@@ -166,5 +166,6 @@ mecha = TTFFont('assets/fonts/Mecha.ttf', 16, license='free (nc)')
 serifpx7 = TTFFont('assets/fonts/serif_pixel-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum = TTFFont('assets/fonts/zx_spectrum-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum_b = TTFFont('assets/fonts/zx_spectrum-7_bold.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
+two_slice = TTFFont('assets/fonts/Two Slice.ttf', 3, license='CC-BY-SA', credit='https://joefatula.com/twoslice.html')
 
 
