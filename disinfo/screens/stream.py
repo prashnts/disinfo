@@ -29,8 +29,8 @@ def setup_stream(url: str, width: int=80):
     yield client
 
     while True:
-        buf = client.dequeue_buffer(timeout=5)
-        if buf.timestamp < time.time() - 3:
+        buf = client.dequeue_buffer()
+        if buf.timestamp < time.time() - 0.5:
             client.enqueue_buffer(buf)
             print('[skipping old frame]')
             continue
@@ -76,7 +76,7 @@ def draw_stream(fs: FrameState):
         _stream = None
         return None
 
-    if (_last_update and _last_update < (fs.tick - 20)) or not _stream or _prev_url != url:
+    if (_last_update and _last_update > (fs.tick + 5)) or not _stream or _prev_url != url:
         print("* no updates")
         # reset stream
         if _client:

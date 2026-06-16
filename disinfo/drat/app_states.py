@@ -22,7 +22,7 @@ class PubSubManager(metaclass=UniqInstance):
     def __init__(self):
         self.pubsub = db.pubsub()
         self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
-        self.pubsub.run_in_thread(sleep_time=0.001, daemon=True)
+        self.pubsub.run_in_thread(sleep_time=0.05, daemon=True)
         self.subscribers = {}
 
     def handle_message(self, message):
