@@ -16,20 +16,25 @@ from ..drat.app_states import RuntimeStateManager
 from ..config import app_config
 
 
-nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(50, 50))
+nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(42, 42))
 
 def _gen_path():
     xmax = 128
     ymax = 128
+    vmax = 10
     velocity = 3
     pos = np.array([0, 64])
     dirn = np.array([2, 2])
+
+    get_angle = lambda a, b: -np.angle(a + b * 1j, deg=True) + 0
+
+    angle = get_angle(dirn[0], dirn[1])
     amp = (3, 3)
     last_pos_at = 0
 
     while True:
-        if last_pos_at + (1 / velocity) > time.time():
-            yield pos
+        if (last_pos_at + (1 / velocity)) > time.time():
+            yield pos, angle
             continue
 
         last_pos_at = time.time()
@@ -42,9 +47,16 @@ def _gen_path():
         if random.random() > 0.6:
             pos[0] += max(amp[1], min(amp[0], random.random()))
             pos[1] += max(amp[1], min(amp[0], random.random()))
+        if random.random() > 0.8:
+            factor = max(1, min(vmax, random.random() * 2))
+            # factor = factor if random.random() > 0.5 else -factor
+            velocity += factor
+        else:
+            velocity = 4
         pnext = pos + (velocity * dirn)
         pos = pnext
-        yield pos
+        angle = get_angle(dirn[0], dirn[1])
+        yield pos, angle
 
 next_pos = _gen_path()
 
@@ -76,8 +88,8 @@ def composer(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 50))
     draw = ImageDraw.Draw(image)
 
-    pos = next(next_pos)
-    place_at(nyan_gif.draw(fs.tick), image, x=int(pos[0]), y=int(pos[1]), anchor='mm')
+    pos, angle = next(next_pos)
+    place_at(nyan_gif.draw(fs.tick).rotate(angle), image, x=int(pos[0]), y=int(pos[1]), anchor='mm')
 
     composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
 
