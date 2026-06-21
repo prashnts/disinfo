@@ -45,14 +45,15 @@ class Frame(UIElement):
         height = self.height * ratio[1]
         return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
 
-    def resize(self, size: tuple[int, int], ratio_fn=None) -> 'Frame':
+    def resize(self, size: tuple[int, int], ratio_fn=None, pixel=False) -> 'Frame':
         res_x, res_y = size
         img = self.image
         if ratio_fn:
             ratio = ratio_fn(res_x/img.width, res_y/img.height)
             size = (int(img.width*ratio), int(img.height*ratio))
+        resample_mode = Image.Resampling.BICUBIC if not pixel else Image.Resampling.LANCZOS
         img = (img
-            .resize(size, resample=Image.Resampling.BICUBIC)
+            .resize(size, resample=resample_mode)
             .convert('RGBA'))
         return Frame(img, hash=('resize', size, self))
 

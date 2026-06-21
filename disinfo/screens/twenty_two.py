@@ -14,7 +14,7 @@ from ..drat.app_states import RuntimeStateManager
 from ..config import app_config
 
 
-nyan_gif = SpriteIcon('assets/raster/nyan.png', step_time=0.1)
+nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(50, 50))
 
 
 def composer(fs: FrameState):

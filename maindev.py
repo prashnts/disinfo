@@ -40,11 +40,14 @@ def run_sensors():
 def run_server():
     uvicorn.run("disinfo.web.server:app", host="0.0.0.0", port=4200)
 
+def run_background_renderer():
+    background_renderer(fps=38, stats=False)
+
 
 if __name__ == "__main__":
     procs = {
         'webserver': run_server,
-        'renderer': background_renderer,
+        'renderer': run_background_renderer,
         # 'data_loop': data_service_main,
         'sensor_loop': run_sensors,
     }

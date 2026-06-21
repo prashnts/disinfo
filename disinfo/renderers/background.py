@@ -20,6 +20,7 @@ def publish_frame(img):
 def main(fps: int = 60, stats: bool = False):
     _tf = 1 / fps
 
+
     while True:
         t_start = time.monotonic()
         fs = FrameState.create()
@@ -27,12 +28,13 @@ def main(fps: int = 60, stats: bool = False):
         publish_frame(frame)
         t_draw = time.monotonic() - t_start
 
-        delay = max(_tf - t_draw, 0)
+        delay = max(_tf - t_draw, 0.0)
         _fps = (1 / (t_draw + delay))
 
         if stats:
             print(f't draw: {t_draw:0.4}')
             print(f'fps:    \033[34m{_fps:0.4}\033[0m')
+            print(f'delay:  {delay:0.4}')
             print('\033[3A')
         time.sleep(delay)
 
