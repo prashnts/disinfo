@@ -1,11 +1,13 @@
 import random
+import numpy as np
+import time
 
 from PIL import Image, ImageDraw
 
 from ..utils.drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
-from ..components.layouts import composite_at
+from ..components.layouts import composite_at, place_at
 from ..components.layers import div
 from ..components.text import TextStyle, text
 from ..components.spriteim import SpriteIcon
@@ -16,6 +18,35 @@ from ..config import app_config
 
 nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(50, 50))
 
+def _gen_path():
+    xmax = 128
+    ymax = 128
+    velocity = 3
+    pos = np.array([0, 64])
+    dirn = np.array([2, 2])
+    amp = (3, 3)
+    last_pos_at = 0
+
+    while True:
+        if last_pos_at + (1 / velocity) > time.time():
+            yield pos
+            continue
+
+        last_pos_at = time.time()
+
+        pnext = pos + (velocity * dirn)
+        if pnext[0] >= xmax or pnext[0] <= 0:
+            dirn[0] *= -1
+        if pnext[1] >= ymax or pnext[1] <= 0:
+            dirn[1] *= -1
+        if random.random() > 0.6:
+            pos[0] += max(amp[1], min(amp[0], random.random()))
+            pos[1] += max(amp[1], min(amp[0], random.random()))
+        pnext = pos + (velocity * dirn)
+        pos = pnext
+        yield pos
+
+next_pos = _gen_path()
 
 def composer(fs: FrameState):
     t = fs.now #.set(hour=21, minute=21, second=2)
@@ -45,7 +76,9 @@ def composer(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 50))
     draw = ImageDraw.Draw(image)
 
-    composite_at(nyan_gif.draw(fs.tick), image, 'bm', dx=20)
+    pos = next(next_pos)
+    place_at(nyan_gif.draw(fs.tick), image, x=int(pos[0]), y=int(pos[1]), anchor='mm')
+
     composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
 
     # glittering colors if it's the magic hour

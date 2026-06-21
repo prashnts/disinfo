@@ -239,20 +239,20 @@ def _news_deck(fs: FrameState):
         padding=(14, 4, 4, 4),
         background="#50453D00",
         radius=3)
-    
 
-    f_img = (Resize()
-        .mut(st.cover_im(s.size)
-             .brightness(0.3 if state.details else 0.8)
-             .opacity(0.9)
-             .color_(0.5 if state.details else 0.8)
-             .tag(('storycover', st.pk)))
-        .draw(fs))
     f_category = Resize(delay=1).mut(st.category_emoji).draw(fs)
     f_emoji = (Resize(duration=.2, delay=1)
         .mut(render_emoji(st.emoji, size=26) if state.details else None)
         .draw(fs))
-    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
+    if not state.details:
+        f_img = (Resize()
+            .mut(st.cover_im(s.size)
+                .brightness(0.8)
+                .opacity(0.9)
+                .color_(0.8)
+                .tag(('storycover', st.pk)))
+            .draw(fs))
+        s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
     s = div(
         s,
         background="#5A4F3C82",
