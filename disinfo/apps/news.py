@@ -25,10 +25,13 @@ from disinfo.utils.imops import image_from_url
 from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
 from disinfo.drat.app_states import RuntimeStateManager
 
+from .news_highlights import extract_highlights
+
 
 class NewsStory(HashModel, index=True):
     title: str
     short_summary: str
+    extracts: str | None = None
     uid: str = Field(primary_key=True)
     index: int = Field(index=True, sortable=True)
     emoji: str
@@ -181,8 +184,7 @@ def _news_deck(fs: FrameState):
         state.story_index += 1
         state.changed_at = fs.tick
         if state.story:
-            state.story.expire(1)
-
+            state.story.expire(1)    
     try:
         st: NewsStory = NewsStory.get_by_index(state.shuffled[state.story_index])
     except IndexError:
@@ -192,6 +194,9 @@ def _news_deck(fs: FrameState):
     state.story = st
     state.details = (state.changed_at + state.detail_in) < fs.tick
 
+    if not st.extracts and state.details:
+        print(f"[*] Extracting highlights for {st.title}")
+        extract_highlights(st)
 
     title_style = TextStyle(
         font=fonts.cozette if not state.details else fonts.tamzen__rs,
@@ -206,9 +211,10 @@ def _news_deck(fs: FrameState):
         radius=2,
         margin=1)
 
+    short_summary = st.short_summary if not st.extracts else st.extracts
     summary = div(
         (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=True)
-            .set_frame(div(text(st.short_summary, sumry_style, multiline=True), padding=3))
+            .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
             .reset_position(not state.details)
             .draw(fs.tick)),
         background="#7D7B8128",

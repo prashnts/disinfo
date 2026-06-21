@@ -57,6 +57,9 @@ class Config(AppBaseModel):
 
     monitors: MonitorConfig = MonitorConfig()
 
+    oai_api_key: SecretStr = SecretStr('')
+    oai_base_url: str = 'https://owui.amd.noop.pw/api/v1'
+
     # Panel
     width: int
     height: int
