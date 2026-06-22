@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 from disinfo.utils import ease
 
 from ..utils.drawer import draw_loop
-from .colors import gray, amber_red, black, light_gray, light_blue, orange_red, minute_green
+from .colors import gray, gray_lt, amber_red, black, light_gray, light_blue, orange_red, minute_green
 from ..data_structures import FrameState
 from ..components import fonts
 from ..components.elements import Frame
@@ -21,7 +21,7 @@ s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
 s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
 s_date_flip = TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0))
-s_time_flip = TextStyle(color="#DFD9C98F", font=fonts.s16x8, trim=(0, 0, 0, 0))
+s_time_flip = TextStyle(color=gray_lt.hex, font=fonts.s16x8, trim=(0, 0, 0, 0))
 s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)

@@ -1,6 +1,7 @@
 from disinfo.utils.color import AppColor
 
 
+gray_lt = AppColor("#cbcdd9")
 gray = AppColor('#9a9ba2')
 light_gray = AppColor('#c6c6cb')
 black = AppColor('#000000')

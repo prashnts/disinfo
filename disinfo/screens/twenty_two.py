@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 from ..utils.drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
-from ..components.layouts import composite_at, place_at
+from ..components.layouts import composite_at, place_at, hstack
 from ..components.layers import div
 from ..components.text import TextStyle, text
 from ..components.spriteim import SpriteIcon
@@ -19,44 +19,37 @@ from ..config import app_config
 nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(42, 42))
 
 def _gen_path():
-    xmax = 128
-    ymax = 128
+    xmax = app_config.width
+    ymax = app_config.height
     vmax = 10
     velocity = 3
-    pos = np.array([0, 64])
-    dirn = np.array([2, 2])
+    pos = np.array([0., 64.])
+    dirn = np.array([2., 2.])
 
     get_angle = lambda a, b: -np.angle(a + b * 1j, deg=True) + 0
 
     angle = get_angle(dirn[0], dirn[1])
-    amp = (3, 3)
-    last_pos_at = 0
 
-    while True:
-        if (last_pos_at + (1 / velocity)) > time.time():
-            yield pos, angle
-            continue
+    def _get_anchor(pos):
+        return 'mm'
 
-        last_pos_at = time.time()
+    while True:        
+        if random.random() > 0.95:
+            dirn[0] += random.choice(np.arange(-.2, .2, .01))
+        if random.random() > 0.95:
+            dirn[1] += random.choice(np.arange(-.2, .2, .01))
+        if random.random() > 0.8:
+            velocity = random.choice(np.arange(0, 0.6, 0.05))
 
         pnext = pos + (velocity * dirn)
         if pnext[0] >= xmax or pnext[0] <= 0:
             dirn[0] *= -1
         if pnext[1] >= ymax or pnext[1] <= 0:
             dirn[1] *= -1
-        if random.random() > 0.6:
-            pos[0] += max(amp[1], min(amp[0], random.random()))
-            pos[1] += max(amp[1], min(amp[0], random.random()))
-        if random.random() > 0.8:
-            factor = max(1, min(vmax, random.random() * 2))
-            # factor = factor if random.random() > 0.5 else -factor
-            velocity += factor
-        else:
-            velocity = 4
-        pnext = pos + (velocity * dirn)
-        pos = pnext
+
+        pos = pos + (velocity * dirn)
         angle = get_angle(dirn[0], dirn[1])
-        yield pos, angle
+        yield pos, angle, _get_anchor(pos)
 
 next_pos = _gen_path()
 
@@ -88,10 +81,12 @@ def composer(fs: FrameState):
     image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 50))
     draw = ImageDraw.Draw(image)
 
-    pos, angle = next(next_pos)
-    place_at(nyan_gif.draw(fs.tick).rotate(angle), image, x=int(pos[0]), y=int(pos[1]), anchor='mm')
+    content = hstack([content, nyan_gif.draw(fs.tick)])
 
-    composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
+    pos, angle, anchor = next(next_pos)
+    place_at(content.rotate(angle), image, x=int(pos[0]), y=int(pos[1]), anchor=anchor)
+
+    # composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
 
     # glittering colors if it's the magic hour
     if not (twentytwo or all_equal):
