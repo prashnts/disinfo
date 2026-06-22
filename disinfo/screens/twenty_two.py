@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 from ..utils.drawer import draw_loop
 from ..components import fonts
 from ..components.elements import Frame
-from ..components.layouts import composite_at, place_at, hstack
+from ..components.layouts import composite_at, place_at, hstack, mosaic
 from ..components.layers import div
 from ..components.text import TextStyle, text
 from ..components.spriteim import SpriteIcon
@@ -17,6 +17,7 @@ from ..config import app_config
 
 
 nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(42, 42))
+nyan_rainbow = SpriteIcon('assets/raster/nyan-rainbow.gif', step_time=0.1, resize=(128, 42))
 
 def _gen_path():
     xmax = app_config.width
@@ -75,14 +76,16 @@ def composer(fs: FrameState):
     if all_equal:
         fill = '#CF3F13'
 
-    text_timestr = text(t.strftime('%H:%M'), style=TextStyle(font=font, color=fill, outline=1))
+    text_timestr = text(t.strftime('%H:%M:%S'), style=TextStyle(font=font, color=fill, outline=1))
     content = div(text_timestr, background='#5010A088', padding=2, radius=2)
 
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 50))
+
+    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     content = hstack([content, nyan_gif.draw(fs.tick)])
 
+    content = composite_at(nyan_rainbow.draw(fs.tick), content, behind=True, dx=-40, anchor='tr')
     pos, angle, anchor = next(next_pos)
     place_at(content.rotate(angle), image, x=int(pos[0]), y=int(pos[1]), anchor=anchor)
 
