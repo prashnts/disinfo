@@ -1,6 +1,6 @@
 import pendulum
 
-from pyquery import PyQuery as pq
+# from pyquery import PyQuery as pq
 from functools import cache
 from typing import Optional
 from datetime import datetime

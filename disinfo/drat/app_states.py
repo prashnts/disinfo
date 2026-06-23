@@ -4,9 +4,9 @@ State managers hold runtime-persistent states.
 PubSubStateManager uses redis pubsub for inter-process communication.
 '''
 import json
+import numpy as np
 
 from typing import Generic, TypeVar, Callable
-from scipy.interpolate import interp1d
 
 from disinfo.config import app_config
 from disinfo.redis import db
@@ -22,7 +22,7 @@ class PubSubManager(metaclass=UniqInstance):
     def __init__(self):
         self.pubsub = db.pubsub()
         self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
-        self.pubsub.run_in_thread(sleep_time=0.05, daemon=True)
+        self.pubsub.run_in_thread(sleep_time=0.1, daemon=True)
         self.subscribers = {}
 
     def handle_message(self, message):
@@ -145,10 +145,11 @@ brightness_curve = [
     [150, 80],
     [200, 90],
 ]
-brightness_interpolator = interp1d(
+brightness_interpolator = lambda x: np.interp(
+    x,
     *zip(*brightness_curve),
-    bounds_error=False,
-    fill_value=(brightness_min, brightness_max),
+    left=brightness_min,
+    right=brightness_max,
 )
 
 class LightSensorState(AppBaseModel):

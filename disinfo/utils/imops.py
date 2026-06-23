@@ -1,9 +1,8 @@
 import io
 import requests
 import numpy as np
-import time
 
-from functools import cache, lru_cache
+from functools import lru_cache
 from PIL import Image, ImageDraw, ImageEnhance
 
 from disinfo.components.elements import Frame, StillImage

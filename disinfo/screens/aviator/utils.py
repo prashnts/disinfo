@@ -9,6 +9,8 @@ earth_radius = 6371
 source_transform = cartopy.crs.Geodetic()
 screen_transform = cartopy.crs.epsg(4087)
 
+print(f'Using screen transform: {screen_transform}')
+
 
 def bbox(center: tuple[float, float], radius: tuple[float, float]):
     x, y = screen_transform.transform_point(center[0], center[1], source_transform)

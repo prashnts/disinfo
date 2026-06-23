@@ -2,12 +2,9 @@ import websocket
 import json
 import time
 import threading
-import rich
 import re
 
-from rich.columns import Columns
 from datetime import datetime
-from collections import defaultdict
 from pydantic.dataclasses import dataclass
 
 from disinfo.config import app_config

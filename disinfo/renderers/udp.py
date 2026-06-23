@@ -6,7 +6,6 @@ import numpy as np
 
 from io import BytesIO
 from collections import defaultdict
-from pydash import flatten
 from itertools import chain
 from PIL import Image, ImageDraw, ImageEnhance
 
@@ -77,7 +76,7 @@ def emit_frame(img, brightness, fps):
     odd_offsets = offsets[1::2]
     errors = 0
 
-    for i in flatten(zip(even_offsets, odd_offsets)):
+    for i in np.flatten(zip(even_offsets, odd_offsets)):
         for pix, panel in enumerate(app_config.udp_panel):
             a = i * panel.size
             b = a + panel.size * 2

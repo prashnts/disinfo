@@ -1,5 +1,4 @@
 import time
-import geopy.distance
 import requests
 
 from collections import defaultdict
@@ -9,6 +8,7 @@ from disinfo.redis import publish
 
 
 def distance_to_home(lat: float, lon: float) -> float:
+    import geopy.distance
     return geopy.distance.distance((lat, lon), (app_config.latitude, app_config.longitude)).km
 
 

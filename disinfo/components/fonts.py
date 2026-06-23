@@ -9,11 +9,18 @@ class TTFFont:
         self.path = Path(path)
         self.filename = self.path.name
         self.size = size
-        self.font = ImageFont.truetype(path, size)
+        self._font = None
+        # self.font = ImageFont.truetype(path, size)
         self.license = license
         self.credit = credit
         if not self.filename in register:
             register[self.filename] = self
+    
+    @property
+    def font(self):
+        if self._font is None:
+            self._font = ImageFont.truetype(str(self.path), self.size)
+        return self._font
 
     def __repr__(self) -> str:
         return f'TTFFont(path={self.path}, size={self.size})'

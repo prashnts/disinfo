@@ -4,7 +4,6 @@ from typing import Optional, Union
 from functools import lru_cache
 
 from PIL import Image, ImageDraw
-from PIL.ImageFont import FreeTypeFont
 
 from .elements import Frame, TrimParam
 from .fonts import bitocra7, TTFFont, small_bars

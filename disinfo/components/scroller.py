@@ -156,7 +156,7 @@ class Scroller(metaclass=UniqInstance):
                 i.alpha_composite(thumb, (i.width - thumb.width, pos))
             if self._horizontal:
                 i.alpha_composite(thumb, (pos, i.height - thumb.height))
-        return Frame(i, hash=(self.__class__.__name__, self.size, self.frame))
+        return Frame(i, hash=(self.__class__.__name__, self.size, self.frame.hash))
 
 class HScroller(Scroller):
     _horizontal = True

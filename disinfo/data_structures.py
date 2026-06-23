@@ -12,7 +12,7 @@ class AppBaseModel(BaseModel):
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
-@dataclass
+@dataclass(frozen=True)
 class FrameState:
     tick: float
     now: pendulum.DateTime
@@ -34,7 +34,7 @@ class Drawable(Protocol):
 
 
 class UniqInstance(type):
-    _instances = LRU(1024)
+    _instances = LRU(512)
 
     def __call__(cls, *args, **kwargs):
         key = (cls, args, tuple(kwargs.items()))

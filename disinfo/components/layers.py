@@ -25,7 +25,7 @@ class DivStyle:
     background_frame: Frame | None = None
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=512)
 def rounded_rectangle(
     width: int,
     height: int,

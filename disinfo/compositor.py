@@ -1,5 +1,4 @@
 import random
-from dataclasses import replace as dc_replace
 
 from PIL import Image, ImageDraw
 
@@ -96,7 +95,7 @@ def compose_big_frame(fs: FrameState):
 
     stack = Stack('main_cards', style=stack_conf).mut([
         screens.weather.widgets.weather(fs),
-        *screens.aviator.widgets.planes(fs),
+        # *screens.aviator.widgets.planes(fs),
         *shazam_widgets(fs),
         screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
@@ -152,7 +151,7 @@ def compose_small_frame(fs: FrameState):
     # composite_at(screens.aviator.app.radar(fs), image, 'mm')
     composite_at(screens.solar.draw(fs), image, 'mm')
     stack = Stack('main_cards').mut([
-        *screens.aviator.widgets.planes(fs),
+        # *screens.aviator.widgets.planes(fs),
         *shazam_widgets(fs),
         screens.weather.widgets.weather(fs),
         screens.dishwasher.widget(fs),

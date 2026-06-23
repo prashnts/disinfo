@@ -1,8 +1,6 @@
 import inspect
+import time
 from pathlib import Path
-
-from pydash import py_
-from pydash import throttle as py_throttle
 
 
 def throttle(duration: int):
@@ -10,7 +8,17 @@ def throttle(duration: int):
     - duration: (milliseconds) during which func is cached.
     '''
     def decorator(func):
-        return py_throttle(func, duration)
+        last_called_at = 0
+        duration_sec = duration / 1000.0
+        last_value = None
+        def wrapper(*args, **kwargs):
+            nonlocal last_called_at, last_value
+            if last_called_at and (time.monotonic() - last_called_at) < duration_sec:
+                return last_value
+            last_value = func(*args, **kwargs)
+            last_called_at = time.monotonic()
+            return last_value
+        return wrapper
 
     return decorator
 

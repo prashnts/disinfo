@@ -7,7 +7,6 @@ import paho.mqtt.client as mqtt
 import json
 
 from io import BytesIO
-from pydash import flatten
 from itertools import chain
 from PIL import Image, ImageDraw, ImageEnhance
 

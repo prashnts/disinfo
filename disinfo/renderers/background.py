@@ -17,11 +17,15 @@ def publish_frame(img):
     publish('di.pubsub.frames', action=app_config.name, payload=dict(img=encoded_img))
 
 
-def main(fps: int = 60, stats: bool = False):
+def main(fps: int = 60, stats: bool = False, n_frames: int = 0):
     _tf = 1 / fps
+    i = 0
 
 
     while True:
+        i += 1
+        if n_frames and i > n_frames:
+            break
         t_start = time.monotonic()
         fs = FrameState.create()
         frame = compose_frame(fs)

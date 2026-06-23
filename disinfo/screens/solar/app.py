@@ -5,7 +5,6 @@ import cairocffi as cairo
 
 from PIL import Image
 from suncalc import get_position, get_times
-from scipy.interpolate import interp1d
 from dataclasses import dataclass
 from typing import Optional
 
@@ -37,23 +36,26 @@ altitude_alpha = [
     [0.5,     0.8],
     [1,     1],
 ]
-p1_interpolator = interp1d(
+p2_alpha = [
+    # ALT   ALPHA
+    [-0.8,    0],
+    [-0.2,  0.2],
+    [0,     0.6],
+    [0.5,   0.8],
+    [0.8,   0.5],
+    [1,     0.4],
+]
+p1_interpolator = lambda x: np.interp(
+    x,
     *zip(*altitude_alpha),
-    bounds_error=False,
-    fill_value=(0, 1),
+    left=0,
+    right=1,
 )
-p2_interpolator = interp1d(
-    *zip(*[
-        # ALT   ALPHA
-        [-0.8,    0],
-        [-0.2,  0.2],
-        [0,     0.6],
-        [0.5,   0.8],
-        [0.8,   0.5],
-        [1,     0.4],
-    ]),
-    bounds_error=False,
-    fill_value=(0, 0.8),
+p2_interpolator = lambda x: np.interp(
+    x,
+    *zip(*p2_alpha),
+    left=0,
+    right=0.8,
 )
 
 @dataclass(frozen=True)

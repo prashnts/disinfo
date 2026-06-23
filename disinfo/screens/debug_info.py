@@ -1,5 +1,4 @@
 from PIL import Image
-from matplotlib import cm
 from typing import Callable
 import numpy as np
 

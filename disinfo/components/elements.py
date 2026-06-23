@@ -14,6 +14,8 @@ class UIElement(metaclass=ABCMeta):
 TrimParam = namedtuple('TrimParam', ['left', 'upper', 'right', 'lower'])
 
 class Frame(UIElement):
+    __slots__ = ('image', 'width', 'height', 'hash')
+
     def __init__(self, image: Image.Image, hash: Any = None):
         self.image = image
         self.width = image.width
@@ -27,23 +29,23 @@ class Frame(UIElement):
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(self.image, (x, y))
-        return Frame(i, hash=('reposition', (x, y), self))
+        return Frame(i, hash=('reposition', (x, y), self.hash))
 
     def rotate(self, angle: float) -> 'Frame':
         return Frame(self.image.rotate(angle, expand=True), hash=('rotate', angle, self))
 
     def trim(self, left: int = 0, upper: int = 0, right: int = 0, lower: int = 0) -> 'Frame':
-        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)), hash=('trim', (left, upper, right, lower), self))
+        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)), hash=('trim', (left, upper, right, lower), self.hash))
     
     def crop_even(self, horizontal: int = 0, vertical: int = 0) -> 'Frame':
-        return Frame(self.image.crop((horizontal, vertical, self.width - horizontal, self.height - vertical)), hash=('crop_even', (horizontal, vertical), self))
+        return Frame(self.image.crop((horizontal, vertical, self.width - horizontal, self.height - vertical)), hash=('crop_even', (horizontal, vertical), self.hash))
 
     def rescale(self, ratio: Union[float, tuple[float, float]]) -> 'Frame':
         if not isinstance(ratio, tuple):
             ratio = (ratio, ratio)
         width = self.width * ratio[0]
         height = self.height * ratio[1]
-        return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self))
+        return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self.hash))
 
     def resize(self, size: tuple[int, int], ratio_fn=None, pixel=False) -> 'Frame':
         res_x, res_y = size
@@ -55,29 +57,33 @@ class Frame(UIElement):
         img = (img
             .resize(size, resample=resample_mode)
             .convert('RGBA'))
-        return Frame(img, hash=('resize', size, self))
+        self.image = img
+        self.width = img.width
+        self.height = img.height
+        self.tag('resize')
+        return self
 
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
-        return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self))
+        return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self.hash))
 
     def brightness(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Brightness(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('brightness', factor, self))
+        return Frame(img, hash=('brightness', factor, self.hash))
 
     def contrast(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Contrast(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('contrast', factor, self))
+        return Frame(img, hash=('contrast', factor, self.hash))
 
     def color_(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Color(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('color', factor, self))
+        return Frame(img, hash=('color', factor, self.hash))
 
     def __repr__(self) -> str:
         return f'{self.hash}'

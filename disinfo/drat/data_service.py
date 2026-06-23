@@ -1,16 +1,12 @@
-import requests
 import time
 import datetime
 
 from traceback import format_exc
 from schedule import Scheduler
 
-from ..config import app_config
-from ..redis import rkeys, set_dict, set_json, db, publish
+from ..redis import publish
 from .app_states import PubSubManager, PubSubMessage
-from . import idfm, washing_machine
-from .klipper import KlipperClient
-from ..screens.aviator.tasks import adsbx_task
+from . import idfm
 
 
 class SafeScheduler(Scheduler):
@@ -42,18 +38,6 @@ class SafeScheduler(Scheduler):
             job._schedule_next_run()
 
 
-def get_random_text():
-    '''Fetch trivia from Numbers API.'''
-    try:
-        print('[i[ [fetch] random text')
-        r = requests.get('http://numbersapi.com/random/trivia?json')
-        r.raise_for_status()
-        data = r.json()
-        set_dict(rkeys['random_msg'], data)
-        publish('di.pubsub.numbers', action='update', payload=data)
-    except requests.exceptions.RequestException as e:
-        print('[e] numbers', e)
-
 def get_metro_info(force: bool = False):
     '''Fetch metro info in morning.'''
     if not force and not idfm.is_active():
@@ -62,40 +46,26 @@ def get_metro_info(force: bool = False):
     try:
         print('[i] [fetch] metro timing')
         data = idfm.fetch_state()
-        set_json(rkeys['metro_timing'], data.model_dump_json())
         publish('di.pubsub.metro', action='update')
     except Exception as e:
         print('[e] metro_info', e)
 
-def get_washing_machine_info():
-    '''Fetch washing machine info.'''
-    try:
-        print('[i] [fetch] washing machine')
-        data = washing_machine.read_display()
-        publish('di.pubsub.washing_machine', action='update', payload=data)
-    except Exception as e:
-        print('[e] washing_machine', e)
 
 def on_pubsub(channel_name: str, message: PubSubMessage):
     if message.action == 'fetch_metro':
         get_metro_info(force=True)
-    if message.action == 'fetch_numbers':
-        get_random_text()
 
 
 scheduler = SafeScheduler(reschedule_on_failure=True)
 
-scheduler.every(2).to(3).minutes.do(get_random_text)
 scheduler.every(1).minutes.do(get_metro_info)
-# scheduler.every(1).minutes.do(get_washing_machine_info)
+
 
 def main():
     print('[Data Service] Scheduler Started')
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice',), on_pubsub)
-
-    KlipperClient(app_config.klipper_host).connect()
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)

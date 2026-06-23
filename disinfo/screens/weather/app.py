@@ -117,7 +117,7 @@ def composer(fs: FrameState):
 
     return vstack([
         hstack([
-            composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick).rescale(1), 'br'),
+            composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick), 'br'),
             hstack([
                 text(f'{s.temperature}', style=s_temp_value),
                 text('°', style=s_deg_c),

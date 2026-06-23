@@ -1,7 +1,4 @@
 import cairocffi as cairo
-import geopy.distance
-import math
-from pyquery import PyQuery as pq
 from functools import cache
 
 from cairosvg.parser import Tree
@@ -29,6 +26,8 @@ from .utils import lat_long_zoom_to_xy, bbox, scale_xy_to_screen
 
 @cache
 def load_map() -> cairo.ImageSurface:
+    from pyquery import PyQuery as pq
+
     w = app_config.width
     h = app_config.height
 
@@ -77,6 +76,7 @@ class RadarSurface:
 
 
 def radar(fs: FrameState) -> Frame:
+    import geopy.distance
     state = ADSBxStateManager().get_state(fs)
     w = app_config.width
     h = app_config.height

@@ -1,6 +1,6 @@
 import requests
 import io
-import arrow
+import pendulum
 
 from PIL import Image
 from functools import cache
@@ -15,7 +15,6 @@ from ..components.layouts import hstack, vstack, composite_at
 from ..components.layers import div, DivStyle
 from ..components.transitions import SlideIn
 from ..components.widget import Widget
-from ..redis import rkeys, get_dict
 from ..components.scroller import HScroller
 from ..utils.func import throttle
 from ..utils import ease
@@ -51,8 +50,8 @@ def get_state():
     state['playing'] = s['state'] == 'playing'
     state['paused'] = s['state'] == 'paused'
 
-    last_updated = arrow.get(s['last_updated']).to('local')
-    now = arrow.now()
+    last_updated = s['last_updated']
+    now = pendulum.now()
 
     state['media_title'] = s['attributes'].get('media_title', '')
     state['media_album'] = s['attributes'].get('media_album_name', '')

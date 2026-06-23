@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import cache
 from typing import Optional
 from PIL import ImageDraw
-from pydantic import BaseModel
 
 from ..utils.drawer import draw_loop
 from ..components import fonts
@@ -20,7 +19,7 @@ from ..utils.time import is_expired
 from ..data_structures import FrameState, AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..drat import idfm
-from ..redis import get_dict, publish, rkeys
+from ..redis import get_dict, publish
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -75,7 +74,7 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         self.state.toggled_at = pendulum.now()
 
     def load_timing(self):
-        if timing := get_dict(rkeys['metro_timing']):
+        if timing := get_dict('metro.timing'):
             return idfm.MetroData(**timing)
 
     def update_data(self):

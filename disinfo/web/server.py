@@ -1,11 +1,9 @@
 import io
 import base64
 import json
-import time
 
-from typing import Annotated
 from collections import defaultdict
-from PIL import Image, ImageDraw, ImageEnhance
+from PIL import Image
 from fastapi import FastAPI, WebSocket, Body, Response
 from starlette.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse
@@ -13,10 +11,6 @@ from starlette.responses import RedirectResponse
 from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
-from disinfo.config import app_config
-from disinfo.data_structures import FrameState
-from disinfo.epd.m5paper import draw as draw_epd_frame
-from disinfo.utils.imops import dither
 from disinfo.redis import db, publish
 from disinfo.utils.imops import apply_gamma
 

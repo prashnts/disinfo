@@ -2,14 +2,11 @@ import asyncio
 import aiohttp
 import random
 import pendulum
-import rich
 
 from datetime import datetime
 from idfm_api import IDFMApi
 from idfm_api.models import TransportType, LineData, StopData, TrafficData, InfoData
 from pydantic import BaseModel
-from functools import cache
-from dataclasses import dataclass
 
 from ..config import app_config
 
