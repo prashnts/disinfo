@@ -48,6 +48,63 @@ s_colon_2 = [
 ]
 
 
+pastel_digit_colors = {
+    0: "#FF8A80",
+    1: "#FFB74D",
+    2: "#B192EA",
+    3: "#7AB3E2",
+    4: "#7FCD81",
+    5: "#C58DCF",
+    6: "#E7A592",
+    7: "#5A9FC0",
+    8: "#A4CE75",
+    9: "#DA8BA6" 
+}
+
+def find_sequences(s: str) -> set:
+    # nemotron-3-nano
+    hh, mm, ss = s.split(':')
+    h, m, s_ = int(hh), int(mm), int(ss)
+
+    result = set()
+
+    if h == m:
+        for ch in hh:
+            result.add(int(ch))
+    if h == s_:
+        for ch in hh:
+            result.add(int(ch))
+    if m == s_:
+        for ch in mm:
+            result.add(int(ch))
+
+    if not (h == m or h == s_ or m == s_):
+        digit_set = {int(ch) for ch in hh + mm + ss}
+        sorted_digits = sorted(digit_set)
+
+        max_len = 0
+        best_start = None
+
+        cur_len = 1
+        for i in range(1, len(sorted_digits)):
+            if sorted_digits[i] == sorted_digits[i - 1] + 1:
+                cur_len += 1
+            else:
+                if cur_len > max_len:
+                    max_len = cur_len
+                    best_start = sorted_digits[i - cur_len]
+                cur_len = 1
+
+        if cur_len > max_len:
+            max_len = cur_len
+            best_start = sorted_digits[-cur_len]
+
+        if max_len >= 4 and best_start is not None:
+            for v in range(best_start, best_start + max_len):
+                result.add(v)
+
+    return result
+
 def digital_clock(fs: FrameState, seconds=True):
     t = fs.now
     hhmm = hstack([
@@ -96,16 +153,33 @@ def flip_info(fs: FrameState, seconds=True, align='right'):
 
 def flip_digital_clock(fs: FrameState, seconds=True, align='right'):
     t = fs.now
-    bg = "#5E5E5E4E"
+    time_str = t.strftime('%H:%M:%S')
+    sequence_chars = find_sequences(time_str)
+    
+    bg = "#5E5E5E4E"  # Default background
+
+    sequenced_chars = []
+    
+    def get_style_for_char(c, base):
+        """Get style based on whether char is part of a sequence."""
+        if int(c) in sequence_chars and (int(c) not in sequenced_chars or len(sequence_chars) < 3):
+            sequenced_chars.append(int(c))
+            return TextStyle(color=pastel_digit_colors[int(c)], font=base.font)  # Red for sequence digits
+        return base  # Default style
+    
+    def styled_text(text_str, base=s_time_flip):
+        """Create styled text with individual character styling."""
+        return [get_style_for_char(c, base) for c in text_str]
+    
     hhmm = hstack([
-        _flip_text(fs, t.strftime('%H'), s_time_flip, 'flip-top', together=True, background=bg),
-        _flip_text(fs, t.strftime('%M'), s_time_flip, 'flip-top', together=True, background=bg),
-        # _flip_text(fs, 'dt.fd.min', t.strftime('%M'), s_time_flip, 'flip-top'),
+        _flip_text(fs, t.strftime('%H'), styled_text(t.strftime('%H')), 'flip-top', together=True, background=bg),
+        _flip_text(fs, t.strftime('%M'), styled_text(t.strftime('%M')), 'flip-top', together=True, background=bg),
     ], gap=0)
+    
     if seconds:
         return vstack([
             hhmm,
-            _flip_text(fs, t.strftime('%S'), s_colon_2[0], 'flip-top', together=True, background=bg),
+            _flip_text(fs, t.strftime('%S'), styled_text(t.strftime('%S'), s_colon_2[0]), 'flip-top', together=True, background=bg),
         ], gap=2, align=align)
     return hhmm
 
@@ -131,41 +205,6 @@ def date(fs: FrameState):
         day_of_the_week(fs),
         text_slide_in(fs, t.strftime('%d/%m'), s_date, 'top'),
     ], gap=2, align='bottom')
-
-def glitterify(frame: Frame):
-    # draw some shimmering leds everywhere!
-    # todo: WIP
-    gcols = [
-        '#4096D9',
-        '#404BD9',
-        '#AF4FD7',
-        '#D9BC40',
-        '#D96140',
-        '#1CB751',
-    ]
-    img = Image.new('RGBA', (frame.width, frame.height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    for x in range(frame.width):
-        for y in range(frame.height):
-            if random.random() < .3:
-                pts = [(x, y)]
-                if random.random() < 0.2:
-                    pts.append((x + 1, y))
-                if random.random() < 0.2:
-                    pts.append((x, y + 1))
-                if random.random() < 0.2:
-                    pts.append((x + 1, y + 1))
-                draw.point(pts, fill=random.choice(gcols))
-    img.alpha_composite(frame.image)
-
-    return Frame(img)
-
-def date_pattern(fs: FrameState):
-    t = fs.now
-    if t.hour == t.minute == t.second:
-        color = green
-    # todo: complete this.
 
 def simple(fs: FrameState):
     return div(vstack([

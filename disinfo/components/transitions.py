@@ -263,12 +263,17 @@ def text_slide_in(
     name: str = None) -> Frame:
     if not name:
         name = uname(6)
+    if not isinstance(style, list):
+        styles = [style] * len(value)
+    else:
+        styles = style
     frames: list[Frame] = []
     if together:
-        slide = text(value, style)
-        frames.append(slide)
+        text_frame = hstack([text(c, s) for c, s in zip(value, styles)], gap=0)
+        # slide = text(value, styles[0])
+        frames.append(text_frame)
     else:
-        for i, char in enumerate(value):
+        for i, (char, style) in enumerate(zip(value, styles)):
             slide = text(char, style)
             frames.append(slide)
     if div_style and frames:
