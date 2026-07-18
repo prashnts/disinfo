@@ -1,73 +1,15 @@
-from .modulino import Modulino
 from time import sleep
+
+from .modulino import Modulino
+from .rtttl import rtttl_to_notes, NOTES
 
 class ModulinoBuzzer(Modulino):
   """
   Class to play tones on the piezo element of the Modulino Buzzer.
   Predefined notes are available in the NOTES dictionary e.g. ModulinoBuzzer.NOTES["C4"]
   """
+  NOTES = NOTES
 
-  NOTES: dict[str, int] = {
-    "FS3": 185,
-    "G3": 196,
-    "GS3": 208,
-    "A3": 220,
-    "AS3": 233,
-    "B3": 247,
-    "C4": 262,
-    "CS4": 277,
-    "D4": 294,
-    "DS4": 311,
-    "E4": 330,
-    "F4": 349,
-    "FS4": 370,
-    "G4": 392,
-    "GS4": 415,
-    "A4": 440,
-    "AS4": 466,
-    "B4": 494,
-    "C5": 523,
-    "CS5": 554,
-    "D5": 587,
-    "DS5": 622,
-    "E5": 659,
-    "F5": 698,
-    "FS5": 740,
-    "G5": 784,
-    "GS5": 831,
-    "A5": 880,
-    "AS5": 932,
-    "B5": 988,
-    "C6": 1047,
-    "CS6": 1109,
-    "D6": 1175,
-    "DS6": 1245,
-    "E6": 1319,
-    "F6": 1397,
-    "FS6": 1480,
-    "G6": 1568,
-    "GS6": 1661,
-    "A6": 1760,
-    "AS6": 1865,
-    "B6": 1976,
-    "C7": 2093,
-    "CS7": 2217,
-    "D7": 2349,
-    "DS7": 2489,
-    "E7": 2637,
-    "F7": 2794,
-    "FS7": 2960,
-    "G7": 3136,
-    "GS7": 3322,
-    "A7": 3520,
-    "AS7": 3729,
-    "B7": 3951,
-    "C8": 4186,
-    "CS8": 4435,
-    "D8": 4699,
-    "DS8": 4978,
-    "REST": 0
-  }
   """
   Dictionary with the notes and their corresponding frequencies.
   The supported notes are defined as follows:
@@ -94,27 +36,27 @@ class ModulinoBuzzer(Modulino):
     self.data = bytearray(8)
     self.no_tone()
 
-  def tone(self, frequency: int, lenght_ms: int = 0xFFFF, blocking: bool = False) -> None:
+  def tone(self, frequency: int, length_ms: int = 0xFFFF, blocking: bool = False) -> None:
     """
     Plays a tone with the given frequency and duration.
     If blocking is set to True, the function will wait until the tone is finished.
 
     Parameters:
         frequency: The frequency of the tone in Hz (freuqencies below 180 Hz are not supported)
-        lenght_ms: The duration of the tone in milliseconds. If omitted, the tone will play indefinitely
+        length_ms: The duration of the tone in milliseconds. If omitted, the tone will play indefinitely
         blocking: If set to True, the function will wait until the tone is finished
     """
     if frequency < 180 and frequency != 0:
       raise ValueError("Frequency must be greater than 180 Hz")
     
     self.data[0:4] = frequency.to_bytes(4, 'little')
-    self.data[4:8] = lenght_ms.to_bytes(4, 'little')
+    self.data[4:8] = length_ms.to_bytes(4, 'little')
     self.write(self.data)
     
     if blocking:
       # Subtract 5ms to avoid unwanted pauses between tones
       # Those pauses are caused by the time it takes to send the data to the buzzer
-      sleep((lenght_ms - 5) / 1000)
+      sleep((length_ms - 5) / 1000)
 
   def no_tone(self) -> None:
     """
@@ -122,3 +64,8 @@ class ModulinoBuzzer(Modulino):
     """
     self.data = bytearray(8)
     self.write(self.data)
+  
+  def play_rtttl(self, rtttl: str) -> None:
+    notes = rtttl_to_notes(rtttl)
+    for note, duration in notes:
+      self.tone(NOTES[note], duration, blocking=True)

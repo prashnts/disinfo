@@ -160,6 +160,8 @@ def main(conf: Config):
 
     print('[Matrix Renderer started]')
 
+    node_id = conf.websocket_url.split('/')[-1]
+
     while True:
         t_start = time.monotonic()
         if frame:
@@ -168,7 +170,7 @@ def main(conf: Config):
 
         if time.monotonic() - last_ping > 5:
             # Initial ping and then every 5 seconds
-            ws.send(telemetry=json.dumps(telemetry))
+            ws.send(telemetry=json.dumps(telemetry), node=node_id)
             if frame:
                 # let supervisor restart
                 raise RuntimeError()

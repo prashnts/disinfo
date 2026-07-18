@@ -27,7 +27,7 @@ class EdgeTriggerState(RootModel[TriggerType]):
         return self.root
 
 class DitButtonState(AppBaseModel):
-    pressed: EdgeTriggerState[bool] = EdgeTriggerState[bool](False)
+    pressed: bool = False
     pressed_at: float = 0.0
     released_at: float = 0.0
     updated_at: float = 0.0
@@ -98,6 +98,10 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
     def process_message(self, channel: str, data: PubSubMessage):
         try:
             data = json.loads(data.payload['data'])
+            node = data.get('node')
+
+            if node != app_config.name:
+                return
 
             next_state = DiTelemetryState(**data)
             if next_state.light_sensor.updated_at > self.state.light_sensor.updated_at:
