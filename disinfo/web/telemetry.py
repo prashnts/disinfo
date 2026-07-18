@@ -133,7 +133,7 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
             if button == 'encoder':
                 return remote_state.encoder.position
             button = getattr(remote_state.buttons, button)
-            return button.pressed.read(ctx)
+            return button.pressed
         return _read_btn
 
 def act(res, command, hash_):
