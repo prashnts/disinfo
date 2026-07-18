@@ -62,6 +62,34 @@ pastel_digit_colors = {
 }
 
 def find_sequences(s: str) -> set:
+    """
+    I need a function in python. It is intended to identify patterns in a string containing numbers. It should detect repeated sequence for hours/minutes/seconds and/or presence of consecutive digits. We're trying to say: "hey, is it 1234 (referring to time) when the actual time could be 12:34, 21:34, 21:43, 14:32, etc).
+
+    Think in terms of all the digits in the string, the colon is not meaningful for the algo.
+
+    (The square brackets only highlight the valid pattern and are meaningless).
+
+    I can suggest we do not use regex because its slow. Maybe we can even build a lookup table and compare the current value against that?
+
+    The signature is this: find_sequences(s: str) -> set where "s" is a time string in "HH:MM:SS" format. the set only includes digits 0-9
+
+    Taking the above examples:
+
+    - 13:13:13 -> {1,3} hour, minute, second are equal
+    - 15:15:38 -> {1,5} hour and minutes are equal
+    - 12:34:56 -> {1, 2, 3, 4, 5, 6} 6 consecutive digits
+    - 01:23:45 -> {0, 1, 2, 3, 4, 5} 6 Consecutive digits
+    - 01:32:11 -> {0, 1, 2, 3} 4 consecutive digits, one repetition ignored.
+    - 10:32:45 -> {0, 1, 2, 3, 4, 5} 6 consecutive digits
+
+    More examples:
+
+    - 14:08:36 -> {}  ->> need >4 consecutive digits 
+    - 14:53:29 -> {1, 2, 3, 4, 5} ->> 5 consecutive digits, one ignored
+    - 14:51:14 -> {1, 4} ->> hour and second are equal
+    - 07:09:58 -> {} ->> no pattern
+    - 07:56:41 -> {4, 5, 6, 7} ->> 4 consecutive digits and another two consecutive digits are ignored.
+    """
     # nemotron-3-nano
     hh, mm, ss = s.split(':')
     h, m, s_ = int(hh), int(mm), int(ss)
