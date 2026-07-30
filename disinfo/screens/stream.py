@@ -64,17 +64,20 @@ def stream_frame(fs, url):
     frame = composite_at(text(name, font=fonts.two_slice), Frame(img), 'bl')
     return frame.tag('stream')
 
-def draw_stream(fs: FrameState):
+def draw_stream(fs: FrameState) -> Frame | None:
     global _stream, _client, _last_update, _prev_url
     state = RuntimeStateManager().get_state(fs)
     url = state.stream_url
+    if not url:
+        return
+
     if not state.show_stream:
         if _client:
             print("* stopping clients")
             _client.stop()
             _client = None
         _stream = None
-        return None
+        return
 
     if (_last_update and _last_update > (fs.tick + 5)) or not _stream or _prev_url != url:
         print("* no updates")
@@ -86,7 +89,7 @@ def draw_stream(fs: FrameState):
             time.sleep(0.5)
             _stream = setup_stream(url, width=120)
         except Exception as e:
-            return None
+            return
         _client = next(_stream)
         _last_update = fs.tick
         _prev_url = url

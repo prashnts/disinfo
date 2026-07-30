@@ -61,9 +61,11 @@ pastel_digit_colors = {
     9: "#DA8BA6" 
 }
 
-def find_sequences(s: str) -> set:
+def find_sequences(s: str) -> set:      # noqa: E501
     """
-    I need a function in python. It is intended to identify patterns in a string containing numbers. It should detect repeated sequence for hours/minutes/seconds and/or presence of consecutive digits. We're trying to say: "hey, is it 1234 (referring to time) when the actual time could be 12:34, 21:34, 21:43, 14:32, etc).
+    I need a function in python. It is intended to identify patterns in a string containing numbers.
+    It should detect repeated sequence for hours/minutes/seconds and/or presence of consecutive digits.
+    We're trying to say: "hey, is it 1234 (referring to time) when the actual time could be 12:34, 21:34, 21:43, 14:32, etc).
 
     Think in terms of all the digits in the string, the colon is not meaningful for the algo.
 

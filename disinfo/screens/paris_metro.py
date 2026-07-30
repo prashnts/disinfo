@@ -16,8 +16,10 @@ from ..components.scroller import VScroller, HScroller
 from ..components.transitions import VisibilitySlider
 from ..utils.palettes import metro_colors
 from ..utils.time import is_expired
+from ..utils.func import throttle
 from ..data_structures import FrameState, AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
+from ..drat.idfm import fetch_state
 from ..drat import idfm
 from ..redis import get_dict, publish
 
@@ -41,6 +43,12 @@ class MetroAppState(AppBaseModel):
     valid: bool = False
     toggled_at: Optional[datetime] = None
     data: Optional[idfm.MetroData] = None
+
+
+@throttle(27_000)
+def throttled_fetch_state():
+    if idfm.is_active():
+        return idfm.fetch_state()
 
 class MetroAppStateManager(PubSubStateManager[MetroAppState]):
     model = MetroAppState
@@ -82,6 +90,7 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
 
     def get_state(self, fs: FrameState):
         s = self.state
+        self.state.data = throttled_fetch_state()
         if not s.data:
             s.visible = False
             s.valid = False
@@ -230,4 +239,4 @@ def composer(fs: FrameState):
         .visibility(state.visible)
         .draw(fs.tick))
 
-draw = draw_loop(composer)
+draw = draw_loop(composer, use_threads=True)

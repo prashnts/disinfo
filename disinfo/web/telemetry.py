@@ -98,9 +98,8 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
     def process_message(self, channel: str, data: PubSubMessage):
         try:
             data = json.loads(data.payload['data'])
-            node = data.get('node')
 
-            if node != app_config.name:
+            if data.get('_node') != app_config.name:
                 return
 
             next_state = DiTelemetryState(**data)

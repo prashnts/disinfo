@@ -102,7 +102,7 @@ class RuntimeState(AppBaseModel):
 
     # Streaming MJPEG
     show_stream: bool = False
-    stream_url: str = "https://ikvm.amd.noop.pw/streamer/stream"
+    stream_url: str | None = None
 
 class RuntimeStateManager(PubSubStateManager[RuntimeState]):
     model = RuntimeState

@@ -1,14 +1,20 @@
 import threading
 
-from typing import Optional, Callable
+from typing import Generic, TypeVar, Callable, Protocol
 
 from ..components.elements import Frame
 from ..data_structures import FrameState
 from .time import adaptive_delay
 
+T = TypeVar('T')
 
-DrawerFn = Callable[[FrameState], Optional[Frame]]
-ComposerFn = Callable[[FrameState], Optional[Frame]]
+DrawerFn = Callable[[FrameState], Frame | None]
+ComposerFn = Callable[[FrameState], Frame | None]
+
+
+class DrawerFn(Protocol):
+    def __call__(self, fs: FrameState) -> T | None:
+        ...
 
 
 def draw_loop(composer: ComposerFn, sleepms: int = 82, use_threads: bool = False) -> DrawerFn:
@@ -21,10 +27,10 @@ def draw_loop(composer: ComposerFn, sleepms: int = 82, use_threads: bool = False
 
     Returns a function which returns the latest frame.
     '''
-    current_args: Optional[tuple] = None
-    current_kwargs: Optional[dict] = dict()
-    previous_state: Optional[FrameState] = None
-    current_frame: Optional[Frame] = None
+    current_args: tuple | None = None
+    current_kwargs: dict | None = dict()
+    previous_state: FrameState | None = None
+    current_frame: Frame | None = None
 
     if not use_threads:
         return composer
@@ -39,7 +45,7 @@ def draw_loop(composer: ComposerFn, sleepms: int = 82, use_threads: bool = False
 
     t = threading.Thread(target=painter, daemon=True)
 
-    def draw(*args, **kwargs) -> Optional[Frame]:
+    def draw(*args, **kwargs) -> Frame | None:
         if not t.is_alive():
             t.start()
 

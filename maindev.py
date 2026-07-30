@@ -31,10 +31,10 @@ def run_sensors():
             return local_acts
 
     print("[maindev] Setting up sensors")
-    conf = Config(buzzer_address='0x3d', apds_proximity_enable=True, tof_enable=False)
+    conf = Config(buzzer_address='0x3d', apds_proximity_enable=True, tof_enable=False, node_name='disalon')
     sensors = setup_sensors(conf)
     print("[maindev] Starting sensor thread")
-    sensor_loop(sensors, callback)
+    sensor_loop(sensors, conf, callback)
 
 
 def run_server():

@@ -47,6 +47,8 @@ class Config(BaseModel):
     seesaw_enable: bool = True
     seesaw_address: str = '0x49'
 
+    node_name: str = 'discreen'
+
 
 @dataclass
 class APDSColor16:
@@ -673,10 +675,10 @@ class Buzzer:
             buzz = cls(spk=buzzer, enabled=True, **kwargs)
             # buzz.act('fmart.mid', '_init')
             # buzz.act('encoder', '_init')
-            # buzz.act('boop', '_init')
+            buzz.act('boop', '_init')
             # buzz.act('encoder', '_init')
             nrttl = notes_to_rtttl(cls.MELODIES['family_mart'], name="family_mart", default_duration=2**4, default_octave=4, bpm=160, _scale=1.35)
-            buzzer.play_rtttl(nrttl)
+            # buzzer.play_rtttl(nrttl)
             # buzzer.play_rtttl(cls.mario)
             return buzz
         except Exception as e:
@@ -775,10 +777,11 @@ def setup(conf: Config = None):
         # 'ircam': IRCamera.setup(i2c, conf),
     }
 
-def sensor_loop(sensors: dict, callback=None):
+def sensor_loop(sensors: dict, conf: Config, callback=None):
     while True:
         payload = {
             "_v": "dit",
+            "_node": conf.node_name,
             "updated_at": time.monotonic(),
         }
         for name, sensor in sensors.items():
@@ -802,7 +805,7 @@ def sensor_loop(sensors: dict, callback=None):
         time.sleep(0.001)
 
 def sensor_thread(callback, conf: Config):
-    threading.Thread(target=sensor_loop, args=(setup(conf), callback), daemon=True).start()
+    threading.Thread(target=sensor_loop, args=(setup(conf), conf, callback), daemon=True).start()
     print('[Gestures] Enabled')
 
 def main():
@@ -814,7 +817,7 @@ def main():
     def callback(payload):
         publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
 
-    sensor_loop(setup(Config()), callback)
+    sensor_loop(setup(Config()), Config(node_name='disalon'), callback)
 
 
 if __name__ == "__main__":
