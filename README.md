@@ -19,7 +19,7 @@ a WebSocket connection. This connection also allows the display to send some
 information back to the server -- termed `telemetry`. This allows the display to
 feature buttons, sensors, or actuators optionally.
 
-<img src="https://media.printables.com/media/prints/39a055c3-ac04-4e3d-8876-c741ecda001e/images/12106531_b40d64be-7522-4e26-95a2-be19e9f1425e_1d10f992-f7f3-4a3d-a67c-d662fbbdb4de/output-di.gif" alt='Demo' width=350>
+<img src="assets/output-di.gif" alt='Demo' width=350>
 
 <!-- <img src='assets/disinfo-export.gif' alt='Simulated Info Demo' width=400> -->
 
