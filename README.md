@@ -105,10 +105,16 @@ It runs the whole stack you'd need for local development.
 uv run maindev.py
 ```
 
-[!Note]
+[!NOTE]
 You may want to work on a fork -- the code will certainly need
 to be modified to fit your needs. I can assist only with getting it to run,
 you still need to build the displays and be ready for some debugging.
+
+I have created a Printables project where I've posted my version. If you
+have a 3D Printer it could interest you. I've also built another 4-panel
+version and would be posting it shortly.
+
+[disinfo on Printables](https://www.printables.com/model/1609188-disinfo-128x196-pixel-led-matrix-array)
 
 
 ---
