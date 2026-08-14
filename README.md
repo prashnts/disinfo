@@ -19,7 +19,7 @@ a WebSocket connection. This connection also allows the display to send some
 information back to the server -- termed `telemetry`. This allows the display to
 feature buttons, sensors, or actuators optionally.
 
-![Simulated Info Demo](assets/disinfo-export.gif)
+<img src='assets/disinfo-export.gif' alt='Simulated Info Demo' width=400>
 
 Other methods are also available, such as multicast UDP or running the server on
 the same Pi as the display. They are all good to a certain degree,
@@ -55,7 +55,7 @@ transitions for appear-disappear states.
 
 In the end it's simply a Python DSL, but I've done my best to simplify it. Here's what gets rendered:
 
-![Output](assets/screenshot-trash.png)
+<img src='assets/screenshot-trash.png' alt='output of the code' width=300>
 
 ```python
 SCHEDULE = [
