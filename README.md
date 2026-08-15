@@ -119,6 +119,20 @@ version and would be posting it shortly.
 [disinfo on Printables](https://www.printables.com/model/1609188-disinfo-128x196-pixel-led-matrix-array)
 
 
+### Runtime Notes
+
+My disinfo server currently runs on a Raspberry Pi 5B (2GB RAM). It sees a constant and
+mostly consistent load on the CPU and RAM while running two display instances of 6 and 
+4 panel matrices. The screenshot below is resource utilization over a week.
+
+<img src="assets/beszel-screenshot.png" alt='Runtime notes' width=520>
+
+The clients auto-reconnect in case of issues. The clients themselves use <500MB RAM
+while on a debian-minimal RPI OS. Performance over wifi is acceptable but ethernet is
+preferred.
+
+
+
 ---
 
 
