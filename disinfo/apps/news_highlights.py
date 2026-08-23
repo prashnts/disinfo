@@ -11,7 +11,7 @@ from disinfo.config import app_config
 
 
 _oai_provider = OpenAIProvider(base_url=app_config.oai_base_url, api_key=app_config.oai_api_key.get_secret_value())
-model = OpenAIChatModel('phi4:latest', provider=_oai_provider)
+model = OpenAIChatModel('openai/gpt-oss-20b', provider=_oai_provider)
 
 @dataclass
 class Deps:

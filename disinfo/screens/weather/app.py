@@ -70,12 +70,10 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     color_high = temperature_color(t_high)
     color_current = Color('#ffffff')
 
-    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.bitocra7, color=color_high.hex)).trim(upper=1)
-    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.bitocra7, color=color_low.hex)).trim(upper=1)
+    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.exsmall, color=color_high.hex)).trim(upper=0)
+    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.exsmall, color=color_low.hex)).trim(upper=0)
 
-    temp_range_stack = hstack([value_low, value_high], gap=9, align='center')
-
-    span = temp_range_stack.width - 2
+    span = 12
 
     range_graph = Image.new('RGBA', (span + 1, 4), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
@@ -104,8 +102,8 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
                      (cp, 2),
         (cp - 1, 3), (cp, 3), (cp + 1, 3),
     ], fill=color_current.hex)
-
-    return vstack([temp_range_stack, Frame(range_graph, hash=('range-graph',))], gap=0, align='center')
+    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph',)), value_high], gap=2, align='center')
+    return temp_range_stack
 
 
 def composer(fs: FrameState):
