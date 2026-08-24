@@ -119,6 +119,7 @@ def main(conf: Config):
     prev_frame = None
     last_ping = 0
     telemetry = {}
+    node_id = conf.websocket_url.split('/')[-1]
 
     _tf = 1 / conf.fps
 
@@ -147,7 +148,7 @@ def main(conf: Config):
         except Exception as e:
             print('[Error loading frame]', e)
         last_ping = time.monotonic()
-        ws.send(telemetry=json.dumps(telemetry))
+        ws.send(telemetry=json.dumps(telemetry), _node=node_id)
 
     ws = WebsocketClient(conf.websocket_url, _set_frame)
     ws.connect()
@@ -160,7 +161,6 @@ def main(conf: Config):
 
     print('[Matrix Renderer started]')
 
-    node_id = conf.websocket_url.split('/')[-1]
 
     while True:
         t_start = time.monotonic()
@@ -170,7 +170,7 @@ def main(conf: Config):
 
         if time.monotonic() - last_ping > 5:
             # Initial ping and then every 5 seconds
-            ws.send(telemetry=json.dumps(telemetry), node=node_id)
+            ws.send(telemetry=json.dumps(telemetry), _node=node_id)
             if frame:
                 # let supervisor restart
                 raise RuntimeError()
