@@ -25,9 +25,11 @@ def font_demo():
     sample = """\
 10/20/2023 à 12:34
 Le café.
-£€«″"′˝
+£€«″café˝
+L′hopital
 A quick brown fox jumps over the lazy dog.
 -> [ ] { } < > # $ % 
+1234567890ABCDEF
 """
 
     samples = []
@@ -53,9 +55,10 @@ A quick brown fox jumps over the lazy dog.
         pauses.append(_p)
         samples.append(demo)
 
-    demoslide = vstack(samples, gap=spacing, align='left')
 
+    demoslide = vstack([hstack(row) for row in np.reshape(np.array(samples), (-1, 3))])
     demoslide.image.save('./.debugdemo.png')
+    demoslide = vstack(samples, gap=spacing, align='left')
 
     return demoslide, False, pauses
 
