@@ -69,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
             node_id = msg.get('_node')
             if telemetry and node_id:
                 action_buffer[screen] = []
-                publish('di.pubsub.telemetry', action='update', payload={'data': telemetry, 'node': node_id})
+                publish('di.pubsub.telemetry', action='update', payload={'data': telemetry, '_node': node_id})
         except json.JSONDecodeError:
             pass
         if screen in frames:
