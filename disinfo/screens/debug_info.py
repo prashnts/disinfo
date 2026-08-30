@@ -168,8 +168,8 @@ def info_sensors(fs: FrameState):
 
     try:
         tof = tof_info(fs)
-        irc = ir_cam_info(fs)
-        info = vstack([tof, irc])
+        # irc = ir_cam_info(fs)
+        info = vstack([tof])
     except Exception as e:
         print(e)
         info = text('Error reading sensors')
