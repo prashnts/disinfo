@@ -1,6 +1,7 @@
 from PIL import Image
 from typing import Callable
 import numpy as np
+from matplotlib import cm
 
 from functools import cache
 from ..utils.drawer import draw_loop
