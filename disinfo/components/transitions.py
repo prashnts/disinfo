@@ -269,7 +269,7 @@ def text_slide_in(
         styles = style
     frames: list[Frame] = []
     if together:
-        text_frame = hstack([text(c, s) for c, s in zip(value, styles)], gap=0)
+        text_frame = hstack([text(c, s) for c, s in zip(value, styles)], gap=0, align='bottom')
         # slide = text(value, styles[0])
         frames.append(text_frame)
     else:

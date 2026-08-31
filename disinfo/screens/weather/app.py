@@ -70,12 +70,12 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     color_high = temperature_color(t_high)
     color_current = Color('#ffffff')
 
-    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.exsmall, color=color_high.hex)).trim(upper=0)
-    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.exsmall, color=color_low.hex)).trim(upper=0)
+    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.ttpixels, color=color_high.hex)).trim(upper=0)
+    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.ttpixels, color=color_low.hex)).trim(upper=0)
 
     span = 12
 
-    range_graph = Image.new('RGBA', (span + 1, 4), (0, 0, 0, 0))
+    range_graph = Image.new('RGBA', (span + 1, 5), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
     try:
@@ -95,14 +95,16 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     gradient = [temperature_color(x) for x in np.arange(t_low, t_high, g_step)]
     for x, c in enumerate(gradient):
         d.point([(x + 1, 0)], fill=c.hex)
+        d.point([(x + 1, 1)], fill=c.hex)
 
     # Draw a pointer at the current temperature.
     cp = span - current_pos
+    y_p = 3
     d.point([
-                     (cp, 2),
-        (cp - 1, 3), (cp, 3), (cp + 1, 3),
+                     (cp, y_p),
+        (cp - 1, y_p + 1), (cp, y_p + 1), (cp + 1, y_p + 1),
     ], fill=color_current.hex)
-    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph',)), value_high], gap=2, align='center')
+    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph',)), value_high], gap=2, align='bottom')
     return temp_range_stack
 
 

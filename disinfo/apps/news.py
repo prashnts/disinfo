@@ -155,7 +155,7 @@ class AppState:
     story_index: int = 0
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 45
+    change_in: float = 35
     min_change_in: float = 15
     details: bool = False
     detail_in: float = 6
@@ -199,11 +199,15 @@ def _news_deck(fs: FrameState):
         extract_highlights(st)
 
     title_style = TextStyle(
-        font=fonts.cozette if not state.details else fonts.tamzen__rs,
+        font=fonts.cozette,
         width=112,
         color="#A3A7A8",
-        spacing=3)
-    sumry_style = TextStyle(font=fonts.scientifica__r, width=112, color="#DDDDDD", spacing=2)
+        spacing=2)
+    sumry_style = TextStyle(
+        font=fonts.microfont_35_reg,
+        width=112,
+        color="#DDDDDD",
+        spacing=2)
 
     divblock = styled_div(
         background="#ffffff49",
@@ -213,7 +217,7 @@ def _news_deck(fs: FrameState):
 
     short_summary = st.short_summary if not st.extracts else st.extracts
     summary = div(
-        (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=True)
+        (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
             .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
             .reset_position(not state.details)
             .draw(fs.tick)),

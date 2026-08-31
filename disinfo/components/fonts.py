@@ -1,18 +1,22 @@
 from PIL import ImageFont
 from pathlib import Path
-
+from dataclasses import dataclass
 
 register = {}
 
+@dataclass
 class TTFFont:
-    def __init__(self, path: str, size: int, license: str = 'unknown', credit: str = ''):
-        self.path = Path(path)
+    path: str | Path
+    size: int
+    license: str = 'unknown'
+    credit: str = ''
+    spacing: int = 0
+
+    def __post_init__(self):
+        self.path = Path(self.path)
         self.filename = self.path.name
-        self.size = size
         self._font = None
-        # self.font = ImageFont.truetype(path, size)
-        self.license = license
-        self.credit = credit
+
         if not self.filename in register:
             register[self.filename] = self
     
@@ -21,6 +25,9 @@ class TTFFont:
         if self._font is None:
             self._font = ImageFont.truetype(str(self.path), self.size)
         return self._font
+
+    def __hash__(self):
+        return hash((self.path, self.size, self.license, self.credit))
 
     def __repr__(self) -> str:
         return f'TTFFont(path={self.path}, size={self.size})'
@@ -50,16 +57,8 @@ scientifica__r = TTFFont('assets/fonts/scientifica.ttf', 11, license='OFL')
 scientifica__b = TTFFont('assets/fonts/scientificaBold.ttf', 11, license='OFL')
 scientifica__i = TTFFont('assets/fonts/scientificaItalic.ttf', 11, license='OFL')
 
-# BITOCRA
-# > License   OFL v1.1
-# > Source    https://github.com/ninjaaron/bitocra
-bitocra7 = TTFFont('assets/fonts/bitocra7.bdf', 7, license='OFL')
-fiveel = TTFFont('assets/fonts/5thElement.bdf', 5, license='OFL')
 
-# COZETTE
-# > License   MIT
-# > Source    https://github.com/slavfox/Cozette
-cozette = TTFFont('assets/fonts/cozette.bdf', 13, license='MIT')
+cozette = TTFFont('assets/fonts/cozette.bdf', 13, license='MIT', credit='https://github.com/slavfox/Cozette')
 
 # GREYBEARD
 # > License   MIT
@@ -76,42 +75,17 @@ spleen__s = TTFFont('assets/fonts/spleen-5x8.bdf', 8, license='BSD')
 # > Source    https://github.com/romeovs/creep
 creep = TTFFont('assets/fonts/creep.bdf', 16, license='MIT')
 
-# VIRTUAL DJ
-# > License   Free (non-standard)
-# > Source    https://www.dafont.com/fr/virtual-dj.font
-vdj = TTFFont('assets/fonts/virtual-dj.ttf', 8, license='free')
-
-# SMALL PIXEL
-# > License   Free (non-standard)
-# > Source    https://www.dafont.com/fr/small-pixel.font
-small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8, license='free')
-
-# AZTECH
-# > License   CC0
-# > Source    https://www.dafont.com/fr/aztech.font
-aztech = TTFFont('assets/fonts/aztech.ttf', 16, license='CC0')
 
 # Pixel-lcd-machine
 # > License   CC-SA
 # > Source    https://www.dafont.com/fr/Pixel-lcd-machine.font
 pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16, license='CC-SA')
 
-# CatV6x12
-# > License   CC-BY-SA
-# Note: Not pixel font.
-catv = TTFFont('assets/fonts/CatV_6x12_9.ttf', 24, license='CC-BY-SA')
-
-# 16x8pxl-mono
-# > License   OFL
-s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 20, license='OFL')
 
 # 15x5
 # > License   ?
 s15x5 = TTFFont('assets/fonts/15x5.ttf', 16)
 
-# SG09
-# > License   ?
-sg09 = TTFFont('assets/fonts/SG09.ttf', 8)
 
 # Dansk
 # > License   Demo
@@ -126,18 +100,6 @@ pixeloza = TTFFont('assets/fonts/Pixeloza03.ttf', 21, license='free')
 # Not monospaced.
 pix_tall = TTFFont('assets/fonts/PixTall.ttf', 32, license='free')
 
-# Long Pixel-7
-# > License   Free (non-standard)
-long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10, license='free')
-
-# Silkscreen
-# > License   Free
-slkscre = TTFFont('assets/fonts/slkscre.ttf', 8, license='free')
-
-# Teeny Tiny Pixls
-# > License   Free
-ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 8, license='free')
-
 
 # Small Bars
 # > License   Free (non-standard)
@@ -147,10 +109,9 @@ small_bars = TTFFont('assets/fonts/smallbars.ttf', 10, license='free')
 # > License   GNU GPLv3
 opn_bit_fuul = TTFFont('assets/fonts/OPN BitFUUL.ttf', 10, license='GPLv3')
 
+catv = TTFFont('assets/fonts/CatV_6x12_9.ttf', 17, license='CC-BY-SA')
+s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 20, license='OFL')
 
-# Megan Serif
-# > License   Free
-megan_serif = TTFFont('assets/fonts/Megan_Serif.ttf', 8)
 
 # Pixel Play
 # > License   Free
@@ -160,10 +121,8 @@ mixserif = TTFFont('assets/fonts/MixSerifCondense.ttf', 16)
 dymsmall = TTFFont('assets/fonts/dymsmall.ttf', 10)
 atc = TTFFont('assets/fonts/ATC.ttf', 16)
 pixwriter = TTFFont('assets/fonts/5pixwriter.ttf', 16, license='CC-BY-SA')
-double01 = TTFFont('assets/fonts/double01.ttf', 8, license='free (nc)')
-double01b = TTFFont('assets/fonts/double01b.ttf', 8, license='free (nc)')
+
 everyday = TTFFont('assets/fonts/Everyday.ttf', 10, license='free (nc)') # no accents
-exsmall = TTFFont('assets/fonts/Extremely-Small-Fonts.ttf', 4, license='free (nc)')
 fffextra = TTFFont('assets/fonts/FFFEXTRA.TTF', 8, license='free (nc)') # cloverleaf
 gaiatype = TTFFont('assets/fonts/Gaiatype.ttf', 16, license='CC0')
 mecha_cond = TTFFont('assets/fonts/Mecha_Condensed.ttf', 16, license='free (nc)')
@@ -173,6 +132,21 @@ mecha = TTFFont('assets/fonts/Mecha.ttf', 16, license='free (nc)')
 serifpx7 = TTFFont('assets/fonts/serif_pixel-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum = TTFFont('assets/fonts/zx_spectrum-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum_b = TTFFont('assets/fonts/zx_spectrum-7_bold.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
-two_slice = TTFFont('assets/fonts/Two Slice.ttf', 3, license='CC-BY-SA', credit='https://joefatula.com/twoslice.html')
 
+bitocra7 = TTFFont('assets/fonts/bitocra7.bdf', 7, license='OFL', credit='https://github.com/ninjaaron/bitocra')
+fiveel = TTFFont('assets/fonts/5thElement.bdf', 5, license='OFL', credit='https://github.com/ninjaaron/bitocra')
+vdj = TTFFont('assets/fonts/virtual-dj.ttf', 8, license='free', credit='https://www.dafont.com/fr/virtual-dj.font')
+long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10, license='free')
+slkscre = TTFFont('assets/fonts/slkscre.ttf', 8, license='free')
+aztech = TTFFont('assets/fonts/aztech.ttf', 16, license='CC0', credit='https://www.dafont.com/fr/aztech.font')
+small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8, license='free', credit='https://www.dafont.com/fr/small-pixel.font')
+megan_serif = TTFFont('assets/fonts/Megan_Serif.ttf', 8, license='free')
+double01 = TTFFont('assets/fonts/double01.ttf', 8, license='free (nc)')
+double01b = TTFFont('assets/fonts/double01b.ttf', 8, license='free (nc)')
+sg09 = TTFFont('assets/fonts/SG09.ttf', 8)
+two_slice = TTFFont('assets/fonts/Two Slice.ttf', 3, license='CC-BY-SA', credit='https://joefatula.com/twoslice.html', spacing=1)
+exsmall = TTFFont('assets/fonts/Extremely-Small-Fonts.ttf', 4, license='free (nc)', spacing=2)
+microfont_35_mono = TTFFont('assets/fonts/3x5-Microfont-Mono.ttf', 8, license='CC0', credit='https://github.com/nimaid/microfont')
+microfont_35_reg = TTFFont('assets/fonts/3x5-Microfont.ttf', 8, license='CC0', credit='https://github.com/nimaid/microfont')
 
+ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 5, license='free', spacing=2)

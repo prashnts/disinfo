@@ -6,14 +6,14 @@ from functools import lru_cache
 from PIL import Image, ImageDraw
 
 from .elements import Frame, TrimParam
-from .fonts import bitocra7, TTFFont, small_bars
+from .fonts import ttpixels, TTFFont, small_bars
 
 @dataclass(frozen=True)
 class TextStyle:
     color: str          = '#fff'
     outline: int        = 0
     outline_color: str  = '#000'
-    font: TTFFont       = bitocra7
+    font: TTFFont       = ttpixels
 
     width: int          = -1
 
@@ -29,6 +29,10 @@ class TextStyle:
         if isinstance(self.trim, int):
             return TrimParam(self.trim, self.trim, self.trim, self.trim)
         return self.trim
+
+    @property
+    def line_spacing(self) -> int:
+        return max(self.font.spacing, self.spacing)
 
 # Used as a fallback image when the text value is missing.
 EmptyTextFallback = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
@@ -115,7 +119,7 @@ class MultiLineText(Text):
             (0, 0),
             'M',
             font=self.style.font.font,
-            spacing=self.style.spacing,
+            spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
         )
         _est_line_width = self.style.width // (r - l)
@@ -125,7 +129,7 @@ class MultiLineText(Text):
                 (o, o),
                 wrapped_value(width),
                 font=self.style.font.font,
-                spacing=self.style.spacing,
+                spacing=self.style.line_spacing,
                 stroke_width=self.style.outline,
             )
             bwidth = r - l
@@ -137,7 +141,7 @@ class MultiLineText(Text):
             (o, o),
             value,
             font=self.style.font.font,
-            spacing=self.style.spacing,
+            spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
         )
         # TODO: add anchor.
@@ -150,7 +154,7 @@ class MultiLineText(Text):
             value,
             fill=self.style.color,
             font=self.style.font.font,
-            spacing=self.style.spacing,
+            spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
         )

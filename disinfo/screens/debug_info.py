@@ -25,12 +25,14 @@ sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, paus
 def font_demo():
     sample = """\
 10/20/2023 à 12:34
-Le café.
-£€«″café˝
-L′hopital
-A quick brown fox jumps over the lazy dog.
--> [ ] { } < > # $ % 
+Le ˝café˝. L′hopital
+ACCENTS: à â ä é è ê ë ï î ô ö ù û ç
+CHARS: £ € « ″ -> [ ] { } < > # $ % 
 1234567890ABCDEF
+
+EN: A quick brown fox jumps over the lazy dog.
+FR: Voix ambiguë d’un cœur qui au zéphyr préfère les jattes de kiwis.
+FR: Dès Noël où un zéphyr haï me vêt de glaçons würmiens je dîne d’exquis rôtis de bœuf au kir à l’aÿ d’âge mûr & cætera.
 """
 
     samples = []
@@ -57,7 +59,7 @@ A quick brown fox jumps over the lazy dog.
         samples.append(demo)
 
 
-    demoslide = vstack([hstack(row) for row in np.reshape(np.array(samples), (-1, 3))])
+    demoslide = vstack([hstack(row, gap=5, align='top') for row in np.resize(np.array(samples), (len(samples) // 4 + 1, 4))])
     demoslide.image.save('./.debugdemo.png')
     demoslide = vstack(samples, gap=spacing, align='left')
 

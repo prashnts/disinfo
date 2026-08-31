@@ -23,8 +23,8 @@ from disinfo.utils.color import AppColor
 
 
 s_time_tick = [
-    TextStyle(font=fonts.bitocra7, color=SkyHues.label),
-    TextStyle(font=fonts.bitocra7, color=SkyHues.tick_dark),
+    TextStyle(font=fonts.ttpixels, color=SkyHues.label),
+    TextStyle(font=fonts.ttpixels, color=SkyHues.tick_dark),
 ]
 s_time_tick_div = DivStyle(radius=2, background=SkyHues.black.hex, padding=[1, 1, 1, 1])
 
