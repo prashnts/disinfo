@@ -41,6 +41,7 @@ Extract {deps.n_highlights} key highlights from the given news story given to yo
 - Always use bullet points and try to use only ASCII characters -- but keep linguistic accents.
 - Your last bullet point should list the names of the sources of the story, abbreviated.
 
+[!] It's ok to return fewer lines if necessary.
 [!] The idea is similar to writing telegrams, but in natural language.
 """
 

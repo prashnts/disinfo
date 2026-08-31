@@ -199,10 +199,12 @@ def _news_deck(fs: FrameState):
         extract_highlights(st)
 
     title_style = TextStyle(
-        font=fonts.cozette,
+        font=fonts.greybeard if not state.details else fonts.microfont_35_mono,
         width=112,
         color="#A3A7A8",
-        spacing=2)
+        spacing=2,
+        outline=1,
+        outline_color="#000000A1")
     sumry_style = TextStyle(
         font=fonts.microfont_35_reg,
         width=112,
@@ -221,7 +223,7 @@ def _news_deck(fs: FrameState):
             .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
             .reset_position(not state.details)
             .draw(fs.tick)),
-        background="#7D7B8128",
+        background="#7D7B8196",
         padding=0,
         radius=3)
 
@@ -240,23 +242,24 @@ def _news_deck(fs: FrameState):
     s = div(
         vstack([story_title, story_summary], gap=4),
         margin=0,
-        padding=(14, 4, 4, 4),
+        padding=(10, 4, 5, 4),
         background="#50453D00",
         radius=3)
 
     f_category = Resize(delay=1).mut(st.category_emoji).draw(fs)
     f_emoji = (Resize(duration=.2, delay=1)
-        .mut(render_emoji(st.emoji, size=26) if state.details else None)
+        .mut(render_emoji(st.emoji, size=26))
         .draw(fs))
-    if not state.details:
-        f_img = (Resize()
-            .mut(st.cover_im(s.size)
-                .brightness(0.8)
-                .opacity(0.9)
-                .color_(0.8)
-                .tag(('storycover', st.pk)))
-            .draw(fs))
-        s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.7, dx=0, dy=0, frost=.5)
+    # if not state.details or True:
+    f_img = (Resize()
+        .mut(st.cover_im(s.size)
+            .brightness(0.8)
+            .opacity(0.9)
+            .color_(0.8)
+            .tag(('storycover', st.pk)))
+        .draw(fs))
+    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5, dx=0, dy=0, frost=0)
+    s = composite_at(f_emoji, s, 'tr', dx=-3, dy=3, behind=True, vibrant=1)
     s = div(
         s,
         background="#5A4F3C82",
@@ -264,17 +267,13 @@ def _news_deck(fs: FrameState):
         margin=(8, 0, 0, 0),
         border=1,
         border_color="#15501A9B")
-    infos = vstack([
-        divblock(kagi_news_icon),
+    infos = hstack([
+        divblock(text('llm', color="#0C0C0CC5"), padding=1) if st.extracts else None,
         divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
-    ], align='right', gap=1)
-    s = composite_at(
-        (Resize(duration=.5, delay=.4)
-            .mut(infos if not state.details else None)
-            .draw(fs))
-        , s, 'tr', frost=2, dy=2)
+        divblock(kagi_news_icon),
+    ], align='center', gap=1)
+    s = composite_at(infos, s, 'br', frost=2, dy=2)
     s = composite_at(f_category, s, 'tl', frost=2)
-    s = composite_at(f_emoji, s, 'tr', dx=-2, dy=2, frost=-2)
 
     return s.tag(('news', st.pk))
 
