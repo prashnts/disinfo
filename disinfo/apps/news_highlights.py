@@ -16,9 +16,9 @@ model = OpenAIChatModel('openai/gpt-oss-20b', provider=_oai_provider)
 @dataclass
 class Deps:
     story: object
-    n_max_words: int = 20
+    n_max_words: int = 18
     n_avg_words: int = 10
-    n_highlights: int = 5
+    n_highlights: int = 3
 
 class Output(AppBaseModel):
     highlight_1: str
