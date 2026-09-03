@@ -155,7 +155,7 @@ class AppState:
     story_index: int = 0
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 35
+    change_in: float = 42
     min_change_in: float = 15
     details: bool = False
     detail_in: float = 6
