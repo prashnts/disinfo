@@ -22,6 +22,7 @@ from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..drat.idfm import fetch_state
 from ..drat import idfm
 from ..redis import get_dict, publish
+from disinfo.components.widget import Widget
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -43,12 +44,16 @@ class MetroAppState(AppBaseModel):
     valid: bool = False
     toggled_at: Optional[datetime] = None
     data: Optional[idfm.MetroData] = None
+    tick: int = 0
 
 
 @throttle(27_000)
-def throttled_fetch_state():
-    if idfm.is_active():
-        return idfm.fetch_state()
+def throttled_fetch_state(force: bool = False):
+    if idfm.is_active() or force:
+        try:
+            return idfm.fetch_state()
+        except Exception as e:
+            print('Error fetching metro state:', e)
 
 class MetroAppStateManager(PubSubStateManager[MetroAppState]):
     model = MetroAppState
@@ -63,11 +68,12 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
             if data.action == 'toggle':
                 self.toggle()
         if channel.endswith('.remote'):
+            print('Remote message received:', data)
             if data.action == 'show_metro':
                 self.toggle()
 
     def initial_state(self) -> MetroAppState:
-        return MetroAppState(data=self.load_timing())
+        return MetroAppState(data=throttled_fetch_state())
 
     def toggle(self):
         s = self.state
@@ -77,20 +83,19 @@ class MetroAppStateManager(PubSubStateManager[MetroAppState]):
         else:
             show = not show
         if show:
-            publish('di.pubsub.dataservice', action='fetch_metro')
+            self.state.data = throttled_fetch_state(True)
         self.state.show = show
         self.state.toggled_at = pendulum.now()
 
-    def load_timing(self):
-        if timing := get_dict('metro.timing'):
-            return idfm.MetroData(**timing)
-
-    def update_data(self):
-        self.state.data = self.load_timing()
+    def update_data(self, fs: FrameState):
+        s = self.state
+        next_state = throttled_fetch_state()
+        if next_state:
+            self.state.data = next_state
 
     def get_state(self, fs: FrameState):
         s = self.state
-        self.state.data = throttled_fetch_state()
+        self.update_data(fs)
         if not s.data:
             s.visible = False
             s.valid = False
@@ -143,7 +148,7 @@ def message_text(value: str) -> MultiLineText:
     return MultiLineText(
         value,
         style=TextStyle(
-            font=fonts.tamzen__rs,
+            font=fonts.microfont_35_reg,
             color='#b9b9b9',
             outline=1,
             outline_color='#181818',
@@ -155,6 +160,9 @@ def message_text(value: str) -> MultiLineText:
 
 def render_metro_info(fs: FrameState, state: MetroAppState):
     s = state.data
+
+    if not s:
+        return
 
     train_times = []
     status_icons = []
@@ -213,30 +221,34 @@ def render_metro_info(fs: FrameState, state: MetroAppState):
     return hstack(main_view, gap=2)
 
 
-def metro_view(fs: FrameState, state: MetroAppState):
-    if state.valid:
+def metro_view(fs: FrameState):
+    state = MetroAppStateManager().get_state(fs)
+    if state.data:
         content = render_metro_info(fs, state)
     else:
         content = div(metro_paris_banner, style=DivStyle(padding=10))
 
-    return div(
-        content,
-        style=DivStyle(
-            background="#05153486",
-            padding=2,
-            radius=(3, 0, 0, 3),
-            border=1,
-            border_color="#333435C9",
-        ),
-    )
+    return content.tag(('metro_view', state.show))
 
 
 def composer(fs: FrameState):
     state = MetroAppStateManager().get_state(fs)
-
-    return (visibility_slider
-        .set_frame(metro_view(fs, state))
-        .visibility(state.visible)
-        .draw(fs.tick))
+    if state.show:
+        return metro_view(fs)
+    return
 
 draw = draw_loop(composer, use_threads=True)
+
+def widgets(fs: FrameState):
+    return [
+        Widget('di.metro.info', draw(fs), wait_time=14, style=DivStyle(
+            background="#05153486",
+            padding=3,
+            margin=0,
+            radius=3,
+            border=1,
+            border_color="#333435C9",
+        ))
+    ]
+
+# todo: Refactor this similar to klipper using RuntimeStateManager.

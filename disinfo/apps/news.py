@@ -206,10 +206,12 @@ def _news_deck(fs: FrameState):
         outline=1,
         outline_color="#000000A1")
     sumry_style = TextStyle(
-        font=fonts.microfont_35_reg,
+        font=fonts.greybeard,
         width=112,
-        color="#DDDDDD",
-        spacing=2)
+        color="#CACACACC",
+        spacing=1,
+        outline=1,
+        outline_color="#000000A1")
 
     divblock = styled_div(
         background="#ffffff49",

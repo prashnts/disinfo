@@ -124,7 +124,8 @@ class Resize(TimedTransition[Frame]):
         opacity_prev = 1 - pos
         opacity_curr = pos
         if not self.curr_value:
-            current = Frame(Image.new('RGBA', (1, 1), (0, 0, 0, 0)))
+            size = (2, 2) if self.pos < 1 else (1, 1)
+            current = Frame(Image.new('RGBA', size, (0, 0, 0, 0)))
             pos = 1 - self.pos
             opacity_prev = pos
             opacity_curr = 1 - pos

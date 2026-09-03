@@ -1,8 +1,30 @@
-from PIL import ImageFont
+import requests
+import os
+from PIL import ImageFont, features
 from pathlib import Path
 from dataclasses import dataclass
 
 register = {}
+
+def _download_font(url: str) -> Path:
+    _cache_dir = Path(__file__).parent / '.fonts_cache'
+    _cache_dir.mkdir(exist_ok=True)
+
+    filename = url.split('/')[-1]
+    file_path = _cache_dir / filename
+
+    if file_path.exists():
+        return file_path.absolute()
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+        return file_path.absolute()
+    except requests.RequestException as e:
+        raise Exception(f"Failed to download font from {url}: {str(e)}")
 
 @dataclass
 class TTFFont:
@@ -11,19 +33,27 @@ class TTFFont:
     license: str = 'unknown'
     credit: str = ''
     spacing: int = 0
+    layout_engine: str = 'basic'
 
     def __post_init__(self):
-        self.path = Path(self.path)
+        if self.path.startswith('https://'):
+            self.path = _download_font(self.path)
+        else:
+            self.path = Path(self.path)
         self.filename = self.path.name
         self._font = None
 
         if not self.filename in register:
             register[self.filename] = self
-    
+
     @property
     def font(self):
         if self._font is None:
-            self._font = ImageFont.truetype(str(self.path), self.size)
+            mapping = {
+                'basic': ImageFont.Layout.BASIC,
+                'raqm': ImageFont.Layout.RAQM
+            }
+            self._font = ImageFont.truetype(str(self.path), self.size, layout_engine=mapping[self.layout_engine])
         return self._font
 
     def __hash__(self):
@@ -150,3 +180,9 @@ microfont_35_mono = TTFFont('assets/fonts/3x5-Microfont-Mono.ttf', 8, license='C
 microfont_35_reg = TTFFont('assets/fonts/3x5-Microfont.ttf', 8, license='CC0', credit='https://github.com/nimaid/microfont')
 
 ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 5, license='free', spacing=2)
+unifont = TTFFont(
+    'https://unifoundry.com/pub/unifont/unifont-17.0.05/font-builds/unifont-17.0.05.otf',
+    size=16,
+    license='GPLv2',
+    credit='https://unifoundry.com/unifont.html',
+    layout_engine='raqm')

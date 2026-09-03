@@ -42,3 +42,6 @@ class Widget:
             transition.reset()
             if transition.curr_value and not exit.finished:
                 return exit.mut(transition.curr_value).draw(fs)
+
+    def __hash__(self):
+        return hash(('widget', self.name))

@@ -85,25 +85,31 @@ def compose_big_frame(fs: FrameState):
         screens.date_time.flip_clock(fs, align=_clock_align),
         image,
         'tl' if _leftward else 'tr',
-        dx=p_stack_offset() * (1 if _leftward else -1),
+        dx=p_stack_offset() * (1 if _leftward else -2),
         dy=p_stack_offset() + 60,
         frost=1)
     # if rmt_state.show_debug:
     #     composite_at(screens.demo.draw(fs), image, 'mm')
 
-    stack_conf = StackStyle(scrollbar=_leftward, align='right' if _leftward else 'left')
-
+    stack_conf = StackStyle(scrollbar=_leftward, align='right' if _leftward else 'left', horizontal=False)
     stack = Stack('main_cards', style=stack_conf).mut([
         screens.weather.widgets.weather(fs),
         # *screens.aviator.widgets.planes(fs),
         *shazam_widgets(fs),
-        screens.now_playing.widget(fs),
+        # screens.now_playing.widget(fs),
         screens.weather.widgets.moon_phase(fs),
         screens.dishwasher.widget(fs),
         screens.washing_machine.widget(fs),
-        *screens.klipper.widget(fs),
+        # *screens.klipper.widget(fs),
         screens.trash_pickup.widget(fs),
+    ])
+
+    stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=app_config.width)
+    stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut([
+        screens.now_playing.widget(fs),
+        *screens.klipper.widget(fs),
         *screens.debug_info.widgets(fs),
+        *screens.paris_metro.widgets(fs),
     ])
 
     if rmt_reader('down'):
@@ -111,6 +117,7 @@ def compose_big_frame(fs: FrameState):
 
     if awake:
         composite_at(stack.draw(fs), image, 'mr' if _leftward else 'ml', dx=p_stack_offset(), frost=1.8)
+        composite_at(stack_hor.draw(fs), image, 'bl', dy=p_stack_offset() * -1, frost=1.8)
         composite_at(shazam_indicators(fs).draw(fs), image, 'br')
         # composite_at(screens.numbers.draw(fs), image, 'bl')
 
@@ -125,8 +132,7 @@ def compose_big_frame(fs: FrameState):
 
     if awake:
         composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)  
-        composite_at(screens.paris_metro.draw(fs), image, 'bm', frost=1.8)
+        composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)
 
         if app_config.height >= 120:
             composite_at(stream_widget(fs).draw(fs), image, 'bm')

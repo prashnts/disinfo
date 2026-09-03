@@ -182,3 +182,5 @@ emulator_config.json
 .
 .python-version
 .debug*.png
+
+.fonts_cache/

@@ -123,6 +123,7 @@ class MultiLineText(Text):
             stroke_width=self.style.outline,
         )
         _est_line_width = self.style.width // (r - l)
+        value = wrapped_value(_est_line_width // 3)
 
         for width in range(max(_est_line_width - 5, 1), _est_line_width + 20):
             l, t, r, b = _dd.multiline_textbbox(

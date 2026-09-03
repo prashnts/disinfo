@@ -133,8 +133,8 @@ def collate_info(infos: list[InfoData]):
     now = pendulum.now()
     messages = []
     for i in infos:
-        if now.diff(i.start_time).total_hours() > 12:
-            continue
+        # if now.diff(i.start_time).total_hours() > 12:
+        #     continue
         messages.append(i.name)
 
     has_pertubation = any([i.type == 'Perturbation' for i in infos])
@@ -149,6 +149,7 @@ def fetch_state():
     trains = []
     infos = []
 
+    print('Fetching metro state...')
     for s in traffic_stops:
         traffic = asyncio.run(fetch_stop_traffic(s['stop_id']))
         info = asyncio.run(fetch_line_infos(s['line_id']))

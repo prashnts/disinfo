@@ -7,10 +7,10 @@ from disinfo.data_structures import FrameState, UniqInstance
 from disinfo.config import app_config
 
 from .elements import Frame
-from .layouts import vstack
+from .layouts import vstack, hstack
 from .layers import div, DivStyle
 from .widget import Widget
-from .scroller import VScroller
+from .scroller import VScroller, HScroller
 
 @dataclass(frozen=True)
 class StackStyle:
@@ -22,6 +22,7 @@ class StackStyle:
     scrollbar: bool = False
     static_if_small: bool = False
     align: str = 'left'
+    horizontal: bool = False
 
 class Stack(metaclass=UniqInstance):
     def __init__(self, name: str, style: StackStyle = StackStyle):
@@ -33,12 +34,20 @@ class Stack(metaclass=UniqInstance):
         self.last_step = 0
         self.pos = 0
 
-        self.scroller = VScroller(
-            size=self.style.size,
-            speed=self.style.speed,
-            delta=self.style.scroll_delta,
-            static_if_small=self.style.static_if_small,
-            scrollbar=self.style.scrollbar)
+        if self.style.horizontal:
+            self.scroller = HScroller(
+                size=self.style.size,
+                speed=self.style.speed,
+                delta=self.style.scroll_delta,
+                static_if_small=self.style.static_if_small,
+                scrollbar=self.style.scrollbar)
+        else:
+            self.scroller = VScroller(
+                size=self.style.size,
+                speed=self.style.speed,
+                delta=self.style.scroll_delta,
+                static_if_small=self.style.static_if_small,
+                scrollbar=self.style.scrollbar)
 
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._prev_widgets = self._widgets
@@ -47,18 +56,28 @@ class Stack(metaclass=UniqInstance):
 
     def surface(self, fs: FrameState):
         curr_widget = self._widgets[self.pos]
-        visible_widgets = [w for w in self._widgets if w.frame and (w.frame.width + w.frame.height) > 2]
-        pos = visible_widgets.index(curr_widget) if curr_widget in visible_widgets else 0
-        frames = [w.draw(fs, active=i == pos and self.scroller.on_target) for i, w in enumerate(visible_widgets)]
-        pos = self.style.size - self.style.offset_top + sum([f.height for f in frames[0:pos]]) + (pos - 1 * 2)
+        visible_widgets = [(i, w) for i, w in enumerate(self._widgets) if w.frame and (w.frame.width + w.frame.height) > 2]
+        _visible = [w for i, w in visible_widgets]
+        # frames = [w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)]
+        frames = [self._frames[w] for i, w in enumerate(self._widgets)]
+        frames = [f for _, f in enumerate(frames) if (f.width + f.height) > 2]
+        pos = _visible.index(curr_widget) if curr_widget in _visible else 0
+        # out_frames = frames[:pos]
+        # frames += out_frames
+        # frames[:pos] = [f.opacity(0) for f in out_frames]
+        pos = self.style.size - self.style.offset_top + sum([f.width if self.style.horizontal else f.height for f in frames[0:pos]]) + (pos - 1 * 2)
+        if self.style.horizontal:
+            align = 'center' if self.style.align == 'left' else self.style.align
+            return div(hstack(frames, gap=2, align=align), DivStyle(padding=(0, 0, 2, 0))), pos
         return div(vstack(frames, gap=2, align=self.style.align), DivStyle(padding=(0, 0, 0, 2))), pos
     
     def next_widget(self):
         self.pos += 1
         self.pos %= len(self._widgets)
 
-    def tick(self, step: float):
-        _visible = lambda w: w.frame and (w.frame.width + w.frame.height) > 2
+    def tick(self, fs: FrameState):
+        step = fs.tick
+        _visible = lambda w: (self._frames[w].width + self._frames[w].height) > 2
         curr_widget = self._widgets[self.pos]
         items_in_focus = [w for w in self._widgets if _visible(w) and w.focus]
         items_just_added = [w for w in self._widgets if _visible(w) and w not in self._prev_widgets]
@@ -72,12 +91,12 @@ class Stack(metaclass=UniqInstance):
             self.last_step = step
             return
 
-        if not self.scroller.on_target and _visible(curr_widget):
+        if not self.scroller.on_target:
             return
         
-        if not _visible(curr_widget):
-            self.pos = 0
-            return
+        # if not _visible(curr_widget):
+        #     self.pos = 0
+        #     return
 
         if step - self.last_step > curr_widget.wait_time + 1:
             if not any ([_visible(w) for w in self._widgets]):
@@ -97,13 +116,16 @@ class Stack(metaclass=UniqInstance):
             self.last_step = step
 
     def draw(self, fs: FrameState) -> Optional[Frame]:
-        self.tick(fs.tick)
+        self._frames = {w: w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)}
         surface, pos = self.surface(fs)
         delta = self.style.scroll_delta
         if self.scroller.direction < 0:
             delta = self.style.reverse_delta
 
         # pin to middle
-        pos = pos - 32
+        # pos = pos - (self.style.size // 3)
 
-        return self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos).draw(fs.tick)
+        stack_im = self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos).draw(fs.tick)
+
+        self.tick(fs)
+        return stack_im
