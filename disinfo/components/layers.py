@@ -5,6 +5,7 @@ from PIL import Image, ImageColor, ImageDraw
 from typing import Union, Optional
 
 from .elements import Frame
+from .layouts import composite_at, ComposeAnchor
 
 
 @dataclass(frozen=True)
@@ -12,6 +13,7 @@ class DivStyle:
     '''
     The radius is ordered on top-right, bottom-right, bottom-left, and top-left corners.
     The margin and padding are ordered top, right, bottom, and left edges.
+    Anchor specifies where the frame is positioned in the container.
     '''
     padding: Union[int, tuple[int]] = 0
     radius: Union[int, tuple[int]] = 0
@@ -22,7 +24,12 @@ class DivStyle:
     clip: bool = True
     height: int | None = None
     width: int | None = None
+    min_height: int | None = None
+    min_width: int | None = None
+    max_height: int | None = None
+    max_width: int | None = None
     background_frame: Frame | None = None
+    anchor: ComposeAnchor = 'mm'
 
 
 @lru_cache(maxsize=512)
@@ -106,28 +113,45 @@ def div(
     if isinstance(style.radius, int):
         radius = (style.radius,) * 4
 
-    w = style.width or frame.width + (pad[1] + pad[3]) + (margin[1] + margin[3])
-    h = style.height or frame.height + (pad[0] + pad[2]) + (margin[0] + margin[2])
-    w_inner = style.width or frame.width + (pad[1] + pad[3])
-    h_inner = style.height or frame.height + (pad[0] + pad[2])
+    w_e = style.width or frame.width    # Effective width
+    h_e = style.height or frame.height
 
-    o_x = margin[3] + pad[3]    # Origin of the frame in div.
-    o_y = margin[0] + pad[0]
+    if style.min_width and w_e < style.min_width:
+        w_e = style.min_width
+    if style.min_height and h_e < style.min_height:
+        h_e = style.min_height
+    if style.max_width and w_e > style.max_width:
+        w_e = style.max_width
+    if style.max_height and h_e > style.max_height:
+        h_e = style.max_height
+
+    w = w_e + (pad[1] + pad[3]) + (margin[1] + margin[3])
+    h = h_e + (pad[0] + pad[2]) + (margin[0] + margin[2])
+    w_inner = w_e + (pad[1] + pad[3])
+    h_inner = h_e + (pad[0] + pad[2])
+
+    o_x, o_y = 0, 0     # Frame origin
+    if style.anchor[0] == 't':
+        o_y = margin[0] + pad[0]
+    elif style.anchor[0] == 'b':
+        o_y = -1 * (margin[2] + pad[2])
+    if style.anchor[1] == 'l':
+        o_x = margin[3] + pad[3]
+    elif style.anchor[1] == 'r':
+        o_x = -1 * (margin[1] + pad[1])
 
     if sum(radius) == 0 and sum(margin) == 0:
         i = Image.new('RGBA', (w, h), ImageColor.getrgb(style.background))
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             i.alpha_composite(bg.image, (0, 0))
-        i.alpha_composite(frame.image, (o_x, o_y))
+        composite_at(frame, i, anchor=style.anchor, dx=o_x, dy=o_y)
     else:
         frame_div = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             frame_div.alpha_composite(bg.image, (0, 0))
-
-        frame_div.alpha_composite(frame.image, (o_x, o_y))
+        composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y)
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(

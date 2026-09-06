@@ -76,7 +76,7 @@ class PrinterState(AppBaseModel):
 
 
 def get_moonraker_state(printer_id: str):
-    cam = HaWS().get_entity(f'camera.{printer_id}_libcamera')
+    cam = HaWS().get_entity(f'camera.{printer_id}_toolcam')
     cachebuster = int(time.time() // 7)
     ignored_states = ['unknown', 'unavailable']
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
@@ -92,7 +92,7 @@ def get_moonraker_state(printer_id: str):
         thumbnail=thumburl,
         online=True,
         is_on=get_sensor('printer_state') not in ('offline', 'unknown'),
-        is_printing=get_sensor('printer_state') in ('printing', 'pause', 'running'),
+        is_printing=get_sensor('printer_state') in ('printing', 'pause', 'running', 'ready'),
         is_done=get_sensor('printer_state') == 'finish',
         completion_time=pendulum.parse(x).strftime('%H:%M') if (x := get_sensor('print_eta')) else None,
         time_left=get_sensor('print_time_left'),
@@ -221,8 +221,12 @@ def composer(fs: FrameState, state: PrinterState):
 
     card = div(
         vstack([vstack(elements, gap=1, align='left')], align='left', gap=4),
-        width=95,
-        padding=(10, 0, 2, 2),
+        min_width=65,
+        max_width=95,
+        min_height=42,
+        max_height=95,
+        anchor='bl',
+        padding=2,
         margin=0,
         radius=3,
         background_frame=bg)
