@@ -110,6 +110,9 @@ class Frame(UIElement):
     def fallback(cls, hash: Any = None, size: tuple[int, int] = (1, 1)) -> 'Frame':
         return Frame(Image.new('RGBA', size, (0, 0, 0, 0)), hash)
 
+    def blank(self) -> 'Frame':
+        return Frame(Image.new('RGBA', self.size, (0, 0, 0, 0)), hash=('blank', self.hash))
+
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
         img = Image.open(filename).convert('RGBA')

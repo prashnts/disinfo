@@ -17,7 +17,7 @@ class DrawerFn(Protocol):
         ...
 
 
-def draw_loop(composer: ComposerFn, sleepms: int = 82, use_threads: bool = False) -> DrawerFn:
+def draw_loop(composer: ComposerFn, sleepms: int = 50, use_threads: bool = False) -> DrawerFn:
     '''Creates a daemon thread to executer composer function.
 
     The goal is not to gain in performance that much, rather it is to ensure
@@ -43,7 +43,7 @@ def draw_loop(composer: ComposerFn, sleepms: int = 82, use_threads: bool = False
                     current_frame = composer(*current_args, **current_kwargs)
                     previous_state = current_args
 
-    t = threading.Thread(target=painter, daemon=True)
+    t = threading.Thread(target=painter, daemon=False)
 
     def draw(*args, **kwargs) -> Frame | None:
         if not t.is_alive():

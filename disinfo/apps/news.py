@@ -238,15 +238,15 @@ def _news_deck(fs: FrameState):
     story_summary = div(
         Resize(delay=.3).mut(summary).draw(fs),
         padding=0,
-        radius=2,
-    )
+        radius=2)
 
-    s = div(
+    content = div(
         vstack([story_title, story_summary], gap=4),
         margin=0,
-        padding=(10, 4, 5, 4),
+        padding=(15, 4, 5, 4),
         background="#50453D00",
-        radius=3)
+        radius=3,
+        anchor='bl')
 
     f_category = Resize(delay=1).mut(st.category_emoji).draw(fs)
     f_emoji = (Resize(duration=.2, delay=1)
@@ -254,21 +254,23 @@ def _news_deck(fs: FrameState):
         .draw(fs))
     # if not state.details or True:
     f_img = (Resize()
-        .mut(st.cover_im(s.size)
+        .mut(st.cover_im(content.size)
             .brightness(0.8)
             .opacity(0.9)
             .color_(0.8)
             .tag(('storycover', st.pk)))
         .draw(fs))
-    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5, dx=0, dy=0, frost=0)
-    s = composite_at(f_emoji, s, 'tr', dx=-3, dy=3, behind=True, vibrant=1)
+    s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)
+    s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5)
+    s = composite_at(content, s, 'mm', frost=2)
     s = div(
         s,
         background="#5A4F3C82",
         radius=(4, 0, 0, 4),
-        margin=(8, 0, 0, 0),
+        margin=0,
         border=1,
-        border_color="#15501A9B")
+        border_color="#15501A9B",
+        anchor='bm')
     infos = hstack([
         divblock(text('llm', color="#0C0C0CC5"), padding=1) if st.extracts else None,
         divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),
