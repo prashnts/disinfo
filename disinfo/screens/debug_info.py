@@ -19,10 +19,10 @@ from disinfo.web.telemetry import TelemetryStateManager, act
 from disinfo.components.elements import Frame
 
 
-sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, pause_offset=18, speed=0.001, delta=3, scrollbar=True)
+sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, pause_offset=18, speed=0.001, delta=1, scrollbar=True)
 
 @cache
-def font_demo():
+def font_demo(debug=False):
     sample = """\
 10/20/2023 à 12:34
 Le ˝café˝. L′hopital
@@ -58,13 +58,14 @@ FR: Voix ambiguë d’un cœur qui au zéphyr préfère les jattes de kiwis.
         samples.append(demo)
 
 
-    demoslide = vstack([hstack(row, gap=5, align='top') for row in np.resize(np.array(samples), (len(samples) // 4 + 1, 4))])
-    demoslide.image.save('./.debugdemo.png')
+    if debug:
+        demoslide = vstack([hstack(row, gap=5, align='top') for row in np.resize(np.array(samples), (len(samples) // 4 + 1, 4))])
+        demoslide.image.save('./.debugdemo.png')
     demoslide = vstack(samples, gap=spacing, align='left')
 
     return demoslide, False, pauses
 
-# font_demo()  # uncomment to autogenerate the font cards, saved to .debugdemo.png
+# font_demo(debug=True)  # uncomment to autogenerate the font cards, saved to .debugdemo.png
 
 def get_palette(name):
     cmap = cm.get_cmap(name, 256)

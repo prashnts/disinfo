@@ -13,10 +13,10 @@ def throttle(duration: int):
         last_value = None
         def wrapper(*args, **kwargs):
             nonlocal last_called_at, last_value
-            if last_called_at and (time.monotonic() - last_called_at) < duration_sec:
+            if last_called_at and (time.perf_counter() - last_called_at) < duration_sec:
                 return last_value
             last_value = func(*args, **kwargs)
-            last_called_at = time.monotonic()
+            last_called_at = time.perf_counter()
             return last_value
         return wrapper
 

@@ -225,12 +225,12 @@ def _news_deck(fs: FrameState):
             .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
             .reset_position(not state.details)
             .draw(fs.tick)),
-        background="#7D7B8196",
+        background="#20202194",
         padding=0,
         radius=3)
 
     if not state.details:
-        summary = summary.resize((summary.width, 1)).opacity(0)
+        summary = summary.blank().resize((1, 1))
 
     story_title = div(Resize(duration=.2)
         .mut(text(st.title, title_style, multiline=True))
@@ -252,9 +252,8 @@ def _news_deck(fs: FrameState):
     f_emoji = (Resize(duration=.2, delay=1)
         .mut(render_emoji(st.emoji, size=26))
         .draw(fs))
-    # if not state.details or True:
     f_img = (Resize()
-        .mut(st.cover_im(content.size)
+        .mut(st.cover_im((content.width, 128))
             .brightness(0.8)
             .opacity(0.9)
             .color_(0.8)
@@ -262,7 +261,7 @@ def _news_deck(fs: FrameState):
         .draw(fs))
     s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5)
-    s = composite_at(content, s, 'mm', frost=2)
+    s = composite_at(content, s, 'mm', frost=3)
     s = div(
         s,
         background="#5A4F3C82",

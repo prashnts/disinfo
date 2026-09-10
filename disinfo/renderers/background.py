@@ -26,11 +26,11 @@ def main(fps: int = 60, stats: bool = False, n_frames: int = 0):
         i += 1
         if n_frames and i > n_frames:
             break
-        t_start = time.monotonic()
+        t_start = time.perf_counter()
         fs = FrameState.create()
         frame = compose_frame(fs)
         publish_frame(frame)
-        t_draw = time.monotonic() - t_start
+        t_draw = time.perf_counter() - t_start
 
         delay = max(_tf - t_draw, 0.0)
         _fps = (1 / (t_draw + delay))
