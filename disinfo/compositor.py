@@ -109,7 +109,7 @@ def compose_big_frame(fs: FrameState):
         screens.now_playing.widget(fs),
         *screens.klipper.widget(fs),
         *screens.debug_info.widgets(fs),
-        *screens.paris_metro.widgets(fs),
+        # *screens.paris_metro.widgets(fs),
     ])
 
     if rmt_reader('down'):

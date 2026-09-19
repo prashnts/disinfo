@@ -110,7 +110,8 @@ def get_bambulab_state(printer_id: str):
     thumburl = (app_config.ha_base_url + cam.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cam else None
     coverurl = (app_config.ha_base_url + cover.attributes.get('entity_picture', '') + f'&t={cachebuster}') if cover else None
     pickurl = (app_config.ha_base_url + pick_img.attributes.get('entity_picture', '') + f'&t={cachebuster}') if pick_img else None
-    get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state != 'unavailable' else None
+    ignored_states = ['unknown', 'unavailable']
+    get_sensor = lambda sensor: x.state if (x := HaWS().get_entity(f'sensor.{printer_id}_{sensor}')) and x.state not in ignored_states else None
 
     state = PrinterState(
         printer_id=printer_id,
