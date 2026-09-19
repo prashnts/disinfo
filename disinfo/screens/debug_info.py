@@ -1,7 +1,6 @@
 from PIL import Image
 from typing import Callable
 import numpy as np
-from matplotlib import cm
 
 from functools import cache
 from ..utils.drawer import draw_loop
@@ -68,6 +67,7 @@ FR: Voix ambiguë d’un cœur qui au zéphyr préfère les jattes de kiwis.
 # font_demo(debug=True)  # uncomment to autogenerate the font cards, saved to .debugdemo.png
 
 def get_palette(name):
+    from matplotlib import cm
     cmap = cm.get_cmap(name, 256)
 
     try:

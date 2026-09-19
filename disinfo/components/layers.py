@@ -29,6 +29,7 @@ class DivStyle:
     max_height: int | None = None
     max_width: int | None = None
     background_frame: Frame | None = None
+    background_blur: float = 0
     anchor: ComposeAnchor = 'mm'
 
 
@@ -151,7 +152,7 @@ def div(
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             frame_div.alpha_composite(bg.image, (0, 0))
-        composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y)
+        composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y, frost=style.background_blur)
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(

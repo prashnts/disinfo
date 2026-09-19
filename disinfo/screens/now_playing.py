@@ -10,10 +10,10 @@ from ..utils.drawer import draw_loop
 from ..config import app_config
 from ..components import fonts
 from ..components.elements import Frame, StillImage
-from ..components.text import Text, TextStyle
+from ..components.text import Text, TextStyle, text
 from ..components.layouts import hstack, vstack, composite_at
 from ..components.layers import div, DivStyle
-from ..components.transitions import SlideIn
+from ..components.transitions import SlideIn, Resize
 from ..components.widget import Widget
 from ..components.scroller import HScroller
 from ..utils.func import throttle
@@ -21,18 +21,11 @@ from ..utils import ease
 from ..data_structures import FrameState
 
 from disinfo.utils.hass import get_entity
-
-scroll_media_title = HScroller(size=20, delta=1, speed=0.03, pause_at_loop=True, pause_duration=1)
-scroll_artist_name = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
-scroll_album_title = HScroller(size=20, delta=1, speed=0.05, pause_at_loop=True, pause_duration=1)
+from disinfo.utils.imops import image_from_url
 
 play_icon = StillImage('assets/raster/play-5x5.png')
 pause_icon = StillImage('assets/raster/pause-5x5.png')
 spotify_icon = StillImage('assets/raster/spotify-5x5.png')
-
-text_media_title = Text(style=TextStyle(font=fonts.bitocra7, color='#0E8E47'))
-text_artist_name = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
-text_album_title = Text(style=TextStyle(font=fonts.bitocra7, color='#a1a9b0'))
 
 
 @throttle(1033)
@@ -47,20 +40,18 @@ def get_state():
     
     s = s.model_dump()
 
+    state['entity_id'] = s['entity_id']
     state['playing'] = s['state'] == 'playing'
     state['paused'] = s['state'] == 'paused'
 
     last_updated = s['last_updated']
-    now = pendulum.now()
+    now = pendulum.now('utc')
 
     state['media_title'] = s['attributes'].get('media_title', '')
     state['media_album'] = s['attributes'].get('media_album_name', '')
     state['media_artist'] = s['attributes'].get('media_artist', '')
     state['is_spotify'] = 'Spotify' in s['attributes'].get('source', '')
-    state['album_art'] = get_album_art(
-        s['attributes'].get('entity_picture'),
-        media_album=state['media_album'],
-        is_spotify=state['is_spotify'])
+    state['album_art'] = s['attributes'].get('entity_picture')
 
     timeout_delay = 40 if state['playing'] else 2
 
@@ -72,26 +63,6 @@ def get_state():
 
     return state
 
-@cache
-def get_album_art(fragment: str, media_album: str, is_spotify: bool=False):
-    if not fragment:
-        return None
-    if media_album and 'franceinfo' in media_album:
-        # Hard code some album arts.
-        return StillImage('assets/raster/france-info.png')
-    try:
-        r = requests.get(f'http://{app_config.ha_base_url}{fragment}')
-        r.raise_for_status()
-        fp = io.BytesIO(r.content)
-        img = Image.open(fp)
-        # Dithering helps? .quantize()
-        frame = Frame(img.resize((80, 80)).resize((25, 25)).convert('RGBA')).trim(3, 5, 3, 5)
-        if is_spotify:
-            return composite_at(spotify_icon, frame, 'bl')
-        return frame
-    except requests.RequestException:
-        return StillImage('assets/raster/france-info.png').trim(3, 5, 3, 5)
-
 
 def composer(fs: FrameState):
     s = get_state()
@@ -99,41 +70,47 @@ def composer(fs: FrameState):
     if not s['is_visible']:
         return
 
-    elements = [s['media_title'], s['media_album'], s['media_artist']]
-    media_info = ' >> '.join([e if e else '--' for e in elements])
-
-    c = text_media_title.update(value=s['media_title'])
-    scroll_media_title.set_frame(text_media_title, c)
-    c = text_album_title.update(value=s['media_album'][:5])
-    scroll_album_title.set_frame(text_album_title, c)
-    c = text_artist_name.update(value=s['media_artist'])
-    scroll_artist_name.set_frame(text_artist_name, c)
-
-    art = s['album_art']
+    uname = lambda x: f'{x}_{s["entity_id"]}'
 
     act_icon = play_icon if s['playing'] else pause_icon
+    spot_icon = spotify_icon if s['is_spotify'] else None
 
-    media_info = vstack([
-        scroll_media_title.draw(fs.tick),
-        text_album_title,
-    ])
-
-    music_elements = [
-        hstack([
-            act_icon,
-            media_info,
-        ], align='center'),
-    ]
-
-    if art:
-        music_elements.insert(0, SlideIn('np.albumart', 2.3, edge='right').mut(art).draw(fs))
-
-    return div(
-        hstack(music_elements, gap=1, align='center'),
+    details = div(
+        vstack([
+            hstack([act_icon, spot_icon]),
+            (HScroller(size=40, pause_at_loop=True, name=uname('media_title'))
+                .set_frame(text(s['media_title'], font=fonts.greybeard))
+                .draw(fs.tick)),
+            (HScroller(size=33, pause_at_loop=True, name=uname('media_artist'))
+                .set_frame(hstack([text(s['media_album']), text(s['media_artist'])]))
+                .draw(fs.tick)),
+        ], gap=2),
         style=DivStyle(
-            background='#101325',
             padding=2,
             radius=3,
+            background="#2c2c2c76",
+        )
+    )
+
+    art = s['album_art']
+    if art:
+        background = (Resize(uname('np.albumart'), 2.3)
+            .mut(image_from_url(f'{app_config.ha_base_url}{art}', resize=(64, 64)))
+            .draw(fs)
+        )
+    else:
+        background = None
+
+    return div(
+        details,
+        style=DivStyle(
+            padding=0,
+            radius=2,
+            background_frame=background,
+            background_blur=1,
+            width=48,
+            height=40,
+            anchor='bl'
         ),
     ).tag('music')
 
