@@ -29,7 +29,7 @@ class SpriteImage:
     def _init_frames(self):
         resize = self.resize if self.resize else (self.width, self.height)
         hash_ = (self.__class__.__name__, self.filename, resize)
-        self._frames = [Frame(f, hash=hash_).resize(resize, ratio_fn=max, pixel=True) for f in self._frames]
+        self._frames = [Frame(f, hash=(*hash_, i)).resize(resize, ratio_fn=max, pixel=True) for i, f in enumerate(self._frames)]
 
     def __getitem__(self, index) -> Frame:
         return self._frames[index % self.nframes]

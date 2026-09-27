@@ -3,8 +3,7 @@ import random
 from typing import Optional
 from dataclasses import dataclass
 
-from disinfo.data_structures import FrameState, UniqInstance
-from disinfo.config import app_config
+from .data_structures import FrameState, ScopedInstance
 
 from .elements import Frame
 from .layouts import vstack, hstack
@@ -14,7 +13,7 @@ from .scroller import VScroller, HScroller
 
 @dataclass(frozen=True)
 class StackStyle:
-    size: int = app_config.height
+    size: int
     offset_top: int = 8
     speed: float = 0.0001
     scroll_delta: int = 3
@@ -24,8 +23,8 @@ class StackStyle:
     align: str = 'left'
     horizontal: bool = False
 
-class Stack(metaclass=UniqInstance):
-    def __init__(self, name: str, style: StackStyle = StackStyle):
+class Stack(metaclass=ScopedInstance):
+    def __init__(self, name: str, style: StackStyle):
         self.name = name
         self.style = style
         self._widgets = []
@@ -52,6 +51,8 @@ class Stack(metaclass=UniqInstance):
     def mut(self, widgets: list[Widget]) -> 'Stack':
         self._prev_widgets = self._widgets
         self._widgets = sorted(widgets, key=lambda w: w.priority, reverse=True)
+        # The list can shrink between frames (e.g. a printer goes offline).
+        self.pos = min(self.pos, max(len(self._widgets) - 1, 0))
         return self
 
     def surface(self, fs: FrameState):
@@ -116,6 +117,8 @@ class Stack(metaclass=UniqInstance):
             self.last_step = step
 
     def draw(self, fs: FrameState) -> Optional[Frame]:
+        if not self._widgets:
+            return
         self._frames = {w: w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)}
         surface, pos = self.surface(fs)
         delta = self.style.scroll_delta

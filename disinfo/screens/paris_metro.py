@@ -6,23 +6,24 @@ from typing import Optional
 from PIL import ImageDraw
 
 from ..utils.drawer import draw_loop
-from ..components import fonts
-from ..components.elements import Frame, StillImage
-from ..components.text import Text, MultiLineText, TextStyle
-from ..components.layouts import hstack, vstack, mosaic
-from ..components.layers import div, DivStyle, rounded_rectangle
-from ..components.frame_cycler import FrameCycler
-from ..components.scroller import VScroller, HScroller
-from ..components.transitions import VisibilitySlider
+from disinfo import fonts
+from discore.elements import Frame, StillImage
+from discore.text import Text, MultiLineText, TextStyle
+from discore.layouts import hstack, vstack, mosaic
+from discore.layers import div, DivStyle, rounded_rectangle
+from discore.frame_cycler import FrameCycler
+from discore.scroller import VScroller, HScroller
+from discore.transitions import VisibilitySlider
 from ..utils.palettes import metro_colors
 from ..utils.time import is_expired
 from ..utils.func import throttle
-from ..data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from ..data_structures import AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
 from ..drat.idfm import fetch_state
 from ..drat import idfm
 from ..redis import get_dict, publish
-from disinfo.components.widget import Widget
+from discore.widget import Widget
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')

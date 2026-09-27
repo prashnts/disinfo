@@ -6,14 +6,15 @@ from functools import lru_cache
 from PIL import Image, ImageDraw
 
 from .elements import Frame, TrimParam
-from .fonts import ttpixels, TTFFont, small_bars
+from . import fonts
+from .fonts import TTFFont
 
 @dataclass(frozen=True)
 class TextStyle:
     color: str          = '#fff'
     outline: int        = 0
     outline_color: str  = '#000'
-    font: TTFFont       = ttpixels
+    font: Optional[TTFFont] = None     # fonts.default
 
     width: int          = -1
 
@@ -31,8 +32,12 @@ class TextStyle:
         return self.trim
 
     @property
+    def ttf(self) -> TTFFont:
+        return self.font or fonts.default
+
+    @property
     def line_spacing(self) -> int:
-        return max(self.font.spacing, self.spacing)
+        return max(self.ttf.spacing, self.spacing)
 
 # Used as a fallback image when the text value is missing.
 EmptyTextFallback = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
@@ -68,7 +73,7 @@ class Text(Frame):
         # If the text has outline the bounding box needs to be adjusted
         # in both axes. This is because the font has no way of knowing that
         # an outline will be applied while drawing.
-        _, _, w, h = self.style.font.font.getbbox(value, anchor='lt')
+        _, _, w, h = self.style.ttf.font.getbbox(value, anchor='lt')
         max_width = self.style.width if self.style.width > 0 else w + (2 * o)
         im = Image.new('RGBA', (max_width, h + (2 * o)), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
@@ -76,7 +81,7 @@ class Text(Frame):
             (o, o),
             value,
             fill=self.style.color,
-            font=self.style.font.font,
+            font=self.style.ttf.font,
             anchor='lt',
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,
@@ -118,7 +123,7 @@ class MultiLineText(Text):
         l, t, r, b = _dd.multiline_textbbox(
             (0, 0),
             'M',
-            font=self.style.font.font,
+            font=self.style.ttf.font,
             spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
         )
@@ -129,7 +134,7 @@ class MultiLineText(Text):
             l, t, r, b = _dd.multiline_textbbox(
                 (o, o),
                 wrapped_value(width),
-                font=self.style.font.font,
+                font=self.style.ttf.font,
                 spacing=self.style.line_spacing,
                 stroke_width=self.style.outline,
             )
@@ -141,7 +146,7 @@ class MultiLineText(Text):
         l, t, r, b = _dd.multiline_textbbox(
             (o, o),
             value,
-            font=self.style.font.font,
+            font=self.style.ttf.font,
             spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
         )
@@ -154,7 +159,7 @@ class MultiLineText(Text):
             (o, o),
             value,
             fill=self.style.color,
-            font=self.style.font.font,
+            font=self.style.ttf.font,
             spacing=self.style.line_spacing,
             stroke_width=self.style.outline,
             stroke_fill=self.style.outline_color,

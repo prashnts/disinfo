@@ -4,13 +4,13 @@ from colour import Color
 from functools import cache
 from PIL import Image, ImageDraw
 
-from disinfo.components import fonts
-from disinfo.components.elements import Frame, StillImage
-from disinfo.components.text import TextStyle, text
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack, composite_at, place_at
-from disinfo.components.spriteim import SpriteIcon
-from disinfo.data_structures import FrameState
+from disinfo import fonts
+from discore.elements import Frame, StillImage
+from discore.text import TextStyle, text
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack, composite_at, place_at
+from discore.spriteim import SpriteIcon
+from discore.data_structures import FrameState
 from disinfo.screens.colors import light_gray
 
 from .state import get_weather_data

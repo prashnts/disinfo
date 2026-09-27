@@ -3,14 +3,15 @@ from functools import cache
 
 from ..utils.drawer import draw_loop
 from .colors import gray, amber_red
-from ..components import fonts
-from ..components.layers import div, DivStyle
-from ..components.layouts import hstack
-from ..components.widget import Widget
-from ..components.text import TextStyle, text
+from disinfo import fonts
+from discore.layers import div, DivStyle
+from discore.layouts import hstack
+from discore.widget import Widget
+from discore.text import TextStyle, text
 from ..drat.app_states import PubSubStateManager, PubSubMessage
-from ..data_structures import FrameState, AppBaseModel
-from ..utils.cairo import load_svg, load_svg_string
+from discore.data_structures import FrameState
+from ..data_structures import AppBaseModel
+from discore.cairo import load_svg, load_svg_string
 
 label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
 

@@ -4,11 +4,11 @@ from typing import Literal, TypeVar
 from typing_extensions import Annotated
 from pydantic import ValidationError, Field, model_validator, RootModel
 
-from disinfo.data_structures import AppBaseModel, FrameState
+from disinfo.data_structures import AppBaseModel
+from discore.data_structures import FrameState
 from disinfo.drat.app_states import PubSubMessage, PubSubManager, PubSubStateManager
-from disinfo.utils.color import AppColor
+from discore.color import AppColor
 from disinfo.redis import publish
-from disinfo.config import app_config
 
 
 TriggerType = TypeVar('TriggerType')
@@ -95,11 +95,18 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
     model = DiTelemetryState
     channels = ('di.pubsub.telemetry',)
 
+    def __init__(self, node: str):
+        self.node = node
+        super().__init__()
+
+    def _uid(self) -> str:
+        return f'{self.__class__.__name__}.{self.node}'
+
     def process_message(self, channel: str, data: PubSubMessage):
         try:
             data = json.loads(data.payload['data'])
 
-            if data.get('_node') != app_config.name:
+            if data.get('_node') != self.node:
                 return
 
             next_state = DiTelemetryState(**data)
@@ -135,9 +142,9 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
             return button.pressed
         return _read_btn
 
-def act(res, command, hash_):
+def act(fs: FrameState, res, command, hash_):
     publish('di.pubsub.acts',
         action='act',
         payload=dict(cmd=[res, command, hash_],
         dt=time.monotonic(),
-        dest=app_config.name))
+        dest=fs.config.name))

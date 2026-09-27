@@ -1,30 +1,23 @@
-import inspect
 import time
-from pathlib import Path
+
+from discore.data_structures import current_scope
 
 
 def throttle(duration: int):
     '''Throttles the execution of the decorated function.
     - duration: (milliseconds) during which func is cached.
+    The cache is per screen scope, arguments are ignored.
     '''
     def decorator(func):
-        last_called_at = 0
         duration_sec = duration / 1000.0
-        last_value = None
+        last = {}   # scope -> (called_at, value)
         def wrapper(*args, **kwargs):
-            nonlocal last_called_at, last_value
-            if last_called_at and (time.perf_counter() - last_called_at) < duration_sec:
-                return last_value
-            last_value = func(*args, **kwargs)
-            last_called_at = time.perf_counter()
-            return last_value
+            key = current_scope()
+            if key in last and (time.perf_counter() - last[key][0]) < duration_sec:
+                return last[key][1]
+            value = func(*args, **kwargs)
+            last[key] = (time.perf_counter(), value)
+            return value
         return wrapper
 
     return decorator
-
-
-def uname(level: int = 4):
-    finfo = ''
-    for fi in inspect.stack(context=0)[1:level]:
-        finfo += f'<{fi.function}@{fi.lineno}!{Path(fi.filename).name}>'
-    return finfo

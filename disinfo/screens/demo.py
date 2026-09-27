@@ -7,10 +7,9 @@ from colour import Color
 from PIL import Image, ImageDraw
 
 from ..utils.drawer import draw_loop
-from ..config import app_config
-from ..data_structures import FrameState
-from ..components.elements import Frame
-from ..components.layouts import mosaic
+from discore.data_structures import FrameState
+from discore.elements import Frame
+from discore.layouts import mosaic
 from ..utils.palettes import funkyfuture8, paper8, kirokazegb
 
 
@@ -146,8 +145,8 @@ gol = GameOfLife(w=32, h=32, speed=0.1)
 def composer(fs: FrameState):
     return mosaic(
         gol.draw(fs.tick),
-        nx=round(app_config.width / gol.w + 1),
-        ny=round(app_config.height / gol.h + 1),
+        nx=round(fs.config.width / gol.w + 1),
+        ny=round(fs.config.height / gol.h + 1),
     )
 
 

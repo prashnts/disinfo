@@ -1,0 +1,23 @@
+[project]
+name = "discore"
+version = "0.1.0"
+description = "Drawing and animation core of disinfo: frames, layouts, text, transitions."
+requires-python = ">=3.11"
+dependencies = [
+    "pillow==11.2.1",
+    "numpy",
+    "lru-dict>=1.4.1",
+    "pendulum>=2.1.2",
+    "requests>=2.25.1",
+    "colour>=0.1.5",
+    "cairosvg>=2.7.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"

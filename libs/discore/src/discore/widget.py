@@ -2,9 +2,9 @@ from PIL import Image
 from dataclasses import dataclass, replace as dc_replace, field
 from typing import Optional
 
-from disinfo.data_structures import FrameState
-from disinfo.utils import ease
-from disinfo.utils.func import uname
+from .data_structures import FrameState
+from . import ease
+from .func import uname
 
 from .elements import Frame
 from .transitions import ScaleIn, ScaleOut, TimedTransition, Resize

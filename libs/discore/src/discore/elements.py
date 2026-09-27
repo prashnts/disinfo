@@ -57,11 +57,7 @@ class Frame(UIElement):
         img = (img
             .resize(size, resample=resample_mode)
             .convert('RGBA'))
-        self.image = img
-        self.width = img.width
-        self.height = img.height
-        self.tag('resize')
-        return self
+        return Frame(img, hash=('resize', size, self.hash))
 
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))

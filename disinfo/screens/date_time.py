@@ -2,18 +2,18 @@ import random
 
 from PIL import Image, ImageDraw
 
-from disinfo.utils import ease
+from discore import ease
 
 from ..utils.drawer import draw_loop
 from .colors import gray, gray_lt, amber_red, black, light_gray, light_blue, orange_red, minute_green
-from ..data_structures import FrameState
-from ..components import fonts
-from ..components.elements import Frame
-from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, vstack, composite_at
-from ..components.text import TextStyle, text
-from ..components.transitions import text_slide_in
-from ..components.widget import Widget
+from discore.data_structures import FrameState
+from disinfo import fonts
+from discore.elements import Frame
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack, composite_at
+from discore.text import TextStyle, text
+from discore.transitions import text_slide_in
+from discore.widget import Widget
 
 
 s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)

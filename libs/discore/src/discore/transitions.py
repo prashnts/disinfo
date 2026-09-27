@@ -5,10 +5,10 @@ from dataclasses import replace as dc_replace
 from PIL import Image
 from typing import Literal, Optional, TypeVar, Generic, Union
 
-from disinfo.data_structures import FrameState, UniqInstance
-from disinfo.utils import ease
-from disinfo.utils.imops import perspective_transform
-from disinfo.utils.func import uname
+from .data_structures import FrameState, ScopedInstance
+from . import ease
+from .imops import perspective_transform
+from .func import uname
 
 from .elements import Frame
 from .layers import DivStyle, div
@@ -26,7 +26,7 @@ def ensure_unity_int(value: float) -> int:
     return int(value)
 
 
-class TimedTransition(Generic[TransitionValue], metaclass=UniqInstance):
+class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
     '''A generic that transitions between pos 0 and 1 over a given duration.
 
     Transition triggers when TransitionValue changes. Once the transition

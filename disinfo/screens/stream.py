@@ -6,12 +6,12 @@ from PIL import Image
 from mjpeg.client import MJPEGClient
 
 from ..utils.drawer import draw_loop
-from ..components import fonts
-from ..components.layouts import composite_at
-from ..components.elements import Frame
-from ..components.text import text
-from ..data_structures import FrameState
-from ..components.widget import Widget
+from disinfo import fonts
+from discore.layouts import composite_at
+from discore.elements import Frame
+from discore.text import text
+from discore.data_structures import FrameState
+from discore.widget import Widget
 from ..drat.app_states import RuntimeStateManager
 
 def setup_stream(url: str, width: int=80):

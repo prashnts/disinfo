@@ -4,17 +4,18 @@ import bisect
 
 from datetime import datetime
 from dataclasses import dataclass
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from redis_om import HashModel
 
-from disinfo.data_structures import AppBaseModel, FrameState
-from disinfo.components.widget import Widget
-from disinfo.components.text import text, TextStyle
-from disinfo.components.layouts import vstack, hstack
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.transitions import Resize, text_slide_in
-from disinfo.components import fonts
-from disinfo.components.elements import Frame
+from disinfo.data_structures import AppBaseModel
+from discore.data_structures import FrameState
+from discore.widget import Widget
+from discore.text import text, TextStyle
+from discore.layouts import vstack, hstack
+from discore.layers import div, DivStyle
+from discore.transitions import Resize, text_slide_in
+from disinfo import fonts
+from discore.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
 
 
@@ -41,7 +42,7 @@ class State:
     active_pk: str = ''
     direction: bool = False
 
-state = State()
+states = defaultdict(State)   # per screen
 
 IncrementMap = namedtuple('IncrementMap', ['step', 'delta'])
 DisplayFontMap = namedtuple('DisplayFontMap', ['step', 'font'])
@@ -59,8 +60,9 @@ display_font_map = DisplayFontMap(
 )
 
 def timer_view(fs: FrameState):
-    remote = TelemetryStateManager().remote_reader('timer', fs)
-    encoder = TelemetryStateManager().get_state(fs).remote.encoder
+    state = states[fs.config.name]
+    remote = TelemetryStateManager(fs.config.name).remote_reader('timer', fs)
+    encoder = TelemetryStateManager(fs.config.name).get_state(fs).remote.encoder
     encoder_pos = encoder.position
 
     if encoder.updated_at != state.last_encoder_at:
@@ -85,7 +87,7 @@ def timer_view(fs: FrameState):
         state.direction = encoder_pos > 0
         state.last_encoder = encoder.position
         state.last_encoder_at = encoder.updated_at
-        act('buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
+        act(fs, 'buzzer', 'encoder' if state.direction else 'encoder-', 'beep')
 
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 2:
         entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
@@ -95,11 +97,11 @@ def timer_view(fs: FrameState):
         state.duration = 0
         state.last_encoder = encoder.position
         state.last_timer_at = fs.tick
-        act('haptics', 'boop', 'ok')
-        act('buzzer', 'ok', 'ok')
+        act(fs, 'haptics', 'boop', 'ok')
+        act(fs, 'buzzer', 'ok', 'ok')
 
     if remote('down'):
-        act('buzzer', 'boop', str(fs.tick))
+        act(fs, 'buzzer', 'boop', str(fs.tick))
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_done = TextStyle(font=fonts.px_op__r, color="#b7b7b7")
@@ -151,9 +153,9 @@ def timer_view(fs: FrameState):
             melody = 'boop' if timer.duration < 10 else 'ok'
             melody = 'fmart' if timer.duration > 25 else melody
             melody = 'fmart.slow' if timer.duration > 180 else melody
-            act('buzzer', melody, timer.pk)
-            act('buzzer', 'boop', timer.pk)
-            act('buzzer', 'rest_1s', timer.pk)
+            act(fs, 'buzzer', melody, timer.pk)
+            act(fs, 'buzzer', 'boop', timer.pk)
+            act(fs, 'buzzer', 'rest_1s', timer.pk)
             timer.triggerred += 1
             timer.save()
         

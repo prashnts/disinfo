@@ -4,7 +4,8 @@ import typer
 from itertools import cycle
 
 from ..compositor import compose_frame
-from ..data_structures import FrameState
+from discore.data_structures import FrameState
+from ..config import app_config
 
 fifos = [
     '/tmp/ledcat-01',
@@ -19,7 +20,7 @@ def main(fps: int = 60):
     _fifos = cycle(fifos)
 
     while True:
-        fs = FrameState.create()
+        fs = FrameState.create(app_config)
         t_a = time.time()
         frame = compose_frame(fs)
         t_b = time.time()

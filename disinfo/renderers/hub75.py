@@ -26,8 +26,8 @@ from ..compositor import compose_frame
 from ..redis import publish
 from ..config import app_config
 from ..drat.app_states import LightSensorStateManager
-from ..data_structures import FrameState
-from ..utils.imops import apply_gamma
+from discore.data_structures import FrameState
+from discore.imops import apply_gamma
 
 
 # Configuration for the matrix
@@ -70,8 +70,7 @@ def main(fps: int = 0, show_refresh_rate: bool = False, stats: bool = False):
 
     while True:
         state = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
-        fs = FrameState.create()
-        fs.rendererdata = { **state.model_dump(), 'draw_time': last_draw_time }
+        fs = FrameState.create(app_config, rendererdata={ **state.model_dump(), 'draw_time': last_draw_time })
 
         t_a = time.monotonic()
         img = compose_frame(fs)

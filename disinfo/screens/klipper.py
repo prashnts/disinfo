@@ -7,17 +7,18 @@ from typing import Optional
 
 from ..utils.drawer import draw_loop
 from ..drat.app_states import RuntimeStateManager
-from ..components.text import Text, TextStyle, text
-from ..components.elements import StillImage, Frame
-from ..components.layouts import vstack, hstack
-from ..components.layers import div, DivStyle
-from ..components.scroller import HScroller
-from ..components.spriteim import SpriteIcon
-from ..components.widget import Widget
-from ..components.transitions import text_slide_in
-from ..components import fonts
+from discore.text import Text, TextStyle, text
+from discore.elements import StillImage, Frame
+from discore.layouts import vstack, hstack
+from discore.layers import div, DivStyle
+from discore.scroller import HScroller
+from discore.spriteim import SpriteIcon
+from discore.widget import Widget
+from discore.transitions import text_slide_in
+from disinfo import fonts
 from ..config import app_config
-from ..data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from ..data_structures import AppBaseModel
 from disinfo.utils.hass import HaWS
 from disinfo.utils.imops import image_from_url
 
@@ -136,9 +137,9 @@ def get_bambulab_state(printer_id: str):
     state.is_visible=get_sensor('print_status') not in ('offline', 'unknown') and state.state is not None,
     return state
 
-def get_state():
+def get_state(fs: FrameState):
     printers = []
-    for printer in app_config.printer_ids:
+    for printer in fs.config.printer_ids:
         model, printer_id = printer.split(':')
         if model == 'bambu':
             printers.append(get_bambulab_state(printer_id))
@@ -250,7 +251,7 @@ def get_draw_loops(n: int):
     return loops
 
 def widget(fs: FrameState):
-    printers = get_state()
+    printers = get_state(fs)
     loops = get_draw_loops(len(printers))
     widgets = []
     for i, state in enumerate(printers):

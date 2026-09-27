@@ -1,16 +1,15 @@
 from functools import cache
 
-from disinfo.components.elements import Frame
-from disinfo.data_structures import FrameState
-from disinfo.components.widget import Widget
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack
-from disinfo.components.text import TextStyle, text
-from disinfo.components.transitions import text_slide_in
-from disinfo.components import fonts
-from disinfo.utils.cairo import load_svg_string, load_svg
+from discore.elements import Frame
+from discore.data_structures import FrameState
+from discore.widget import Widget
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack
+from discore.text import TextStyle, text
+from discore.transitions import text_slide_in
+from disinfo import fonts
+from discore.cairo import load_svg_string, load_svg
 from disinfo.screens.colors import gray
-from disinfo.config import app_config
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker

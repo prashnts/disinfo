@@ -4,8 +4,9 @@ import typer
 from rich.progress import track, Progress, SpinnerColumn, TextColumn
 
 from ..compositor import compose_frame
-from ..data_structures import FrameState
-from ..utils.imops import enlarge_pixels
+from discore.data_structures import FrameState
+from ..config import app_config
+from discore.imops import enlarge_pixels
 
 
 def main(filename: str = 'assets/disinfo-export.gif', nframe: int = 60, scale: int = 5):
@@ -18,7 +19,7 @@ def main(filename: str = 'assets/disinfo-export.gif', nframe: int = 60, scale: i
     t_begin = time.time()
 
     for i in track(range(nframe), description='Rendering'):
-        fs = FrameState.create()
+        fs = FrameState.create(app_config)
         t_a = time.time()
         img = compose_frame(fs)
         raw_frames.append(img)

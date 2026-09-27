@@ -8,21 +8,22 @@ from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError, Field
 from pydantic import ValidationError
 
-from disinfo.data_structures import FrameState
-from disinfo.components.widget import Widget
-from disinfo.components.text import text, TextStyle
-from disinfo.components.layouts import vstack, hstack, place_at, composite_at
-from disinfo.components.layers import div, DivStyle, styled_div
-from disinfo.components.transitions import Resize
-from disinfo.components.scroller import VScroller
-from disinfo.components import fonts
-from disinfo.components.elements import Frame
+from discore.data_structures import FrameState
+from discore.widget import Widget
+from discore.text import text, TextStyle
+from discore.layouts import vstack, hstack, place_at, composite_at
+from discore.layers import div, DivStyle, styled_div
+from discore.transitions import Resize
+from discore.scroller import VScroller
+from disinfo import fonts
+from discore.elements import Frame
 from disinfo.web.telemetry import act
 from disinfo.utils.drawer import draw_loop
-from disinfo.utils import ease
+from discore import ease
 from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url
-from disinfo.utils.cairo import load_svg_string, render_emoji, load_svg
+from discore.cairo import load_svg_string, load_svg
+from disinfo.utils.cairo import render_emoji
 from disinfo.drat.app_states import RuntimeStateManager
 
 from .news_highlights import extract_highlights
@@ -144,7 +145,7 @@ def kagi_load_stories(fs: FrameState) -> bool:
                 raw=json.dumps(story),
             ).save()
             ix += 1
-    act('buzzer', 'ok', 'news')
+    act(fs, 'buzzer', 'ok', 'news')
     return True
 
 

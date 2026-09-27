@@ -1,4 +1,4 @@
-from disinfo.utils.color import AppColor
+from discore.color import AppColor
 
 
 gray_lt = AppColor("#cbcdd9")

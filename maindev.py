@@ -15,9 +15,9 @@ def passthru_acts(channel_name, message: PubSubMessage):
     global acts
     acts.append(message.payload['cmd'])
 
-PubSubManager().attach('maindev', ('di.pubsub.acts',), passthru_acts)
-
 def run_sensors():
+    # Attached here: this process consumes the acts, and a listener created before fork would be dead.
+    PubSubManager().attach('maindev', ('di.pubsub.acts',), passthru_acts)
     os.environ['BLINKA_MCP2221'] = '1'
     from websocket_rpi_matrix.di_remote import setup as setup_sensors, sensor_loop, Config
 

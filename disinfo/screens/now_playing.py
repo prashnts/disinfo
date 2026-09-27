@@ -8,17 +8,17 @@ from datetime import timedelta
 
 from ..utils.drawer import draw_loop
 from ..config import app_config
-from ..components import fonts
-from ..components.elements import Frame, StillImage
-from ..components.text import Text, TextStyle, text
-from ..components.layouts import hstack, vstack, composite_at
-from ..components.layers import div, DivStyle
-from ..components.transitions import SlideIn, Resize
-from ..components.widget import Widget
-from ..components.scroller import HScroller
+from disinfo import fonts
+from discore.elements import Frame, StillImage
+from discore.text import Text, TextStyle, text
+from discore.layouts import hstack, vstack, composite_at
+from discore.layers import div, DivStyle
+from discore.transitions import SlideIn, Resize
+from discore.widget import Widget
+from discore.scroller import HScroller
 from ..utils.func import throttle
-from ..utils import ease
-from ..data_structures import FrameState
+from discore import ease
+from discore.data_structures import FrameState
 
 from disinfo.utils.hass import get_entity
 from disinfo.utils.imops import image_from_url
@@ -29,11 +29,11 @@ spotify_icon = StillImage('assets/raster/spotify-5x5.png')
 
 
 @throttle(1033)
-def get_state():
+def get_state(fs: FrameState):
     state = {}
     state['is_visible'] = False
 
-    s = get_entity(app_config.speaker_entity)
+    s = get_entity(fs.config.speaker_entity)
 
     if not s:
         return state
@@ -65,7 +65,7 @@ def get_state():
 
 
 def composer(fs: FrameState):
-    s = get_state()
+    s = get_state(fs)
 
     if not s['is_visible']:
         return

@@ -1,5 +1,5 @@
-from disinfo.data_structures import FrameState
-from disinfo.components.widget import Widget
+from discore.data_structures import FrameState
+from discore.widget import Widget
 from .app import composer, astronomical_info
 
 def weather(fs: FrameState) -> Widget:

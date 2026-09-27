@@ -10,8 +10,9 @@ from io import BytesIO
 from PIL import Image
 
 from ..compositor import compose_frame
-from ..data_structures import FrameState
-from ..utils.imops import enlarge_pixels
+from discore.data_structures import FrameState
+from ..config import app_config
+from discore.imops import enlarge_pixels
 from ..redis import publish
 
 def publish_frame(img):
@@ -54,7 +55,7 @@ def main(single_frame: bool = False, fps: int = 60, scale: int = 4, inline: bool
     _tf = 1 / fps
 
     while True:
-        fs = FrameState.create()
+        fs = FrameState.create(app_config)
         t_a = time.monotonic()
         frame = compose_frame(fs)
         t_b = time.monotonic()

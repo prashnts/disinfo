@@ -12,12 +12,12 @@ from PIL import Image, ImageDraw, ImageEnhance
 
 from ..compositor import compose_frame
 from ..drat.app_states import LightSensorStateManager
-from ..data_structures import FrameState
+from discore.data_structures import FrameState
 from ..redis import publish
 from ..config import app_config
-from ..utils.imops import apply_gamma
+from discore.imops import apply_gamma
 from ..utils.func import throttle
-from ..components.transitions import NumberTransition
+from discore.transitions import NumberTransition
 
 target_ip = '10.0.1.132'
 target_port = 6002
@@ -88,8 +88,8 @@ def main(fps: int = 16, stats: bool = False):
 
     while True:
         t_start = time.monotonic()
-        fs = FrameState.create()
-        frame = compose_frame(FrameState.create())
+        fs = FrameState.create(app_config)
+        frame = compose_frame(fs)
         als = LightSensorStateManager(app_config.ambient_light_sensor).get_state()
         brightness = NumberTransition('sys.brightness', 2, initial=50).mut(als.brightness).value(fs)
         emit_frame(client, frame, int(brightness))

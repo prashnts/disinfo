@@ -8,7 +8,8 @@ from datetime import datetime
 from pydantic.dataclasses import dataclass
 
 from disinfo.config import app_config
-from disinfo.data_structures import UniqInstance, AppBaseModel
+from discore.data_structures import UniqInstance
+from disinfo.data_structures import AppBaseModel
 
 
 

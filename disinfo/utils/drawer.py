@@ -2,8 +2,8 @@ import threading
 
 from typing import Generic, TypeVar, Callable, Protocol
 
-from ..components.elements import Frame
-from ..data_structures import FrameState
+from discore.elements import Frame
+from discore.data_structures import FrameState, scope, current_scope
 from .time import adaptive_delay
 
 T = TypeVar('T')
@@ -26,32 +26,29 @@ def draw_loop(composer: ComposerFn, sleepms: int = 50, use_threads: bool = False
     some outdated frames are rendered.
 
     Returns a function which returns the latest frame.
+    Each screen scope gets its own thread and frame.
     '''
-    current_args: tuple | None = None
-    current_kwargs: dict | None = dict()
-    previous_state: FrameState | None = None
-    current_frame: Frame | None = None
-
     if not use_threads:
         return composer
 
-    def painter():
-        nonlocal current_frame, previous_state
-        while True:
-            with adaptive_delay(sleepms):
-                if current_args and current_args != previous_state:
-                    current_frame = composer(*current_args, **current_kwargs)
-                    previous_state = current_args
+    painters = {}   # scope -> {'args', 'kwargs', 'frame'}
 
-    t = threading.Thread(target=painter, daemon=False)
+    def painter(name, p):
+        previous_state = None
+        with scope(name):
+            while True:
+                with adaptive_delay(sleepms):
+                    if p['args'] != previous_state:
+                        p['frame'] = composer(*p['args'], **p['kwargs'])
+                        previous_state = p['args']
 
     def draw(*args, **kwargs) -> Frame | None:
-        if not t.is_alive():
-            t.start()
-
-        nonlocal current_args, current_kwargs
-        current_args = args
-        current_kwargs = kwargs
-        return current_frame
+        name = current_scope()
+        if name not in painters:
+            painters[name] = p = {'args': args, 'kwargs': kwargs, 'frame': None}
+            threading.Thread(target=painter, args=(name, p), daemon=False).start()
+        p = painters[name]
+        p['args'], p['kwargs'] = args, kwargs
+        return p['frame']
 
     return draw
