@@ -1,3 +1,5 @@
+import time
+
 from PIL import Image
 
 from discore.elements import Frame
@@ -6,6 +8,7 @@ from discore.layers import div, DivStyle
 from discore.stack import Stack, StackStyle
 from discore.transitions import FadeIn
 from discore.widget import Widget
+from discore.spriteim import SpriteIcon
 
 
 def solid(color, size=(4, 4)):
@@ -39,3 +42,16 @@ def test_stack_survives_shrinking_list():
     stack.pos = 2
     assert stack.mut([w('a')]).draw(fs)
     assert Stack('t.empty', StackStyle(size=32)).mut([]).draw(fs) is None
+
+def test_animated_widget_keeps_animating(tmp_path):
+    sprite = Image.new('RGBA', (4, 16))
+    for i in range(4):
+        sprite.paste((60 * i, 0, 0, 255), (0, 4 * i, 4, 4 * i + 4))
+    sprite.save(tmp_path / 'sprite.png')
+    icon = SpriteIcon(str(tmp_path / 'sprite.png'), step_time=0.01)
+    seen = set()
+    for _ in range(10):
+        time.sleep(0.02)
+        fs = FrameState.create()
+        seen.add(Widget('anim', icon.draw(fs.tick)).draw(fs).image.tobytes())
+    assert len(seen) > 1

@@ -4,7 +4,9 @@ Some of the functions are inspired with CSS FlexBoxes. Namely the
 horizontal and vertical alignments when differently sized elements
 are in the same container.
 '''
-from PIL import Image, ImageFilter
+import math
+
+from PIL import Image, ImageChops, ImageFilter
 from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
 from functools import lru_cache
@@ -101,6 +103,21 @@ def vstack(
 
     return Frame(img, hash=('vstack', gap, align, tuple(elements)))
 
+def cut_alpha(left: Image.Image, right: Image.Image, threshold: int = 1, opaque: bool = False) -> Image.Image:
+    '''Makes `left` transparent where `right` is (nearly) transparent, in place.
+    Elsewhere left keeps its alpha, or becomes opaque.'''
+    cut = right.getchannel('A').point([0] * (threshold + 1) + [255] * (255 - threshold))
+    alpha = Image.new('L', left.size, 255) if opaque else left.getchannel('A')
+    left.putalpha(ImageChops.multiply(alpha, cut))
+    return left
+
+def blur_region(img: Image.Image, box: tuple[int, int, int, int], radius: float) -> Image.Image:
+    '''Same as img.filter(GaussianBlur(radius)).crop(box), but only blurs around the box.'''
+    m = math.ceil(3 * radius) + 1
+    pad = (max(box[0] - m, 0), max(box[1] - m, 0), min(box[2] + m, img.width), min(box[3] + m, img.height))
+    blurred = img.crop(pad).filter(ImageFilter.GaussianBlur(radius))
+    return blurred.crop((box[0] - pad[0], box[1] - pad[1], box[2] - pad[0], box[3] - pad[1]))
+
 @lru_cache(maxsize=256)
 def apply_blur(frame: Frame, radius: float) -> Frame:
     return Frame(frame.image.filter(ImageFilter.GaussianBlur(radius)), hash=('blur', radius, frame))
@@ -168,14 +185,7 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
-    def blend(left: Image.Image, right: Image.Image, threshold=1):
-        new_data = []
-        for (r, g, b, a), (_, _, _, fa) in zip(left.getdata(), right.getdata()):
-            comp = 255 if frost < 0 else a
-            alpha = 0 if fa <= threshold else comp
-            new_data.append((r, g, b, alpha))
-        left.putdata(new_data)
-        return left
+    blend = lambda left, right, threshold=1: cut_alpha(left, right, threshold, opaque=frost < 0)
 
     if frost != 0:
         if behind:
@@ -188,9 +198,7 @@ def composite_at(
 
             return composite_at(Frame(fg), dest, anchor)
         
-        bg = apply_blur(Frame(dest), abs(frost)).image
-        # bg = dest.filter(ImageFilter.GaussianBlur(abs(frost)))
-        region = bg.crop((left + dx, top + dy, left + dx  + fw, top + dy + fh))
+        region = blur_region(dest, (left + dx, top + dy, left + dx  + fw, top + dy + fh), abs(frost))
         dest.alpha_composite(blend(region, frame.image), (left + dx, top + dy))
 
     dest.alpha_composite(frame.image, (left + dx, top + dy))
@@ -291,18 +299,9 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
         raise ValueError('Wrong value for anchor.')
 
     if frost > 0:
-        bg = dest.filter(ImageFilter.GaussianBlur(frost))
-        region = bg.crop((x + dx, y + dy, x + dx + fw, y + dy + fh))
+        region = blur_region(dest, (x + dx, y + dy, x + dx + fw, y + dy + fh), frost)
 
-        rg_data = region.getdata()
-        fr_data = frame.image.getdata()
-        new_data = []
-
-        for (r, g, b, a), (_, _, _, fa) in zip(rg_data, fr_data):
-            new_data.append((r, g, b, 0 if fa == 0 else a))
-        
-        region.putdata(new_data)
-        dest.alpha_composite(region, (x + dx, y + dy))
+        dest.alpha_composite(cut_alpha(region, frame.image, threshold=0), (x + dx, y + dy))
 
     dest.alpha_composite(frame.image, (x + dx, y + dy))
     return Frame(dest, hash=('place_at', anchor, frame))

@@ -75,7 +75,9 @@ class Config(AppBaseModel):
 
 
     # Bambu
-    printer_ids: list[str] = ''
+    printer_ids: list[str] = []
+    # printer id -> mjpeg url, shown in the card while printing.
+    printer_streams: dict[str, str] = {}
 
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'
