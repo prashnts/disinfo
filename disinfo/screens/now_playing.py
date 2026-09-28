@@ -3,7 +3,7 @@ import io
 import pendulum
 
 from PIL import Image
-from functools import cache
+from functools import cache, lru_cache
 from datetime import timedelta
 
 from ..utils.drawer import draw_loop
@@ -13,19 +13,33 @@ from discore.elements import Frame, StillImage
 from discore.text import Text, TextStyle, text
 from discore.layouts import hstack, vstack, composite_at
 from discore.layers import div, DivStyle
-from discore.transitions import SlideIn, Resize
+from discore.transitions import SlideIn, Resize, FadeIn
 from discore.widget import Widget
 from discore.scroller import HScroller
 from ..utils.func import throttle
 from discore import ease
 from discore.data_structures import FrameState
+from discore.cairo import load_svg
 
 from disinfo.utils.hass import get_entity
 from disinfo.utils.imops import image_from_url
+from .music import art_cache
 
 play_icon = StillImage('assets/raster/play-5x5.png')
 pause_icon = StillImage('assets/raster/pause-5x5.png')
-spotify_icon = StillImage('assets/raster/spotify-5x5.png')
+spotify_icon = load_svg('assets/spotify.svg', scale=0.375)
+
+
+def _tint(frame: Frame, color: str) -> Frame:
+    img = Image.new('RGBA', frame.size, color)
+    img.putalpha(frame.image.getchannel('A'))
+    return Frame(img, ('tint', color, frame.hash))
+
+def _chip(icon: Frame) -> Frame:
+    return div(icon, style=DivStyle(padding=2, radius=2, background="#000000A8"))
+
+play_chip = _chip(_tint(play_icon, '#3DFF8B'))
+pause_chip = _chip(_tint(pause_icon, '#FFC23D'))
 
 
 @throttle(1033)
@@ -64,20 +78,39 @@ def get_state(fs: FrameState):
     return state
 
 
+SLIDE_SIZE = (29, 24)  # 60% of the playing card
+SLIDE_EVERY = 6
+
+
+@lru_cache(maxsize=16)
+def _slide(art: Frame) -> Frame:
+    w, h = SLIDE_SIZE
+    img = art.resize(SLIDE_SIZE, ratio_fn=max).image
+    left, top = (img.width - w) // 2, (img.height - h) // 2
+    return Frame(img.crop((left, top, left + w, top + h)), ('np.recent', art.hash))
+
+
+def recent_arts(fs: FrameState) -> Frame | None:
+    '''Slideshow of the last few cover arts of this speaker.'''
+    entity_id = fs.config.speaker_entity
+    arts = art_cache.recent(entity_id)
+    if not arts:
+        return
+    art = arts[int(fs.tick / SLIDE_EVERY) % len(arts)]
+    slide = FadeIn(f'np.recent.{entity_id}', 1).mut(_slide(art)).draw(fs)
+    return div(slide, style=DivStyle(padding=0, radius=2)).tag(('music.recent', entity_id))
+
+
 def composer(fs: FrameState):
     s = get_state(fs)
 
     if not s['is_visible']:
-        return
+        return recent_arts(fs)
 
     uname = lambda x: f'{x}_{s["entity_id"]}'
 
-    act_icon = play_icon if s['playing'] else pause_icon
-    spot_icon = spotify_icon if s['is_spotify'] else None
-
     details = div(
         vstack([
-            hstack([act_icon, spot_icon]),
             (HScroller(size=40, pause_at_loop=True, name=uname('media_title'))
                 .set_frame(text(s['media_title'], font=fonts.greybeard))
                 .draw(fs.tick)),
@@ -88,20 +121,22 @@ def composer(fs: FrameState):
         style=DivStyle(
             padding=2,
             radius=3,
-            background="#2c2c2c76",
+            background="#2c2c2c50",
         )
     )
 
     art = s['album_art']
     if art:
+        art_frame = image_from_url(f'{app_config.ha_base_url}{art}', resize=(64, 64))
+        art_cache.remember(s['entity_id'], art, art_frame)
         background = (Resize(uname('np.albumart'), 2.3)
-            .mut(image_from_url(f'{app_config.ha_base_url}{art}', resize=(64, 64)))
+            .mut(art_frame)
             .draw(fs)
         )
     else:
         background = None
 
-    return div(
+    card = div(
         details,
         style=DivStyle(
             padding=0,
@@ -112,7 +147,12 @@ def composer(fs: FrameState):
             height=40,
             anchor='bl'
         ),
-    ).tag('music')
+    )
+    # Icons sit on the unblurred artwork.
+    card = composite_at(play_chip if s['playing'] else pause_chip, card, 'tl', dx=1, dy=1)
+    if s['is_spotify']:
+        card = composite_at(spotify_icon, card, 'tr', dx=-1, dy=1)
+    return card.tag('music')
 
 def widget(fs: FrameState):
     return Widget('music', composer(fs))

@@ -3,6 +3,7 @@ import time
 import requests
 import random
 
+from functools import lru_cache
 from datetime import datetime
 from dataclasses import dataclass, field
 from redis_om import HashModel, NotFoundError, Field
@@ -26,7 +27,17 @@ from discore.cairo import load_svg_string, load_svg
 from disinfo.utils.cairo import render_emoji
 from disinfo.drat.app_states import RuntimeStateManager
 
-from .news_highlights import extract_highlights
+from .news_highlights import extract_highlights, is_extracting
+
+
+COVER_SIZE = (128, 128)
+
+@lru_cache(maxsize=16)
+def _cover_im(url: str, resize: tuple[int, int]) -> Frame:
+    return (image_from_url(url, resize=resize)
+        .brightness(0.8)
+        .opacity(0.9)
+        .color_(0.8))
 
 
 class NewsStory(HashModel, index=True):
@@ -46,7 +57,7 @@ class NewsStory(HashModel, index=True):
         return div(render_emoji(self.emoji, size=size), background="#B9A8A8D6", padding=2, radius=2)
     
     def cover_im(self, resize=(80, 80)) -> Frame:
-        return image_from_url(self.primary_image_url, resize=resize)
+        return _cover_im(self.primary_image_url, resize)
 
     @property
     def category_emoji(self) -> Frame:
@@ -156,8 +167,11 @@ class AppState:
     story_index: int = 0
     prev_frame: Frame = None
     changed_at: float = 0
-    change_in: float = 42
+    change_in: float = 90  # hard cap, normally changes once the summary has scrolled through
     min_change_in: float = 15
+    shown_summary: str = None
+    summary_end_at: float = None
+    end_hold: float = 3
     details: bool = False
     detail_in: float = 6
     count: int = 0
@@ -180,10 +194,15 @@ def _news_deck(fs: FrameState):
         state.shuffled = NewsStory.shuffled_indices()
         state.story_index = 0
 
-    if (state.changed_at + state.change_in) < fs.tick:
+    summary_done = (
+        state.summary_end_at is not None
+        and (state.summary_end_at + state.end_hold) < fs.tick
+        and (state.changed_at + state.min_change_in) < fs.tick)
+    if summary_done or (state.changed_at + state.change_in) < fs.tick:
         state.count = NewsStory.count()
         state.story_index += 1
         state.changed_at = fs.tick
+        state.summary_end_at = None
         if state.story:
             state.story.expire(1)    
     try:
@@ -221,11 +240,21 @@ def _news_deck(fs: FrameState):
         margin=1)
 
     short_summary = st.short_summary if not st.extracts else st.extracts
+    # Restart from the top when the text changes (new story, or the llm summary arrives).
+    new_text = short_summary != state.shown_summary
+    state.shown_summary = short_summary
+    if new_text:
+        state.summary_end_at = None
+    scroller = (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
+        .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
+        .reset_position(new_text or not state.details))
+    summary_frame = scroller.draw(fs.tick)
+    # Last line is in view once pos reaches the text height (frame is padded by `size` on top).
+    at_end = scroller._true_h <= scroller.size or scroller.pos >= scroller._true_h
+    if state.details and at_end and state.summary_end_at is None and not is_extracting(st):
+        state.summary_end_at = fs.tick
     summary = div(
-        (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
-            .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
-            .reset_position(not state.details)
-            .draw(fs.tick)),
+        summary_frame,
         background="#20202194",
         padding=0,
         radius=3)
@@ -253,12 +282,10 @@ def _news_deck(fs: FrameState):
     f_emoji = (Resize(duration=.2, delay=1)
         .mut(render_emoji(st.emoji, size=26))
         .draw(fs))
+    # Fixed cover box (cropped to content by composite) so the image isn't rescaled while content resizes.
+    cover_size = (max(COVER_SIZE[0], content.width), max(COVER_SIZE[1], content.height))
     f_img = (Resize()
-        .mut(st.cover_im((content.width, 128))
-            .brightness(0.8)
-            .opacity(0.9)
-            .color_(0.8)
-            .tag(('storycover', st.pk)))
+        .mut(Frame(st.cover_im(cover_size).image).tag(('storycover', st.pk)))
         .draw(fs))
     s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5)

@@ -66,3 +66,7 @@ ENDSTORY
         t.start()
         _running_threads[story.uid] = t
 
+
+def is_extracting(story) -> bool:
+    t = _running_threads.get(story.uid)
+    return bool(t and t.is_alive())
