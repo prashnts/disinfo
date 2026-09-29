@@ -23,6 +23,7 @@ from discore.cairo import load_svg
 
 from disinfo.utils.hass import get_entity
 from disinfo.utils.imops import image_from_url
+from disinfo.utils.sessions import sessions
 from .music import art_cache
 
 play_icon = StillImage('assets/raster/play-5x5.png')
@@ -74,6 +75,8 @@ def get_state(fs: FrameState):
         state['media_title'] != 'TV',
         (last_updated + timedelta(minutes=timeout_delay)) > now,
     ])
+    if state['playing'] and state['media_title'] != 'TV':
+        sessions(f"music.{state['entity_id']}").active()
 
     return state
 
@@ -90,9 +93,16 @@ def _slide(art: Frame) -> Frame:
     return Frame(img.crop((left, top, left + w, top + h)), ('np.recent', art.hash))
 
 
+@throttle(30_000)
+def _slideshow_relevant(entity_id: str) -> bool:
+    return sessions(f'music.{entity_id}').is_relevant()
+
+
 def recent_arts(fs: FrameState) -> Frame | None:
-    '''Slideshow of the last few cover arts of this speaker.'''
+    '''Slideshow of the last few cover arts, while music is recent or habitual.'''
     entity_id = fs.config.speaker_entity
+    if not _slideshow_relevant(entity_id):
+        return
     arts = art_cache.recent(entity_id)
     if not arts:
         return
@@ -105,7 +115,7 @@ def composer(fs: FrameState):
     s = get_state(fs)
 
     if not s['is_visible']:
-        return recent_arts(fs)
+        return
 
     uname = lambda x: f'{x}_{s["entity_id"]}'
 
@@ -156,5 +166,9 @@ def composer(fs: FrameState):
 
 def widget(fs: FrameState):
     return Widget('music', composer(fs))
+
+def slideshow_widget(fs: FrameState):
+    s = get_state(fs)
+    return Widget('music.recent', None if s['is_visible'] else recent_arts(fs))
 
 draw = draw_loop(composer)
