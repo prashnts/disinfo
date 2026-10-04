@@ -5,6 +5,7 @@
 .venv
 .vscode
 .config*.json
+!.config.sample.json
 assets/*.gif
 assets/changelog
 assets/icons.sketch

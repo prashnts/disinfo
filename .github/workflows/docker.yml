@@ -30,21 +30,30 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: build
+      - id: app
         uses: docker/build-push-action@v6
         with:
+          target: app
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - id: demo
+        uses: docker/build-push-action@v6
+        with:
+          target: demo
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
       - run: |
-          mkdir -p /tmp/digests
-          d='${{ steps.build.outputs.digest }}'
-          touch "/tmp/digests/${d#sha256:}"
+          mkdir -p /tmp/digests/app /tmp/digests/demo
+          a='${{ steps.app.outputs.digest }}'
+          d='${{ steps.demo.outputs.digest }}'
+          touch "/tmp/digests/app/${a#sha256:}" "/tmp/digests/demo/${d#sha256:}"
       - uses: actions/upload-artifact@v4
         with:
           name: digest-${{ matrix.runner }}
-          path: /tmp/digests/*
+          path: /tmp/digests
           retention-days: 1
 
   merge:
@@ -64,7 +73,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
+      - id: app
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
@@ -72,8 +81,23 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
             type=sha
+      - id: demo
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=demo,enable={{is_default_branch}}
+            type=ref,event=tag,suffix=-demo
+            type=sha,suffix=-demo
       - working-directory: /tmp/digests
+        env:
+          APP: ${{ steps.app.outputs.json }}
+          DEMO: ${{ steps.demo.outputs.json }}
         run: |
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+          for t in app demo; do
+            [ $t = app ] && meta="$APP" || meta="$DEMO"
+            docker buildx imagetools create \
+              $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$meta") \
+              $(cd $t && printf '${{ env.IMAGE }}@sha256:%s ' *)
+          done
