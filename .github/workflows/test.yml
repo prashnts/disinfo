@@ -1,33 +1,19 @@
 name: test
 
-on:
-  push:
-    branches-ignore: [master]  # master runs these from docker.yml before building.
-  pull_request:
-  workflow_call:
+on: [push, pull_request]
 
+# Core only: discore with its own (small) deps. The full app is tested in docker.yml.
 jobs:
-  test:
+  discore:
     runs-on: ubuntu-24.04
-    services:
-      redis:
-        image: redis:8-alpine
-        ports: ['6379:6379']
-    env:
-      DI_CONFIG_PATH: .config.sample.json
+    defaults:
+      run:
+        working-directory: libs/discore
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2-dev pkg-config portaudio19-dev
+      - run: sudo apt-get install -y --no-install-recommends libcairo2
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --frozen --no-dev
-      - name: discore tests
-        run: uv run --no-sync --with pytest pytest libs/discore/tests
-      - name: render smoke test
-        run: |
-          uv run --no-sync uvicorn disinfo.web.server:app --port 4200 &
-          sleep 5
-          uv run --no-sync python -m disinfo.renderers.background --fps 30 --n-frames 60
-          curl -fsS -o frame.png localhost:4200/png/disalon
-          file frame.png | grep -q 'PNG image'
+          cache-dependency-glob: libs/discore/pyproject.toml
+      - run: uv run --python 3.13 pytest

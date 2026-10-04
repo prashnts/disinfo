@@ -10,8 +10,30 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
+  # Full test before building: app deps, discore tests, render smoke test.
   test:
-    uses: ./.github/workflows/test.yml
+    runs-on: ubuntu-24.04
+    services:
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+    env:
+      DI_CONFIG_PATH: .config.sample.json
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2-dev pkg-config portaudio19-dev
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --no-dev
+      - run: uv run --no-sync --with pytest pytest libs/discore/tests
+      - name: render smoke test
+        run: |
+          uv run --no-sync uvicorn disinfo.web.server:app --port 4200 &
+          sleep 5
+          uv run --no-sync python -m disinfo.renderers.background --fps 30 --n-frames 60
+          curl -fsS -o frame.png localhost:4200/png/disalon
+          file frame.png | grep -q 'PNG image'
 
   build:
     needs: test
