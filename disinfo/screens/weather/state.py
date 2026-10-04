@@ -75,7 +75,6 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
     moon = get_entity('sensor.moon_phase')
 
     if not data:
-        print('No weather entities found')
         return None
 
     if fs.tick > (weather_state.refreshed_at + 15 * 60) or not data.service_response:

@@ -10,7 +10,11 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   build:
+    needs: test
     strategy:
       matrix:
         include:
