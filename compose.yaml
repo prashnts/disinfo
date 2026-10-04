@@ -1,6 +1,6 @@
 x-disinfo: &disinfo
   image: ghcr.io/prashnts/disinfo:latest
-  build: .
+  build: {context: ., target: app}
   restart: unless-stopped
   depends_on: [redis]
   environment: &env

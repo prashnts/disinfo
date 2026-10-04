@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --no-install-project
 
 
-FROM python:3.13-slim-trixie
+FROM python:3.13-slim-trixie AS app
 
 RUN apt-get update && apt-get install -y --no-install-recommends libcairo2 libportaudio2 \
     && rm -rf /var/lib/apt/lists/* \
@@ -32,3 +32,14 @@ ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER di
 EXPOSE 4200
 CMD ["uvicorn", "disinfo.web.server:app", "--host", "0.0.0.0", "--port", "4200"]
+
+
+# Everything in one container with the sample config: docker run -p 4200:4200 ...:demo
+FROM app AS demo
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends redis-server \
+    && rm -rf /var/lib/apt/lists/*
+COPY --chown=di .config.sample.json .config.json
+COPY config/demo.sh /usr/local/bin/demo
+USER di
+CMD ["demo"]
