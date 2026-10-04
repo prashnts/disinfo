@@ -26,6 +26,7 @@ from disinfo.utils.imops import image_from_url
 from discore.cairo import load_svg_string, load_svg
 from disinfo.utils.cairo import render_emoji
 from disinfo.drat.app_states import RuntimeStateManager
+from disinfo.redis import om_db
 
 from .news_highlights import extract_highlights, is_extracting
 
@@ -52,6 +53,9 @@ class NewsStory(HashModel, index=True):
     primary_image_url: str
     primary_image_caption: str
     raw: str
+
+    class Meta:
+        database = om_db
 
     def emoji_im(self, size=60) -> Frame:
         return div(render_emoji(self.emoji, size=size), background="#B9A8A8D6", padding=2, radius=2)

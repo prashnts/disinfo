@@ -1,8 +1,14 @@
 import redis
 import json
 
+from redis_om import get_redis_connection
 
-db = redis.Redis(host='localhost', port=6379, db=0)
+from .config import app_config
+
+
+db = redis.Redis(host=app_config.redis_host, port=6379, db=0)
+# redis_om models want decoded responses.
+om_db = get_redis_connection(host=app_config.redis_host, port=6379)
 
 def get_dict(key: str, default: dict = {}) -> dict:
     value = db.get(key)

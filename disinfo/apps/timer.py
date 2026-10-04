@@ -17,6 +17,7 @@ from discore.transitions import Resize, text_slide_in
 from disinfo import fonts
 from discore.elements import Frame
 from disinfo.web.telemetry import TelemetryStateManager, act
+from disinfo.redis import om_db
 
 
 class TimerEntry(HashModel, index=True):
@@ -26,6 +27,9 @@ class TimerEntry(HashModel, index=True):
     overflow: int = 1
     label: str = 'T'
     triggerred: int = 0
+
+    class Meta:
+        database = om_db
 
     @property
     def end(self):

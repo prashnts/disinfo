@@ -37,6 +37,8 @@ class UDPPanel(AppBaseModel):
 class Config(AppBaseModel):
     devmode: bool = False
 
+    redis_host: str = 'localhost'
+
     # Homeassistant Websocket
     ha_websocket_url: str = 'wss://hass.amd.noop.pw/api/websocket'
     ha_base_url: str = 'https://hass.amd.noop.pw'
