@@ -219,7 +219,7 @@ def _news_deck(fs: FrameState):
     state.details = (state.changed_at + state.detail_in) < fs.tick
 
     if not st.extracts and state.details:
-        print(f"[*] Extracting highlights for {st.title}")
+        # print(f"[*] Extracting highlights for {st.title}")
         extract_highlights(st)
 
     title_style = TextStyle(
