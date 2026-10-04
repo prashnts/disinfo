@@ -1,4 +1,5 @@
-from disinfo.data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubStateManager
 from disinfo import config
 

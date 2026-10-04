@@ -1,100 +1,25 @@
-import io
-import time
-import queue
 from urllib.parse import urlparse, parse_qs
-from PIL import Image
-from mjpeg.client import MJPEGClient
 
 from ..utils.drawer import draw_loop
-from ..components import fonts
-from ..components.layouts import composite_at
-from ..components.elements import Frame
-from ..components.text import text
-from ..data_structures import FrameState
-from ..components.widget import Widget
+from ..utils.mjpeg import MJPEGStream
+from disinfo import fonts
+from discore.layouts import composite_at
+from discore.elements import Frame
+from discore.text import text
+from discore.data_structures import FrameState
+from discore.widget import Widget
 from ..drat.app_states import RuntimeStateManager
 
-def setup_stream(url: str, width: int=80):
-    client = MJPEGClient(url)
-
-    # Allocate memory buffers for frames
-    bufs = client.request_buffers(965536, 3)
-    for b in bufs:
-        client.enqueue_buffer(b)
-    
-    # Start the client in a background thread
-    client.start()
-
-    # emit client
-    yield client
-
-    while True:
-        buf = client.dequeue_buffer()
-        if buf.timestamp < time.time() - 0.5:
-            client.enqueue_buffer(buf)
-            print('[skipping old frame]')
-            continue
-        with io.BytesIO(buf.data) as buffer:
-            img = Image.open(buffer)
-            ratio = min(width/img.width, width/img.height)
-            size = (int(img.width*ratio), int(img.height*ratio))
-            size_mid = (2 * size[0], 2 * size[1])
-            img = img.resize(size_mid).quantize()
-            img = img.resize(size, resample=Image.Resampling.LANCZOS).convert('RGBA')
-            # client.print_stats()
-            client.enqueue_buffer(buf)
-            yield img
-
-_stream = None
-_client = None
-_last_update = None
-_prev_url = None
-
-def stream_frame(fs, url):
-    global _last_update, _stream, _prev_url
-    if not _stream:
-        return
-    name = parse_qs(urlparse(url).query).get('src', [url])[0]
-    try:
-        img = next(_stream)
-    except queue.Empty:
-        _stream = None
-        return
-    _last_update = fs.tick
-    frame = composite_at(text(name, font=fonts.two_slice), Frame(img), 'bl')
-    return frame.tag('stream')
-
 def draw_stream(fs: FrameState) -> Frame | None:
-    global _stream, _client, _last_update, _prev_url
     state = RuntimeStateManager().get_state(fs)
     url = state.stream_url
-    if not url:
+    # The stream client stops by itself once we stop reading it.
+    if not url or not state.show_stream:
         return
-
-    if not state.show_stream:
-        if _client:
-            print("* stopping clients")
-            _client.stop()
-            _client = None
-        _stream = None
+    if not (frame := MJPEGStream(url).read(width=120)):
         return
-
-    if (_last_update and _last_update > (fs.tick + 5)) or not _stream or _prev_url != url:
-        print("* no updates")
-        # reset stream
-        if _client:
-            print("* stopping client")
-            _client.stop()
-        try:
-            time.sleep(0.5)
-            _stream = setup_stream(url, width=120)
-        except Exception as e:
-            return
-        _client = next(_stream)
-        _last_update = fs.tick
-        _prev_url = url
-        print("* client started")
-    return stream_frame(fs, url)
+    name = parse_qs(urlparse(url).query).get('src', [url])[0]
+    return composite_at(text(name, font=fonts.two_slice), frame, 'bl').tag('stream')
 
 draw = draw_loop(draw_stream, use_threads=True)
 

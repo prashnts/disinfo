@@ -4,12 +4,12 @@ import math
 from PIL import Image
 from typing import Optional
 
-from disinfo.components.elements import Frame
-from disinfo.components.layers import rounded_rectangle
-from disinfo.data_structures import UniqInstance
-from disinfo.utils.func import uname
+from .elements import Frame
+from .layers import rounded_rectangle
+from .data_structures import ScopedInstance
+from .func import uname
 
-class Scroller(metaclass=UniqInstance):
+class Scroller(metaclass=ScopedInstance):
     _horizontal: bool = False
     _vertical: bool = False
 

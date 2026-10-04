@@ -1,10 +1,10 @@
 from ..utils.drawer import draw_loop
 from .colors import gray
-from ..components.elements import StillImage
-from ..components.layers import div, DivStyle
-from ..components.layouts import hstack, vstack
-from ..components.widget import Widget
-from ..data_structures import FrameState
+from discore.elements import StillImage
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack
+from discore.widget import Widget
+from discore.data_structures import FrameState
 
 SCHEDULE = [
     # https://www.paris.fr/pages/la-collecte-44

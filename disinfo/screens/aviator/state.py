@@ -3,7 +3,8 @@ import pendulum
 from typing import Optional
 from datetime import datetime
 
-from disinfo.data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubStateManager, PubSubMessage
 
 class ADSBxStateManager(PubSubStateManager[list]):

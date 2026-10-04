@@ -5,7 +5,7 @@ from PIL import Image
 from functools import cache
 
 from disinfo import config
-from disinfo.components.elements import Frame, StillImage
+from discore.elements import Frame, StillImage
 
 
 

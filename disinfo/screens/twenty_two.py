@@ -5,23 +5,20 @@ import time
 from PIL import Image, ImageDraw
 
 from ..utils.drawer import draw_loop
-from ..components import fonts
-from ..components.elements import Frame
-from ..components.layouts import composite_at, place_at, hstack, mosaic
-from ..components.layers import div
-from ..components.text import TextStyle, text
-from ..components.spriteim import SpriteIcon
-from ..data_structures import FrameState
+from disinfo import fonts
+from discore.elements import Frame
+from discore.layouts import composite_at, place_at, hstack, mosaic
+from discore.layers import div
+from discore.text import TextStyle, text
+from discore.spriteim import SpriteIcon
+from discore.data_structures import FrameState
 from ..drat.app_states import RuntimeStateManager
-from ..config import app_config
 
 
 nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(42, 42))
 nyan_rainbow = SpriteIcon('assets/raster/nyan-rainbow.gif', step_time=0.1, resize=(128, 42))
 
-def _gen_path():
-    xmax = app_config.width
-    ymax = app_config.height
+def _gen_path(xmax: int, ymax: int):
     vmax = 10
     velocity = 3
     pos = np.array([0., 64.])
@@ -52,7 +49,7 @@ def _gen_path():
         angle = get_angle(dirn[0], dirn[1])
         yield pos, angle, _get_anchor(pos)
 
-next_pos = _gen_path()
+paths = {}   # per screen
 
 def composer(fs: FrameState):
     t = fs.now #.set(hour=21, minute=21, second=2)
@@ -80,13 +77,15 @@ def composer(fs: FrameState):
     content = div(text_timestr, background='#5010A088', padding=2, radius=2)
 
 
-    image = Image.new('RGBA', (app_config.width, app_config.height), (0, 0, 0, 0))
+    image = Image.new('RGBA', (fs.config.width, fs.config.height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     content = hstack([content, nyan_gif.draw(fs.tick)])
 
     content = composite_at(nyan_rainbow.draw(fs.tick), content, behind=True, dx=-40, anchor='tr')
-    pos, angle, anchor = next(next_pos)
+    if fs.config.name not in paths:
+        paths[fs.config.name] = _gen_path(fs.config.width, fs.config.height)
+    pos, angle, anchor = next(paths[fs.config.name])
     place_at(content.rotate(angle), image, x=int(pos[0]), y=int(pos[1]), anchor=anchor)
 
     # composite_at(content, image, 'bl', dy=-42, frost=3, vibrant=1)
@@ -105,8 +104,8 @@ def composer(fs: FrameState):
     ]
 
     # draw some shimmering leds everywhere!
-    for x in range(app_config.width):
-        for y in range(app_config.height):
+    for x in range(fs.config.width):
+        for y in range(fs.config.height):
             if random.random() < .001:
                 pts = [(x, y)]
                 if random.random() < 0.2:

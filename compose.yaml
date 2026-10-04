@@ -1,0 +1,36 @@
+x-disinfo: &disinfo
+  image: ghcr.io/prashnts/disinfo:latest
+  build: .
+  restart: unless-stopped
+  depends_on: [redis]
+  environment: &env
+    TZ: Europe/Paris
+  volumes:
+    - ./.config.json:/app/.config.json:ro
+
+services:
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --save '' --appendonly no
+
+  server:
+    <<: *disinfo
+    ports: ['4200:4200']
+
+  dataservice:
+    <<: *disinfo
+    command: python -m disinfo.drat.data_service
+
+  renderer:
+    <<: *disinfo
+    command: python -m disinfo.renderers.background --fps 48
+
+  # More screens: one renderer each, with its own config.
+  # study:
+  #   <<: *disinfo
+  #   command: python -m disinfo.renderers.background --fps 48
+  #   environment: {<<: *env, DI_CONFIG_PATH: .config-study.json}
+  #   volumes:
+  #     - ./.config.json:/app/.config.json:ro
+  #     - ./.config-study.json:/app/.config-study.json:ro

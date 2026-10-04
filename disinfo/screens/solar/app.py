@@ -8,18 +8,17 @@ from suncalc import get_position, get_times
 from dataclasses import dataclass
 from typing import Optional
 
-from disinfo.data_structures import FrameState
+from discore.data_structures import FrameState
 
-from disinfo.components.elements import Frame
-from disinfo.components.layouts import place_at
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.text import TextStyle, text
-from disinfo.components import fonts
+from discore.elements import Frame
+from discore.layouts import place_at
+from discore.layers import div, DivStyle
+from discore.text import TextStyle, text
+from disinfo import fonts
 from disinfo.screens.colors import SkyHues
-from disinfo.config import app_config
 from disinfo.utils.func import throttle
-from disinfo.utils.cairo import to_pil
-from disinfo.utils.color import AppColor
+from discore.cairo import to_pil
+from discore.color import AppColor
 
 
 s_time_tick = [
@@ -60,8 +59,8 @@ p2_interpolator = lambda x: np.interp(
 
 @dataclass(frozen=True)
 class AnalogClockStyle:
-    width: int = app_config.width
-    height: int = app_config.height
+    width: Optional[int] = None     # defaults to the screen size
+    height: Optional[int] = None
     background: str = SkyHues.night_background.hex
 
     cx: Optional[int] = None
@@ -103,24 +102,24 @@ def time_to_angle(t):
 def clamp(value, min_value=0, max_value=1):
     return max(min(value, max_value), min_value)
 
-def sun_times(t):
-    times = get_times(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
-    position = get_position(t.in_tz('UTC'), app_config.longitude, app_config.latitude)
+def sun_times(t, config):
+    times = get_times(t.in_tz('UTC'), config.longitude, config.latitude)
+    position = get_position(t.in_tz('UTC'), config.longitude, config.latitude)
     utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items() if not str(v) == 'NaT'}
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
 def analog_clock(fs, style: AnalogClockStyle):
     t = fs.now
-    w = style.width
-    h = style.height
+    w = style.width or fs.config.width
+    h = style.height or fs.config.height
 
     # t = pendulum.now().set(hour=17, minute=00, month=1)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
     theta = time_to_angle(t.time())
-    solar_angles, solar_times, solar_pos = sun_times(t)
+    solar_angles, solar_times, solar_pos = sun_times(t, fs.config)
 
     cx = w / 2 if not style.cx else style.cx
     cy = h / 2 if not style.cy else style.cy

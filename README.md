@@ -200,6 +200,10 @@ OE      12        18
 - check disk speed with `sudo hdparm -Tt /dev/sda` (install hdparm first)
 - with dd `dd if=/dev/zero of=/tmp/output bs=8k count=10k; rm -f /tmp/output`
 
+### Linux
+
+- install libcairo2-dev
+
 
 ### macOS Setup (manual)
 

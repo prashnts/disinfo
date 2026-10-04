@@ -4,17 +4,16 @@ from functools import cache
 from cairosvg.parser import Tree
 from cairosvg.surface import PNGSurface
 
-from disinfo.components.elements import Frame
-from disinfo.data_structures import FrameState
-from disinfo.components.widget import Widget
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack, composite_at
-from disinfo.components.text import TextStyle, text
-from disinfo.components.transitions import text_slide_in
-from disinfo.components import fonts
-from disinfo.utils.cairo import load_svg_string, load_svg, to_pil
+from discore.elements import Frame
+from discore.data_structures import FrameState
+from discore.widget import Widget
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack, composite_at
+from discore.text import TextStyle, text
+from discore.transitions import text_slide_in
+from disinfo import fonts
+from discore.cairo import load_svg_string, load_svg, to_pil
 from disinfo.screens.colors import gray
-from disinfo.config import app_config
 
 from .state import ADSBxStateManager
 from .markers import shapes, svg_shape_to_svg, get_base_marker
@@ -25,11 +24,9 @@ from .utils import lat_long_zoom_to_xy, bbox, scale_xy_to_screen
 
 
 @cache
-def load_map() -> cairo.ImageSurface:
+def load_map(w: int, h: int) -> cairo.ImageSurface:
     from pyquery import PyQuery as pq
 
-    w = app_config.width
-    h = app_config.height
 
     with open('out/map.svg', 'r') as f:
         mapsvg = f.read()
@@ -78,18 +75,18 @@ class RadarSurface:
 def radar(fs: FrameState) -> Frame:
     import geopy.distance
     state = ADSBxStateManager().get_state(fs)
-    w = app_config.width
-    h = app_config.height
+    w = fs.config.width
+    h = fs.config.height
 
     center = 48.993, 2.515
 
     span = 16_000, 22_000
     box = bbox(center, span)
-    cx, cy = scale_xy_to_screen(*lat_long_zoom_to_xy(*center), box)
+    cx, cy = scale_xy_to_screen(*lat_long_zoom_to_xy(*center), box, (w, h))
     cx = w - cx
     cy = h - cy
 
-    latlonxy = lambda lat, lon: scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box)
+    latlonxy = lambda lat, lon: scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box, (w, h))
 
     rmax = max(w, h)
 
@@ -97,7 +94,7 @@ def radar(fs: FrameState) -> Frame:
     ctx = cairo.Context(surface)
     nrings = 5
 
-    # ctx.set_source_surface(load_map(), 0, 0)
+    # ctx.set_source_surface(load_map(w, h), 0, 0)
     # ctx.paint()
 
     # for i in range(10):
@@ -131,7 +128,7 @@ def radar(fs: FrameState) -> Frame:
             ih = flight.get_height()
         except KeyError:
             continue
-        sx, sy = scale_xy_to_screen(*lat_long_zoom_to_xy(plane['lat'], plane['lon']), box)
+        sx, sy = scale_xy_to_screen(*lat_long_zoom_to_xy(plane['lat'], plane['lon']), box, (w, h))
 
         positions = []
         max_pos = 400
@@ -142,12 +139,12 @@ def radar(fs: FrameState) -> Frame:
                 if alt is None:
                     continue
                 alt *= 0.3048
-                x, y = scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box)
+                x, y = scale_xy_to_screen(*lat_long_zoom_to_xy(lat, lon), box, (w, h))
                 if i == 0:
                     ctx.move_to(x, y)
                 else:
                     prev_pos = positions[i - 1]
-                    px, py = scale_xy_to_screen(*lat_long_zoom_to_xy(prev_pos[0], prev_pos[1]), box)
+                    px, py = scale_xy_to_screen(*lat_long_zoom_to_xy(prev_pos[0], prev_pos[1]), box, (w, h))
                     ctx.move_to(px, py)
                 ctx.set_source_rgba(*marker_color(alt).darken(0.2).rgb, 255)#max_pos - i / max_pos)
                 # positions.append((x, y, marker_color(alt).rgba))

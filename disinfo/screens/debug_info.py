@@ -4,21 +4,22 @@ import numpy as np
 
 from functools import cache
 from ..utils.drawer import draw_loop
-from ..components.text import text, TextStyle
-from ..components.layouts import vstack, composite_at, hstack
-from ..components.fonts import register as font_register, small_bars
-from ..components.scroller import VScroller
-from ..components.layers import div, DivStyle
+from discore.text import text, TextStyle
+from discore.layouts import vstack, composite_at, hstack
+from discore.fonts import register as font_register
+from disinfo.fonts import small_bars
+from discore.scroller import VScroller
+from discore.layers import div, DivStyle
 from ..utils.func import throttle
-from ..data_structures import FrameState
+from discore.data_structures import FrameState
 from ..drat.app_states import RuntimeStateManager
-from disinfo.components.widget import Widget
-from disinfo.components import fonts
+from discore.widget import Widget
+from disinfo import fonts
 from disinfo.web.telemetry import TelemetryStateManager, act
-from disinfo.components.elements import Frame
+from discore.elements import Frame
 
 
-sample_vscroll = VScroller(size=98, pause_at_loop=True, pause_duration=2.5, pause_offset=18, speed=0.001, delta=1, scrollbar=True)
+sample_vscroll = lambda: VScroller(size=98, name='debug.samples', pause_at_loop=True, pause_duration=2.5, pause_offset=18, speed=0.001, delta=1, scrollbar=True)
 
 @cache
 def font_demo(debug=False):
@@ -81,7 +82,7 @@ def get_palette(name):
     return arr.tobytes()
 
 def tof_info(fs: FrameState):
-    telem = TelemetryStateManager().get_state(fs)
+    telem = TelemetryStateManager(fs.config.name).get_state(fs)
 
     dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
     mind = dmm.min()
@@ -114,10 +115,10 @@ def tof_info(fs: FrameState):
 
 
 def ir_cam_info(fs: FrameState):
-    telem = TelemetryStateManager().get_state(fs)
+    telem = TelemetryStateManager(fs.config.name).get_state(fs)
 
     # if not telem.ircam.enabled:
-    act('ircam', 'start', str(fs.tick))
+    act(fs, 'ircam', 'start', str(fs.tick))
 
     if not telem.ircam.render:
         return
@@ -156,7 +157,7 @@ def ir_cam_info(fs: FrameState):
 
 
 def di_rmt(fs: FrameState):
-    telem = TelemetryStateManager().get_state(fs)
+    telem = TelemetryStateManager(fs.config.name).get_state(fs)
 
 
     items = hstack([text(f'{telem.light_sensor.proximity}')])
@@ -165,10 +166,10 @@ def di_rmt(fs: FrameState):
 
 
 def info_sensors(fs: FrameState):
-    telem = TelemetryStateManager().get_state(fs)
+    telem = TelemetryStateManager(fs.config.name).get_state(fs)
     if not RuntimeStateManager().get_state(fs).show_sensors:
         if telem.ircam.enabled:
-            act('ircam', 'stop', str(fs.tick))
+            act(fs, 'ircam', 'stop', str(fs.tick))
         return
 
     try:
@@ -186,7 +187,7 @@ def info_sensors(fs: FrameState):
 
 def info_fonts(fs: FrameState):
     if not RuntimeStateManager().get_state(fs).show_fonts_credit:
-        sample_vscroll.reset_position()
+        sample_vscroll().reset_position()
         return
 
     header = div(hstack([
@@ -198,8 +199,8 @@ def info_fonts(fs: FrameState):
         border=0,
         border_color='#444444',
     ))
-    sample_vscroll.set_frame(*font_demo(), pause_offset=header.height + 4)
-    info = composite_at(header, div(sample_vscroll.draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
+    sample_vscroll().set_frame(*font_demo(), pause_offset=header.height + 4)
+    info = composite_at(header, div(sample_vscroll().draw(fs.tick), style=DivStyle(background="#ffffff21", radius=3, padding=2)), 'tr', frost=2.4)
     return info.tag(('info_fonts', 1))
 
 

@@ -12,7 +12,7 @@ from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
-from disinfo.utils.imops import apply_gamma
+from discore.imops import apply_gamma
 
 app = FastAPI()
 

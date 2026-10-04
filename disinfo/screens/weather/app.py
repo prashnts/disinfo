@@ -4,13 +4,13 @@ from colour import Color
 from functools import cache
 from PIL import Image, ImageDraw
 
-from disinfo.components import fonts
-from disinfo.components.elements import Frame, StillImage
-from disinfo.components.text import TextStyle, text
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.layouts import hstack, vstack, composite_at, place_at
-from disinfo.components.spriteim import SpriteIcon
-from disinfo.data_structures import FrameState
+from disinfo import fonts
+from discore.elements import Frame, StillImage
+from discore.text import TextStyle, text
+from discore.layers import div, DivStyle
+from discore.layouts import hstack, vstack, composite_at, place_at
+from discore.spriteim import SpriteIcon
+from discore.data_structures import FrameState
 from disinfo.screens.colors import light_gray
 
 from .state import get_weather_data
@@ -66,6 +66,8 @@ def astronomical_info(fs: FrameState):
 @cache
 def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     '''Generates a horizontal range graph of min/max temperatures.'''
+    # HA sometimes collapses today's forecast (high == low), keep the current temp in range.
+    t_low, t_high = min(t_low, t_high, t_current), max(t_low, t_high, t_current)
     color_low = temperature_color(t_low)
     color_high = temperature_color(t_high)
     color_current = Color('#ffffff')
@@ -78,9 +80,9 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     range_graph = Image.new('RGBA', (span + 1, 5), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
-    try:
+    if t_high > t_low:
         current_pos = (t_high - t_current) * (span / (t_high - t_low))
-    except ZeroDivisionError:
+    else:
         current_pos = span // 2
 
     if current_pos <= 0:
@@ -91,8 +93,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     # d.line([(1, 0), (1, 1)], fill=color_low.hex)
     # d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
 
-    g_step = (t_high - t_low) / (span - 1) or 1
-    gradient = [temperature_color(x) for x in np.arange(t_low, t_high, g_step)]
+    gradient = [temperature_color(x) for x in np.linspace(t_low, t_high, span - 1)]
     for x, c in enumerate(gradient):
         d.point([(x + 1, 0)], fill=c.hex)
         d.point([(x + 1, 1)], fill=c.hex)
@@ -104,7 +105,7 @@ def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
                      (cp, y_p),
         (cp - 1, y_p + 1), (cp, y_p + 1), (cp + 1, y_p + 1),
     ], fill=color_current.hex)
-    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph',)), value_high], gap=2, align='bottom')
+    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph', t_current, t_high, t_low)), value_high], gap=2, align='bottom')
     return temp_range_stack
 
 

@@ -37,6 +37,8 @@ class UDPPanel(AppBaseModel):
 class Config(AppBaseModel):
     devmode: bool = False
 
+    redis_host: str = 'localhost'
+
     # Homeassistant Websocket
     ha_websocket_url: str = 'wss://hass.amd.noop.pw/api/websocket'
     ha_base_url: str = 'https://hass.amd.noop.pw'
@@ -75,7 +77,9 @@ class Config(AppBaseModel):
 
 
     # Bambu
-    printer_ids: list[str] = ''
+    printer_ids: list[str] = []
+    # printer id -> mjpeg url, shown in the card while printing.
+    printer_streams: dict[str, str] = {}
 
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'
@@ -98,5 +102,10 @@ class Config(AppBaseModel):
                 raise ValueError(f'Config has no attribute {k}')
 
 
-with open(os.environ.get('DI_CONFIG_PATH', '.config.json')) as f:
-    app_config = Config(**json.load(f))
+def load_config(path: str) -> Config:
+    with open(path) as f:
+        return Config(**json.load(f))
+
+# Process wide config: services (HA, idfm, openai...) and the default screen.
+# Drawing code must use fs.config, which is the config of the screen being drawn.
+app_config = load_config(os.environ.get('DI_CONFIG_PATH', '.config.json'))

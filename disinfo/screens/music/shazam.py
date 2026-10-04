@@ -1,14 +1,14 @@
-from disinfo.data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubMessage, PubSubStateManager
-from disinfo.config import app_config
-from disinfo.components.widget import Widget
-from disinfo.components.text import TextStyle, text
-from disinfo.components.layouts import vstack, hstack
-from disinfo.components.layers import div, DivStyle
-from disinfo.components.scroller import HScroller
-from disinfo.components.widget import Widget
-from disinfo.components import fonts
-from disinfo.utils.cairo import load_svg
+from discore.widget import Widget
+from discore.text import TextStyle, text
+from discore.layouts import vstack, hstack
+from discore.layers import div, DivStyle
+from discore.scroller import HScroller
+from discore.widget import Widget
+from disinfo import fonts
+from discore.cairo import load_svg
 
 from .utils import get_album_art
 
@@ -42,8 +42,9 @@ class ShazamStateManager(PubSubStateManager[RecognizedMusic]):
         self.state = RecognizedMusic(**data.payload)
 
 
-hscroller_name = HScroller(size=33, pause_at_loop=True)
-hscroller_subtitle = HScroller(size=33, pause_at_loop=True)
+# Scrollers are looked up per screen, so each screen scrolls on its own.
+hscroller_name = lambda: HScroller(size=33, pause_at_loop=True, name='shazam.name')
+hscroller_subtitle = lambda: HScroller(size=33, pause_at_loop=True, name='shazam.subtitle')
 
 s_title = TextStyle(font=fonts.bitocra7, color='#2C552A')
 s_subtitle = TextStyle(font=fonts.bitocra7, color='#474C52')
@@ -55,8 +56,8 @@ def content(fs: FrameState):
         return None
 
     info = vstack([
-        hscroller_name.set_frame(text(state.title, s_title)).draw(fs.tick),
-        hscroller_subtitle.set_frame(text(state.subtitle, s_subtitle)).draw(fs.tick),
+        hscroller_name().set_frame(text(state.title, s_title)).draw(fs.tick),
+        hscroller_subtitle().set_frame(text(state.subtitle, s_subtitle)).draw(fs.tick),
     ], gap=1)
     return hstack([
         get_album_art(state.coverart),
@@ -87,5 +88,5 @@ def indicators(fs: FrameState) -> Widget:
         name='shazam.recording',
         frame=indicator(fs),
         priority=1,
-        wait_time=app_config.shazam.record_duration,
+        wait_time=fs.config.shazam.record_duration,
     )

@@ -3,8 +3,8 @@ import pendulum
 from typing import Optional
 from datetime import datetime, timedelta
 
-from disinfo.config import app_config
-from disinfo.data_structures import FrameState, AppBaseModel
+from discore.data_structures import FrameState
+from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubStateManager, PubSubMessage, StateManager
 from disinfo.utils.hass import get_entity, Entity, HaWS
 
@@ -68,7 +68,7 @@ class WeatherStateManager(StateManager[WeatherState]):
 
 def get_weather_data(fs: FrameState) -> WeatherState | None:
     weather_state = WeatherStateManager().get_state(fs)
-    data = get_entity(app_config.weather_entity)
+    data = get_entity(fs.config.weather_entity)
     
     sunset = get_entity('sensor.sun_next_dusk')
     sunrise = get_entity('sensor.sun_next_dawn')

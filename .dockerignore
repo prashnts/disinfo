@@ -1,0 +1,11 @@
+**/__pycache__
+**/.pytest_cache
+**/.fonts_cache
+.git
+.venv
+.vscode
+.config*.json
+assets/*.gif
+assets/changelog
+assets/icons.sketch
+clients/*/test.jpg

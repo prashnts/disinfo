@@ -10,7 +10,8 @@ from typing import Generic, TypeVar, Callable
 
 from disinfo.config import app_config
 from disinfo.redis import db
-from disinfo.data_structures import FrameState, AppBaseModel, UniqInstance
+from discore.data_structures import FrameState, UniqInstance
+from disinfo.data_structures import AppBaseModel
 
 StateModel = TypeVar('StateModel')
 class PubSubMessage(AppBaseModel):
@@ -128,9 +129,6 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.stream_url = data.payload['url']
             case action if action.startswith('show_'):
                 setattr(self.state, action, not getattr(self.state, action))
-
-        self.state.x %= app_config.width
-        self.state.y %= app_config.height
 
 
 brightness_min: float = 10

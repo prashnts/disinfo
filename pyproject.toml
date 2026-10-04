@@ -43,15 +43,18 @@ dependencies = [
     "lru-dict>=1.4.1",
     "pandas>=3.0.3",
     "pydantic-ai-slim[openai]>=1.107.0",
+    "discore",
 ]
 
 [tool.uv.sources]
+discore = { path = "libs/discore", editable = true }
 websocket-rpi-matrix = { path = "clients/websocket-rpi-matrix", editable = true }
 
 [dependency-groups]
 dev = [
     "jupyterlab>=4.6.0",
     "plotly>=6.8.0",
+    "pytest>=9.1.1",
     "watchdog>=6.0.0",
     "websocket-rpi-matrix",
 ]
