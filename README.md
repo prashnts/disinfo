@@ -107,6 +107,13 @@ It runs the whole stack you'd need for local development.
 uv run maindev.py
 ```
 
+Docker images for the server is also available. Check out `compose.yaml`
+for the stack. To run a demo server:
+
+```
+sudo docker run --rm -p 4200:4200 ghcr.io/prashnts/disinfo:demo
+```
+
 [!NOTE]
 You may want to work on a fork -- the code will certainly need
 to be modified to fit your needs. I can assist only with getting it to run,
