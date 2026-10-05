@@ -37,12 +37,13 @@ EXPOSE 4200
 CMD ["uvicorn", "disinfo.web.server:app", "--host", "0.0.0.0", "--port", "4200"]
 
 
-# Everything in one container with the sample config: docker run -p 4200:4200 ...:demo
+# Everything in one container with the sample config, and a fake Home Assistant and ADS-B feed: docker run -p 4200:4200 ...:demo
 FROM app AS demo
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends redis-server \
     && rm -rf /var/lib/apt/lists/*
 COPY --chown=di .config.sample.json .config.json
+COPY config/fake_server.py config/fake_server.py
 COPY config/demo.sh /usr/local/bin/demo
 USER di
 CMD ["demo"]

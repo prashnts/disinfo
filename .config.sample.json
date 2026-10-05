@@ -11,8 +11,9 @@
     "longitude": 2.35,
     "timezone": "Europe/Paris",
 
-    "ha_websocket_url": "wss://homeassistant.local/api/websocket",
-    "ha_base_url": "https://homeassistant.local",
+    "ha_websocket_url": "ws://localhost:4201/api/websocket",
+    "ha_base_url": "http://localhost:4201",
+    "adsbx_host": "localhost:4201",
     "ha_token": "x",
     "presence_sensors": ["binary_sensor.salon_occupancy"],
     "ambient_light_sensor": "sensor.salon_light",

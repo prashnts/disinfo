@@ -114,6 +114,9 @@ for the stack. To run a demo server:
 sudo docker run --rm -p 4200:4200 ghcr.io/prashnts/disinfo:demo
 ```
 
+The demo runs a fake Home Assistant and ADS-B feed (`config/fake_server.py`, on port 4201,
+which is what `.config.sample.json` points at), so weather and music show up. The news is real (Kagi).
+
 [!NOTE]
 You may want to work on a fork -- the code will certainly need
 to be modified to fit your needs. I can assist only with getting it to run,
