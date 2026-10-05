@@ -16,7 +16,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.13-slim-trixie AS app
 
-RUN apt-get update && apt-get install -y --no-install-recommends libcairo2 libportaudio2 \
+# fonts-noto-color-emoji: render_emoji() asks cairo for "Apple Color Emoji" and fontconfig falls back to this.
+RUN apt-get update && apt-get install -y --no-install-recommends libcairo2 libportaudio2 fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 1000 -d /app di \
     && install -d -o di /app
