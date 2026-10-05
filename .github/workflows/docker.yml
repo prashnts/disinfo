@@ -31,7 +31,9 @@ jobs:
       - run: uv run --no-sync python -c 'import disinfo.fonts'
       - name: render smoke test
         run: |
-          uv run --no-sync uvicorn disinfo.web.server:app --port 4200 &
+          # Not `uv run`: a server left running holds the uv cache lock and hangs the post-job cache prune.
+          .venv/bin/uvicorn disinfo.web.server:app --port 4200 &
+          trap 'kill $!' EXIT
           timeout 60 sh -c 'until curl -fs localhost:4200/ >/dev/null; do sleep 1; done'
           uv run --no-sync python -m disinfo.renderers.background --fps 30 --n-frames 60
           curl -fsS -o frame.png localhost:4200/png/disalon
