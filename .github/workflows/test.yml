@@ -11,7 +11,7 @@ jobs:
         working-directory: libs/discore
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get install -y --no-install-recommends libcairo2
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true

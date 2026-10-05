@@ -8,7 +8,7 @@ import websocket
 from typing import Callable
 
 from pydantic import BaseModel
-from PIL import Image, ImageFile
+from PIL import Image, ImageFile, ImageDraw
 
 from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
 
@@ -62,8 +62,8 @@ class WebsocketClient:
         self.url = url
         self.connected = False
         self.retry_count = 0
-        self.retry_delay_before_max_retries = 5 # seconds
-        self.retry_delay_after_max_retries = 25 # seconds
+        self.retry_delay_before_max_retries = 1 # seconds
+        self.retry_delay_after_max_retries = 5 # seconds
         self.max_retries = 5
         self.callback = callback
     
@@ -123,6 +123,11 @@ def main(conf: Config):
 
     _tf = 1 / conf.fps
 
+    def status_frame(text: str) -> Image.Image:
+        im = Image.new('RGB', (conf.width, conf.height))
+        ImageDraw.Draw(im).text((2, 2), text, fill=(80, 80, 80))
+        return im
+
     # This is apparently needed to avoid PIL not loading its extensions.
     # Without this, we get UnidentifiedImageError later.
     Image.open('test.jpg')
@@ -166,10 +171,13 @@ def main(conf: Config):
         t_start = time.monotonic()
         if frame:
             double_buffer.SetImage(frame)
-            double_buffer = matrix.SwapOnVSync(double_buffer)
+        else:
+            dots = '.' * (int(t_start) % 4)
+            double_buffer.SetImage(status_frame(('waiting' if ws.connected else 'connecting') + dots))
+        double_buffer = matrix.SwapOnVSync(double_buffer)
 
-        if time.monotonic() - last_ping > 5:
-            # Initial ping and then every 5 seconds
+        if time.monotonic() - last_ping > (5 if frame else 0.5):
+            # Initial ping and then every 5 seconds, or 0.5s until the first frame arrives.
             ws.send(telemetry=json.dumps(telemetry), _node=node_id)
             if frame:
                 # let supervisor restart

@@ -36,6 +36,16 @@
             width: calc(128px * 2);
         }
 
+        #status {
+            color: #888;
+            font-family: monospace;
+            text-align: center;
+        }
+
+        #status:empty {
+            display: none;
+        }
+
         img[src=""] {
             display: none;
         }
@@ -69,6 +79,7 @@
 <body>
     <h1>disinfo!</h1>
     <div class="main">
+        <p id='status'>connecting…</p>
         <div class="screens">
             <img src='' id='study'/>
             <img src='' id='salon'/>
@@ -106,6 +117,8 @@
     <script type="module">
         const WS_RETRY_DELAY = 2000;
         const FRAME_DELAY = 20
+        const status = document.getElementById('status');
+        let seen = false;
         const connect = function (endpoint, img_id) {
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             let ws = new WebSocket(`${protocol}://${window.location.host}/${endpoint}`);
@@ -113,9 +126,12 @@
             ws.onmessage = function (event) {
                 const data = JSON.parse(event.data)
                 document.getElementById(img_id).src = `data:image/png;base64,${data.img}`;
+                seen = true;
+                status.textContent = '';
             };
 
             ws.onopen = function (event) {
+                if (!seen) status.textContent = 'waiting for renderer…';
                 const interval = setInterval(function () {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send({'_v': 'dit'});
@@ -129,6 +145,7 @@
             ws.onclose = function () {
                 // Handle retries by recreating the connection to websocket.
                 console.warn(`Disinfo connection lost. Retrying in ${WS_RETRY_DELAY / 1000}s.`)
+                status.textContent = 'reconnecting…';
                 setTimeout(function () {
                     // We generate socket with a timeout to make sure server has time to recover.
                     ws = connect(endpoint, img_id);

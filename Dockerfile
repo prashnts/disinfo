@@ -30,6 +30,8 @@ COPY disinfo disinfo
 
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER di
+# Fetch the downloaded fonts (unifont) now, not on every container start.
+RUN python -c 'import disinfo.fonts'
 EXPOSE 4200
 CMD ["uvicorn", "disinfo.web.server:app", "--host", "0.0.0.0", "--port", "4200"]
 

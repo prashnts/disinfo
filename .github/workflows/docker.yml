@@ -1,8 +1,8 @@
 name: docker
 
+# Images are published when a version is tagged (git tag v2026.10.05 && git push --tags), not on every push.
 on:
   push:
-    branches: [master]
     tags: ['v*']
   workflow_dispatch:
 
@@ -27,10 +27,12 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --no-dev
       - run: uv run --no-sync --with pytest pytest libs/discore/tests
+      # Fetch the fonts once, so the server and the renderer don't both download them.
+      - run: uv run --no-sync python -c 'import disinfo.fonts'
       - name: render smoke test
         run: |
           uv run --no-sync uvicorn disinfo.web.server:app --port 4200 &
-          sleep 5
+          timeout 60 sh -c 'until curl -fs localhost:4200/ >/dev/null; do sleep 1; done'
           uv run --no-sync python -m disinfo.renderers.background --fps 30 --n-frames 60
           curl -fsS -o frame.png localhost:4200/png/disalon
           file frame.png | grep -q 'PNG image'
@@ -104,18 +106,16 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
             type=ref,event=tag
-            type=sha
       - id: demo
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
           flavor: latest=false
           tags: |
-            type=raw,value=demo,enable={{is_default_branch}}
+            type=raw,value=demo
             type=ref,event=tag,suffix=-demo
-            type=sha,suffix=-demo
       - working-directory: /tmp/digests
         env:
           APP: ${{ steps.app.outputs.json }}

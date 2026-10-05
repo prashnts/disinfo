@@ -43,12 +43,16 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 ### Added
 - Music slides, with album art cached and a Spotify mark ([`6ce6bbb`](https://github.com/prashnts/disinfo/commit/6ce6bbb)). Listening sessions (`utils/sessions.py`, [`d2d38aa`](https://github.com/prashnts/disinfo/commit/d2d38aa)).
 - GIF renderer: `--fps` and `--warmup` options (uncommitted).
+- Docker image (`Dockerfile`, [`3c93d89`](https://github.com/prashnts/disinfo/commit/3c93d89)): `app` target, and a `demo` target with Redis and the sample config in one container ([`d0297a8`](https://github.com/prashnts/disinfo/commit/d0297a8)). Fonts are fetched at build time, not on every container start (uncommitted).
 
 ### Changed
 - **`discore`**: the layout, text, scroller, sprite, stack, transition and widget components moved into their own package, `libs/discore`, with tests ([`e07faf9`](https://github.com/prashnts/disinfo/commit/e07faf9)).
+- **Docker images are built when a `v*` tag is pushed**, no longer on every push to `master`. A tag `vX` publishes `ghcr.io/prashnts/disinfo:X` and `:latest`, and `:X-demo` and `:demo`. The per-commit `sha` tags are gone (uncommitted).
+- CI is split: `test.yml` runs the `discore` tests on every push, and `docker.yml` runs the full app tests (and a render smoke test) before building (uncommitted).
 - The MJPEG stream is decoded in `utils/mjpeg.py`, with a lighter printer card ([`beb38c2`](https://github.com/prashnts/disinfo/commit/beb38c2)).
 
 ### Fixed
+- CI tests: `apt-get update` before installing system libraries, fonts fetched once before the render smoke test, and the smoke test waits for the server instead of sleeping 5 s (uncommitted).
 - GIF renderer timing (uncommitted). Each frame now lasts as long as it took on the wall clock, in milliseconds. The delays used to be passed as `durations=` (which Pillow ignores) and were computed in seconds ÷ 1000, so every GIF from 2023 to 2026 has 0–10 ms frames and plays too fast.
 
 ## [2026.08.15] - The panel on the wall
