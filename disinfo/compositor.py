@@ -176,10 +176,59 @@ def compose_small_frame(fs: FrameState):
     return Frame(image).tag('present')
 
 
+def compose_display_frame(fs: FrameState):
+    # esp-displays' T4-S3 over USB: 200x150, shown at 3x (600x450). Buttons on the display press the remote.
+    config = fs.config
+    telermt = TelemetryStateManager(config.name).get_state(fs)
+    awake = should_turn_on_display(fs)
+    image = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 255))
+
+    if awake:
+        solar_style = AnalogClockStyle(
+            cx=config.width // 2 + 22 + p_stack_offset(),
+            cy=config.height // 2 - 8 + p_stack_offset(),
+            tick_radius_multiplier=0.36,
+            dial_radius_multiplier=0.36,
+            needle_radius_multiplier=0.42,
+            background=telermt.light_sensor.color_hex,
+        )
+        composite_at(FadeIn('solar', duration=0.3).mut(screens.solar.draw(fs, solar_style)).draw(fs), image, 'mm')
+
+        stack = Stack('main_cards', style=StackStyle(size=config.height, align='left', horizontal=False)).mut([
+            screens.weather.widgets.weather(fs),
+            *shazam_widgets(fs),
+            screens.now_playing.slideshow_widget(fs),
+            screens.weather.widgets.moon_phase(fs),
+            screens.dishwasher.widget(fs),
+            screens.washing_machine.widget(fs),
+            screens.trash_pickup.widget(fs),
+            screens.date_time.calendar_widget(fs),
+        ])
+        stack_hor = Stack('bottom_cards', style=StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)).mut([
+            screens.now_playing.widget(fs),
+            *screens.klipper.widget(fs),
+            *screens.debug_info.widgets(fs),
+        ])
+        if RuntimeStateManager().get_state(fs).show_metro:
+            stack.mut([*screens.paris_metro.widgets(fs)])
+        composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
+        composite_at(stack_hor.draw(fs), image, 'bl', dy=-p_stack_offset(), frost=1.8)
+        composite_at(shazam_indicators(fs).draw(fs), image, 'br')
+        composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
+        composite_at(stream_widget(fs).draw(fs), image, 'bm')
+
+    composite_at(screens.date_time.flip_digital_clock(fs, align='right'), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
+    composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    composite_at(timer_app(fs).draw(fs), image, 'bl', frost=2)
+    return Frame(image).tag(awake)
+
+
 def compose_frame(fs: FrameState):
     with scope(fs.config.name):
         if fs.config.name == 'picowpanel':
             frame = compose_small_frame(fs)
+        elif fs.config.name == 'di_pcstate':
+            frame = compose_display_frame(fs)
         else:
             frame = compose_big_frame(fs)
         return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image
