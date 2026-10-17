@@ -126,11 +126,17 @@ def main(conf: Config):
     _tf = 1 / conf.fps
 
     # Loaded now: the matrix drops privileges, PIL's lazy imports from /home/pi fail after that.
-    status_font = ImageFont.load_default()
+    status_font = ImageFont.load_default(size=10)
+    clock_font = ImageFont.load_default(size=24)
 
-    def status_frame(text: str) -> Image.Image:
-        im = Image.new('RGB', (conf.width, conf.height))
-        ImageDraw.Draw(im).text((2, 2), text, fill=(80, 80, 80), font=status_font)
+    def status_frame(text: str, size: tuple[int, int]) -> Image.Image:
+        # Dim: it can stay up for long while the server is down.
+        im = Image.new('RGB', size)
+        draw = ImageDraw.Draw(im)
+        draw.fontmode = '1'   # crisp pixels, no antialiasing
+        w, h = size
+        draw.text((w // 2, h // 2), time.strftime('%H:%M'), fill=(40, 40, 40), font=clock_font, anchor='mm')
+        draw.text((w // 2, h // 2 + 18), text, fill=(22, 22, 22), font=status_font, anchor='mm')
         return im
 
     # This is apparently needed to avoid PIL not loading its extensions.
@@ -178,7 +184,7 @@ def main(conf: Config):
             double_buffer.SetImage(frame)
         else:
             dots = '.' * (int(t_start) % 4)
-            double_buffer.SetImage(status_frame(('waiting' if ws.connected else 'connecting') + dots))
+            double_buffer.SetImage(status_frame(('waiting' if ws.connected else 'connecting') + dots, (double_buffer.width, double_buffer.height)))
         double_buffer = matrix.SwapOnVSync(double_buffer)
 
         if time.monotonic() - last_ping > (5 if frame else 0.5):
