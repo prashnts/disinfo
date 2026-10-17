@@ -8,7 +8,7 @@ import websocket
 from typing import Callable
 
 from pydantic import BaseModel
-from PIL import Image, ImageFile, ImageDraw
+from PIL import Image, ImageFile, ImageDraw, ImageFont
 
 from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
 
@@ -125,9 +125,12 @@ def main(conf: Config):
 
     _tf = 1 / conf.fps
 
+    # Loaded now: the matrix drops privileges, PIL's lazy imports from /home/pi fail after that.
+    status_font = ImageFont.load_default()
+
     def status_frame(text: str) -> Image.Image:
         im = Image.new('RGB', (conf.width, conf.height))
-        ImageDraw.Draw(im).text((2, 2), text, fill=(80, 80, 80))
+        ImageDraw.Draw(im).text((2, 2), text, fill=(80, 80, 80), font=status_font)
         return im
 
     # This is apparently needed to avoid PIL not loading its extensions.
