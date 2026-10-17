@@ -12,14 +12,16 @@ from typing import Optional
 from ..utils.drawer import draw_loop
 from ..drat.app_states import RuntimeStateManager
 from discore.text import Text, TextStyle, text
-from PIL import Image, ImageDraw
+from PIL import Image
 from discore.elements import StillImage, Frame
 from discore.layouts import vstack, hstack
 from discore.layers import div, DivStyle
 from discore.scroller import HScroller
 from discore.spriteim import SpriteIcon
 from discore.widget import Widget
-from discore.transitions import text_slide_in, FadeIn
+from discore.transitions import text_slide_in
+from discore.slides import Slides, SlidesStyle
+from discore.progress import progress_bar, ProgressStyle
 from disinfo import fonts
 from ..config import app_config
 from discore.data_structures import FrameState, UniqInstance
@@ -27,6 +29,7 @@ from ..data_structures import AppBaseModel
 from disinfo.utils.hass import HaWS
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.mjpeg import MJPEGStream
+from disinfo.utils.moonraker import MoonrakerWS
 from disinfo.utils.time import is_expired
 
 
@@ -60,7 +63,8 @@ phase_colors = {
 }
 # Dark text on the phase color: unlit pixels read best on the LEDs.
 pill_style = TextStyle(font=fonts.bitocra7, color='#000000')
-slide_every = 6
+# Seconds per slide: the camera is what's worth watching.
+slide_times = {'camera': 14, 'job': 6, 'stats': 5}
 focus_seconds = 45
 
 # Raw printer statuses -> phase: offline, idle, printing, paused, done, failed.
@@ -146,7 +150,7 @@ class PrinterState(AppBaseModel):
         return self
 
 
-def get_moonraker_state(printer_id: str):
+def get_moonraker_state(printer_id: str, url: Optional[str] = None, api_key: Optional[str] = None):
     cam = HaWS().get_entity(f'camera.{printer_id}_toolcam')
     cachebuster = int(time.time() // 7)
     ignored_states = ['unknown', 'unavailable']
@@ -176,12 +180,32 @@ def get_moonraker_state(printer_id: str):
 
     entity = lambda sensor: HaWS().get_entity(f'sensor.{printer_id}_{sensor}')
     printer_state, idle = get_sensor('printer_state'), get_sensor('idle_timeout_state')
+    changed_at = lambda sensor: x.last_changed if (x := entity(sensor)) else None
+
+    # Moonraker's websocket when it's up: pushed within ~250ms, HA polls it every few seconds.
+    mr = MoonrakerWS(url, api_key) if url else None
+    if mr and mr.live:
+        printer_state = mr.get('webhooks', 'state') if mr.klippy else 'startup'
+        idle = mr.get('idle_timeout', 'state')
+        state.state = mr.get('print_stats', 'state')
+        state.filename = mr.get('print_stats', 'filename') or None
+        state.message = mr.get('display_status', 'message') or mr.get('print_stats', 'message') or None
+        state.position = tuple(mr.get('toolhead', 'position', [0, 0, 0])[:3])
+        progress, duration = mr.get('virtual_sdcard', 'progress') or 0, mr.get('print_stats', 'print_duration') or 0
+        state.progress = int(progress * 100)
+        # Like Fluidd's file estimate: the time so far, scaled by the progress.
+        eta = pendulum.now('UTC').add(seconds=duration / progress - duration) if state.state in klipper_phases and progress > 0.01 else None
+        state.eta = eta.isoformat() if eta else None
+        state.completion_time = eta.in_tz('local').strftime('%H:%M') if eta else None
+        fields = {'printer_state': ('webhooks', 'state'), 'idle_timeout_state': ('idle_timeout', 'state'), 'current_print_state': ('print_stats', 'state')}
+        changed_at = lambda sensor, ha=changed_at: mr.changed_at.get(fields[sensor]) or ha(sensor)
+
     print_phase = klipper_phases.get(state.state, 'idle')
     if printer_state is None:
         phase, by = 'offline', None
     elif printer_state in ('shutdown', 'error'):
         phase, by = 'error', 'printer_state'
-        state.message = get_sensor('printer_message') or state.message
+        state.message = (mr.get('webhooks', 'state_message') if mr and mr.live else get_sensor('printer_message')) or state.message
     elif printer_state == 'startup':
         phase, by = 'starting', 'printer_state'
     elif print_phase in ('printing', 'paused'):
@@ -190,8 +214,7 @@ def get_moonraker_state(printer_id: str):
         phase, by = klipper_idle_phases[idle], 'idle_timeout_state'
     else:
         phase, by = print_phase, 'current_print_state'
-    changed = entity(by) if by else None
-    return state.set_phase(phase, changed.last_changed if changed else None)
+    return state.set_phase(phase, changed_at(by) if by else None)
 
 def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
@@ -241,7 +264,8 @@ def get_state(fs: FrameState):
         if model == 'bambu':
             state = get_bambulab_state(printer_id)
         elif model == 'klipper':
-            state = get_moonraker_state(printer_id)
+            key = fs.config.moonraker_api_key
+            state = get_moonraker_state(printer_id, fs.config.moonraker_urls.get(printer_id), key.get_secret_value() if key else None)
         else:
             continue
         state.stream_url = fs.config.printer_streams.get(printer_id)
@@ -272,14 +296,6 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
 def spread(left: Frame, right: Frame, width: int = card_width) -> Frame:
     gap = width - (left.width if left else 0) - (right.width if right else 0)
     return hstack([left, right], gap=max(gap, 2), align='center')
-
-@cache
-def progress_bar(progress: int, color: str, width: int = card_width) -> Frame:
-    img = Image.new('RGBA', (width, 2), '#ffffff1a')
-    filled = round(width * min(max(progress, 0), 100) / 100)
-    if filled:
-        ImageDraw.Draw(img).rectangle((0, 0, filled - 1, 1), fill=color)
-    return Frame(img, ('klipper.bar', progress, color, width))
 
 def temp(fs: FrameState, icon: Frame, value: float, target: Optional[float], name: str) -> Frame:
     if value is None or value < 0:
@@ -424,13 +440,15 @@ def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
     uname = lambda x: f'{x}_{state.printer_id}'
     stage = stage_text(state)
     layer = f'L{state.current_layer or 0}/{state.total_layers}' if state.total_layers else None
+    layer = text(layer, muted_small_style) if layer and layer != stage else None
+    stage_style = TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '#5b5e64'))
     return vstack([
         hstack([
             temp(fs, toolt_icon, state.extruder_temp, state.extruder_target, uname('toolt')),
             temp(fs, bedt_icon, state.bed_temp, state.bed_target, uname('bedt')),
             hstack([text('ch', tiny_dim_style), text(f'{round(state.chamber_temp)}', muted_small_style)], gap=2) if state.chamber_temp else None,
         ], gap=5),
-        spread(text(stage[:16], TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '#5b5e64'))), text(layer, muted_small_style) if layer and layer != stage else None),
+        spread(fit(stage, stage_style, card_width - (layer.width + 3 if layer else 0)), layer),
         spread(text(state.active_tray[:10], tiny_style) if state.active_tray else None, text(f'{state.weight:g}g', tiny_style) if state.weight else None),
         spread(
             text(state.started_at, tiny_style) if state.started_at else None,
@@ -491,7 +509,7 @@ def composer(fs: FrameState, state: PrinterState):
         ], gap=2, align='bottom')
 
     head = spread(hstack([threed_icon.draw(fs.tick) if state.is_printing else done_icon, headline], gap=3), right)
-    bar = progress_bar(100 if state.is_done else int(state.progress or 0), color) if state.is_printing or state.phase in ('done', 'failed') else None
+    bar = progress_bar(1 if state.is_done else (state.progress or 0) / 100, ProgressStyle(width=card_width, color=color)) if state.is_printing or state.phase in ('done', 'failed') else None
 
     if not expanded:
         title = fit(title_of(state), tiny_style, card_width)
@@ -512,15 +530,11 @@ def composer(fs: FrameState, state: PrinterState):
     else:
         view = image_from_url(state.thumbnail, resize=(card_width, card_width * 9 // 16), ratio_fn=min)
         view = view.crop_even(vertical=max(view.height - h, 0) // 2) if view else None
-    slides = [
-        (lambda: camera_slide(fs, state, view)) if view else None,
-        lambda: job_slide(fs, state, h),
-        lambda: stats_slide(fs, state, h),
-    ]
-    slides = [s for s in slides if s]
-    i = int(fs.tick / slide_every) % len(slides)
-    body = div(slides[i](), width=card_width, height=h, anchor='tl', radius=2).tag(('klipper.slide', state.printer_id, i, len(slides)))
-    body = FadeIn(uname('klipper.slides'), 0.4).mut(body).draw(fs)
+    body = Slides(uname('klipper.slides'), SlidesStyle(width=card_width, height=h, radius=2)).mut([
+        (lambda: camera_slide(fs, state, view), slide_times['camera']) if view else None,
+        (lambda: job_slide(fs, state, h), slide_times['job']),
+        (lambda: stats_slide(fs, state, h), slide_times['stats']),
+    ]).draw(fs)
 
     # The tag changes when the card expands, so the widget animates the resize.
     return vstack([head, bar, body], gap=3).tag(('printer_card', state.printer_id, expanded))
@@ -553,6 +567,6 @@ def widget(fs: FrameState):
             style=widget_style,
             priority=2 if state.is_printing else 1,
             focus=wants_focus(fs, state),
-            wait_time=slide_every * 3 if state.is_printing else 5)
+            wait_time=sum(slide_times.values()) if state.is_printing else 5)
         widgets.append(w)
     return widgets

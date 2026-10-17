@@ -79,7 +79,10 @@ class Config(AppBaseModel):
     # Bambu
     printer_ids: list[str] = []
     # printer id -> mjpeg url, shown in the card. Merged over the defaults.
-    printer_streams: dict[str, str] = {}
+    printer_streams: dict[str, str] = {'pi_limn2': 'https://endo.nb.malow.im/stream.mjpg'}
+    # printer id -> Moonraker websocket, for live Klipper state. Merged over the defaults, HA otherwise.
+    moonraker_urls: dict[str, str] = {'pi_limn2': 'wss://limn.nb.malow.im/websocket'}
+    moonraker_api_key: SecretStr | None = None
 
     # Aviator
     adsbx_host: str = '10.0.1.131:8080'
@@ -91,10 +94,10 @@ class Config(AppBaseModel):
     weather_entity: str = 'weather.reuilly'
 
 
-    @field_validator('printer_streams')
+    @field_validator('printer_streams', 'moonraker_urls')
     @classmethod
-    def _default_streams(cls, v):
-        return {'pi_limn2': 'https://endo.nb.malow.im/stream.mjpg', **v}
+    def _merge_defaults(cls, v, info):
+        return {**cls.model_fields[info.field_name].default, **v}
 
     def replace(self, **kwargs):
         """

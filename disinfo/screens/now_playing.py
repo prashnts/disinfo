@@ -13,8 +13,9 @@ from discore.elements import Frame, StillImage
 from discore.text import Text, TextStyle, text
 from discore.layouts import hstack, vstack, composite_at
 from discore.layers import div, DivStyle
-from discore.transitions import SlideIn, Resize, FadeIn
+from discore.transitions import SlideIn, Resize
 from discore.widget import Widget
+from discore.slides import Slides, SlidesStyle
 from discore.scroller import HScroller
 from ..utils.func import throttle
 from discore import ease
@@ -106,9 +107,11 @@ def recent_arts(fs: FrameState) -> Frame | None:
     arts = art_cache.recent(entity_id)
     if not arts:
         return
-    art = arts[int(fs.tick / SLIDE_EVERY) % len(arts)]
-    slide = FadeIn(f'np.recent.{entity_id}', 1).mut(_slide(art)).draw(fs)
-    return div(slide, style=DivStyle(padding=0, radius=2)).tag(('music.recent', entity_id))
+    w, h = SLIDE_SIZE
+    return (Slides(f'np.recent.{entity_id}', SlidesStyle(width=w, height=h, radius=2, fade=1))
+        .mut([(lambda art=art: _slide(art), SLIDE_EVERY) for art in arts])
+        .draw(fs)
+        .tag(('music.recent', entity_id)))
 
 
 def composer(fs: FrameState):

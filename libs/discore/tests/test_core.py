@@ -55,3 +55,23 @@ def test_animated_widget_keeps_animating(tmp_path):
         fs = FrameState.create()
         seen.add(Widget('anim', icon.draw(fs.tick)).draw(fs).image.tobytes())
     assert len(seen) > 1
+
+def test_slides_follow_their_durations():
+    from discore.slides import Slides, SlidesStyle
+    drawn = []
+    slide = lambda color, seconds: (lambda: drawn.append(color) or solid(color), seconds)
+    s = Slides('t', SlidesStyle(width=10, height=6)).mut([slide((255, 0, 0, 255), 3), None, slide((0, 255, 0, 255), 1)])
+    assert s.duration == 4
+    assert [s.index(t) for t in (0, 2.9, 3, 3.9, 4)] == [0, 0, 1, 1, 0]
+    f = s.draw(FrameState(tick=3.5, now=None))
+    assert f.size == (10, 6) and drawn == [(0, 255, 0, 255)]   # only the slide on screen is drawn
+
+def test_progress_bar_fills_whole_pixels():
+    from discore.progress import progress_bar, ProgressStyle
+    style = ProgressStyle(width=10, color='#ff0000', track='#00000000')
+    bar = lambda v: progress_bar(v, style).image
+    assert bar(0.42).size == (10, 2)
+    assert [bar(0.42).getpixel((x, 0))[0] for x in (3, 4)] == [255, 0]
+    assert bar(0.42) is bar(0.38) and bar(-1).getpixel((0, 0))[0] == 0 and bar(2).getpixel((9, 1))[0] == 255
+    rounded = progress_bar(0.5, ProgressStyle(width=10, height=4, radius=2, color='#ff0000')).image
+    assert rounded.size == (10, 4) and rounded.getpixel((5, 2))[0] == 255
