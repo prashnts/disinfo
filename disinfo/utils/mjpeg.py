@@ -27,7 +27,7 @@ class MJPEGStream(metaclass=UniqInstance):
         self.read_at = 0
         self._thread = None
         self._lock = threading.Lock()
-        self._fitted = {}   # width -> (jpeg, frame)
+        self._fitted = {}   # (width, height, box) -> (jpeg, frame)
 
     def _wanted(self):
         return time.monotonic() - self.read_at < self.idle_timeout
@@ -56,8 +56,11 @@ class MJPEGStream(metaclass=UniqInstance):
                 time.sleep(1)
         self.jpeg = None
 
-    def read(self, width: int) -> Frame | None:
-        '''Latest frame fitted to `width`, or None while connecting or stalled.'''
+    def read(self, width: int, height: int | None = None, box: tuple[float, float, float, float] | None = None) -> Frame | None:
+        '''Latest frame fitted to `width` x `height`, or None while connecting or stalled.
+
+        `box` crops it first, (x0, y0, x1, y1) as fractions of the frame.
+        '''
         self.read_at = time.monotonic()
         with self._lock:
             if not self._thread or not self._thread.is_alive():
@@ -67,15 +70,20 @@ class MJPEGStream(metaclass=UniqInstance):
         jpeg = self.jpeg
         if not jpeg or time.monotonic() - self.jpeg_at > self.stale_after:
             return
-        if (cached := self._fitted.get(width)) and cached[0] is jpeg:
+        key = (width, height, box)
+        if (cached := self._fitted.get(key)) and cached[0] is jpeg:
             return cached[1]
 
         try:
             img = Image.open(io.BytesIO(jpeg))
-            ratio = min(width / img.width, width / img.height)
-            size = (int(img.width * ratio), int(img.height * ratio))
-            img.draft('RGB', size)   # jpeg decodes at 1/2, 1/4 or 1/8 scale, much cheaper
+            x0, y0, x1, y1 = box or (0, 0, 1, 1)
+            ratio = min(width / (img.width * (x1 - x0)), (height or width) / (img.height * (y1 - y0)))
+            img.draft('RGB', (int(img.width * ratio), int(img.height * ratio)))   # jpeg decodes at 1/2, 1/4 or 1/8 scale, much cheaper
             img = img.convert('RGB')
+            if box:
+                img = img.crop((int(x0 * img.width), int(y0 * img.height), int(x1 * img.width), int(y1 * img.height)))
+            ratio = min(width / img.width, (height or width) / img.height)
+            size = (int(img.width * ratio), int(img.height * ratio))
         except OSError:
             return
         size_mid = (2 * size[0], 2 * size[1])
@@ -83,5 +91,7 @@ class MJPEGStream(metaclass=UniqInstance):
         fitted = fitted.resize(size, resample=Image.Resampling.LANCZOS).convert('RGBA')
         # One hash for the whole stream: it's a live value, transitions shouldn't restart on each frame.
         frame = Frame(fitted, hash=('mjpeg', self.url, width))
-        self._fitted[width] = (jpeg, frame)
+        if len(self._fitted) > 8:   # the crop box moves, old ones are dead
+            self._fitted.clear()
+        self._fitted[key] = (jpeg, frame)
         return frame

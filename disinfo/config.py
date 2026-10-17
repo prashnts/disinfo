@@ -2,7 +2,7 @@ import os
 import json
 
 from typing import Optional
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 
 from .data_structures import AppBaseModel
 
@@ -78,7 +78,7 @@ class Config(AppBaseModel):
 
     # Bambu
     printer_ids: list[str] = []
-    # printer id -> mjpeg url, shown in the card while printing.
+    # printer id -> mjpeg url, shown in the card. Merged over the defaults.
     printer_streams: dict[str, str] = {}
 
     # Aviator
@@ -90,6 +90,11 @@ class Config(AppBaseModel):
     speaker_entity: str = 'media_player.sonos_beam'
     weather_entity: str = 'weather.reuilly'
 
+
+    @field_validator('printer_streams')
+    @classmethod
+    def _default_streams(cls, v):
+        return {'pi_limn2': 'https://endo.nb.malow.im/stream.mjpg', **v}
 
     def replace(self, **kwargs):
         """

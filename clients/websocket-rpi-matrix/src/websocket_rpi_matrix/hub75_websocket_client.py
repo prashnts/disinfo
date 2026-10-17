@@ -34,6 +34,8 @@ class RGBMatrixConf(BaseModel):
     hardware_mapping: str = 'regular'
     show_refresh_rate: bool = True
     disable_hardware_pulsing: bool = False
+    # Pads each frame to a fixed time: uneven frames show as flicker. 0 is unlimited.
+    limit_refresh_rate_hz: int = 0
 
     def matrix_options(self) -> RGBMatrixOptions:
         options = RGBMatrixOptions()
