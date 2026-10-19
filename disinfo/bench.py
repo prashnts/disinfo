@@ -27,7 +27,7 @@ from discore.elements import Frame
 from discore.func import uname
 from disinfo import compositor
 from disinfo.config import app_config, load_config
-from disinfo.transport import pack_raw
+from disinfo.transport import pack_raw, changed_boxes, pack_regions, RGBZ
 
 
 def report(line: str):
@@ -65,7 +65,7 @@ def micro() -> dict:
 def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cProfile.Profile]) -> dict:
     for _ in range(warmup):
         compositor.compose_frame(FrameState.create(cfg))
-    ts = []
+    ts, rgbs = [], []
     for _ in range(frames):
         t = time.perf_counter()
         if profile:
@@ -74,9 +74,19 @@ def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cP
         if profile:
             profile.disable()
         ts.append((time.perf_counter() - t) * 1e3)
+        rgbs.append(im.convert('RGB').tobytes())
         time.sleep(max(1 / fps - ts[-1] / 1e3, 0))
     b64 = png_b64(im)
     raw = pack_raw(cfg.name, im.size, im.convert('RGB').tobytes())
+    # /ws2 regions between consecutive frames that changed: sent whole past half the frame.
+    pairs = [(a, b) for a, b in zip(rgbs, rgbs[1:]) if a != b]
+    diff_ms, region_kb = [], []
+    for a, b in pairs:
+        t = time.perf_counter()
+        boxes = changed_boxes(a, b, im.size)
+        msg = pack_regions(b, im.size, boxes, RGBZ) if sum(w * h for *_, w, h in boxes) <= im.size[0] * im.size[1] // 2 else zlib.compress(b, 1)
+        diff_ms.append((time.perf_counter() - t) * 1e3)
+        region_kb.append(len(msg) / 1024)
     return {
         'screen': cfg.name,
         'size': f'{cfg.width}x{cfg.height}',
@@ -88,6 +98,9 @@ def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cP
         'raw_zlib_ms': round(timed(lambda: pack_raw(cfg.name, im.size, im.convert('RGB').tobytes())), 2),
         'rgbz_decode_ms': round(timed(lambda: Image.frombytes('RGB', im.size, zlib.decompress(raw[6 + len(cfg.name):]))), 2),
         'raw_kb': len(raw) // 1024,
+        'changed_frames': len(pairs),
+        'region_kb': round(pct(region_kb, .5), 2) if pairs else 0,
+        'regions_ms': round(pct(diff_ms, .5), 2) if pairs else 0,
     }
 
 def main(
@@ -116,7 +129,8 @@ def main(
             ms = r['compose_ms']
             report(f"{r['screen']:12} {r['size']:>9}  compose {ms['median']:6.2f} ms  p90 {ms['p90']:6.2f}  max {ms['max']:7.2f}"
                    f"  | png+b64 {r['png_b64_ms']:6.2f}  decode+jpeg {r['decode_jpeg_ms']:6.2f}  ({r['png_kb']} KB)"
-                   f"  | raw+zlib {r['raw_zlib_ms']:5.2f}  inflate {r['rgbz_decode_ms']:5.2f}  ({r['raw_kb']} KB)")
+                   f"  | raw+zlib {r['raw_zlib_ms']:5.2f}  inflate {r['rgbz_decode_ms']:5.2f}  ({r['raw_kb']} KB)"
+                   f"  | regions {r['regions_ms']:5.2f} ms  {r['region_kb']} KB  ({r['changed_frames']} changed)")
     m = micro()
     report(f"Frame(720p) {m['frame_720p_ms']} ms   Frame.of_pixels(720p) {m['frame_of_pixels_720p_ms']} ms   uname() {m['uname_us']} us")
 

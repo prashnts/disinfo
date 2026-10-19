@@ -1,7 +1,9 @@
 import os
 import io
 import json
+import time
 import base64
+import struct
 import importlib.util
 from pathlib import Path
 
@@ -12,7 +14,7 @@ from PIL import Image
 os.environ.setdefault('DI_CONFIG_PATH', '.config.sample.json')
 
 from disinfo import transport
-from disinfo.transport import pack_raw, unpack_raw, pack_ws2, encode, RGBZ, PNG, RGB565Z
+from disinfo.transport import pack_raw, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds, REGION, RGBZ, PNG, RGB565Z
 
 # The client's package imports the matrix hardware: load the module alone.
 _spec = importlib.util.spec_from_file_location(
@@ -27,8 +29,21 @@ def picture(size=(8, 6), seed=0) -> Image.Image:
 def same(a: Image.Image, b: Image.Image) -> bool:
     return a.size == b.size and a.tobytes() == b.tobytes()
 
-def message(img: Image.Image, seq: int, base_seq: int = 0, at=(0, 0), enc: int = RGBZ) -> bytes:
-    return pack_ws2(seq, base_seq, (*at, *img.size), enc, encode(img.tobytes(), img.size, enc))
+def message(img: Image.Image, seq: int, enc: int = RGBZ) -> bytes:
+    return pack_ws2(seq, 0, (0, 0, *img.size), enc, encode(img.tobytes(), img.size, enc))
+
+def regions(seq: int, base_seq: int, parts: list, enc: int = RGBZ) -> bytes:
+    # parts: (picture, (x, y))
+    payload = struct.pack('<H', len(parts))
+    for img, (x, y) in parts:
+        data = encode(img.tobytes(), img.size, enc)
+        payload += REGION.pack(x, y, *img.size, len(data)) + data
+    return pack_ws2(seq, base_seq, bounds([(*at, *img.size) for img, at in parts]), enc, payload)
+
+def changed(a: Image.Image, at: tuple[int, int], size=(3, 3), seed=9) -> Image.Image:
+    b = a.copy()
+    b.paste(picture(size, seed), at)
+    return b
 
 
 def test_raw_roundtrip():
@@ -44,41 +59,68 @@ def test_rgb565():
 
 def test_client_reads_the_server_format():
     assert frames.WS2_HEADER.format == transport.WS2_HEADER.format and frames.WS2_MAGIC == transport.WS2_MAGIC
-    assert (frames.RGBZ, frames.PNG) == (RGBZ, PNG)
+    assert frames.REGION.format == REGION.format and (frames.RGBZ, frames.PNG) == (RGBZ, PNG)
+
+def test_changed_boxes():
+    a = np.zeros((48, 64, 3), np.uint8)
+    b = a.copy()
+    b[2, 3] = 1
+    b[20:40, 40:60] = 9
+    b[18, 40] = 9
+    assert changed_boxes(a.tobytes(), b.tobytes(), (64, 48)) == [(0, 0, 16, 16), (32, 16, 32, 32)]
+    assert changed_boxes(a.tobytes(), a.tobytes(), (64, 48)) == []
+    a, b = np.zeros((20, 30, 3), np.uint8), np.zeros((20, 30, 3), np.uint8)
+    b[19, 29] = 5
+    assert changed_boxes(a.tobytes(), b.tobytes(), (30, 20)) == [(16, 16, 14, 4)]   # cut to the frame
+
+@pytest.mark.parametrize('enc', [RGBZ, PNG])
+def test_regions_from_the_server_rebuild_the_frame(enc):
+    a = picture((50, 37), 1)                                         # not whole tiles
+    b = changed(changed(a, (48, 35), (2, 2)), (3, 20), (20, 5))
+    boxes = changed_boxes(a.tobytes(), b.tobytes(), a.size)
+    f = frames.FrameAssembler()
+    f.apply(message(a, 1, enc))
+    assert f.apply(pack_ws2(2, 1, bounds(boxes), enc, pack_regions(b.tobytes(), b.size, boxes, enc)))
+    assert same(f.frame, b)
 
 
 # Partial updates, on the client.
 
-def test_region_is_pasted_in_place():
-    a, patch = picture((8, 6), 1), picture((3, 2), 2)
+def test_regions_are_pasted_in_place_together():
+    a, p, q = picture((8, 6), 1), picture((3, 2), 2), picture((2, 2), 3)
     f = frames.FrameAssembler()
-    assert f.apply(message(a, 1)) and f.apply(message(patch, 2, base_seq=1, at=(4, 3)))
+    shown = []
+    assert f.apply(message(a, 1))
+    shown.append(f.frame)
+    assert f.apply(regions(2, 1, [(p, (4, 3)), (q, (0, 0))]))
     want = a.copy()
-    want.paste(patch, (4, 3))
+    want.paste(p, (4, 3))
+    want.paste(q, (0, 0))
     assert f.seq == 2 and same(f.frame, want)
+    assert same(shown[0], a)        # a new frame, the one shown before is left as it was
 
 def test_regions_chain_on_each_other():
     f = frames.FrameAssembler()
     f.apply(message(picture((8, 6), 1), 1))
     p2, p3 = picture((2, 2), 2), picture((2, 2), 3)
-    assert f.apply(message(p2, 2, base_seq=1, at=(0, 0))) and f.apply(message(p3, 3, base_seq=2, at=(6, 4)))
+    assert f.apply(regions(2, 1, [(p2, (0, 0))])) and f.apply(regions(3, 2, [(p3, (6, 4))]))
     assert same(f.frame.crop((0, 0, 2, 2)), p2) and same(f.frame.crop((6, 4, 8, 6)), p3)
 
-def test_region_of_another_frame_asks_for_a_whole_one():
+def test_no_regions_moves_to_the_frame():
     f = frames.FrameAssembler()
-    assert not f.apply(message(picture((2, 2)), 2, base_seq=1))     # nothing yet
+    a = picture((8, 6), 1)
+    f.apply(message(a, 1))
+    assert f.apply(regions(4, 1, [])) and f.seq == 4 and same(f.frame, a)
+
+def test_regions_of_another_frame_ask_for_a_whole_one():
+    f = frames.FrameAssembler()
+    assert not f.apply(regions(2, 1, [(picture((2, 2)), (0, 0))]))   # nothing yet
     a = picture((8, 6), 1)
     f.apply(message(a, 5))
-    assert not f.apply(message(picture((2, 2)), 7, base_seq=6))     # missed frame 6
+    assert not f.apply(regions(7, 6, [(picture((2, 2)), (0, 0))]))   # missed frame 6
     assert f.seq == 5 and same(f.frame, a)
-    assert f.apply(message(picture((4, 4), 9), 8))                  # a whole frame, any size, starts over
+    assert f.apply(message(picture((4, 4), 9), 8))                   # a whole frame, any size, starts over
     assert f.frame.size == (4, 4)
-
-def test_png_region():
-    f = frames.FrameAssembler()
-    f.apply(message(picture((8, 6), 1), 1, enc=PNG))
-    patch = picture((3, 3), 2)
-    assert f.apply(message(patch, 2, base_seq=1, at=(1, 1), enc=PNG)) and same(f.frame.crop((1, 1, 4, 4)), patch)
 
 def test_not_a_frame():
     with pytest.raises(ValueError):
@@ -144,6 +186,55 @@ def test_ws2_acts(server):
         srv.load_acts('di.pubsub.acts', PubSubMessage(action='act', payload={'dest': 't.acts', 'cmd': ['buzzer', 'boop', 1]}))
         assert json.loads(ws.receive_text()) == {'acts': [['buzzer', 'boop', 1]]}
 
+def test_ws2_sends_only_what_changed(server):
+    srv, client = server
+    a = picture((64, 48), 1)
+    b = changed(a, (40, 30))
+    publish(srv, 't.regions', a)
+    f = frames.FrameAssembler()
+    with client.websocket_connect('/ws2/t.regions') as ws:
+        whole = ws.receive_bytes()
+        f.apply(whole)
+        publish(srv, 't.regions', b)
+        msg = ws.receive_bytes()
+    _, seq, base_seq, x, y, w, h, _ = transport.WS2_HEADER.unpack_from(msg)
+    assert base_seq == f.seq and (x, y, w, h) == (32, 16, 16, 32) and len(msg) < len(whole) / 3
+    assert f.apply(msg) and same(f.frame, b)
+
+def test_ws2_catches_up_from_the_frame_it_has(server):
+    srv, client = server
+    a = picture((64, 48), 1)
+    publish(srv, 't.behind', a)
+    f = frames.FrameAssembler()
+    with client.websocket_connect('/ws2/t.behind') as ws:
+        receive_frame(ws, f)
+        for i in range(5):
+            a = changed(a, (i * 9, i * 7), seed=i)
+            publish(srv, 't.behind', a)
+        last, t = srv.screens['t.behind'].seq, time.monotonic()
+        while f.seq != last:
+            receive_frame(ws, f)
+    assert same(f.frame, a)
+    assert time.monotonic() - t < 0.5     # a frame that came during a send isn't left for the 1 s timeout
+
+def test_ws2_mostly_changed_is_sent_whole(server):
+    srv, client = server
+    publish(srv, 't.most', picture((64, 48), 1))
+    with client.websocket_connect('/ws2/t.most') as ws:
+        ws.receive_bytes()
+        publish(srv, 't.most', picture((64, 48), 2))
+        assert transport.WS2_HEADER.unpack_from(ws.receive_bytes())[2] == 0
+
+def test_too_far_behind_gets_the_whole_frame(server):
+    srv, _ = server
+    a = picture((32, 32), 1)
+    for i in range(srv.HISTORY + 2):
+        a = changed(a, (0, 0), (2, 2), seed=i)
+        publish(srv, 't.far', a)
+    s = srv.screens['t.far']
+    assert transport.WS2_HEADER.unpack_from(s.message(s.seq - 1, RGBZ))[2] == s.seq - 1
+    assert transport.WS2_HEADER.unpack_from(s.message(s.seq - srv.HISTORY - 1, RGBZ))[2] == 0
+
 def test_ws2_png(server):
     srv, client = server
     a = picture((16, 8), 4)
@@ -167,7 +258,7 @@ def test_v1_and_snapshot_from_the_same_frame(server):
 
 
 def test_frames_keep_coming_after_a_bad_message(server):
-    import time, asyncio
+    import asyncio
     from disinfo.redis import db
     srv, _ = server
     loop = asyncio.new_event_loop()

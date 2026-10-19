@@ -44,7 +44,7 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 - A screen for esp-displays' T4-S3 (`di_pcstate`, 200x150, 3x on its 600x450 AMOLED, over USB): its own composer, the same sensors. The web server serves any screen to such displays: `/display/<screen>/stream.mjpg` (the newest frame, a whole-number scale to fit `w`x`h`), `/buttons` (shown on the display), `/press`.
 - Music slides, with album art cached and a Spotify mark ([`6ce6bbb`](https://github.com/prashnts/disinfo/commit/6ce6bbb)). Listening sessions (`utils/sessions.py`, [`d2d38aa`](https://github.com/prashnts/disinfo/commit/d2d38aa)).
 - GIF renderer: `--fps` and `--warmup` options (uncommitted).
-- **`/ws2/<screen>`, frames pushed to the panels** (uncommitted). Binary messages, a header (`seq`, `base_seq`, a box, an encoding) and the frame: raw RGB + zlib (`rgbz`), `png` or `rgb565z` (`?fmt=`). A frame is sent when it changes; a slow client skips to the newest. Telemetry goes up as text, acts come down as text, `{"alive"}` every 2 s when nothing changes, `{"resync": 1}` asks for a whole frame. `base_seq` is 0 for whole frames: regions of a frame can follow without changing the clients. `/ws` stays as it was. `disinfo/transport.py` has the formats.
+- **`/ws2/<screen>`, frames pushed to the panels** (uncommitted). Binary messages, a header (`seq`, `base_seq`, a box, an encoding) and the frame: raw RGB + zlib (`rgbz`), `png` or `rgb565z` (`?fmt=`). A frame is sent when it changes; a slow client skips to the newest. **Only what changed is sent**: the server keeps a screen's last 8 frames, compares the client's frame with the newest on 16x16 tiles, and sends the changed tiles, merged into boxes, in one message (the client applies them together, never showing half a frame). A whole frame when more than half changed, or the client's frame is older. Telemetry goes up as text, acts come down as text, `{"alive"}` every 2 s when nothing changes, `{"resync": 1}` asks for a whole frame. `base_seq` is 0 for whole frames: regions of a frame can follow without changing the clients. `/ws` stays as it was. `disinfo/transport.py` has the formats.
 - The HUB75 websocket client speaks `/ws2` with `"protocol": "v2"` in its config, telemetry at `telemetry_hz` (30) (uncommitted). v1 stays the default. Whole frames and regions are put together in `websocket_rpi_matrix/frames.py`, which has no hardware imports.
 - Tests for the transport, `tests/` (uncommitted): the formats, regions applied by the client (in place, chained, for a frame it doesn't have), `/ws2` end to end (a whole frame on connect, changes pushed, identical frames skipped, resync, acts, PNG), `/ws` and `/png` from the same frame, the renderer skipping unchanged frames, and the server still receiving frames after a bad message. CI runs them with the `discore` tests.
 - Benchmark, `python -m disinfo.bench`: composes the configured screens at their size or the `--size`s given (forced awake, paced like the renderer, nothing published), then times today's transport (PNG + base64, decode + JPEG). Each run appends to `bench.jsonl` with the commit and a `--label` (uncommitted).
@@ -62,6 +62,8 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 
 ### Fixed
 - CI tests: `apt-get update` before installing system libraries, fonts fetched once before the render smoke test, the smoke test waits for the server instead of sleeping 5 s, and stops it afterwards. A server left running held the uv cache lock and hung the job's post-step for minutes (uncommitted).
+- `/ws2` no longer waits up to a second for a frame that came while it was sending the previous one (uncommitted).
+- The server's raw frame subscriber kept running after an error in its callback, instead of dying with it and leaving the server without frames (uncommitted).
 - One Ctrl+C stops the renderer again, and `maindev.py` with it (uncommitted). The painters of `draw_loop` were not daemon threads since [`1a9759e`](https://github.com/prashnts/disinfo/commit/1a9759e), so Python waited for them at exit; the news highlights' extraction thread neither.
 - `/ws` returns when the client disconnects, instead of logging a traceback (uncommitted).
 - The Home Assistant client printed its auth message, access token included, when connecting (uncommitted). It leaves the token out now.
@@ -77,7 +79,11 @@ Measured with `disinfo.bench` on `di_pcstate` (awake, 120 frames at 12 fps), at 
 | `uname` on `sys._getframe` | 10 / 25 / 49 | 6 / 38 / 69 | 0.2 µs | 0.85 µs |
 | Raw RGB + zlib instead of PNG + base64, unchanged frames skipped | 11 / 27 / 53 | 0.7 / 3.0 / 6.1 | 0.1 µs | 0.81 µs |
 
-On the full study layout at 60 fps the desk gets about 36 changed frames a second, 19 KB each (~700 KB/s): a frame is sent whole when 6% of its 16x16 tiles changed (median). Sending only those is next.
+On the full study layout at 60 fps the desk got about 36 changed frames a second, 19 KB each (~700 KB/s), when 6% of the 16x16 tiles changed (median). With regions: 9–74 KB/s depending on what moves (0.7–2.5 KB a message, a whole frame when a slide changes), no resyncs; the frame a client puts together is the server's. Finding the regions costs 0.1 / 1.4 / 2.6 ms a frame at 128x128 / 800x480 / 720p.
+
+| Change | Changed frame sent (KB), 128x128 / 800x480 / 720p | Whole frame (KB) |
+|---|---|---|
+| Regions, from the benchmark (consecutive frames at 12 fps) | 6.7 / 6.2 / 5.7 | 18 / 138 / 265 |
 
 The disinfo desk (Pi 4, 128x128) on the same PC server, `/ws` then `/ws2`: client CPU 124% → 59%, 686 → 25 KB/s received. Renderer and client at 60 fps instead of 40: 19 changed frames a second instead of 13, the client at 64%, the renderer at 31% of a core.
 

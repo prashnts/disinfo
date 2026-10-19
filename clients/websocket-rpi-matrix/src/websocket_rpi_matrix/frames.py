@@ -7,29 +7,38 @@ from PIL import Image
 
 WS2_MAGIC = b'DIF2'
 WS2_HEADER = struct.Struct('<4sIIHHHHB')
+REGION = struct.Struct('<HHHHI')
 RGBZ, PNG = 1, 2
 
 
 class FrameAssembler:
-    '''The current frame, from whole frames and regions of one.'''
+    '''The current frame, from whole frames and the regions that changed.'''
 
     def __init__(self):
         self.frame: Image.Image | None = None
         self.seq = 0
 
     def apply(self, msg: bytes) -> bool:
-        '''False when a region doesn't apply to the current frame: ask for a whole one.'''
+        '''False when regions don't apply to the current frame: ask for a whole one.'''
         magic, seq, base_seq, x, y, w, h, enc = WS2_HEADER.unpack_from(msg)
         if magic != WS2_MAGIC:
             raise ValueError(f'not a /ws2 frame: {magic!r}')
-        if base_seq and (self.frame is None or base_seq != self.seq):
+        at = WS2_HEADER.size
+        if not base_seq:
+            self.frame, self.seq = decode(msg[at:], (w, h), enc), seq
+            return True
+        if self.frame is None or base_seq != self.seq:
             return False
-        part = decode(msg[WS2_HEADER.size:], (w, h), enc)
-        if base_seq:
-            frame = self.frame.copy()
-            frame.paste(part, (x, y))
-            part = frame
-        self.frame, self.seq = part, seq
+        # All of them on a copy: the frame shown is never half done.
+        frame = self.frame.copy()
+        (count,) = struct.unpack_from('<H', msg, at)
+        at += 2
+        for _ in range(count):
+            x, y, w, h, n = REGION.unpack_from(msg, at)
+            at += REGION.size
+            frame.paste(decode(msg[at:at + n], (w, h), enc), (x, y))
+            at += n
+        self.frame, self.seq = frame, seq
         return True
 
 

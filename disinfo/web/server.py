@@ -15,7 +15,7 @@ from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
-from disinfo.transport import RAW_CHANNEL, ENCODINGS, PNG, RGBZ, unpack_raw, pack_ws2, encode
+from disinfo.transport import RAW_CHANNEL, ENCODINGS, PNG, RGBZ, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds
 from discore.imops import apply_gamma
 
 app = FastAPI()
@@ -24,13 +24,19 @@ frames = {}     # screen -> JSON payload, from renderers still publishing PNGs
 action_buffer = defaultdict(list)
 
 
-class Screen:
-    '''The newest frame of a screen, encoded once per format.'''
+HISTORY = 8     # frames a client can be behind and still get regions
 
-    def __init__(self, seq: int, size: tuple[int, int], rgbz: bytes):
-        self.seq, self.size, self.rgbz = seq, size, rgbz
+class Screen:
+    '''The newest frame of a screen, encoded once per format. prev: the frames before it.'''
+
+    def __init__(self, seq: int, size: tuple[int, int], rgbz: bytes, prev: 'Screen | None' = None):
+        self.seq, self.size, self.rgbz, self.prev = seq, size, rgbz, prev
         self.encoded = {RGBZ: rgbz}
         self._rgb = None
+        s, n = self, 1
+        while s.prev and n < HISTORY:
+            s, n = s.prev, n + 1
+        s.prev = None
 
     @property
     def rgb(self) -> bytes:
@@ -45,6 +51,25 @@ class Screen:
 
     def image(self) -> Image.Image:
         return Image.frombytes('RGB', self.size, self.rgb)
+
+    def message(self, base_seq: int, encoding: int) -> bytes:
+        '''What changed since frame base_seq, or the whole frame.'''
+        key = ('message', base_seq, encoding)
+        if key not in self.encoded:
+            self.encoded[key] = self._regions(base_seq, encoding) or pack_ws2(self.seq, 0, (0, 0, *self.size), encoding, self.encode(encoding))
+        return self.encoded[key]
+
+    def _regions(self, base_seq: int, encoding: int) -> bytes | None:
+        base = self.prev
+        while base and base.seq != base_seq:
+            base = base.prev
+        if not base or base.size != self.size:
+            return None
+        boxes = changed_boxes(base.rgb, self.rgb, self.size)
+        # Mostly changed: the whole frame is as small, and simpler.
+        if sum(w * h for _, _, w, h in boxes) > self.size[0] * self.size[1] // 2:
+            return None
+        return pack_ws2(self.seq, base_seq, bounds(boxes), encoding, pack_regions(self.rgb, self.size, boxes, encoding))
 
     def _jpeg(self, w: int, h: int, quality: int) -> bytes:
         im = self.image()
@@ -82,7 +107,7 @@ def load_raw(message):
     prev = screens.get(name)
     if prev and prev.rgbz == rgbz:
         return
-    screens[name] = Screen((prev.seq if prev else 0) + 1, (w, h), rgbz)
+    screens[name] = Screen((prev.seq if prev else 0) + 1, (w, h), rgbz, prev)
     notify(name)
 
 _raw = db.pubsub(ignore_subscribe_messages=True)
@@ -194,19 +219,20 @@ async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz'):
         nonlocal sent
         last = time.monotonic()
         while True:
+            # After each send, look again: what came during it woke no one.
             s = screens.get(screen)
             if s and s.seq != sent:
-                payload = await asyncio.to_thread(s.encode, encoding)
-                await websocket.send_bytes(pack_ws2(s.seq, 0, (0, 0, *s.size), encoding, payload))
+                await websocket.send_bytes(await asyncio.to_thread(s.message, sent, encoding))
                 sent, last = s.seq, time.monotonic()
-            if action_buffer[screen]:
+            elif action_buffer[screen]:
                 acts, action_buffer[screen] = action_buffer[screen], []
                 await websocket.send_text(json.dumps({'acts': acts}))
                 last = time.monotonic()
-            if time.monotonic() - last > 2:
+            elif time.monotonic() - last > 2:
                 await websocket.send_text(json.dumps({'alive': sent}))
                 last = time.monotonic()
-            await changed(screen, 1)
+            else:
+                await changed(screen, 1)
 
     tasks = [asyncio.create_task(receive()), asyncio.create_task(send())]
     try:
