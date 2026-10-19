@@ -20,7 +20,7 @@
             padding: 1em;
         }
 
-        img {
+        canvas {
             /* padding: 2px; */
             margin: 5px auto;
             max-width: 100%;
@@ -32,7 +32,7 @@
             /* filter: url('#gamma'); */
         }
 
-        .screens img {
+        .screens canvas {
             width: calc(128px * 2);
         }
 
@@ -50,7 +50,7 @@
             display: none;
         }
 
-        img[src=""] {
+        canvas:not(.live) {
             display: none;
         }
 
@@ -85,9 +85,9 @@
     <div class="main">
         <p id='status'>connecting…</p>
         <div class="screens">
-            <img src='' id='study'/>
-            <img src='' id='salon'/>
-            <img src='' id='pcstate'/>
+            <canvas id='study'></canvas>
+            <canvas id='salon'></canvas>
+            <canvas id='pcstate'></canvas>
         </div>
         <div id='controls'>
         </div>
@@ -121,50 +121,76 @@
     </script>
     <script type="module">
         const WS_RETRY_DELAY = 2000;
-        const FRAME_DELAY = 20
+        // /ws2 messages, see disinfo/transport.py: header, then a whole PNG, or the regions that changed.
+        const HEADER = 21, REGION = 12;
         const status = document.getElementById('status');
         let seen = false;
-        const connect = function (endpoint, img_id) {
+
+        const png = (buf, at, n) => createImageBitmap(new Blob([new Uint8Array(buf, at, n)], {type: 'image/png'}));
+
+        const connect = function (screen, canvas_id) {
             const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            let ws = new WebSocket(`${protocol}://${window.location.host}/${endpoint}`);
+            const ws = new WebSocket(`${protocol}://${window.location.host}/ws2/${screen}?fmt=png`);
+            ws.binaryType = 'arraybuffer';
+            const canvas = document.getElementById(canvas_id);
+            const ctx = canvas.getContext('2d');
+            let seq = 0, resyncing = false, drawing = Promise.resolve();
+
+            async function apply(buf) {
+                const v = new DataView(buf);
+                const next = v.getUint32(4, true), base = v.getUint32(8, true);
+                if (!base) {
+                    const frame = await png(buf, HEADER, buf.byteLength - HEADER);
+                    canvas.width = v.getUint16(16, true);
+                    canvas.height = v.getUint16(18, true);
+                    ctx.drawImage(frame, 0, 0);
+                    seq = next, resyncing = false;
+                    canvas.classList.add('live');
+                    seen = true;
+                    status.textContent = '';
+                    return;
+                }
+                if (base !== seq) {
+                    if (!resyncing) ws.send(JSON.stringify({resync: 1}));
+                    resyncing = true;
+                    return;
+                }
+                // Decoded first, then drawn together: never half a frame.
+                const parts = [];
+                let at = HEADER + 2;
+                for (let i = 0; i < v.getUint16(HEADER, true); i++) {
+                    const n = v.getUint32(at + 8, true);
+                    parts.push([v.getUint16(at, true), v.getUint16(at + 2, true), png(buf, at + REGION, n)]);
+                    at += REGION + n;
+                }
+                const frames = await Promise.all(parts.map(p => p[2]));
+                parts.forEach(([x, y], i) => ctx.drawImage(frames[i], x, y));
+                seq = next;
+            }
 
             ws.onmessage = function (event) {
-                const data = JSON.parse(event.data)
-                document.getElementById(img_id).src = `data:image/png;base64,${data.img}`;
-                seen = true;
-                status.textContent = '';
+                // Text: acts, alive. Frames are decoded in order.
+                if (typeof event.data !== 'string') drawing = drawing.then(() => apply(event.data));
             };
 
-            ws.onopen = function (event) {
+            ws.onopen = function () {
                 if (!seen) status.textContent = 'waiting for renderer…';
-                const interval = setInterval(function () {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send({'_v': 'dit'});
-                    }
-                    if (ws.readyState === WebSocket.CLOSED) {
-                        clearInterval(interval);
-                    }
-                }, FRAME_DELAY);
             };
 
             ws.onclose = function () {
-                // Handle retries by recreating the connection to websocket.
                 console.warn(`Disinfo connection lost. Retrying in ${WS_RETRY_DELAY / 1000}s.`)
                 status.textContent = 'reconnecting…';
-                setTimeout(function () {
-                    // We generate socket with a timeout to make sure server has time to recover.
-                    ws = connect(endpoint, img_id);
-                }, WS_RETRY_DELAY);
+                setTimeout(() => connect(screen, canvas_id), WS_RETRY_DELAY);
             }
 
             ws.onerror = function () {
                 ws.close();
             }
         }
-        connect('ws/distudy', 'study');
-        connect('ws/disalon', 'salon');
+        connect('distudy', 'study');
+        connect('disalon', 'salon');
         // Each server shows the screens it renders, the others stay hidden.
-        connect('ws/di_pcstate', 'pcstate');
+        connect('di_pcstate', 'pcstate');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
