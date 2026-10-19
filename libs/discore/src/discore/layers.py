@@ -103,11 +103,10 @@ def div(
     if not frame:
         return Frame.fallback(('div', style))
     if isinstance(frame, Box):
-        # A div with a size lays its content out in it. Without, its parent decides.
+        # Sized: the Box is laid out in it. Unsized: by the parent.
         lw, lh = style.width or style.max_width, style.height or style.max_height
         if not (lw or lh):
             return DivBox(frame, style)
-        # Its width and height are the content's, a max_ only limits it.
         mw, mh = frame.measure(lw or UNBOUNDED, lh or UNBOUNDED)
         frame = frame.render(style.width or mw, style.height or mh)
 
@@ -196,7 +195,7 @@ def _edges(value) -> tuple:
     return (value,) * 4 if isinstance(value, int) else tuple(value)
 
 class DivBox(Box):
-    '''A div around a Box, without a size: the space its parent gives goes to the content, less padding and margin.'''
+    '''An unsized div around a Box.'''
 
     def __init__(self, frame: Box, style: DivStyle):
         self.frame, self.style = frame, style
@@ -219,8 +218,7 @@ class DivBox(Box):
         return w + ew, h + eh
 
     def render(self, w: int, h: int) -> Frame:
-        # The whole w x h, so a stretched div's background fills it. Having no size of its own,
-        # the content sits at its top left (the anchor places content in a sized div).
+        # Fills w x h, content at the top left.
         ew, eh = self.extra
         cw, ch = less(w, ew), less(h, eh)
         return div(self.frame.render(*self.frame.measure(cw, ch)), dc_replace(self.style, width=cw, height=ch, anchor='tl'))

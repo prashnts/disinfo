@@ -116,7 +116,7 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
-    # Rows as wide as the widest: the temperature centered in it, the range graph across it.
+    # Temperature centered, range graph across.
     return vstack([
         hstack([
             Spacer(),

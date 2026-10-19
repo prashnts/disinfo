@@ -62,7 +62,7 @@ ENDSTORY
             story.save()
 
     if story.uid not in _running_threads:
-        t = Thread(target=runner)
+        t = Thread(target=runner, daemon=True)
         t.start()
         _running_threads[story.uid] = t
 

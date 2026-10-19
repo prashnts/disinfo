@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from PIL import Image, ImageFile, ImageDraw, ImageFont
 
 from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
+from websocket_rpi_matrix.frames import FrameAssembler
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
@@ -46,6 +47,9 @@ class RGBMatrixConf(BaseModel):
 
 class Config(BaseModel):
     websocket_url: str = 'wss://disinfo.amd.noop.pw/ws-salon'
+    # v1: /ws/<screen>, a frame for each telemetry sent. v2: /ws2/<screen>, frames pushed as they change.
+    protocol: str = 'v1'
+    telemetry_hz: float = 30
     fps: int = 30
     matrix_conf: RGBMatrixConf = RGBMatrixConf()
     sensor_conf: SensorConfig = SensorConfig()
@@ -166,7 +170,23 @@ def main(conf: Config):
         last_ping = time.monotonic()
         ws.send(telemetry=json.dumps(telemetry), _node=node_id)
 
-    ws = WebsocketClient(conf.websocket_url, _set_frame)
+    assembler = FrameAssembler()
+
+    def _set_frame_v2(ws: WebsocketClient, msg):
+        nonlocal frame, last_ping
+        last_ping = time.monotonic()
+        try:
+            if isinstance(msg, str):
+                acts.extend(json.loads(msg).get('acts') or [])
+            elif assembler.apply(msg):
+                frame = assembler.frame
+            else:
+                ws.send(resync=1)
+        except Exception as e:
+            print('[Error loading frame]', e)
+
+    v2 = conf.protocol == 'v2'
+    ws = WebsocketClient(conf.websocket_url, _set_frame_v2 if v2 else _set_frame)
     ws.connect()
     sensor_thread(_set_telemetry, conf.sensor_conf)
     time.sleep(1)
@@ -176,6 +196,7 @@ def main(conf: Config):
     double_buffer = matrix.CreateFrameCanvas()
 
     print('[Matrix Renderer started]')
+    last_telemetry = 0
 
 
     while True:
@@ -186,6 +207,10 @@ def main(conf: Config):
             dots = '.' * (int(t_start) % 4)
             double_buffer.SetImage(status_frame(('waiting' if ws.connected else 'connecting') + dots, (double_buffer.width, double_buffer.height)))
         double_buffer = matrix.SwapOnVSync(double_buffer)
+
+        if v2 and time.monotonic() - last_telemetry > 1 / conf.telemetry_hz:
+            ws.send(telemetry=json.dumps(telemetry), _node=node_id)
+            last_telemetry = time.monotonic()
 
         if time.monotonic() - last_ping > (5 if frame else 0.5):
             # Initial ping and then every 5 seconds, or 0.5s until the first frame arrives.

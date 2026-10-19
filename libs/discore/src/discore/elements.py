@@ -16,16 +16,9 @@ class UIElement(metaclass=ABCMeta):
 TrimParam = namedtuple('TrimParam', ['left', 'upper', 'right', 'lower'])
 
 class Frame(UIElement):
-    '''An image, and a hash that says what it shows: equal hashes are the same picture.
-    Transitions restart when it changes, caches reuse frames by it.
+    '''An image and its hash: equal hashes, same picture.
 
-    Make it from what the image is made of, never from its pixels:
-    - derived: the operation, its parameters, the inputs' hashes. ('trim', box, frame.hash)
-    - from a source: what identifies it there. ('music.art', digest)
-    Without one, a frame gets a token, equal only to itself: right for frames used once,
-    or cached and reused. Wrong for a picture redrawn every frame from the same inputs:
-    a transition around it would restart every time.
-    Frame.of_pixels hashes the pixels, when nothing else says what an image shows (slow: all of it).
+    Without a hash it gets a token, equal only to itself. Frame.of_pixels hashes the pixels.
     '''
     __slots__ = ('image', 'width', 'height', 'hash')
 
@@ -118,7 +111,6 @@ class Frame(UIElement):
 
     @classmethod
     def fallback(cls, hash: Any = None, size: tuple[int, int] = (1, 1)) -> 'Frame':
-        # Transparent, so its size says what it shows.
         return Frame(Image.new('RGBA', size, (0, 0, 0, 0)), ('fallback', size) if hash is None else hash)
 
     def blank(self) -> 'Frame':
@@ -136,21 +128,13 @@ class StillImage(Frame):
 UNBOUNDED = 1 << 14
 
 class Box(Frame):
-    '''A frame laid out by its parent, like a flex item.
-
-    A Frame has a fixed size. A Box measures how big it wants to be within the
-    space it's given, and renders once its parent has decided its final size:
-    constraints go down, sizes go up.
-
-    Used where a plain Frame is expected, a Box renders at its natural size,
-    so the existing layouts, transitions and widgets take it as is. So does
-    anything that reads its image (trim, resize, composite_at...): the top of
-    a layout needs a size, a row with a Spacer and no width has no room to spread.
+    '''A frame sized by its parent: it measures, then renders at the size it gets.
+    Used as a Frame, it renders at its natural size.
     '''
     grow: float = 0     # share of the free space it takes, like flex-grow
     shrink: float = 0   # share of the overflow it gives up, like flex-shrink
 
-    # In a row ('x') or a column ('y'). A row or column only grows or shrinks along itself.
+    # axis: 'x' (row) or 'y' (column).
     def grow_along(self, axis: str) -> float:
         return self.grow
 

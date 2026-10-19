@@ -46,7 +46,7 @@ def draw_loop(composer: ComposerFn, sleepms: int = 50, use_threads: bool = False
         name = current_scope()
         if name not in painters:
             painters[name] = p = {'args': args, 'kwargs': kwargs, 'frame': None}
-            threading.Thread(target=painter, args=(name, p), daemon=False).start()
+            threading.Thread(target=painter, args=(name, p), daemon=True).start()
         p = painters[name]
         p['args'], p['kwargs'] = args, kwargs
         return p['frame']

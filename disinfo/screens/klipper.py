@@ -494,7 +494,7 @@ def composer(fs: FrameState, state: PrinterState):
     head = hstack([hstack([threed_icon.draw(fs.tick) if state.is_printing else done_icon, headline], gap=3), Spacer(), right], gap=2)
     bar = progress_bar(1 if state.is_done else (state.progress or 0) / 100, ProgressStyle(width=card_width, color=color)) if state.is_printing or state.phase in ('done', 'failed') else None
 
-    # The card's width, its rows lay out in it. The tag changes when the card expands, so the widget animates the resize.
+    # The tag changes when the card expands, so the widget animates the resize.
     card = lambda *rows: div(vstack([head, bar, *rows], gap=3), width=card_width).tag(('printer_card', state.printer_id, expanded))
     if not expanded:
         return card(text(title_of(state), tiny_style, overflow='fit'))

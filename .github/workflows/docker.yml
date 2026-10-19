@@ -26,7 +26,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen --no-dev
-      - run: uv run --no-sync --with pytest pytest libs/discore/tests
+      - run: uv run --no-sync --with pytest pytest libs/discore/tests tests
       # Fetch the fonts once, so the server and the renderer don't both download them.
       - run: uv run --no-sync python -c 'import disinfo.fonts'
       - name: render smoke test

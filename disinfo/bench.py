@@ -1,14 +1,8 @@
-'''Benchmark: what a frame costs, from composing to the bytes a client gets.
+'''Benchmark: compose and transport, per screen and size.
 
-    DI_CONFIG_PATH=.config-pcstate.json python -m disinfo.bench --label "lazy frame hash"
+    DI_CONFIG_PATH=.config-pcstate.json python -m disinfo.bench --size 800x480 --label "..." 2>&1 >/dev/null
 
-Composes the configured screens (nothing is published), at their size or the
---size given, paced like the renderer. Then the transport as it is today:
-PNG + base64 (renderers/background.py), decode + JPEG (web/server.py).
-Results go to --log (JSON lines) with the commit and label, to compare later.
-The screen is forced awake (--as-is to keep presence), so widgets are drawn.
-
-The report goes to stderr: the app's clients chat on stdout (2>&1 >/dev/null keeps the report only).
+Nothing is published. Forced awake unless --as-is. Results append to bench.jsonl, the report is on stderr.
 '''
 import io
 import os
@@ -25,6 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+import zlib
 from PIL import Image
 
 from discore.data_structures import FrameState
@@ -32,6 +27,7 @@ from discore.elements import Frame
 from discore.func import uname
 from disinfo import compositor
 from disinfo.config import app_config, load_config
+from disinfo.transport import pack_raw
 
 
 def report(line: str):
@@ -59,7 +55,6 @@ def decode_jpeg(b64: str) -> bytes:
         return out.getvalue()
 
 def micro() -> dict:
-    # The parts of a frame that should cost nothing.
     canvas = Image.new('RGBA', (1280, 720), (24, 52, 88, 255))
     return {
         'frame_720p_ms': round(timed(lambda: Frame(canvas), 50), 4),
@@ -81,6 +76,7 @@ def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cP
         ts.append((time.perf_counter() - t) * 1e3)
         time.sleep(max(1 / fps - ts[-1] / 1e3, 0))
     b64 = png_b64(im)
+    raw = pack_raw(cfg.name, im.size, im.convert('RGB').tobytes())
     return {
         'screen': cfg.name,
         'size': f'{cfg.width}x{cfg.height}',
@@ -88,6 +84,10 @@ def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cP
         'png_b64_ms': round(timed(lambda: png_b64(im)), 2),
         'decode_jpeg_ms': round(timed(lambda: decode_jpeg(b64)), 2),
         'png_kb': len(b64) * 3 // 4 // 1024,
+        # The transport since /ws2: raw RGB + zlib, inflated by the client.
+        'raw_zlib_ms': round(timed(lambda: pack_raw(cfg.name, im.size, im.convert('RGB').tobytes())), 2),
+        'rgbz_decode_ms': round(timed(lambda: Image.frombytes('RGB', im.size, zlib.decompress(raw[6 + len(cfg.name):]))), 2),
+        'raw_kb': len(raw) // 1024,
     }
 
 def main(
@@ -101,7 +101,7 @@ def main(
     label: str = '',
     log: Path = Path('bench.jsonl'),
 ):
-    # --config and --size can be repeated: each screen at each size (WxH).
+    # --config and --size can be repeated.
     if not as_is:
         compositor.should_turn_on_display = lambda fs: True
     configs = [load_config(c) for c in config or []] or [app_config]
@@ -115,7 +115,8 @@ def main(
             results.append(r)
             ms = r['compose_ms']
             report(f"{r['screen']:12} {r['size']:>9}  compose {ms['median']:6.2f} ms  p90 {ms['p90']:6.2f}  max {ms['max']:7.2f}"
-                   f"  | png+b64 {r['png_b64_ms']:6.2f}  decode+jpeg {r['decode_jpeg_ms']:6.2f}  ({r['png_kb']} KB)")
+                   f"  | png+b64 {r['png_b64_ms']:6.2f}  decode+jpeg {r['decode_jpeg_ms']:6.2f}  ({r['png_kb']} KB)"
+                   f"  | raw+zlib {r['raw_zlib_ms']:5.2f}  inflate {r['rgbz_decode_ms']:5.2f}  ({r['raw_kb']} KB)")
     m = micro()
     report(f"Frame(720p) {m['frame_720p_ms']} ms   Frame.of_pixels(720p) {m['frame_of_pixels_720p_ms']} ms   uname() {m['uname_us']} us")
 
@@ -129,7 +130,7 @@ def main(
     with log.open('a') as f:
         f.write(json.dumps(entry) + '\n')
     report(f'logged to {log}')
-    os._exit(0)     # the app's clients (HA, Redis) keep threads that would hold the exit
+    os._exit(0)     # client threads hold the exit
 
 
 if __name__ == '__main__':

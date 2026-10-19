@@ -23,9 +23,7 @@ class TextStyle:
     spacing: int        = 1
     line_width: int     = 20
 
-    # Within a width given by a parent (a Flex, a div with a width):
-    # 'fit' cuts the text to it, 'wrap' breaks it into lines, at most max_lines (0: any)
-    # and as many as fit the height given.
+    # In a given width: 'fit' cuts, 'wrap' breaks into lines (max_lines, 0: any).
     overflow: Literal['visible', 'fit', 'wrap'] = 'visible'
     max_lines: int      = 0
 
@@ -185,7 +183,7 @@ class TextBox(Box):
         self.hash = ('TextBox', self.value, style)
 
     def lines(self, max_w: int, max_h: int = UNBOUNDED) -> list[Frame]:
-        # The first line always, the others while they fit max_h. Sized by the lines drawn: any font.
+        # Lines that fit max_h, at least one.
         frames, h = [], -self.style.spacing
         for line in self._wrap(max_w):
             f = text(line, self.line_style)

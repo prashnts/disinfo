@@ -3,8 +3,7 @@ import sys
 
 
 def uname(level: int = 4):
-    # A name from where it's called: the caller and the frames above it, level - 1 of them.
-    # Calls from the same lines share it (a loop, a helper used twice): give those a name.
+    # Named after the call site. Calls from the same line share it.
     finfo = ''
     f = sys._getframe(1)
     for _ in range(level - 1):

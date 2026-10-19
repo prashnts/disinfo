@@ -249,7 +249,6 @@ def _news_deck(fs: FrameState):
     state.shown_summary = short_summary
     if new_text:
         state.summary_end_at = None
-    # Scoped instances are told apart by their arguments: named, two equal ones can't share state.
     uname = lambda x: f'news.deck.{x}'
     scroller = (VScroller(52, name=uname('summary.scroll'), speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
         .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))

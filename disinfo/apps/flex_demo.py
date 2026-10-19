@@ -138,7 +138,7 @@ def shapes_slide(fs: FrameState, width: int) -> Frame:
     values = [math.sin(t * 0.8 + i * 0.5) + 0.4 * math.sin(i * 1.7 + t * 2.1) for i in range(20)]
     value = 0.5 + 0.5 * math.sin(t * 0.6)
     return slide('shapes', w, vstack([
-        # Grow: the column takes the row's free space, its stretched items follow.
+        # The column grows, its items stretch.
         hstack([Ring(value, palette[0]), Grow(vstack([
             Sparkline(values, palette[1]),
             hstack([Swatch(palette[3], 10, 7, label='pill'), Swatch(palette[2], 10, 7, label='box', grow=1)], gap=2),

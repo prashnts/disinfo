@@ -44,6 +44,9 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 - A screen for esp-displays' T4-S3 (`di_pcstate`, 200x150, 3x on its 600x450 AMOLED, over USB): its own composer, the same sensors. The web server serves any screen to such displays: `/display/<screen>/stream.mjpg` (the newest frame, a whole-number scale to fit `w`x`h`), `/buttons` (shown on the display), `/press`.
 - Music slides, with album art cached and a Spotify mark ([`6ce6bbb`](https://github.com/prashnts/disinfo/commit/6ce6bbb)). Listening sessions (`utils/sessions.py`, [`d2d38aa`](https://github.com/prashnts/disinfo/commit/d2d38aa)).
 - GIF renderer: `--fps` and `--warmup` options (uncommitted).
+- **`/ws2/<screen>`, frames pushed to the panels** (uncommitted). Binary messages, a header (`seq`, `base_seq`, a box, an encoding) and the frame: raw RGB + zlib (`rgbz`), `png` or `rgb565z` (`?fmt=`). A frame is sent when it changes; a slow client skips to the newest. Telemetry goes up as text, acts come down as text, `{"alive"}` every 2 s when nothing changes, `{"resync": 1}` asks for a whole frame. `base_seq` is 0 for whole frames: regions of a frame can follow without changing the clients. `/ws` stays as it was. `disinfo/transport.py` has the formats.
+- The HUB75 websocket client speaks `/ws2` with `"protocol": "v2"` in its config, telemetry at `telemetry_hz` (30) (uncommitted). v1 stays the default. Whole frames and regions are put together in `websocket_rpi_matrix/frames.py`, which has no hardware imports.
+- Tests for the transport, `tests/` (uncommitted): the formats, regions applied by the client (in place, chained, for a frame it doesn't have), `/ws2` end to end (a whole frame on connect, changes pushed, identical frames skipped, resync, acts, PNG), `/ws` and `/png` from the same frame, the renderer skipping unchanged frames, and the server still receiving frames after a bad message. CI runs them with the `discore` tests.
 - Benchmark, `python -m disinfo.bench`: composes the configured screens at their size or the `--size`s given (forced awake, paced like the renderer, nothing published), then times today's transport (PNG + base64, decode + JPEG). Each run appends to `bench.jsonl` with the commit and a `--label` (uncommitted).
 - Docker image (`Dockerfile`, [`3c93d89`](https://github.com/prashnts/disinfo/commit/3c93d89)): `app` target, and a `demo` target with Redis and the sample config in one container ([`d0297a8`](https://github.com/prashnts/disinfo/commit/d0297a8)). The demo also runs `config/fake_server.py`, a tiny stand-in for Home Assistant (websocket: presence, light, weather and forecast, sun, moon, a playing speaker) and the ADS-B feed, so it shows weather and music without a home. Kagi news stays real (uncommitted). Fonts are fetched at build time, not on every container start, and Noto Color Emoji is installed from apt so `render_emoji` draws real emoji instead of a fallback box (uncommitted).
 
@@ -51,6 +54,7 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 - **`discore`**: the layout, text, scroller, sprite, stack, transition and widget components moved into their own package, `libs/discore`, with tests ([`e07faf9`](https://github.com/prashnts/disinfo/commit/e07faf9)).
 - **Docker images are built when a `v*` tag is pushed**, no longer on every push to `master`. A tag `vX` publishes `ghcr.io/prashnts/disinfo:X` and `:latest`, and `:X-demo` and `:demo`. The per-commit `sha` tags are gone (uncommitted).
 - CI is split: `test.yml` runs the `discore` tests on every push, and `docker.yml` runs the full app tests (and a render smoke test) before building (uncommitted).
+- **The renderer publishes raw frames** on Redis `di.frames.raw` (outside `di.pubsub.*`, whose subscribers read JSON): RGB + zlib, no PNG, no base64 (uncommitted). Unchanged frames are not published, but resent every second. The server keeps the newest frame of each screen and encodes it once per format for all clients; `/ws`, `/png` and the MJPEG stream use it. Renderers still publishing PNGs on `di.pubsub.frames` (hub75, udp, sixel, frekvens) work as before.
 - The MJPEG stream is decoded in `utils/mjpeg.py`, with a lighter printer card ([`beb38c2`](https://github.com/prashnts/disinfo/commit/beb38c2)).
 - **`discore` frame hashes are never computed from pixels unless asked** (uncommitted). A `Frame` without a hash used to hash all its pixels in the constructor (0.6 ms for a 720p image), even when `.tag()` replaced that hash right after, as the compositor does for the whole screen on every frame. Now it gets a token, equal only to itself. Hashes say what a frame shows: derived from the operation and its inputs, or from the source's identity; `Frame.of_pixels` hashes the pixels on request. `Frame.fallback` is hashed by its size. Given derived or source hashes: the scrollers' padded frames (they're rebuilt on every `set_frame`, a token there would restart the transitions around a scroller on every frame), `VisibilitySlider`, the transitions' blank frames, album art and metro icons. Checked by counting transition restarts over 240 frames on `di_pcstate` and the `disalon` layout: the same for every transition as with pixel hashes.
 - **`uname` reads the caller's frames with `sys._getframe`**, not `inspect.stack()`, which built a record of every frame on the stack and looked up its source file (uncommitted). 870 µs → 0.85 µs a call; awake, a frame makes about a dozen. The names are the same: checked against `inspect.stack()` on every call over 240 frames of `di_pcstate` and the `disalon` layout (about 1,400 calls each, no difference), and no name was used twice in one frame.
@@ -58,16 +62,24 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 
 ### Fixed
 - CI tests: `apt-get update` before installing system libraries, fonts fetched once before the render smoke test, the smoke test waits for the server instead of sleeping 5 s, and stops it afterwards. A server left running held the uv cache lock and hung the job's post-step for minutes (uncommitted).
+- One Ctrl+C stops the renderer again, and `maindev.py` with it (uncommitted). The painters of `draw_loop` were not daemon threads since [`1a9759e`](https://github.com/prashnts/disinfo/commit/1a9759e), so Python waited for them at exit; the news highlights' extraction thread neither.
+- `/ws` returns when the client disconnects, instead of logging a traceback (uncommitted).
+- The Home Assistant client printed its auth message, access token included, when connecting (uncommitted). It leaves the token out now.
 - GIF renderer timing (uncommitted). Each frame now lasts as long as it took on the wall clock, in milliseconds. The delays used to be passed as `durations=` (which Pillow ignores) and were computed in seconds ÷ 1000, so every GIF from 2023 to 2026 has 0–10 ms frames and plays too fast.
 
 ### Performance
 Measured with `disinfo.bench` on `di_pcstate` (awake, 120 frames at 12 fps), at 200x150 / 800x480 / 1280x720. Compose is the median.
 
-| Change | Compose (ms) | PNG + base64 (ms) | `Frame` of a 720p image | `uname()` |
+| Change | Compose (ms) | Transport encode (ms) | `Frame` of a 720p image | `uname()` |
 |---|---|---|---|---|
 | Baseline, 2026-10-19 (`07a4dc6` + the uncommitted flex layout) | 21 / 33 / 60 | 6 / 39 / 70 | 0.6 ms | 860 µs |
 | Frame hashes: tokens by default, no pixel hashing | 20 / 32 / 56 | 6 / 38 / 68 | 0.2 µs | 870 µs |
 | `uname` on `sys._getframe` | 10 / 25 / 49 | 6 / 38 / 69 | 0.2 µs | 0.85 µs |
+| Raw RGB + zlib instead of PNG + base64, unchanged frames skipped | 11 / 27 / 53 | 0.7 / 3.0 / 6.1 | 0.1 µs | 0.81 µs |
+
+On the full study layout at 60 fps the desk gets about 36 changed frames a second, 19 KB each (~700 KB/s): a frame is sent whole when 6% of its 16x16 tiles changed (median). Sending only those is next.
+
+The disinfo desk (Pi 4, 128x128) on the same PC server, `/ws` then `/ws2`: client CPU 124% → 59%, 686 → 25 KB/s received. Renderer and client at 60 fps instead of 40: 19 changed frames a second instead of 13, the client at 64%, the renderer at 31% of a core.
 
 ## [2026.08.15] - The panel on the wall
 

@@ -1,21 +1,24 @@
 import time
 import typer
-import base64
 
-from io import BytesIO
 from typing import Optional
 
 from ..compositor import compose_frame
 from discore.data_structures import FrameState
-from ..redis import publish
+from ..redis import db
+from ..transport import RAW_CHANNEL, pack_raw
 from disinfo.config import app_config, load_config
 
-def publish_frame(img, name: str):
-    with BytesIO() as buffer:
-        img.save(buffer, format='png')
-        encoded_img = base64.b64encode(buffer.getvalue()).decode()
+_published = {}     # name -> (rgb, at)
 
-    publish('di.pubsub.frames', action=name, payload=dict(img=encoded_img))
+def publish_frame(img, name: str):
+    # Unchanged frames are skipped, but sent every second for a server that just started.
+    rgb = img.convert('RGB').tobytes()
+    prev, at = _published.get(name, (None, 0))
+    if rgb == prev and time.monotonic() - at < 1:
+        return
+    _published[name] = (rgb, time.monotonic())
+    db.publish(RAW_CHANNEL, pack_raw(name, img.size, rgb))
 
 
 def main(fps: int = 60, stats: bool = False, n_frames: int = 0, config: Optional[list[str]] = None):

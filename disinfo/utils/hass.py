@@ -123,7 +123,7 @@ class HaWSClient(metaclass=UniqInstance):
         # self.connected = False
 
     def send(self, method: str, **kwargs) -> bool:
-        print(method, kwargs, self.connected)
+        print(method, {k: v for k, v in kwargs.items() if k != 'access_token'}, self.connected)
         if not self.connected:
             return False
         msg = {"type": method, **kwargs}

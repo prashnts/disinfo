@@ -1,11 +1,13 @@
 import io
+import time
+import zlib
 import base64
 import json
 import asyncio
 
 from collections import defaultdict
 from PIL import Image
-from fastapi import FastAPI, WebSocket, Body, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Response
 from starlette.staticfiles import StaticFiles
 from starlette.responses import RedirectResponse, StreamingResponse
 
@@ -13,12 +15,82 @@ from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
+from disinfo.transport import RAW_CHANNEL, ENCODINGS, PNG, RGBZ, unpack_raw, pack_ws2, encode
 from discore.imops import apply_gamma
 
 app = FastAPI()
 
-frames = {}
+frames = {}     # screen -> JSON payload, from renderers still publishing PNGs
 action_buffer = defaultdict(list)
+
+
+class Screen:
+    '''The newest frame of a screen, encoded once per format.'''
+
+    def __init__(self, seq: int, size: tuple[int, int], rgbz: bytes):
+        self.seq, self.size, self.rgbz = seq, size, rgbz
+        self.encoded = {RGBZ: rgbz}
+        self._rgb = None
+
+    @property
+    def rgb(self) -> bytes:
+        if self._rgb is None:
+            self._rgb = zlib.decompress(self.rgbz)
+        return self._rgb
+
+    def encode(self, encoding) -> bytes:
+        if encoding not in self.encoded:
+            self.encoded[encoding] = encode(self.rgb, self.size, encoding) if isinstance(encoding, int) else self._jpeg(*encoding[1:])
+        return self.encoded[encoding]
+
+    def image(self) -> Image.Image:
+        return Image.frombytes('RGB', self.size, self.rgb)
+
+    def _jpeg(self, w: int, h: int, quality: int) -> bytes:
+        im = self.image()
+        # Largest whole scale that fits: pixels stay square and sharp.
+        k = max(1, min(w // im.width, h // im.height)) if w and h else 1
+        with io.BytesIO() as out:
+            im.resize((im.width * k, im.height * k), Image.Resampling.NEAREST).save(out, format='jpeg', quality=quality)
+            return out.getvalue()
+
+screens: dict[str, Screen] = {}
+_loop = None
+_changed: dict[str, asyncio.Event] = {}
+
+def _wake(screen: str):
+    if ev := _changed.pop(screen, None):
+        ev.set()
+
+def notify(screen: str):
+    # From the pubsub threads. The loop is gone once the server stops.
+    if _loop and not _loop.is_closed():
+        try:
+            _loop.call_soon_threadsafe(_wake, screen)
+        except RuntimeError:
+            pass
+
+async def changed(screen: str, timeout: float):
+    ev = _changed.setdefault(screen, asyncio.Event())
+    try:
+        await asyncio.wait_for(ev.wait(), timeout)
+    except asyncio.TimeoutError:
+        pass
+
+def load_raw(message):
+    name, w, h, rgbz = unpack_raw(message['data'])
+    prev = screens.get(name)
+    if prev and prev.rgbz == rgbz:
+        return
+    screens[name] = Screen((prev.seq if prev else 0) + 1, (w, h), rgbz)
+    notify(name)
+
+_raw = db.pubsub(ignore_subscribe_messages=True)
+_raw.subscribe(**{RAW_CHANNEL: load_raw})
+def _keep_listening(e, pubsub, worker):
+    print(f'[frames] {e!r}')
+
+_raw.run_in_thread(sleep_time=0.01, daemon=True, exception_handler=_keep_listening)
 
 
 def load_frame(channel_name, message: PubSubMessage):
@@ -32,6 +104,25 @@ def load_frame(channel_name, message: PubSubMessage):
 
 def load_acts(channel_name, message: PubSubMessage):
     action_buffer[message.payload['dest']].append(message.payload['cmd'])
+    notify(message.payload['dest'])
+
+def v1_payload(screen: str) -> dict | None:
+    if s := screens.get(screen):
+        return {'img': base64.b64encode(s.encode(PNG)).decode(), 'acts': action_buffer[screen], 'd': screen}
+    return frames.get(screen)
+
+def screen_image(screen: str) -> Image.Image | None:
+    if s := screens.get(screen):
+        return s.image()
+    if screen in frames:
+        with io.BytesIO(base64.b64decode(frames[screen]['img'])) as incoming:
+            return Image.open(incoming).convert('RGB')
+
+def publish_telemetry(screen: str, msg: dict):
+    telemetry = msg.get('telemetry')
+    node_id = msg.get('_node')
+    if telemetry and node_id:
+        publish('di.pubsub.telemetry', action='update', payload={'data': telemetry, '_node': node_id})
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)
@@ -63,24 +154,73 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
     await websocket.accept()
 
     while True:
-        data = await websocket.receive_text()
+        try:
+            data = await websocket.receive_text()
+        except WebSocketDisconnect:
+            return
         try:
             msg = json.loads(data)
-            telemetry = msg.get('telemetry')
-            node_id = msg.get('_node')
-            if telemetry and node_id:
+            if msg.get('telemetry') and msg.get('_node'):
                 action_buffer[screen] = []
-                publish('di.pubsub.telemetry', action='update', payload={'data': telemetry, '_node': node_id})
+            publish_telemetry(screen, msg)
         except json.JSONDecodeError:
             pass
-        if screen in frames:
-            await websocket.send_text(json.dumps(frames[screen]))
+        if payload := v1_payload(screen):
+            await websocket.send_text(json.dumps(payload))
+
+@app.websocket('/ws2/{screen}')
+async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz'):
+    '''Pushes the newest frame as it changes: a slow client skips frames.
+    From the client: telemetry, or {"resync": 1} for a whole frame.'''
+    global _loop
+    _loop = asyncio.get_running_loop()
+    encoding = ENCODINGS[fmt]
+    await websocket.accept()
+    sent = 0
+
+    async def receive():
+        nonlocal sent
+        while True:
+            try:
+                msg = json.loads(await websocket.receive_text())
+            except json.JSONDecodeError:
+                continue
+            if msg.get('resync'):
+                sent = 0
+                _wake(screen)
+            publish_telemetry(screen, msg)
+
+    async def send():
+        nonlocal sent
+        last = time.monotonic()
+        while True:
+            s = screens.get(screen)
+            if s and s.seq != sent:
+                payload = await asyncio.to_thread(s.encode, encoding)
+                await websocket.send_bytes(pack_ws2(s.seq, 0, (0, 0, *s.size), encoding, payload))
+                sent, last = s.seq, time.monotonic()
+            if action_buffer[screen]:
+                acts, action_buffer[screen] = action_buffer[screen], []
+                await websocket.send_text(json.dumps({'acts': acts}))
+                last = time.monotonic()
+            if time.monotonic() - last > 2:
+                await websocket.send_text(json.dumps({'alive': sent}))
+                last = time.monotonic()
+            await changed(screen, 1)
+
+    tasks = [asyncio.create_task(receive()), asyncio.create_task(send())]
+    try:
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    finally:
+        for t in tasks:
+            t.cancel()
 
 @app.get('/png/{screen}')
 async def get_png_salon(screen: str, scale: int = 1, gamma: float = 1, fmt: str = 'png'):
-    bytes_ = base64.b64decode(frames[screen]['img'])
-    with io.BytesIO(bytes_) as incoming, io.BytesIO() as outgoing:
-        bim = Image.open(incoming).convert('RGB')
+    bim = screen_image(screen)
+    if bim is None:
+        return Response(status_code=404)
+    with io.BytesIO() as outgoing:
         bim = apply_gamma(bim, gamma)
         bim = bim.resize((bim.width * scale, bim.height * scale), Image.Resampling.NEAREST)
         bim.save(outgoing, format=fmt)
@@ -105,6 +245,8 @@ _jpegs = {}     # screen -> (png b64, w, h, quality, jpeg): one encode per frame
 
 
 def screen_jpeg(screen: str, w: int, h: int, quality: int) -> bytes | None:
+    if s := screens.get(screen):
+        return s.encode(('jpeg', w, h, quality))
     if screen not in frames:
         return None
     b64 = frames[screen]['img']
