@@ -139,10 +139,14 @@ def server():
 def publish(server, name: str, img: Image.Image):
     server.load_raw({'data': pack_raw(name, img.size, img.tobytes())})
 
+def next_bytes(ws) -> bytes:
+    # Text first ({"display"}, acts, alive): the next frame.
+    while 'bytes' not in (msg := ws.receive()):
+        pass
+    return msg['bytes']
+
 def receive_frame(ws, f):
-    msg = ws.receive()
-    assert 'bytes' in msg, msg
-    assert f.apply(msg['bytes'])
+    assert f.apply(next_bytes(ws))
 
 def test_ws2_whole_frame_on_connect(server):
     srv, client = server
@@ -193,10 +197,10 @@ def test_ws2_sends_only_what_changed(server):
     publish(srv, 't.regions', a)
     f = frames.FrameAssembler()
     with client.websocket_connect('/ws2/t.regions') as ws:
-        whole = ws.receive_bytes()
+        whole = next_bytes(ws)
         f.apply(whole)
         publish(srv, 't.regions', b)
-        msg = ws.receive_bytes()
+        msg = next_bytes(ws)
     _, seq, base_seq, x, y, w, h, _ = transport.WS2_HEADER.unpack_from(msg)
     assert base_seq == f.seq and (x, y, w, h) == (32, 16, 16, 32) and len(msg) < len(whole) / 3
     assert f.apply(msg) and same(f.frame, b)
@@ -221,9 +225,9 @@ def test_ws2_mostly_changed_is_sent_whole(server):
     srv, client = server
     publish(srv, 't.most', picture((64, 48), 1))
     with client.websocket_connect('/ws2/t.most') as ws:
-        ws.receive_bytes()
+        next_bytes(ws)
         publish(srv, 't.most', picture((64, 48), 2))
-        assert transport.WS2_HEADER.unpack_from(ws.receive_bytes())[2] == 0
+        assert transport.WS2_HEADER.unpack_from(next_bytes(ws))[2] == 0
 
 def test_too_far_behind_gets_the_whole_frame(server):
     srv, _ = server
@@ -274,12 +278,90 @@ def test_frames_keep_coming_after_a_bad_message(server):
     assert same(srv.screens['t.after'].image(), a)
 
 
+# Touch: the server finds the target under it.
+
+def test_touch_down_and_up_on_a_target_acts(server, monkeypatch):
+    srv, _ = server
+    acted, pressed = [], []
+    monkeypatch.setattr(srv, 'act', lambda action, payload: acted.append((action, payload)))
+    monkeypatch.setattr(srv, 'publish', lambda ch, action, payload: pressed.append(payload['pressed']))
+    srv.targets['t.touch'] = [[0, 0, 100, 100, 'big', None], [10, 10, 20, 20, 'small', {'n': 1}]]
+    srv.touched('t.touch', 15, 15, 'down')
+    srv.touched('t.touch', 16, 16, 'move')
+    srv.touched('t.touch', 16, 16, 'up')
+    assert acted == [('small', {'n': 1})]                    # the one on top
+    assert pressed == [['small', {'n': 1}], None]           # held, then let go (a move inside says nothing)
+
+def test_touch_slid_off_or_let_go_elsewhere_does_nothing(server, monkeypatch):
+    srv, _ = server
+    acted = []
+    monkeypatch.setattr(srv, 'act', lambda action, payload: acted.append(action))
+    monkeypatch.setattr(srv, 'publish', lambda *a, **k: None)
+    srv.targets['t.off'] = [[10, 10, 20, 20, 'small', None]]
+    srv.touched('t.off', 15, 15, 'down')
+    srv.touched('t.off', 50, 50, 'move')                    # slid off: cancelled
+    srv.touched('t.off', 15, 15, 'up')
+    srv.touched('t.off', 15, 15, 'down')
+    srv.touched('t.off', 90, 90, 'up')                      # let go elsewhere
+    srv.touched('t.off', 90, 90, 'down')                    # nothing there
+    srv.touched('t.off', 90, 90, 'up')
+    assert acted == []
+
+def test_touch_comes_over_ws2(server, monkeypatch):
+    srv, client = server
+    seen = []
+    monkeypatch.setattr(srv, 'touched', lambda *a: seen.append(a))
+    publish(srv, 't.wstouch', picture())
+    with client.websocket_connect('/ws2/t.wstouch') as ws:
+        next_bytes(ws)
+        ws.send_text(json.dumps({'touch': [3, 4, 'down']}))
+        t = time.monotonic()
+        while not seen and time.monotonic() - t < 2:
+            time.sleep(0.01)
+    assert seen == [('t.wstouch', 3, 4, 'down')]
+
+
+def test_display_sensors_go_to_home_assistant(server, monkeypatch):
+    from disinfo.utils import ha_states
+    srv, client = server
+    posted = []
+    monkeypatch.setattr(ha_states.app_config, 'ha_token', type('t', (), {'get_secret_value': lambda self: 'x'})())
+    monkeypatch.setattr(ha_states.requests, 'post', lambda url, **k: posted.append((url, k['json'])))
+    publish(srv, 't.sensors', picture())
+    with client.websocket_connect('/ws2/t.sensors') as ws:
+        next_bytes(ws)
+        ws.send_text(json.dumps({'_node': 'dientry', 'telemetry': json.dumps({'temperature': 22.5, 'lux': 120.0, 'odd': 1})}))
+        t = time.monotonic()
+        while len(posted) < 2 and time.monotonic() - t < 3:
+            time.sleep(0.02)
+    states = {url.rsplit('/', 1)[1]: j for url, j in posted}
+    assert sorted(states) == ['sensor.guiton_bme680_temperature', 'sensor.guiton_dientry_lux']     # ESPHome's ids
+    t = states['sensor.guiton_bme680_temperature']
+    assert t['state'] == 21.5 and t['attributes']['unit_of_measurement'] == '°C' and t['attributes']['device_class'] == 'temperature'
+    ha_states.publish('elsewhere', {'lux': 3})
+    assert posted[-1][0].endswith('/api/states/sensor.elsewhere_lux')
+
+
+def test_display_goes_dark_when_no_one_is_there(server):
+    from disinfo.drat.app_states import PubSubMessage
+    srv, client = server
+    publish(srv, 't.dark', picture())
+    srv.load_targets('di.pubsub.targets', PubSubMessage(action='t.dark', payload={'targets': [], 'awake': True}))
+    with client.websocket_connect('/ws2/t.dark') as ws:
+        assert abs(json.loads(ws.receive_text())['time'] - time.time()) < 5      # the clock, for displays without NTP
+        assert json.loads(ws.receive_text()) == {'display': {'on': True}}
+        next_bytes(ws)
+        srv.load_targets('di.pubsub.targets', PubSubMessage(action='t.dark', payload={'targets': [], 'awake': False}))
+        assert json.loads(ws.receive_text()) == {'display': {'on': False}}
+
+
 # The renderer.
 
 def test_renderer_skips_unchanged_frames(monkeypatch):
     from disinfo.renderers import background
     sent, now = [], [100.0]
     monkeypatch.setattr(background, 'db', type('db', (), {'publish': lambda self, ch, data: sent.append(data)})())
+    monkeypatch.setattr(background, 'publish', lambda *a, **k: None)
     monkeypatch.setattr(background, 'time', type('clock', (), {'monotonic': staticmethod(lambda: now[0])}))
     a, b = picture(seed=1), picture(seed=2)
     background.publish_frame(a, 't.render')

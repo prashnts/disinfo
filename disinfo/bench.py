@@ -3,6 +3,8 @@
     DI_CONFIG_PATH=.config-pcstate.json python -m disinfo.bench --size 800x480 --label "..." 2>&1 >/dev/null
 
 Nothing is published. Forced awake unless --as-is. Results append to bench.jsonl, the report is on stderr.
+--at "2026-10-19 17:00" runs the screens' clock from that time (the sky, the clocks the same each run);
+what comes from Home Assistant (weather, music, printers) is still now's.
 '''
 import io
 import os
@@ -20,6 +22,7 @@ from typing import Optional
 
 import typer
 import zlib
+import pendulum
 from PIL import Image
 
 from discore.data_structures import FrameState
@@ -62,15 +65,23 @@ def micro() -> dict:
         'uname_us': round(timed(lambda: uname(), 1000) * 1e3, 2),
     }
 
+_clock = None      # (the time asked for, when the run started)
+
+def frame_state(cfg) -> FrameState:
+    if not _clock:
+        return FrameState.create(cfg)
+    at, t0 = _clock
+    return FrameState(tick=time.time(), now=at.add(seconds=time.time() - t0), config=cfg)
+
 def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cProfile.Profile]) -> dict:
     for _ in range(warmup):
-        compositor.compose_frame(FrameState.create(cfg))
+        compositor.compose_frame(frame_state(cfg))
     ts, rgbs = [], []
     for _ in range(frames):
         t = time.perf_counter()
         if profile:
             profile.enable()
-        im = compositor.compose_frame(FrameState.create(cfg))
+        im = compositor.compose_frame(frame_state(cfg))
         if profile:
             profile.disable()
         ts.append((time.perf_counter() - t) * 1e3)
@@ -112,9 +123,13 @@ def main(
     as_is: bool = False,
     profile: bool = False,
     label: str = '',
+    at: str = '',
     log: Path = Path('bench.jsonl'),
 ):
     # --config and --size can be repeated.
+    global _clock
+    if at:
+        _clock = (pendulum.parse(at, tz=pendulum.local_timezone()), time.time())
     if not as_is:
         compositor.should_turn_on_display = lambda fs: True
     configs = [load_config(c) for c in config or []] or [app_config]
@@ -140,7 +155,7 @@ def main(
     rev = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
     dirty = bool(subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True).stdout.strip())
     entry = {'at': datetime.now().isoformat(timespec='seconds'), 'rev': rev + ('+' if dirty else ''), 'label': label,
-             'frames': frames, 'awake': not as_is, 'screens': results, 'micro': m}
+             'frames': frames, 'awake': not as_is, 'clock': at or None, 'screens': results, 'micro': m}
     with log.open('a') as f:
         f.write(json.dumps(entry) + '\n')
     report(f'logged to {log}')

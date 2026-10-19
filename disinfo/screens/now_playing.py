@@ -22,7 +22,9 @@ from discore import ease
 from discore.data_structures import FrameState
 from discore.cairo import load_svg
 
-from disinfo.utils.hass import get_entity
+from disinfo.utils.hass import get_entity, get_entities
+from disinfo.drat.app_states import TouchStateManager
+from discore.button import button, ButtonStyle
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.sessions import sessions
 from .music import art_cache
@@ -37,11 +39,22 @@ def _tint(frame: Frame, color: str) -> Frame:
     img.putalpha(frame.image.getchannel('A'))
     return Frame(img, ('tint', color, frame.hash))
 
-def _chip(icon: Frame) -> Frame:
-    return div(icon, style=DivStyle(padding=2, radius=2, background="#000000A8"))
+def _next_icon() -> Frame:
+    # >|, 5x5 as the others
+    img = Image.new('RGBA', (5, 5), (0, 0, 0, 0))
+    for y, row in enumerate(['X..X.', 'XX.X.', 'XXXX.', 'XX.X.', 'X..X.']):
+        for x, c in enumerate(row):
+            if c == 'X':
+                img.putpixel((x, y), (255, 255, 255, 255))
+    return Frame(img, ('next-icon',))
 
-play_chip = _chip(_tint(play_icon, '#3DFF8B'))
-pause_chip = _chip(_tint(pause_icon, '#FFC23D'))
+next_icon = _next_icon()
+chip_style = ButtonStyle(normal=DivStyle(padding=2, radius=2, background='#000000A8'),
+                         pressed=DivStyle(padding=2, radius=2, background='#FFFFFF90'))
+
+def control(fs: FrameState, icon: Frame, service: str, entity_id: str) -> Frame:
+    payload = {'service': f'media_player.{service}', 'target': {'entity_id': entity_id}}
+    return button(icon, 'ha.call', payload, pressed=TouchStateManager().is_pressed(fs, 'ha.call', payload), style=chip_style)
 
 
 @throttle(1033)
@@ -49,7 +62,10 @@ def get_state(fs: FrameState):
     state = {}
     state['is_visible'] = False
 
+    # The speaker's, or whichever player is playing.
     s = get_entity(fs.config.speaker_entity)
+    if not s or s.state != 'playing':
+        s = next((e for e in get_entities(r'media_player\.') if e.state == 'playing'), s)
 
     if not s:
         return state
@@ -161,8 +177,12 @@ def composer(fs: FrameState):
             anchor='bl'
         ),
     )
-    # Icons sit on the unblurred artwork.
-    card = composite_at(play_chip if s['playing'] else pause_chip, card, 'tl', dx=1, dy=1)
+    # Icons sit on the unblurred artwork: play/pause and next, touchable.
+    controls = hstack([
+        control(fs, _tint(play_icon, '#3DFF8B') if s['playing'] else _tint(pause_icon, '#FFC23D'), 'media_play_pause', s['entity_id']),
+        control(fs, next_icon, 'media_next_track', s['entity_id']),
+    ], gap=1)
+    card = composite_at(controls, card, 'tl', dx=1, dy=1)
     if s['is_spotify']:
         card = composite_at(spotify_icon, card, 'tr', dx=-1, dy=1)
     return card.tag('music')

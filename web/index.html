@@ -40,6 +40,10 @@
             width: calc(200px * 2);
         }
 
+        .screens #entry {
+            width: calc(400px * 2);
+        }
+
         #status {
             color: #888;
             font-family: monospace;
@@ -52,6 +56,10 @@
 
         canvas:not(.live) {
             display: none;
+        }
+
+        canvas {
+            touch-action: none;
         }
 
         .remote_button {
@@ -88,6 +96,7 @@
             <canvas id='study'></canvas>
             <canvas id='salon'></canvas>
             <canvas id='pcstate'></canvas>
+            <canvas id='entry'></canvas>
         </div>
         <div id='controls'>
         </div>
@@ -168,6 +177,19 @@
                 seq = next;
             }
 
+            // Touches, in the frame's px: the server finds what's under them (buttons drawn by disinfo).
+            const touch = (phase) => (e) => {
+                if (phase !== 'down' && !canvas.hasPointerCapture(e.pointerId)) return;
+                if (phase === 'down') canvas.setPointerCapture(e.pointerId);
+                const r = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - r.left - canvas.clientLeft) * canvas.width / canvas.clientWidth);
+                const y = Math.floor((e.clientY - r.top - canvas.clientTop) * canvas.height / canvas.clientHeight);
+                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({touch: [x, y, phase]}));
+            };
+            canvas.onpointerdown = touch('down');
+            canvas.onpointermove = touch('move');
+            canvas.onpointerup = touch('up');
+
             ws.onmessage = function (event) {
                 // Text: acts, alive. Frames are decoded in order.
                 if (typeof event.data !== 'string') drawing = drawing.then(() => apply(event.data));
@@ -191,6 +213,7 @@
         connect('disalon', 'salon');
         // Each server shows the screens it renders, the others stay hidden.
         connect('di_pcstate', 'pcstate');
+        connect('dientry', 'entry');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
@@ -255,10 +278,6 @@
         function App(props) {
             return html`
                 <div>
-                    <${RemoteButton} action="up" />
-                    <${RemoteButton} action="left" />
-                    <${RemoteButton} action="right" />
-                    <${RemoteButton} action="down" />
                     <${RemoteButton} action="show_metro" />
                     <${RemoteButton} action="show_twentytwo" />
                     <${RemoteButton} action="screencap" />

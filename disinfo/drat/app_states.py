@@ -132,6 +132,20 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 setattr(self.state, action, not getattr(self.state, action))
 
 
+class TouchState(AppBaseModel):
+    pressed: dict[str, list | None] = {}    # screen -> [action, payload] of the target held down (web/server.py)
+
+class TouchStateManager(PubSubStateManager[TouchState]):
+    model = TouchState
+    channels = ('di.pubsub.touch',)
+
+    def process_message(self, channel: str, data: PubSubMessage):
+        self.state.pressed[data.action] = data.payload.get('pressed')
+
+    def is_pressed(self, fs: FrameState, action: str, payload=None) -> bool:
+        return self.state.pressed.get(fs.config.name) == [action, payload]
+
+
 brightness_min: float = 10
 brightness_max: float = 90
 brightness_curve = [

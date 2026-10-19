@@ -153,13 +153,13 @@ def div(
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             i.alpha_composite(bg.image, (0, 0))
-        composite_at(frame, i, anchor=style.anchor, dx=o_x, dy=o_y)
+        targets = composite_at(frame, i, anchor=style.anchor, dx=o_x, dy=o_y).targets
     else:
         frame_div = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             frame_div.alpha_composite(bg.image, (0, 0))
-        composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y, frost=style.background_blur)
+        targets = composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y, frost=style.background_blur).targets
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(
@@ -189,7 +189,7 @@ def div(
         else:
             i.alpha_composite(frame_div, (0, 0))
 
-    return Frame(i, hash=('div', style, frame))
+    return Frame(i, hash=('div', style, frame), targets=targets)
 
 def _edges(value) -> tuple:
     return (value,) * 4 if isinstance(value, int) else tuple(value)

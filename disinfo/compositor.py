@@ -227,12 +227,18 @@ def compose_display_frame(fs: FrameState):
     return Frame(image).tag(awake)
 
 
-def compose_frame(fs: FrameState):
+def compose(fs: FrameState) -> Frame:
+    '''The screen, with its touch targets.'''
     with scope(fs.config.name):
         if fs.config.name == 'picowpanel':
             frame = compose_small_frame(fs)
         elif fs.config.name == 'di_pcstate':
             frame = compose_display_frame(fs)
+        elif fs.config.name == 'dientry':
+            frame = screens.entry.compose(fs)
         else:
             frame = compose_big_frame(fs)
-        return FadeIn('compose', duration=0.8).mut(frame).draw(fs).image
+        return FadeIn('compose', duration=0.8).mut(frame).draw(fs)
+
+def compose_frame(fs: FrameState):
+    return compose(fs).image

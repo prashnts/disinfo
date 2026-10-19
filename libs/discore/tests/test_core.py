@@ -198,3 +198,46 @@ def test_scroller_keeps_its_hash_while_the_content_does():
     first = s.set_frame(words()).draw(0.0)
     assert s.set_frame(words()).draw(0.1).hash == first.hash
     assert s.set_frame(text('other words', TextStyle())).draw(0.2).hash != first.hash
+
+
+from discore.elements import Target
+from discore.button import button
+from discore.layouts import place_at
+
+def boxes(f):
+    return [(t.x, t.y, t.w, t.h, t.action) for t in f.targets]
+
+def test_button_is_touchable_all_over():
+    b = button(solid((255, 0, 0, 255), (10, 4)), 'go', {'n': 1})
+    assert boxes(b) == [(0, 0, b.width, b.height, 'go')] and b.targets[0].payload == {'n': 1}
+
+def test_targets_follow_the_layouts():
+    b = button(solid((255, 0, 0, 255), (4, 4)), 'b')          # 14 x 12: padding 3/5, the border inside
+    w, h = b.size
+    a = solid((0, 255, 0, 255), (6, 6))
+    assert boxes(hstack([a, b], gap=2, align='top')) == [(8, 0, w, h, 'b')]
+    assert boxes(vstack([a, b], gap=1)) == [(0, 7, w, h, 'b')]
+    assert boxes(hstack([a, Spacer(), b], width=40, align='top')) == [(40 - w, 0, w, h, 'b')]       # Flex
+    assert boxes(div(b, padding=2)) == [(2, 2, w, h, 'b')]
+    assert boxes(composite_at(b, solid((0, 0, 0, 255), (50, 50)), 'br')) == [(50 - w, 50 - h, w, h, 'b')]
+    assert boxes(place_at(b, solid((0, 0, 0, 255), (50, 50)), 10, 20, 'tl')) == [(10, 20, w, h, 'b')]
+    assert boxes(b.trim(left=1, upper=2)) == [(-1, -2, w, h, 'b')]
+    assert boxes(b.rescale(2)) == [(0, 0, 2 * w, 2 * h, 'b')]
+
+def test_nothing_to_touch_while_it_moves():
+    from discore.transitions import FadeIn
+    b = button(solid((255, 0, 0, 255), (4, 4)), 'b')
+    fade = FadeIn('test.fade.targets', duration=10)
+    assert fade.mut(b).draw(FrameState(tick=time.time(), now=None)).targets == ()
+    fade.pos = 1
+    assert boxes(fade.draw(FrameState(tick=time.time() + 20, now=None))) == boxes(b)
+
+def test_targets_scroll_with_the_scroller():
+    from discore.scroller import HScroller
+    row = hstack([solid((0, 0, 0, 255), (30, 4)), button(solid((255, 0, 0, 255), (4, 4)), 'b')], align='top')
+    s = HScroller(size=20, name='test.scroll.targets', static_if_small=False).set_frame(row)
+    s.pos = 20 + 25                                    # the frame is padded by size: 25 px into the row
+    t = s.draw(0.0).targets
+    assert [(x.x, x.action) for x in t] == [(30 - 25, 'b')]
+    s.pos = 20 + 0
+    assert s.draw(0.0).targets == ()                   # out of view

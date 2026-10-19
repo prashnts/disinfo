@@ -15,6 +15,8 @@ from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
+from disinfo.utils.hass import HaWS
+from disinfo.utils import ha_states
 from disinfo.transport import RAW_CHANNEL, ENCODINGS, PNG, RGBZ, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds
 from discore.imops import apply_gamma
 
@@ -127,6 +129,39 @@ def load_frame(channel_name, message: PubSubMessage):
     }
     frames[dest] = payload
 
+targets = {}    # screen -> [[x, y, w, h, action, payload], ...] from the renderer, in the frame's px
+awake = {}      # screen -> someone's there (its presence sensors): a display's backlight
+held = {}       # screen -> the target a touch went down on
+
+def load_targets(channel_name, message: PubSubMessage):
+    targets[message.action] = message.payload['targets']
+    if awake.get(message.action) != message.payload.get('awake', True):
+        awake[message.action] = message.payload.get('awake', True)
+        notify(message.action)
+
+def touched(screen: str, x: int, y: int, phase: str):
+    '''A touch on a screen's frame: the target under it held on down, its action done on up inside it.'''
+    hit = next((t for t in reversed(targets.get(screen, [])) if t[0] <= x < t[0] + t[2] and t[1] <= y < t[1] + t[3]), None)
+    if phase == 'down':
+        held[screen] = hit
+    elif phase == 'move':
+        if not held.get(screen) or hit == held[screen]:
+            return
+        held[screen] = None         # slid off it: no press
+    elif phase == 'up':
+        t = held.pop(screen, None)
+        if t and t == hit:
+            act(t[4], t[5])
+    t = held.get(screen)
+    publish('di.pubsub.touch', action=screen, payload={'pressed': [t[4], t[5]] if t else None})
+
+def act(action: str, payload):
+    # ha.call: a Home Assistant service, from here (one server; the renderers are many). Else as the remote's.
+    if action == 'ha.call':
+        HaWS().call_service(payload['service'], target=payload.get('target', {}), service_data=payload.get('data', {}))
+    else:
+        publish('di.pubsub.remote', action=action, payload=payload or {})
+
 def load_acts(channel_name, message: PubSubMessage):
     action_buffer[message.payload['dest']].append(message.payload['cmd'])
     notify(message.payload['dest'])
@@ -151,6 +186,7 @@ def publish_telemetry(screen: str, msg: dict):
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)
+PubSubManager().attach('targets', ('di.pubsub.targets',), load_targets)
 
 @app.get('/')
 async def index() -> RedirectResponse:
@@ -213,15 +249,23 @@ async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz'):
             if msg.get('resync'):
                 sent = 0
                 _wake(screen)
+            if touch := msg.get('touch'):
+                touched(screen, *touch)
             publish_telemetry(screen, msg)
+            if msg.get('telemetry') and msg.get('_node'):    # an ESP display's sensors: Home Assistant's too
+                asyncio.create_task(asyncio.to_thread(ha_states.publish, msg['_node'], json.loads(msg['telemetry'])))
 
     async def send():
         nonlocal sent
-        last = time.monotonic()
+        last, told = time.monotonic(), None
+        await websocket.send_text(json.dumps({'time': time.time()}))     # displays without NTP (over USB) set their clock
         while True:
             # After each send, look again: what came during it woke no one.
             s = screens.get(screen)
-            if s and s.seq != sent:
+            if awake.get(screen, True) != told:
+                told = awake.get(screen, True)
+                await websocket.send_text(json.dumps({'display': {'on': told}}))
+            elif s and s.seq != sent:
                 await websocket.send_bytes(await asyncio.to_thread(s.message, sent, encoding))
                 sent, last = s.seq, time.monotonic()
             elif action_buffer[screen]:

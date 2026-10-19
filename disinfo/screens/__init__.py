@@ -11,6 +11,7 @@ from . import trash_pickup
 from . import dishwasher
 from . import washing_machine
 from . import aviator
+from . import entry
 
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     'dishwasher',
     'washing_machine',
     'aviator',
+    'entry',
 ]

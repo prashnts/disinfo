@@ -223,17 +223,17 @@ def _news_deck(fs: FrameState):
         extract_highlights(st)
 
     title_style = TextStyle(
-        font=fonts.greybeard if not state.details else fonts.microfont_35_mono,
+        font=fonts.greybeard if not state.details else fonts.microfont_35_reg,
         width=112,
         color="#A3A7A8",
-        spacing=2,
+        spacing=1,
         outline=1,
         outline_color="#000000A1")
     sumry_style = TextStyle(
-        font=fonts.greybeard,
+        font=fonts.scientifica__r,
         width=112,
         color="#CACACACC",
-        spacing=1,
+        spacing=0,
         outline=1,
         outline_color="#000000A1")
 
@@ -250,7 +250,7 @@ def _news_deck(fs: FrameState):
     if new_text:
         state.summary_end_at = None
     uname = lambda x: f'news.deck.{x}'
-    scroller = (VScroller(52, name=uname('summary.scroll'), speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
+    scroller = (VScroller(42, name=uname('summary.scroll'), speed=0.018, delta=1, pause_at_loop=True, scrollbar=False)
         .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
         .reset_position(new_text or not state.details))
     summary_frame = scroller.draw(fs.tick)

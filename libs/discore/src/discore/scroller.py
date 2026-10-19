@@ -4,7 +4,7 @@ import math
 from PIL import Image
 from typing import Optional
 
-from .elements import Frame
+from .elements import Frame, shifted
 from .layers import rounded_rectangle
 from .data_structures import ScopedInstance
 from .func import uname
@@ -156,7 +156,10 @@ class Scroller(metaclass=ScopedInstance):
                 i.alpha_composite(thumb, (i.width - thumb.width, pos))
             if self._horizontal:
                 i.alpha_composite(thumb, (pos, i.height - thumb.height))
-        return Frame(i, hash=(self.__class__.__name__, self.size, self.frame.hash))
+        x0, y0, *_ = self._get_crop_rect()
+        targets = tuple(t for t in shifted(self.frame.targets, -x0, -y0)     # the ones in view
+                        if t.x < i.width and t.y < i.height and t.x + t.w > 0 and t.y + t.h > 0)
+        return Frame(i, hash=(self.__class__.__name__, self.size, self.frame.hash), targets=targets)
 
 class HScroller(Scroller):
     _horizontal = True
@@ -199,7 +202,7 @@ class HScroller(Scroller):
         w = f.width + self.size
         i = Image.new('RGBA', (w, f.height), (0, 0, 0, 0))
         i.alpha_composite(f.image, (self.size, 0))
-        return Frame(i, hash=('HScroller.pad', self.size, f.hash))
+        return Frame(i, hash=('HScroller.pad', self.size, f.hash), targets=shifted(f.targets, self.size, 0))
 
 class VScroller(Scroller):
     _vertical = True
@@ -241,4 +244,4 @@ class VScroller(Scroller):
         h = f.height + self.size
         i = Image.new('RGBA', (f.width, h), (0, 0, 0, 0))
         i.alpha_composite(f.image, (0, self.size))
-        return Frame(i, hash=('VScroller.pad', self.size, f.hash))
+        return Frame(i, hash=('VScroller.pad', self.size, f.hash), targets=shifted(f.targets, 0, self.size))

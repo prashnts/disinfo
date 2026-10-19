@@ -69,6 +69,10 @@ class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
         self.curr_value = value
         return self
 
+    def settled(self) -> tuple:
+        '''The value's touch targets once it's all in: nothing can be touched while it moves.'''
+        return self.curr_value.targets if self.pos >= 1 and isinstance(self.curr_value, Frame) else ()
+
     def reset(self):
         self.pos = 0
         self.running = True
@@ -104,7 +108,7 @@ class FadeIn(TimedTransition[Frame]):
         self.tick(fs.tick)
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         composite_at(self.prev_value, i, 'mm')
-        return Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash)
+        return Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash, targets=self.settled())
 
 class ScaleIn(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:
@@ -113,7 +117,7 @@ class ScaleIn(TimedTransition[Frame]):
         new_size = (ensure_unity_int(fw * self.pos), ensure_unity_int(fh * self.pos))
         if new_size[1] == 1 or new_size[0] == 1:
             return None
-        return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash)
+        return Frame(self.curr_value.image.resize(size=new_size), hash=self.hash, targets=self.settled())
 
 class Resize(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:
@@ -144,7 +148,7 @@ class Resize(TimedTransition[Frame]):
             composite_at(self.prev_value.opacity(opacity_prev).resize(new_size), img, 'mm')
         composite_at(current.opacity(opacity_curr).resize(new_size), img, 'mm')
 
-        return Frame(img, hash=self.hash)
+        return Frame(img, hash=self.hash, targets=self.settled() if self.curr_value else ())
 
 
 class ScaleOut(TimedTransition[Frame]):
