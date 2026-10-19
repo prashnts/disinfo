@@ -109,6 +109,23 @@ def sun_times(t, config):
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
+# Sun altitude (degrees) -> a dark sky color, for backgrounds.
+sky_stops = [
+    (-18, (5, 7, 15)),      # night
+    (-12, (11, 14, 36)),    # nautical twilight
+    (-6, (26, 22, 52)),     # civil twilight
+    (0, (52, 32, 44)),      # sunrise, sunset
+    (8, (36, 48, 74)),
+    (25, (24, 52, 88)),     # day
+]
+
+@throttle(60_000)
+def sky_color(fs) -> str:
+    alt = math.degrees(sun_times(fs.now, fs.config)[2]['altitude'])
+    xs = [a for a, _ in sky_stops]
+    rgb = [round(np.interp(alt, xs, [c[i] for _, c in sky_stops])) for i in range(3)]
+    return '#{:02x}{:02x}{:02x}'.format(*rgb)
+
 def analog_clock(fs, style: AnalogClockStyle):
     t = fs.now
     w = style.width or fs.config.width

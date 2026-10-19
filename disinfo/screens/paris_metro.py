@@ -130,7 +130,7 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
         font=fonts.tamzen__rs.font,
         anchor='mm')
 
-    return Frame(img)
+    return Frame(img, hash=('metro_icon', line_name, outline, has_problems))
 
 @cache
 def metro_status_icon(line_name: str, issues: bool):

@@ -1,11 +1,12 @@
 from dataclasses import dataclass, replace as dc_replace
 from textwrap import wrap
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 from functools import lru_cache
 
 from PIL import Image, ImageDraw
 
-from .elements import Frame, TrimParam
+from .elements import Frame, TrimParam, Box, UNBOUNDED
+from .layouts import vstack
 from . import fonts
 from .fonts import TTFFont
 
@@ -21,6 +22,12 @@ class TextStyle:
     # Following are applicable to mutliline text.
     spacing: int        = 1
     line_width: int     = 20
+
+    # Within a width given by a parent (a Flex, a div with a width):
+    # 'fit' cuts the text to it, 'wrap' breaks it into lines, at most max_lines (0: any)
+    # and as many as fit the height given.
+    overflow: Literal['visible', 'fit', 'wrap'] = 'visible'
+    max_lines: int      = 0
 
     # Hacks to make some fonts look better
     trim: Union[int, TrimParam] = 0
@@ -167,9 +174,66 @@ class MultiLineText(Text):
         self.populate_frame(im)
 
 
+class TextBox(Box):
+    '''Text that fits the width its parent gives it, see TextStyle.overflow.'''
+    shrink = 1
+
+    def __init__(self, value: Optional[str], style: TextStyle):
+        self.value = value or ''
+        self.style = style
+        self.line_style = dc_replace(style, overflow='visible')
+        self.hash = ('TextBox', self.value, style)
+
+    def lines(self, max_w: int, max_h: int = UNBOUNDED) -> list[Frame]:
+        # The first line always, the others while they fit max_h. Sized by the lines drawn: any font.
+        frames, h = [], -self.style.spacing
+        for line in self._wrap(max_w):
+            f = text(line, self.line_style)
+            if frames and h + self.style.spacing + f.height > max_h:
+                break
+            frames.append(f)
+            h += self.style.spacing + f.height
+        return frames
+
+    def _wrap(self, max_w: int) -> list[str]:
+        if self.style.overflow == 'fit':
+            return [_cut(self.value, self.line_style, max_w)]
+        lines = ['']
+        for word in self.value.split():
+            line = f'{lines[-1]} {word}'.strip()
+            if _width(line, self.line_style) <= max_w or not lines[-1]:
+                lines[-1] = line
+            elif len(lines) < (self.style.max_lines or len(lines) + 1):
+                lines.append(word)
+            else:
+                break
+        return [_cut(l, self.line_style, max_w) for l in lines]
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        lines = self.lines(max_w, max_h)
+        return max(f.width for f in lines), sum(f.height for f in lines) + self.style.spacing * (len(lines) - 1)
+
+    def render(self, w: int, h: int) -> Frame:
+        return vstack(self.lines(w, h), gap=self.style.spacing)
+
+@lru_cache(maxsize=4096)
+def _width(value: str, style: TextStyle) -> int:
+    return style.ttf.font.getbbox(value, anchor='lt')[2] + 2 * style.outline if value else 0
+
+def _cut(value: str, style: TextStyle, max_w: int) -> str:
+    # Longest start of value within max_w.
+    lo, hi = 0, len(value)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        lo, hi = (mid, hi) if _width(value[:mid], style) <= max_w else (lo, mid - 1)
+    return value[:lo].rstrip()
+
+
 @lru_cache(maxsize=1024)
 def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False, **kwargs) -> Text:
     style = dc_replace(style, **kwargs)
+    if style.overflow != 'visible':
+        return TextBox(value, style)
     if multiline:
         return MultiLineText(value, style)
     return Text(value, style)

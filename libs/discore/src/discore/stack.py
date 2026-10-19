@@ -35,6 +35,7 @@ class Stack(metaclass=ScopedInstance):
 
         if self.style.horizontal:
             self.scroller = HScroller(
+                name=f'{name}.scroller',
                 size=self.style.size,
                 speed=self.style.speed,
                 delta=self.style.scroll_delta,
@@ -42,6 +43,7 @@ class Stack(metaclass=ScopedInstance):
                 scrollbar=self.style.scrollbar)
         else:
             self.scroller = VScroller(
+                name=f'{name}.scroller',
                 size=self.style.size,
                 speed=self.style.speed,
                 delta=self.style.scroll_delta,

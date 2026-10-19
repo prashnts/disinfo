@@ -14,7 +14,7 @@ from ..drat.app_states import RuntimeStateManager
 from discore.text import Text, TextStyle, text
 from PIL import Image
 from discore.elements import StillImage, Frame
-from discore.layouts import vstack, hstack
+from discore.layouts import vstack, hstack, Spacer
 from discore.layers import div, DivStyle
 from discore.scroller import HScroller
 from discore.spriteim import SpriteIcon
@@ -293,10 +293,6 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     ], gap=2).tag(('klipper.eta', eta, overdue))
 
 
-def spread(left: Frame, right: Frame, width: int = card_width) -> Frame:
-    gap = width - (left.width if left else 0) - (right.width if right else 0)
-    return hstack([left, right], gap=max(gap, 2), align='center')
-
 def temp(fs: FrameState, icon: Frame, value: float, target: Optional[float], name: str) -> Frame:
     if value is None or value < 0:
         return None
@@ -337,23 +333,6 @@ def ago(fs: FrameState, at: Optional[datetime]) -> str:
         return ''
     m = int((fs.now - at).total_seconds() // 60)
     return f'{m}m' if m < 60 else f'{m // 60}h {m % 60}m' if m < 600 else f'{m // 60}h'
-
-def wrap(value: str, style: TextStyle, width: int, lines: int) -> list[Frame]:
-    out = ['']
-    for word in value.split():
-        line = f'{out[-1]} {word}'.strip()
-        if text(line, style).width <= width or not out[-1]:
-            out[-1] = line
-        elif len(out) < lines:
-            out.append(word)
-        else:
-            break
-    return [fit(l, style, width) for l in out if l]
-
-def fit(value: str, style: TextStyle, width: int) -> Frame:
-    while value and text(value, style).width > width:
-        value = value[:-1]
-    return text(value, style)
 
 def cover(state: PrinterState, size: int) -> Optional[Frame]:
     # The plate render, cropped to the parts.
@@ -426,40 +405,39 @@ def fit_box(box, aspect: float, margin: float = 0.06, min_w: float = 0.3, src: f
 
 def job_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
     # What is printing: the parts, the plate render in the corner.
-    thumb = cover(state, 24)
-    w = card_width - (thumb.width + 3 if thumb else 0)
     parts = parts_of(state.filename)
     n = max(state.objects or 0, sum(c for _, c in parts))
     lines = [text(f'{n} objects' if n > 1 else 'Job', muted_small_style)]
     for name, count in parts[:(h - 7) // 7]:
-        cnt = text(f'{count}x', tiny_dim_style) if count > 1 else None
-        lines.append(hstack([cnt, fit(name, tiny_bright_style, w - (cnt.width + 2 if cnt else 0))], gap=2))
-    return hstack([vstack(lines, gap=2), thumb], gap=3, align='top')
+        lines.append(hstack([text(f'{count}x', tiny_dim_style) if count > 1 else None, text(name, tiny_bright_style, overflow='fit')], gap=2))
+    return hstack([vstack(lines, gap=2), cover(state, 24)], gap=3, align='top')
 
 def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
     uname = lambda x: f'{x}_{state.printer_id}'
     stage = stage_text(state)
     layer = f'L{state.current_layer or 0}/{state.total_layers}' if state.total_layers else None
     layer = text(layer, muted_small_style) if layer and layer != stage else None
-    stage_style = TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '#5b5e64'))
+    stage_style = TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '#5b5e64'), overflow='fit')
     return vstack([
         hstack([
             temp(fs, toolt_icon, state.extruder_temp, state.extruder_target, uname('toolt')),
             temp(fs, bedt_icon, state.bed_temp, state.bed_target, uname('bedt')),
             hstack([text('ch', tiny_dim_style), text(f'{round(state.chamber_temp)}', muted_small_style)], gap=2) if state.chamber_temp else None,
         ], gap=5),
-        spread(fit(stage, stage_style, card_width - (layer.width + 3 if layer else 0)), layer),
-        spread(text(state.active_tray[:10], tiny_style) if state.active_tray else None, text(f'{state.weight:g}g', tiny_style) if state.weight else None),
-        spread(
+        hstack([text(stage, stage_style), Spacer(), layer], gap=3),
+        hstack([text(state.active_tray, tiny_style, overflow='fit') if state.active_tray else None, Spacer(), text(f'{state.weight:g}g', tiny_style) if state.weight else None], gap=3),
+        hstack([
             text(state.started_at, tiny_style) if state.started_at else None,
-            hstack([tail_arrow_left, text(state.completion_time, muted_small_style)], gap=2) if state.completion_time else None),
+            Spacer(),
+            hstack([tail_arrow_left, text(state.completion_time, muted_small_style)], gap=2) if state.completion_time else None,
+        ], gap=3),
     ], gap=3)
 
 def camera_slide(fs: FrameState, state: PrinterState, view: Frame) -> Frame:
     # The stage sits on a scrim over the bottom of the camera.
     color = phase_colors.get(state.phase, '#5b5e64')
     eta = text(state.completion_time, muted_small_style) if state.completion_time else None
-    info = spread(fit(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color), view.width - 26), eta, view.width - 4)
+    info = hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3)
     scrim = div(info, padding=(1, 2, 1, 2), background='#000000a0')
     return div(scrim, width=view.width, height=view.height, anchor='bl', background_frame=view)
 
@@ -467,21 +445,26 @@ def camera_slide(fs: FrameState, state: PrinterState, view: Frame) -> Frame:
 def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
     # A plotter: no layers or heaters. Small square camera, what it's doing next to it.
     view = MJPEGStream(state.stream_url).read(h, h) if state.stream_url else None
-    w = card_width - (view.width + 3 if view else 0)
+    # (item, lines it can take), kept while they fit in h.
+    wrapped = lambda value, style, n: (text(value, style, overflow='wrap', max_lines=n, spacing=2), n)
     if state.is_printing:
         lines = [
-            *wrap(title_of(state), tiny_bright_style, w, 2),
-            fit(state.message, tiny_style, w) if state.message else None,
-            hstack([tail_arrow_left, text(state.completion_time, muted_small_style)], gap=2) if state.completion_time else None,
+            wrapped(title_of(state), tiny_bright_style, 2),
+            (text(state.message, tiny_style, overflow='fit'), 1) if state.message else None,
+            (hstack([tail_arrow_left, text(state.completion_time, muted_small_style)], gap=2), 1) if state.completion_time else None,
         ]
     else:
-        lines = wrap(state.message or '', tiny_bright_style, w, 3)
+        lines = [wrapped(state.message, tiny_bright_style, 3) if state.message else None]
     if state.position:
         x, y, z = state.position
-        lines += [text(f'X{x:.0f} Y{y:.0f}', tiny_style), text(f'Z{z:.1f}', tiny_style)]
-    cam = div(view, radius=2) if view else None
-    lines = [l for l in lines if l][:(h + 2) // 7]
-    return hstack([vstack(lines, gap=2), cam], gap=3, align='top')
+        lines += [(text(f'X{x:.0f} Y{y:.0f}', tiny_style), 1), (text(f'Z{z:.1f}', tiny_style), 1)]
+    kept, budget = [], (h + 2) // 7
+    for item, n in filter(None, lines):
+        if n > budget:
+            break
+        kept.append(item)
+        budget -= n
+    return hstack([vstack(kept, gap=2), div(view, radius=2) if view else None], gap=3, align='top')
 
 def composer(fs: FrameState, state: PrinterState):
     # show_printers expands every online printer, otherwise only the ones printing.
@@ -508,16 +491,17 @@ def composer(fs: FrameState, state: PrinterState):
             text('ago', tiny_dim_style) if since and state.phase in ('done', 'failed') else None,
         ], gap=2, align='bottom')
 
-    head = spread(hstack([threed_icon.draw(fs.tick) if state.is_printing else done_icon, headline], gap=3), right)
+    head = hstack([hstack([threed_icon.draw(fs.tick) if state.is_printing else done_icon, headline], gap=3), Spacer(), right], gap=2)
     bar = progress_bar(1 if state.is_done else (state.progress or 0) / 100, ProgressStyle(width=card_width, color=color)) if state.is_printing or state.phase in ('done', 'failed') else None
 
+    # The card's width, its rows lay out in it. The tag changes when the card expands, so the widget animates the resize.
+    card = lambda *rows: div(vstack([head, bar, *rows], gap=3), width=card_width).tag(('printer_card', state.printer_id, expanded))
     if not expanded:
-        title = fit(title_of(state), tiny_style, card_width)
-        return vstack([head, bar, title], gap=3).tag(('printer_card', state.printer_id, expanded))
+        return card(text(title_of(state), tiny_style, overflow='fit'))
 
     h = 40 if fs.config.height < 160 else 48
     if state.model == 'klipper':
-        return vstack([head, bar, limn_body(fs, state, h - 4)], gap=3).tag(('printer_card', state.printer_id, expanded))
+        return card(limn_body(fs, state, h - 4))
 
     # Slides below the progress: camera, the job, details.
     # Live stream when configured (nothing while it connects), cropped to the prints. The camera snapshot otherwise.
@@ -535,9 +519,7 @@ def composer(fs: FrameState, state: PrinterState):
         (lambda: job_slide(fs, state, h), slide_times['job']),
         (lambda: stats_slide(fs, state, h), slide_times['stats']),
     ]).draw(fs)
-
-    # The tag changes when the card expands, so the widget animates the resize.
-    return vstack([head, bar, body], gap=3).tag(('printer_card', state.printer_id, expanded))
+    return card(body)
 
 
 @cache

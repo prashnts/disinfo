@@ -44,6 +44,7 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 - A screen for esp-displays' T4-S3 (`di_pcstate`, 200x150, 3x on its 600x450 AMOLED, over USB): its own composer, the same sensors. The web server serves any screen to such displays: `/display/<screen>/stream.mjpg` (the newest frame, a whole-number scale to fit `w`x`h`), `/buttons` (shown on the display), `/press`.
 - Music slides, with album art cached and a Spotify mark ([`6ce6bbb`](https://github.com/prashnts/disinfo/commit/6ce6bbb)). Listening sessions (`utils/sessions.py`, [`d2d38aa`](https://github.com/prashnts/disinfo/commit/d2d38aa)).
 - GIF renderer: `--fps` and `--warmup` options (uncommitted).
+- Benchmark, `python -m disinfo.bench`: composes the configured screens at their size or the `--size`s given (forced awake, paced like the renderer, nothing published), then times today's transport (PNG + base64, decode + JPEG). Each run appends to `bench.jsonl` with the commit and a `--label` (uncommitted).
 - Docker image (`Dockerfile`, [`3c93d89`](https://github.com/prashnts/disinfo/commit/3c93d89)): `app` target, and a `demo` target with Redis and the sample config in one container ([`d0297a8`](https://github.com/prashnts/disinfo/commit/d0297a8)). The demo also runs `config/fake_server.py`, a tiny stand-in for Home Assistant (websocket: presence, light, weather and forecast, sun, moon, a playing speaker) and the ADS-B feed, so it shows weather and music without a home. Kagi news stays real (uncommitted). Fonts are fetched at build time, not on every container start, and Noto Color Emoji is installed from apt so `render_emoji` draws real emoji instead of a fallback box (uncommitted).
 
 ### Changed
@@ -51,10 +52,22 @@ Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026
 - **Docker images are built when a `v*` tag is pushed**, no longer on every push to `master`. A tag `vX` publishes `ghcr.io/prashnts/disinfo:X` and `:latest`, and `:X-demo` and `:demo`. The per-commit `sha` tags are gone (uncommitted).
 - CI is split: `test.yml` runs the `discore` tests on every push, and `docker.yml` runs the full app tests (and a render smoke test) before building (uncommitted).
 - The MJPEG stream is decoded in `utils/mjpeg.py`, with a lighter printer card ([`beb38c2`](https://github.com/prashnts/disinfo/commit/beb38c2)).
+- **`discore` frame hashes are never computed from pixels unless asked** (uncommitted). A `Frame` without a hash used to hash all its pixels in the constructor (0.6 ms for a 720p image), even when `.tag()` replaced that hash right after, as the compositor does for the whole screen on every frame. Now it gets a token, equal only to itself. Hashes say what a frame shows: derived from the operation and its inputs, or from the source's identity; `Frame.of_pixels` hashes the pixels on request. `Frame.fallback` is hashed by its size. Given derived or source hashes: the scrollers' padded frames (they're rebuilt on every `set_frame`, a token there would restart the transitions around a scroller on every frame), `VisibilitySlider`, the transitions' blank frames, album art and metro icons. Checked by counting transition restarts over 240 frames on `di_pcstate` and the `disalon` layout: the same for every transition as with pixel hashes.
+- **`uname` reads the caller's frames with `sys._getframe`**, not `inspect.stack()`, which built a record of every frame on the stack and looked up its source file (uncommitted). 870 µs → 0.85 µs a call; awake, a frame makes about a dozen. The names are the same: checked against `inspect.stack()` on every call over 240 frames of `di_pcstate` and the `disalon` layout (about 1,400 calls each, no difference), and no name was used twice in one frame.
+- Named what relied on arguments alone to stay apart (uncommitted). Scrollers and transitions are scoped instances keyed by their arguments; without a `name` two equal ones are one instance with one state. The stacks' scrollers are `<stack>.scroller`, and the news deck's scroller and five transitions are `news.deck.<part>` (one was a bare `Resize()`, shared with any other on the screen).
 
 ### Fixed
 - CI tests: `apt-get update` before installing system libraries, fonts fetched once before the render smoke test, the smoke test waits for the server instead of sleeping 5 s, and stops it afterwards. A server left running held the uv cache lock and hung the job's post-step for minutes (uncommitted).
 - GIF renderer timing (uncommitted). Each frame now lasts as long as it took on the wall clock, in milliseconds. The delays used to be passed as `durations=` (which Pillow ignores) and were computed in seconds ÷ 1000, so every GIF from 2023 to 2026 has 0–10 ms frames and plays too fast.
+
+### Performance
+Measured with `disinfo.bench` on `di_pcstate` (awake, 120 frames at 12 fps), at 200x150 / 800x480 / 1280x720. Compose is the median.
+
+| Change | Compose (ms) | PNG + base64 (ms) | `Frame` of a 720p image | `uname()` |
+|---|---|---|---|---|
+| Baseline, 2026-10-19 (`07a4dc6` + the uncommitted flex layout) | 21 / 33 / 60 | 6 / 39 / 70 | 0.6 ms | 860 µs |
+| Frame hashes: tokens by default, no pixel hashing | 20 / 32 / 56 | 6 / 38 / 68 | 0.2 µs | 870 µs |
+| `uname` on `sys._getframe` | 10 / 25 / 49 | 6 / 38 / 69 | 0.2 µs | 0.85 µs |
 
 ## [2026.08.15] - The panel on the wall
 

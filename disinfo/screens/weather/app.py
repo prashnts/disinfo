@@ -8,9 +8,10 @@ from disinfo import fonts
 from discore.elements import Frame, StillImage
 from discore.text import TextStyle, text
 from discore.layers import div, DivStyle
-from discore.layouts import hstack, vstack, composite_at, place_at
+from discore.layouts import hstack, vstack, composite_at, place_at, Spacer
 from discore.spriteim import SpriteIcon
 from discore.data_structures import FrameState
+from discore.elements import Box
 from disinfo.screens.colors import light_gray
 
 from .state import get_weather_data
@@ -64,49 +65,48 @@ def astronomical_info(fs: FrameState):
     ], gap=2, align='center')
 
 @cache
-def draw_temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
-    '''Generates a horizontal range graph of min/max temperatures.'''
-    # HA sometimes collapses today's forecast (high == low), keep the current temp in range.
-    t_low, t_high = min(t_low, t_high, t_current), max(t_low, t_high, t_current)
-    color_low = temperature_color(t_low)
-    color_high = temperature_color(t_high)
-    color_current = Color('#ffffff')
-
-    value_high = text(f'{round(t_high)}', style=TextStyle(font=fonts.ttpixels, color=color_high.hex)).trim(upper=0)
-    value_low = text(f'{round(t_low)}', style=TextStyle(font=fonts.ttpixels, color=color_low.hex)).trim(upper=0)
-
-    span = 12
-
-    range_graph = Image.new('RGBA', (span + 1, 5), (0, 0, 0, 0))
+def range_graph(t_current: float, t_high: float, t_low: float, width: int) -> Frame:
+    '''Gradient from min to max temperature, a pointer at the current one.'''
+    span = width - 1
+    range_graph = Image.new('RGBA', (width, 5), (0, 0, 0, 0))
     d = ImageDraw.Draw(range_graph)
 
     if t_high > t_low:
         current_pos = (t_high - t_current) * (span / (t_high - t_low))
     else:
         current_pos = span // 2
-
-    if current_pos <= 0:
-        current_pos = 1
-    elif current_pos >= span - 1:
-        current_pos = span - 1
-
-    # d.line([(1, 0), (1, 1)], fill=color_low.hex)
-    # d.line([(span - 1, 0), (span - 1, 1)], fill=color_high.hex)
+    current_pos = min(max(current_pos, 1), span - 1)
 
     gradient = [temperature_color(x) for x in np.linspace(t_low, t_high, span - 1)]
     for x, c in enumerate(gradient):
-        d.point([(x + 1, 0)], fill=c.hex)
-        d.point([(x + 1, 1)], fill=c.hex)
+        d.point([(x + 1, 0), (x + 1, 1)], fill=c.hex)
 
-    # Draw a pointer at the current temperature.
+    # Pointer at the current temperature.
     cp = span - current_pos
-    y_p = 3
-    d.point([
-                     (cp, y_p),
-        (cp - 1, y_p + 1), (cp, y_p + 1), (cp + 1, y_p + 1),
-    ], fill=color_current.hex)
-    temp_range_stack = hstack([value_low, Frame(range_graph, hash=('range-graph', t_current, t_high, t_low)), value_high], gap=2, align='bottom')
-    return temp_range_stack
+    d.point([(cp, 3), (cp - 1, 4), (cp, 4), (cp + 1, 4)], fill='#ffffff')
+    return Frame(range_graph, hash=('range-graph', t_current, t_high, t_low, width))
+
+class RangeBar(Box):
+    '''The range graph, as wide as its row lets it be.'''
+    grow = 1
+
+    def __init__(self, t_current: float, t_high: float, t_low: float, min_width: int = 13):
+        self.t = (t_current, t_high, t_low)
+        self.min_width = min_width
+        self.hash = ('RangeBar', self.t, min_width)
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        return min(self.min_width, max_w), 5
+
+    def render(self, w: int, h: int) -> Frame:
+        return range_graph(*self.t, max(w, 3))
+
+def temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
+    '''Min and max temperatures, the range graph between them.'''
+    # HA sometimes collapses today's forecast (high == low), keep the current temp in range.
+    t_low, t_high = min(t_low, t_high, t_current), max(t_low, t_high, t_current)
+    value = lambda t: text(f'{round(t)}', style=TextStyle(font=fonts.ttpixels, color=temperature_color(t).hex)).trim(upper=0)
+    return hstack([value(t_low), RangeBar(t_current, t_high, t_low), value(t_high)], gap=2, align='bottom')
 
 
 def composer(fs: FrameState):
@@ -116,13 +116,16 @@ def composer(fs: FrameState):
 
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
+    # Rows as wide as the widest: the temperature centered in it, the range graph across it.
     return vstack([
         hstack([
+            Spacer(),
             composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick), 'br'),
             hstack([
                 text(f'{s.temperature}', style=s_temp_value),
                 text('°', style=s_deg_c),
             ], gap=0, align='top'),
+            Spacer(),
         ], gap=2, align='bottom'),
-        draw_temp_range(s.temperature, s.t_high, s.t_low),
-    ], gap=3, align='center')
+        temp_range(s.temperature, s.t_high, s.t_low),
+    ], gap=3, align='hstretch')

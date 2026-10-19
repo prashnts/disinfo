@@ -20,6 +20,7 @@ from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
 from disinfo.apps.news import news_app
+from disinfo.apps.flex_demo import flex_demo_app
 from disinfo.utils.hass import get_entity
 
 
@@ -52,7 +53,8 @@ def compose_big_frame(fs: FrameState):
     rmt_reader = TelemetryStateManager(fs.config.name).remote_reader('comp', fs)
     telermt = TelemetryStateManager(fs.config.name).get_state(fs)
     awake = should_turn_on_display(fs)
-    background = telermt.light_sensor.color_hex
+    # TODO: the color sensor's reading flickers the whole background (clouds, its own light): redo it, sky color meanwhile.
+    background = screens.solar.app.sky_color(fs)
     _leftward = config.name == 'distudy'
     _clock_align = 'left' if _leftward else 'right'
 
@@ -132,6 +134,7 @@ def compose_big_frame(fs: FrameState):
 
     if awake:
         composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
+        composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
         composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)
 
         if config.height >= 120:
@@ -190,7 +193,7 @@ def compose_display_frame(fs: FrameState):
             tick_radius_multiplier=0.36,
             dial_radius_multiplier=0.36,
             needle_radius_multiplier=0.42,
-            background=telermt.light_sensor.color_hex,
+            background=screens.solar.app.sky_color(fs),   # TODO: color sensor, see compose_big_frame
         )
         composite_at(FadeIn('solar', duration=0.3).mut(screens.solar.draw(fs, solar_style)).draw(fs), image, 'mm')
 
@@ -215,6 +218,7 @@ def compose_display_frame(fs: FrameState):
         composite_at(stack_hor.draw(fs), image, 'bl', dy=-p_stack_offset(), frost=1.8)
         composite_at(shazam_indicators(fs).draw(fs), image, 'br')
         composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
+        composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
         composite_at(stream_widget(fs).draw(fs), image, 'bm')
 
     composite_at(screens.date_time.flip_digital_clock(fs, align='right'), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)

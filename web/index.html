@@ -36,6 +36,10 @@
             width: calc(128px * 2);
         }
 
+        .screens #pcstate {
+            width: calc(200px * 2);
+        }
+
         #status {
             color: #888;
             font-family: monospace;
@@ -83,6 +87,7 @@
         <div class="screens">
             <img src='' id='study'/>
             <img src='' id='salon'/>
+            <img src='' id='pcstate'/>
         </div>
         <div id='controls'>
         </div>
@@ -158,6 +163,8 @@
         }
         connect('ws/distudy', 'study');
         connect('ws/disalon', 'salon');
+        // Each server shows the screens it renders, the others stay hidden.
+        connect('ws/di_pcstate', 'pcstate');
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
@@ -236,6 +243,7 @@
                     <${RemoteButton} action="motion_toggle" />
                     <${RemoteButton} action="show_fonts_credit" />
                     <${RemoteButton} action="show_printers" />
+                    <${RemoteButton} action="show_flex_demo" title="flex demo" />
                 </div>
                 <div>
                     <${RemoteButton} action="show_stream" />

@@ -249,7 +249,9 @@ def _news_deck(fs: FrameState):
     state.shown_summary = short_summary
     if new_text:
         state.summary_end_at = None
-    scroller = (VScroller(52, speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
+    # Scoped instances are told apart by their arguments: named, two equal ones can't share state.
+    uname = lambda x: f'news.deck.{x}'
+    scroller = (VScroller(52, name=uname('summary.scroll'), speed=0.08, delta=1, pause_at_loop=True, scrollbar=False)
         .set_frame(div(text(short_summary, sumry_style, multiline=True), padding=3))
         .reset_position(new_text or not state.details))
     summary_frame = scroller.draw(fs.tick)
@@ -266,11 +268,11 @@ def _news_deck(fs: FrameState):
     if not state.details:
         summary = summary.blank().resize((1, 1))
 
-    story_title = div(Resize(duration=.2)
+    story_title = div(Resize(uname('title'), duration=.2)
         .mut(text(st.title, title_style, multiline=True))
         .draw(fs))
     story_summary = div(
-        Resize(delay=.3).mut(summary).draw(fs),
+        Resize(uname('summary'), delay=.3).mut(summary).draw(fs),
         padding=0,
         radius=2)
 
@@ -282,13 +284,13 @@ def _news_deck(fs: FrameState):
         radius=3,
         anchor='bl')
 
-    f_category = Resize(delay=1).mut(st.category_emoji).draw(fs)
-    f_emoji = (Resize(duration=.2, delay=1)
+    f_category = Resize(uname('category'), delay=1).mut(st.category_emoji).draw(fs)
+    f_emoji = (Resize(uname('emoji'), duration=.2, delay=1)
         .mut(render_emoji(st.emoji, size=26))
         .draw(fs))
     # Fixed cover box (cropped to content by composite) so the image isn't rescaled while content resizes.
     cover_size = (max(COVER_SIZE[0], content.width), max(COVER_SIZE[1], content.height))
-    f_img = (Resize()
+    f_img = (Resize(uname('cover'))
         .mut(Frame(st.cover_im(cover_size).image).tag(('storycover', st.pk)))
         .draw(fs))
     s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)

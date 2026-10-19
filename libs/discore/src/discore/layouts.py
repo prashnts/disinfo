@@ -11,19 +11,183 @@ from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
 from functools import lru_cache
 
-from .elements import Frame
+from .elements import Frame, Box, UNBOUNDED, measure, render
 
-VerticalAlignment = Literal['center', 'top', 'bottom']
-HorizontalAlignment = Literal['center', 'left', 'right']
+# The stretches give each item the row's height (column's width): Boxes fill it, fixed frames sit at the start.
+VerticalAlignment = Literal['center', 'top', 'bottom', 'vstretch']
+HorizontalAlignment = Literal['center', 'left', 'right', 'hstretch']
 ComposeAnchor = Literal['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br']
+
+
+def _share(total: int, weights: Sequence[float]) -> list[int]:
+    '''total split by weights, in whole pixels that add up to it (largest remainders get the leftovers).'''
+    exact = [total * w / sum(weights) for w in weights]
+    parts = [int(x) for x in exact]
+    for i in sorted(range(len(parts)), key=lambda i: parts[i] - exact[i])[:total - sum(parts)]:
+        parts[i] += 1
+    return parts
+
+
+class Flex(Box):
+    '''A row or column whose items share its size: growers take the free space,
+    shrinkers give up the overflow, the rest keep theirs. hstack and vstack
+    make one when they get a size, a stretch, or a Box among their items.
+
+    Items start from their content's size (flex-basis: auto), then grow or shrink,
+    a shrinker down to its size at no room at all (min-content).
+    Without a size of its own it takes what its parent offers when it has
+    a grower (a Spacer, a Grow...) to fill it with, its content's size otherwise.
+    '''
+
+    def __init__(self, elements, axis: str, gap: int, align: str, stretch: bool, size: Optional[int]):
+        self.elements = [e for e in elements if e]
+        self.axis, self.gap, self.align, self.stretch, self.size_ = axis, gap, align, stretch, size
+        # The gap before each item: between items only, Spacers stretch the gap they sit in.
+        self.gaps, seen = [], False
+        for e in self.elements:
+            spacer = isinstance(e, Spacer)
+            self.gaps.append(gap if seen and not spacer else 0)
+            seen = seen or not spacer
+        boxes = [e for e in self.elements if isinstance(e, Box)]
+        # Along itself, it grows and shrinks as its items do.
+        self.grow = max([e.grow_along(axis) for e in boxes] + [0]) if size is None else 0
+        self.shrink = max([e.shrink_along(axis) for e in boxes] + [0]) if size is None else 0
+        # Across, it's as wide (tall) as its widest item: it can be narrower if they can.
+        cross = 'y' if axis == 'x' else 'x'
+        self.cross_shrink = max([e.shrink_along(cross) for e in boxes] + [0])
+        self.hash = ('Flex', axis, gap, align, size, tuple(e.hash for e in self.elements))
+        self._memo = {}
+
+    # (main, cross) <-> (w, h)
+    def _split(self, w, h):
+        return (w, h) if self.axis == 'x' else (h, w)
+    _join = _split
+
+    def grow_along(self, axis: str) -> float:
+        return self.grow if axis == self.axis else 0
+
+    def shrink_along(self, axis: str) -> float:
+        return self.shrink if axis == self.axis else self.cross_shrink
+
+    def _measure(self, e, main, cross):
+        key = (id(e), main, cross)
+        if key not in self._memo:
+            self._memo[key] = self._split(*measure(e, *self._join(main, cross)))
+        return self._memo[key]
+
+    def _resolve(self, main: int, cross: int):
+        '''Main size of each item within `main`, and their cross sizes. They add up to more than main when nothing can give.'''
+        gaps = sum(self.gaps)
+        base = [self._measure(e, UNBOUNDED, cross)[0] for e in self.elements]
+        alloc = list(base)
+        free = main - sum(base) - gaps
+        grows = [e.grow_along(self.axis) if isinstance(e, Box) else 0 for e in self.elements]
+        shrinks = [(e.shrink_along(self.axis) if isinstance(e, Box) else 0) * b for e, b in zip(self.elements, base)]
+        if free > 0 and sum(grows):
+            alloc = [b + g for b, g in zip(base, _share(free, grows))]
+        elif free < 0 and sum(shrinks):
+            # Shrinkers give up the overflow by their share, none below its min-content: the others take the rest.
+            lo = [self._measure(e, 0, cross)[0] if s else b for e, b, s in zip(self.elements, base, shrinks)]
+            while (over := sum(alloc) + gaps - main) > 0:
+                room = [s if a > l else 0 for s, a, l in zip(shrinks, alloc, lo)]
+                if not sum(room):
+                    break
+                alloc = [max(a - c, l) for a, c, l in zip(alloc, _share(over, room), lo)]
+        crosses = [self._measure(e, a, cross)[1] for e, a in zip(self.elements, alloc)]
+        return alloc, crosses
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        if not self.elements:
+            return 1, 1
+        max_main, max_cross = self._split(max_w, max_h)
+        gaps = sum(self.gaps)
+        content = sum(self._measure(e, UNBOUNDED, max_cross)[0] for e in self.elements) + gaps
+        if self.size_ is not None:
+            main = self.size_
+        elif max_main < UNBOUNDED and self.grow:
+            main = max_main
+        else:
+            main = min(content, max_main) if self.shrink else content
+        alloc, crosses = self._resolve(main, max_cross)
+        if self.size_ is None:
+            main = max(main, sum(alloc) + gaps)     # what can't shrink overflows
+        return self._join(main, max(crosses))
+
+    def render(self, w: int, h: int) -> Frame:
+        main, cross = self._split(w, h)
+        alloc, crosses = self._resolve(main, cross)
+        img = Image.new('RGBA', (max(w, 1), max(h, 1)), (0, 0, 0, 0))
+        pos = 0
+        for e, a, c, g in zip(self.elements, alloc, crosses, self.gaps):
+            pos += g
+            f = render(e, *self._join(a, cross if self.stretch else min(c, cross)))
+            fm, fc = self._split(*f.size)
+            off = max({'center': (cross - fc) // 2, 'bottom': cross - fc, 'right': cross - fc}.get(self.align, 0), 0)
+            # An item bigger than its slot (a fixed frame that can't shrink) is cut to it.
+            cut = self._join(min(fm, a), min(fc, cross - off))
+            if pos < main and min(cut) > 0:
+                img.alpha_composite(f.image.crop((0, 0) + cut), self._join(pos, off))
+            pos += a
+        return Frame(img, hash=('flex', (w, h), self.hash))
+
+
+class Spacer(Box):
+    '''Takes the free space of a row or column: pushes what follows it to the end.
+    In a row with a gap it's the gap stretched, at least `size` more.
+
+        [a, Spacer(), b]            a at the start, b at the end
+        [Spacer(), a, b]            both at the end
+        [Spacer(), a, b, Spacer()]  centered
+    '''
+
+    def __init__(self, grow: float = 1, size: int = 0):
+        self.grow = grow
+        self.size_ = size
+        self.hash = ('Spacer', grow, size)
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        return min(self.size_, max_w), min(self.size_, max_h)
+
+    def render(self, w: int, h: int) -> Frame:
+        return Frame.fallback(('Spacer', w, h), (max(w, 1), max(h, 1)))
+
+
+class Grow(Box):
+    '''Makes any frame take a share of the free space. A fixed frame is placed in it by `anchor`.'''
+
+    def __init__(self, frame: Frame, grow: float = 1, anchor: ComposeAnchor = 'mm'):
+        self.frame = frame
+        self.grow = grow
+        self.anchor = anchor
+        self.hash = ('Grow', grow, anchor, frame.hash)
+
+    def shrink_along(self, axis: str) -> float:
+        return self.frame.shrink_along(axis) if isinstance(self.frame, Box) else 0
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        return measure(self.frame, max_w, max_h)
+
+    def render(self, w: int, h: int) -> Frame:
+        f = render(self.frame, w, h)
+        if f.size == (w, h):
+            return f
+        return composite_at(f, Frame.fallback(size=(max(w, 1), max(h, 1))), self.anchor).tag(('Grow', (w, h), self.hash))
+
+
+def _needs_flex(elements, size, stretch) -> bool:
+    return size is not None or stretch or any(isinstance(e, Box) for e in elements)
 
 
 def hstack(
     elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: VerticalAlignment = 'center',
+    width: Optional[int] = None,
 ) -> Frame:
     '''Stacks the given elements horizontally with specified gap.
+
+    With a `width`, align='vstretch', or Boxes among the elements (a Spacer...)
+    it's a Flex row: see Flex. Otherwise it's sized by its elements.
 
     Alignment is relative to the tallest element:
 
@@ -35,6 +199,8 @@ def hstack(
 
     Returns a new frame.
     '''
+    if _needs_flex(elements, width, align == 'vstretch'):
+        return Flex(elements, 'x', gap, align, align == 'vstretch', width)
     if not any(elements):
         return Frame(Image.new('RGBA', (1, 1)), hash=('hstack', gap, align, None))
 
@@ -63,8 +229,12 @@ def vstack(
     elements: Sequence[Optional[Frame]],
     gap: int = 0,
     align: HorizontalAlignment = 'left',
+    height: Optional[int] = None,
 ) -> Frame:
     '''Stacks the given elements vertically with specified gap.
+
+    With a `height`, align='hstretch', or Boxes among the elements (a Spacer...)
+    it's a Flex column: see Flex. Otherwise it's sized by its elements.
 
     Alignment is relative to widest element:
 
@@ -78,6 +248,8 @@ def vstack(
 
     Returns a new frame.
     '''
+    if _needs_flex(elements, height, align == 'hstretch'):
+        return Flex(elements, 'y', gap, align, align == 'hstretch', height)
     if not any(elements):
         return Frame(Image.new('RGBA', (1, 1)), hash=('vstack', gap, align, None))
 

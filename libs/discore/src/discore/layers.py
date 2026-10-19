@@ -4,7 +4,7 @@ from PIL import Image, ImageColor, ImageDraw
 
 from typing import Union, Optional
 
-from .elements import Frame
+from .elements import Frame, Box, UNBOUNDED, less
 from .layouts import composite_at, ComposeAnchor
 
 
@@ -102,6 +102,14 @@ def div(
         style = dc_replace(style, **kwargs)
     if not frame:
         return Frame.fallback(('div', style))
+    if isinstance(frame, Box):
+        # A div with a size lays its content out in it. Without, its parent decides.
+        lw, lh = style.width or style.max_width, style.height or style.max_height
+        if not (lw or lh):
+            return DivBox(frame, style)
+        # Its width and height are the content's, a max_ only limits it.
+        mw, mh = frame.measure(lw or UNBOUNDED, lh or UNBOUNDED)
+        frame = frame.render(style.width or mw, style.height or mh)
 
     pad = style.padding
     margin = style.margin
@@ -183,6 +191,40 @@ def div(
             i.alpha_composite(frame_div, (0, 0))
 
     return Frame(i, hash=('div', style, frame))
+
+def _edges(value) -> tuple:
+    return (value,) * 4 if isinstance(value, int) else tuple(value)
+
+class DivBox(Box):
+    '''A div around a Box, without a size: the space its parent gives goes to the content, less padding and margin.'''
+
+    def __init__(self, frame: Box, style: DivStyle):
+        self.frame, self.style = frame, style
+        self.grow, self.shrink = frame.grow, frame.shrink
+        self.hash = ('DivBox', style, frame.hash)
+        p, m = _edges(style.padding), _edges(style.margin)
+        self.extra = (p[1] + p[3] + m[1] + m[3], p[0] + p[2] + m[0] + m[2])
+
+    def grow_along(self, axis: str) -> float:
+        return self.frame.grow_along(axis)
+
+    def shrink_along(self, axis: str) -> float:
+        return self.frame.shrink_along(axis)
+
+    def measure(self, max_w: int, max_h: int) -> tuple[int, int]:
+        ew, eh = self.extra
+        w, h = self.frame.measure(less(max_w, ew), less(max_h, eh))
+        s = self.style
+        w, h = max(w, s.min_width or 0), max(h, s.min_height or 0)
+        return w + ew, h + eh
+
+    def render(self, w: int, h: int) -> Frame:
+        # The whole w x h, so a stretched div's background fills it. Having no size of its own,
+        # the content sits at its top left (the anchor places content in a sized div).
+        ew, eh = self.extra
+        cw, ch = less(w, ew), less(h, eh)
+        return div(self.frame.render(*self.frame.measure(cw, ch)), dc_replace(self.style, width=cw, height=ch, anchor='tl'))
+
 
 def styled_div(**kwargs):
     style = DivStyle(**kwargs)

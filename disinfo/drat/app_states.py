@@ -94,6 +94,7 @@ class RuntimeState(AppBaseModel):
     show_fonts_credit: bool = False
     show_sensors: bool = False
     show_printers: bool = False
+    show_flex_demo: bool = False
     screen_capture: bool = False
 
     # Extras

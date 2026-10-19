@@ -125,7 +125,7 @@ class Resize(TimedTransition[Frame]):
         opacity_curr = pos
         if not self.curr_value:
             size = (2, 2) if self.pos < 1 else (1, 1)
-            current = Frame(Image.new('RGBA', size, (0, 0, 0, 0)))
+            current = Frame.fallback(size=size)
             pos = 1 - self.pos
             opacity_prev = pos
             opacity_curr = 1 - pos
@@ -183,8 +183,7 @@ class SlideIn(TimedTransition[Frame]):
         if self.prev_value:
             prev_frame = self.prev_value
         else:
-            img = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
-            prev_frame = Frame(img)
+            prev_frame = Frame.fallback(size=self.curr_value.size)
 
         if self.edge == 'top':
             return vstack([self.curr_value, prev_frame], align=self.align)
@@ -211,7 +210,7 @@ class SlideIn(TimedTransition[Frame]):
             place_at(self.slide_frame, dest=i, x=-pos, y=0, anchor='tl')
         elif self.edge == 'flip-top':
             mid_y = math.ceil(self.curr_value.height / 2)
-            prev = self.prev_value if self.prev_value else Frame(Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0)))
+            prev = self.prev_value if self.prev_value else Frame.fallback(size=self.curr_value.size)
             top_curr = self.curr_value.image.crop((0, 0, self.curr_value.width, mid_y))
             bottom_curr = self.curr_value.image.crop((0, mid_y, self.curr_value.width, self.curr_value.height))
             top_prev = prev.image.crop((0, 0, prev.width, mid_y))
@@ -398,4 +397,4 @@ class VisibilitySlider:
         patch = self.frame.image.crop(self._get_crop_rect())
         i.alpha_composite(patch, self._get_origin())
 
-        return Frame(i)
+        return Frame(i, hash=('VisibilitySlider', self.edge, self.pos, self.frame.hash))

@@ -199,7 +199,8 @@ class HScroller(Scroller):
         w = f.width + self.size
         i = Image.new('RGBA', (w, f.height), (0, 0, 0, 0))
         i.alpha_composite(f.image, (self.size, 0))
-        return Frame(i)
+        # Rebuilt on every set_frame: derived, so draw()'s hash only changes with the content.
+        return Frame(i, hash=('HScroller.pad', self.size, f.hash))
 
 class VScroller(Scroller):
     _vertical = True
@@ -241,4 +242,4 @@ class VScroller(Scroller):
         h = f.height + self.size
         i = Image.new('RGBA', (f.width, h), (0, 0, 0, 0))
         i.alpha_composite(f.image, (0, self.size))
-        return Frame(i)
+        return Frame(i, hash=('VScroller.pad', self.size, f.hash))

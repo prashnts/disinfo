@@ -20,6 +20,6 @@ def get_album_art(url: str, size: int = 16):
         img = Image.open(fp)
         # Dithering helps
         img = img.resize((80, 80)).quantize().resize((size, size)).convert('RGBA')
-        return Frame(img)
+        return Frame(img, hash=('album_art', url, size))
     except requests.RequestException:
         return None
