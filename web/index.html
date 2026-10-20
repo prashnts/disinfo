@@ -270,7 +270,8 @@
             }
             return html`<label>radar <input type="range" min="5" max="60" step="5" value=${km} onChange=${didChange}/> ${km} km</label>
                 <${RemoteButton} action="aviator.view" payload=${{view: 'map'}} title="map" />
-                <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />`
+                <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
+                <${RemoteButton} action="aviator.view" payload=${{view: 'solar'}} title="solar" />`
         }
 
         function MapAngle(props) {

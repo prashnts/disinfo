@@ -8,7 +8,8 @@ from disinfo.redis import db
 
 from .tasks import TABLE_KEY, RADIUS_KEY, radius_km
 
-VIEW_KEY = 'di.aviator.view'     # map or sky on every screen, from the web page; their config's otherwise
+VIEW_KEY = 'di.aviator.view'     # map, sky or solar on every screen, from the web page; their config's otherwise
+VIEWS = ['map', 'sky', 'solar']
 
 
 class AviatorState(AppBaseModel):
@@ -60,7 +61,9 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
             case 'aviator.close':
                 self.state.opened.pop(data.payload['hex'], None)
             case 'aviator.view':
-                self.state.view = data.payload['view']
+                # The one asked for, or the next (the displays' button).
+                current = self.state.view or 'map'
+                self.state.view = (data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0]
                 db.set(VIEW_KEY, self.state.view)
             case 'aviator.map_up':
                 self.state.map_up[data.payload['screen']] = float(data.payload['deg']) % 360

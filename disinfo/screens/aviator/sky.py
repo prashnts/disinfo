@@ -39,6 +39,8 @@ horizon_color = (1, 1, 1, 0.25)
 sun_color = (1, 0.8, 0.4)
 trail_alpha = 0.3       # the numbered planes' trails; the others are dots
 dot_alpha = 0.45
+sway = 4                # degrees
+sway_period = 200       # s
 # The roofs, far to near: dark greys, the far ones lighter; a faint rim on their tops.
 far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
@@ -198,6 +200,9 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float]:
         target = aim(st, fov)
         if yaw is None or abs(wrap(target - yaw)) > fov / 4:
             yaw = target
+        _held[fs.config.name] = yaw
+        # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
+        return yaw + sway * math.sin(2 * math.pi * time.time() / sway_period), fov
     _held[fs.config.name] = yaw
     return yaw, fov
 

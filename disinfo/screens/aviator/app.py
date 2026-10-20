@@ -51,6 +51,9 @@ _moving = {}            # screen -> the camera's still easing towards its view
 # otherwise, the trails faded in steps. The displays (the Guition) then get frames that changed only where the
 # clock and the scrollers are, and the planes.
 redraw_every = 1
+drift_px = 6             # how far the view wanders, px
+drift_zoom = 0.05
+drift_period = 150      # s
 redraw_moving = 1 / 12  # while the camera moves: smooth enough, half the frames a 25 fps renderer makes
 fade_step = 15
 _drawn = {}             # screen -> (when, frame)
@@ -114,6 +117,16 @@ def held(fs: FrameState, base: tuple, xy: tuple[float, float], clear: tuple, w: 
         t = zoomed(base, xy, clear, w, h, 1)
     _held[fs.config.name] = t
     return t
+
+def drift(target: tuple[float, float, float]) -> tuple[float, float, float]:
+    # Slow motion while nothing's followed: the view wanders about its middle and breathes, over a couple of minutes.
+    # A fraction of a pixel a second: redrawn once a second, the displays get a small change each time.
+    cx, cy, s = target
+    t = time.time()
+    r = drift_px / s
+    return (cx + r * math.sin(2 * math.pi * t / drift_period),
+            cy + r * math.sin(2 * math.pi * t / (drift_period * 1.37)),
+            s * (1 + drift_zoom * math.sin(2 * math.pi * t / (drift_period * 0.83))))
 
 def camera(fs: FrameState, target: tuple[float, float, float]) -> tuple[float, float, float]:
     now = time.monotonic()
@@ -214,6 +227,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         target = zoomed(target, xy, clear, w, h) if time.monotonic() - swept_at < sweep else held(fs, target, xy, clear, w, h)
     else:
         _held.pop(fs.config.name, None)
+        target = drift(target)
     cx, cy, s = camera(fs, target)
     project = lambda x, y: (w / 2 + (x - cx) * s, h / 2 - (y - cy) * s)
     to_px = lambda x, y: project(*rot(x, y))
@@ -315,7 +329,7 @@ def view_mode(fs: FrameState) -> str:
 def active(fs: FrameState) -> bool:
     # A plane seen from the window, a queue at an airport, a card open. Never in the quiet hours.
     # The sky has the sun in it: it's the solar clock too, always there.
-    if quiet(fs):
+    if quiet(fs) or view_mode(fs) == 'solar':
         return False
     if view_mode(fs) == 'sky':
         return True

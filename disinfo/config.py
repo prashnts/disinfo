@@ -93,6 +93,7 @@ class Config(AppBaseModel):
     # The bearing up on this screen's map: where one faces looking at it (270: facing west).
     aviator_map_up: float = 0
     # 'map': the radar from above, when there's something to see. 'sky': out of the window, the sun and the planes, always.
+    # 'solar': the solar clock, no planes in the background.
     aviator_view: str = 'map'
     # The window's height over the street, m: the roofs around sit under the horizon or over it (11th floor).
     aviator_eye_m: float = 35

@@ -309,6 +309,7 @@ DISPLAY_BUTTONS = [
     {'title': 'Sensors', 'action': 'show_sensors'},
     {'title': 'Printers', 'action': 'show_printers'},
     {'title': 'Motion', 'action': 'motion_toggle'},
+    {'title': 'Radar', 'action': 'aviator.view'},     # map, sky, solar in turn
 ]
 
 _jpegs = {}     # screen -> (png b64, w, h, quality, jpeg): one encode per frame and size
