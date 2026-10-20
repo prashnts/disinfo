@@ -21,8 +21,11 @@ def background(fs: FrameState, style: AnalogClockStyle, clear: tuple, on_top: li
     '''
     if radar_wanted(fs, on_top):
         draw = aviator.sky.sky if aviator.app.view_mode(fs) == 'sky' else aviator.app.radar
-        return FadeIn('aviator', duration=0.6).mut(aviator.app.throttled(fs, lambda: draw(fs, clear))).draw(fs)
-    return FadeIn('solar', duration=0.3).mut(solar.draw(fs, style)).draw(fs)
+        frame = aviator.app.throttled(fs, lambda: draw(fs, clear))
+    else:
+        frame = solar.draw(fs, style)
+    # One fade for whichever is up: switching, the new one fades over the last.
+    return FadeIn('background', duration=0.8).mut(frame).draw(fs)
 
 def side_cards(fs: FrameState) -> list:
     return [

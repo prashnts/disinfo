@@ -250,3 +250,17 @@ def test_scroller_survives_shorter_content():
     s.pos = 252
     f = s.set_frame(Frame(Image.new('RGBA', (233, 9)))).draw(0.0)   # no step: the tick doesn't move it
     assert f.width == 10
+
+def test_fade_restarts_from_what_it_shows():
+    # A new frame mid-fade starts its own fade, from the picture on the screen: no jump.
+    solid = lambda v: Frame(Image.new('RGBA', (2, 2), (v, v, v, 255))).tag(v)
+    with scope('test.fade'):
+        f = FadeIn('test.fade', duration=1)
+        t = time.time()
+        f.mut(solid(0)); f.draw(FrameState(tick=t + 2, now=None, config=None))      # all in
+        f.mut(solid(200)); f.start_at = t + 2
+        half = f.draw(FrameState(tick=t + 2.5, now=None, config=None)).image.getpixel((0, 0))[0]
+        f.mut(solid(100)); f.start_at = t + 2.5
+        after = f.draw(FrameState(tick=t + 2.5, now=None, config=None)).image.getpixel((0, 0))[0]
+        assert abs(after - half) <= 2, (half, after)
+        assert f.draw(FrameState(tick=t + 3.6, now=None, config=None)).image.getpixel((0, 0))[0] == 100

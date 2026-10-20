@@ -62,12 +62,18 @@ class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
 
     def mut(self, value: TransitionValue) -> 'TimedTransition[TransitionValue]':
         if self.curr_value != value:
+            if self.running:
+                self.prev_value = self.interrupted()
             self.pos = 0
             self.running = True
             self.finished = False
-            self.start_at = time.time()
+            self.start_at = self.last_step = time.time()
         self.curr_value = value
         return self
+
+    def interrupted(self) -> Optional[TransitionValue]:
+        '''Where a transition cut short by a new value starts the next one from: what it was showing.'''
+        return self.prev_value
 
     def settled(self) -> tuple:
         '''The value's touch targets once it's all in: nothing can be touched while it moves.'''
@@ -87,13 +93,11 @@ class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
             self.prev_value = self.curr_value
             return
 
-        pos = (step - self.last_step) / self.duration
+        # From its start: a new value restarts it (mut), however long the last one ran.
+        pos = (step - self.start_at - self.delay) / self.duration
         pos = max(0, min(1, pos))
         self.pos = self.easing_fn(pos)
-
-        if (self.start_at + self.delay) > step:
-            self.pos = 0
-            self.last_step = step
+        self.last_step = step
 
         if pos == 1:
             self.pos = 1
@@ -104,11 +108,22 @@ class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
 
 
 class FadeIn(TimedTransition[Frame]):
+    shown: Optional[Frame] = None
+
+    def interrupted(self) -> Optional[Frame]:
+        return self.shown or self.prev_value
+
     def draw(self, fs: FrameState) -> Optional[Frame]:
         self.tick(fs.tick)
+        if self.pos >= 1:
+            # All in: the frame as it is, nothing to blend.
+            self.shown = Frame(self.curr_value.image, hash=self.hash, targets=self.settled())
+            return self.shown
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
         composite_at(self.prev_value, i, 'mm')
-        return Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash, targets=self.settled())
+        # Its own picture, kept: a new value mid-way fades from it.
+        self.shown = Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash, targets=self.settled())
+        return self.shown
 
 class ScaleIn(TimedTransition[Frame]):
     def draw(self, fs: FrameState) -> Optional[Frame]:

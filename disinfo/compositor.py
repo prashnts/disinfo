@@ -211,7 +211,9 @@ def compose(fs: FrameState) -> Frame:
         elif fs.config.name == 'di_pcstate':
             frame = compose_display_frame(fs)
         elif fs.config.name == 'dientry':
+            # Dim while nobody's there (the panel's off then, but a touch lights it): it fades up when someone comes.
             frame = screens.entry.compose(fs)
+            frame = frame if should_turn_on_display(fs) else frame.brightness(0.3).tag('entry.asleep')
         else:
             frame = compose_big_frame(fs)
         return FadeIn('compose', duration=0.8).mut(frame).draw(fs)
