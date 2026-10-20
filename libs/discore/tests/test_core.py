@@ -300,3 +300,17 @@ def test_a_new_widget_gets_a_turn_not_the_stack():
             s._prev_widgets = s._widgets
             on[s._widgets[s.pos].name] = on.get(s._widgets[s.pos].name, 0) + 0.1
         assert on.get('c', 0) < 30, on
+
+def test_stack_moves_on_by_itself():
+    # Nothing pressed: after its wait, the next card.
+    card = lambda name: Widget(name, Frame(Image.new('RGBA', (4, 4))), wait_time=2)
+    with scope('test.moves'):
+        s = Stack('test.moves', StackStyle(size=32)).mut([card('a'), card('b'), card('c')])
+        s._prev_widgets = s._widgets
+        s._frames = {w: w.frame for w in s._widgets}
+        seen = set()
+        for k in range(200):
+            s.scroller.on_target = True
+            s.tick(FrameState(tick=k * 0.1, now=None, config=None))
+            seen.add(s._widgets[s.pos].name)
+        assert seen == {'a', 'b', 'c'}, seen

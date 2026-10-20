@@ -98,16 +98,20 @@ class Stack(metaclass=ScopedInstance):
         # it's had its share; moved on (stay=False), another.
         visible = self._visible()
         others = [i for i in visible if stay or i != self.pos] or visible or [0]
-        # A newcomer starts level with the least shown: a turn, not minutes catching up.
-        known = [self.shown[w.name] for w in self._widgets if w.name in self.shown]
-        start = min(known, default=0)
-        return min(others, key=lambda i: (round(self.shown.get(self._widgets[i].name, start), 1), i))
+        # Between equals, another than the one on top.
+        return min(others, key=lambda i: (round(self.shown.get(self._widgets[i].name, 0), 1), i == self.pos, i))
 
     def _count(self, step: float):
         # The one on top gains the time since the last frame, all fade.
         dt = min(max(step - self._shown_at, 0), 1) if self._shown_at is not None else 0
         k = 0.5 ** (dt / self.style.half_life)
-        self.shown = {n: t * k for n, t in self.shown.items() if t * k > 0.05}
+        # The ones gone (a plane's card) are forgotten once they've faded out.
+        here = {w.name for w in self._widgets}
+        self.shown = {n: t * k for n, t in self.shown.items() if n in here or t * k > 1}
+        # A newcomer starts level with the least shown: a turn, not minutes catching up.
+        start = min(self.shown.values(), default=0)
+        for w in self._widgets:
+            self.shown.setdefault(w.name, start)
         name = self._widgets[self.pos].name
         self.shown[name] = self.shown.get(name, 0) + dt
         self._shown_at = step
