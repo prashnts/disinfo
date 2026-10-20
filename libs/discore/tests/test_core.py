@@ -241,3 +241,12 @@ def test_targets_scroll_with_the_scroller():
     assert [(x.x, x.action) for x in t] == [(30 - 25, 'b')]
     s.pos = 20 + 0
     assert s.draw(0.0).targets == ()                   # out of view
+
+def test_scroller_survives_shorter_content():
+    # A plane leaves the tile: the line gets shorter than where it had scrolled to.
+    from discore.scroller import HScroller
+    s = HScroller(size=10, name='test.scroller.shrink', static_if_small=False)
+    s.set_frame(Frame(Image.new('RGBA', (300, 9))))
+    s.pos = 252
+    f = s.set_frame(Frame(Image.new('RGBA', (233, 9)))).draw(0.0)   # no step: the tick doesn't move it
+    assert f.width == 10

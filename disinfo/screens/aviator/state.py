@@ -8,6 +8,8 @@ from disinfo.redis import db
 
 from .tasks import TABLE_KEY, RADIUS_KEY, radius_km
 
+VIEW_KEY = 'di.aviator.view'     # map or sky on every screen, from the web page; their config's otherwise
+
 
 class AviatorState(AppBaseModel):
     now: float = 0
@@ -39,6 +41,8 @@ class ADSBxStateManager(PubSubStateManager[AviatorState]):
 
 class OpenedState(AppBaseModel):
     opened: dict[str, float] = {}       # hex -> when it was tapped
+    view: str | None = None
+    map_up: dict[str, float] = {}       # screen -> the bearing up on its map, from the web page; until a restart
 
 class OpenedStateManager(PubSubStateManager[OpenedState]):
     # Tapping a plane on the radar opens its card, tapping the card closes it. The web page sets the radius.
@@ -46,12 +50,20 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     channels = ('di.pubsub.remote',)
     keep_open = 90
 
+    def initial_state(self) -> OpenedState:
+        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None)
+
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
             case 'aviator.open':
                 self.state.opened = {data.payload['hex']: time.time()}
             case 'aviator.close':
                 self.state.opened.pop(data.payload['hex'], None)
+            case 'aviator.view':
+                self.state.view = data.payload['view']
+                db.set(VIEW_KEY, self.state.view)
+            case 'aviator.map_up':
+                self.state.map_up[data.payload['screen']] = float(data.payload['deg']) % 360
             case 'aviator.radius':
                 # The poller reads it, every renderer gets it back with the table.
                 db.set(RADIUS_KEY, float(data.payload['km']))

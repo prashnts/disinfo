@@ -18,7 +18,7 @@ from disinfo import fonts
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .flags import find_icao_range
-from .app import chevron, following
+from .app import chevron, on_top, pill, number, map_up
 from . import lookup
 
 
@@ -27,7 +27,7 @@ photo_size = (card_width, 48)
 # Fixed widths: longer text scrolls, slowly.
 callsign_width = card_width - 9 - 7 - 3 * 2    # the icon, the flag, the gaps
 airline_width = 34
-scroll_speed = 0.05
+scroll_speed = 0.1         # s a pixel: slow, and fewer frames changed for the displays
 callsign_style = TextStyle(font=fonts.px_op_mono_8, color='#3fa05a')
 value_style = TextStyle(font=fonts.bitocra7, color='#a6a6a6')
 muted_style = TextStyle(font=fonts.bitocra7, color='#808080')
@@ -67,10 +67,12 @@ def value(fs: FrameState, v: str, unit: str, name: str, arrow: str = '') -> Fram
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
 def where(p: dict) -> Frame:
-    # Where to look from the window: the direction and how high above the horizon.
+    # Where to look from the window: the direction and how high above the horizon. How far from home.
+    d = p['dist']
+    far = hstack([text(f'{d:.1f}' if d < 10 else f'{d:.0f}', value_style), text('km', unit_style)], gap=1, align='bottom')
     if p['elev'] >= 60:
-        return text('overhead', TextStyle(font=fonts.bitocra7, color='#b7925e'))
-    return hstack([text(compass[round(p['bearing'] / 45) % 8], muted_style), text(f'{round(p["elev"])}', value_style), text('°', arrow_style)], gap=1, align='bottom')
+        return hstack([text('overhead', TextStyle(font=fonts.bitocra7, color='#b7925e')), far], gap=2, align='bottom')
+    return hstack([text(compass[round(p['bearing'] / 45) % 8], muted_style), text(f'{round(p["elev"])}', value_style), text('°', arrow_style), far], gap=1, align='bottom')
 
 def photo(photo: dict) -> Frame | None:
     # Cropped to photo_size, the photographer in its corner.
@@ -95,7 +97,8 @@ def card(fs: FrameState, p: dict, active: bool) -> Frame:
     trend = '↑' if p['vr'] > 120 else '↓' if p['vr'] < -120 else ''
 
     head = hstack([
-        plane_icon(round(p['track'] / 15) * 15 % 360, color),
+        # Its number on the map, or its icon turned like the map is.
+        pill(n, color) if (n := number(ADSBxStateManager().get_state(fs), p['hex'])) else plane_icon(round((p['track'] - map_up(fs)) / 15) * 15 % 360, color),
         scrolling(fs, text(route.get('number') or p['flight'] or p['r'] or p['hex'], callsign_style), callsign_width, uname('callsign')),
         Spacer(),
         flag(p['hex']),
@@ -131,12 +134,13 @@ def card(fs: FrameState, p: dict, active: bool) -> Frame:
 
 
 def tile(fs: FrameState, planes: list[dict]) -> Frame:
-    # One line for the planes seen from the window, scrolling: callsign, route, where to look.
+    # One line for the planes seen from the window, scrolling: their number on the map, callsign, route, where to look.
+    st = ADSBxStateManager().get_state(fs)
     def item(p: dict) -> Frame:
         route = lookup.route(p) or {}
         places = route.get('from'), route.get('to')
         return hstack([
-            plane_icon(round(p['track'] / 15) * 15 % 360, marker_color(p['alt']).hex),
+            pill(number(st, p['hex']) or 0, marker_color(p['alt']).hex),
             text(route.get('number') or p['flight'] or p['r'] or p['hex'], value_style),
             hstack([text(places[0]['iata'] or '?', tiny_style), text('→', arrow_style), text(places[1]['iata'] or '?', tiny_style)], gap=1, align='center') if all(places) and places[0] != places[1] else None,
             where(p),
@@ -150,8 +154,9 @@ def planes(fs: FrameState) -> list[Widget]:
     opened = OpenedStateManager().get_state(fs).opened
     carded = [h for h in dict.fromkeys([*opened, *st.overhead]) if h in st.planes]
     seen = [st.planes[h] for h in st.watched if h in st.planes and h not in carded]
-    on_top = following(fs)
-    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == on_top), style=widget_style, priority=3, focus=True, wait_time=10)
+    shown = on_top(fs)
+    # After the other cards (the printer's, the music's): they take the stack only when tapped.
+    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == shown), style=widget_style, priority=0.4, focus=h in opened, wait_time=10)
              for h in carded]
     # Not 'aviator.<hex>': the radar follows the cards only.
-    return cards + ([Widget('aviator-tile', frame=tile(fs, seen), style=widget_style, priority=2, wait_time=10)] if seen else [])
+    return cards + ([Widget('aviator-tile', frame=tile(fs, seen), style=widget_style, priority=0.3, wait_time=10)] if seen else [])

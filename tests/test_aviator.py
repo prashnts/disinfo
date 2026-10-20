@@ -43,12 +43,19 @@ def test_rotated():
     assert rot(0, 1) == pytest.approx((1, 0))
     assert app.rotated(0)(3, 4) == pytest.approx((3, 4))
 
-def test_fit_and_keep_in():
+def test_fit_and_held(monkeypatch):
     cx, cy, s = app.fit([(0, 0), (10, 20)], 100, 200, margin=0)
     assert (cx, cy, s) == (5, 10, 10)
-    # A plane off the clear box's left edge: the view moves so it's 6 px inside.
-    x, y, s = app.keep_in((0, 0, 10), (-5, 0), (50, 0, 100, 100), 100, 100)
-    assert 50 + (-5 - x) * s == pytest.approx(56)
+    fs = type('fs', (), {'config': type('c', (), {'name': 'test'})})()
+    monkeypatch.setattr(app, '_held', {})
+    clear = (50, 0, 100, 100)
+    # Put in the middle of the clear box (75, 50), then held still while it stays in it.
+    t = app.held(fs, (0, 0, 10), (0, 0), clear, 100, 100)
+    assert 50 + (0 - t[0]) * 10 == pytest.approx(75)
+    assert app.held(fs, (0, 0, 10), (1, 0), clear, 100, 100) == t
+    # Out of it: back in the middle.
+    t = app.held(fs, (0, 0, 10), (5, 0), clear, 100, 100)
+    assert 50 + (5 - t[0]) * 10 == pytest.approx(75)
 
 def test_watched_keeps_its_planes(monkeypatch):
     monkeypatch.setattr(utils.app_config, 'aviator_window', (0, 180))

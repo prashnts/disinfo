@@ -27,7 +27,7 @@ SCENES = [
     ('nuit', 'scene.nuit')]
 MIRROR = 'light.ikea_driver_study_kallax'
 GAP = 6
-SIDE = 2 * 88       # the side stack's cards at 2x
+SIDE = 88           # the side stack's cards
 
 label_style = TextStyle(font=fonts.cozette, color='#e0e0e0', overflow='fit')
 
@@ -67,17 +67,17 @@ def controls(fs: FrameState, width: int) -> Frame:
     return hstack(buttons, gap=GAP)
 
 def compose(fs: FrameState) -> Frame:
-    # Like the salon: the radar or the solar clock, the side and bottom stacks (at 2x), the scenes to touch.
+    # Like the salon: the radar or the solar clock, the side and bottom stacks, the scenes to touch. The time at 2x.
     w, h = fs.config.width, fs.config.height
     canvas = Frame(Image.new('RGBA', (w, h), (0, 0, 0, 255)))
     buttons = controls(fs, w - 2 * GAP)
     above = h - buttons.height - 2 * GAP        # what the buttons leave
     # The bottom stack takes the right of the side stack's cards.
     right = w - SIDE - 2 * GAP
-    side = Stack('main_cards', StackStyle(size=above // 2, align='left', horizontal=False)).mut(side_cards(fs))
-    bottom = Stack('bottom_cards', StackStyle(align='bottom', horizontal=True, offset_top=0, size=right // 2)).mut(bottom_cards(fs))
+    side = Stack('main_cards', StackStyle(size=above, align='left', horizontal=False)).mut(side_cards(fs))
+    bottom = Stack('bottom_cards', StackStyle(align='bottom', horizontal=True, offset_top=0, size=right)).mut(bottom_cards(fs))
     aviator.app.follow(fs, bottom.current)
-    side_f, bottom_f = big(side.draw(fs)), big(bottom.draw(fs))
+    side_f, bottom_f = side.draw(fs), bottom.draw(fs)
 
     clock = AnalogClockStyle(cx=w // 2 + 60, cy=h // 2 - 20, tick_radius_multiplier=0.36,
                              dial_radius_multiplier=0.36, needle_radius_multiplier=0.42, background=sky_color(fs))

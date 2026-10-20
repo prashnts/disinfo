@@ -2,10 +2,13 @@ import math
 import time
 import cairocffi as cairo
 
+from functools import cache
+
 from discore.cairo import to_pil
 from discore.elements import Frame, Target
 from discore.data_structures import FrameState
 from discore.layouts import place_at
+from discore.layers import div
 from discore.text import TextStyle, text
 from disinfo import fonts
 from disinfo.config import app_config
@@ -16,15 +19,13 @@ from .utils import airports, local_xy
 
 
 airport_km = 9          # around an airport with a queue
-sweep = 6               # s zoomed on the plane of a card when it comes on top
+sweep = 4               # s zoomed on the plane of a card the first time it comes on top
 sweep_zoom = 2.5
 rings = [5, 10, 20, 30]
 spokes = 30             # degrees between them
-# The radar is a background: dim, the cards go on top.
+# The radar is a background: dim, the cards go on top. Dark greys only (the lighter window half cost power and data).
 scope_center = (0.09, 0.10, 0.11)
 scope_edge = (0.04, 0.045, 0.05)
-# The LEDs crush the dark greys: the window's half needs a clear step, and its edges.
-window_tint = (1, 1, 1, 0.08)
 window_edge = (1, 1, 1, 0.22)
 grid_color = (1, 1, 1, 0.09)
 home_color = (0.9, 0.55, 0.2, 1)
@@ -36,11 +37,40 @@ ahead = 120             # s of the path ahead of the watched planes, dashed
 plane_alpha = 0.8
 label_style = TextStyle(font=fonts.microfont_35_reg, color='#8b8e94b0')
 ring_style = TextStyle(font=fonts.exsmall, color='#5b5e6490')
+# Dark digits on the plane's color: the planes seen from the window are numbered, on the map and in the tile.
+pill_style = TextStyle(font=fonts.microfont_35_reg, color='#000000')
 
 _cams = {}              # screen -> [x, y, s, at]: center in km, px per km; eases towards the view
-_following = {}         # screen -> the plane of the card on top of the stack
-_swept = {}             # screen -> (plane, when its card came on top)
+_on_top = {}            # screen -> the plane of the card on top of the stack
+_following = {}         # screen -> the plane followed: the last card on top, while it has a card
+_swept = {}             # screen -> (plane, when its card first came on top)
+_seen_on_top = {}       # screen -> the planes zoomed on already: once each, cards take turns on top
+_held = {}              # screen -> the view while following: moved only when the plane leaves the clear box
+_moving = {}            # screen -> the camera's still easing towards its view
+# The planes move about a pixel a second: redrawn every frame only while the camera moves, its view held still
+# otherwise, the trails faded in steps. The displays (the Guition) then get frames that changed only where the
+# clock and the scrollers are, and the planes.
+redraw_every = 1
+redraw_moving = 1 / 12  # while the camera moves: smooth enough, half the frames a 25 fps renderer makes
+fade_step = 15
+_drawn = {}             # screen -> (when, frame)
 
+
+@cache
+def pill(n: int, color: str) -> Frame:
+    return div(text(f'{n}', pill_style), padding=(1, 1, 0, 1), radius=1, background=color)
+
+def number(st, hex: str) -> int | None:
+    return st.watched.index(hex) + 1 if hex in st.watched else None
+
+def label_at(label: Frame, x: int, y: int, taken: list) -> tuple[int, int] | None:
+    # Right of the point, else left, under, over: where it overlaps no label placed yet. None when it's all taken.
+    w, h = label.size
+    for lx, ly in ((x + 4, y - 2), (x - w - 3, y - 2), (x - w // 2, y + 4), (x - w // 2, y - h - 3)):
+        if not any(lx < tx + tw and tx < lx + w and ly < ty + th and ty < ly + h for tx, ty, tw, th in taken):
+            taken.append((lx, ly, w, h))
+            return lx, ly
+    return None
 
 def rotated(up: float):
     # Turns (km east, km north) so the bearing up is up.
@@ -66,37 +96,58 @@ def view(focus: str | None, radius: float, rot, w: int, h: int) -> tuple[float, 
     arc = [start + (end - start) % 360 * i / 12 for i in range(13)]
     return fit([(0, 0), *[rot(radius * math.sin(math.radians(b)), radius * math.cos(math.radians(b))) for b in arc]], w, h)
 
-def zoomed(target: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int) -> tuple[float, float, float]:
-    # Closer, the plane in the middle of the clear box.
-    s = target[2] * sweep_zoom
+def zoomed(target: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int, zoom: float = sweep_zoom) -> tuple[float, float, float]:
+    # Closer, the plane in the middle of the clear box (x0, y0, x1, y1) of the frame, the cards cover the rest.
+    s = target[2] * zoom
     bx, by = (clear[0] + clear[2]) / 2, (clear[1] + clear[3]) / 2
     return xy[0] - (bx - w / 2) / s, xy[1] + (by - h / 2) / s, s
 
-def keep_in(target: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int) -> tuple[float, float, float]:
-    # Moves the view so the plane at xy lands in the clear box (x0, y0, x1, y1) of the frame, the cards cover the rest.
+def inside(target: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int, margin: int = 6) -> bool:
     cx, cy, s = target
     px, py = w / 2 + (xy[0] - cx) * s, h / 2 - (xy[1] - cy) * s
-    dx = min(max(px, clear[0] + 6), clear[2] - 6) - px
-    dy = min(max(py, clear[1] + 6), clear[3] - 6) - py
-    return cx - dx / s, cy + dy / s, s
+    return clear[0] + margin <= px <= clear[2] - margin and clear[1] + margin <= py <= clear[3] - margin
+
+def held(fs: FrameState, base: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int) -> tuple[float, float, float]:
+    # Still while the plane's in the clear box; it's put back in its middle when it leaves.
+    t = _held.get(fs.config.name)
+    if t is None or t[2] != base[2] or not inside(t, xy, clear, w, h):
+        t = zoomed(base, xy, clear, w, h, 1)
+    _held[fs.config.name] = t
+    return t
 
 def camera(fs: FrameState, target: tuple[float, float, float]) -> tuple[float, float, float]:
     now = time.monotonic()
     c = _cams.setdefault(fs.config.name, [*target, now])
     k = 1 - math.exp(-(now - c[3]) / 0.8)
     c[:] = *(a + (b - a) * k for a, b in zip(c[:3], target)), now
+    # Close enough: on it. Easing on by fractions of a pixel would change every pixel of every frame.
+    _moving[fs.config.name] = abs(c[2] - target[2]) / target[2] > 0.01 or math.hypot(c[0] - target[0], c[1] - target[1]) * c[2] > 0.5
+    if not _moving[fs.config.name]:
+        c[:3] = target
     return c[0], c[1], c[2]
 
 def follow(fs: FrameState, widget):
-    # The stack's card on top: its plane is lit, zoomed on for a moment, and kept out from under the cards.
+    # The stack's card on top shows its photo. Its plane is followed while it has a card, the tile on top or not:
+    # lit, zoomed on for a moment, and kept out from under the cards.
     name = getattr(widget, 'name', '') or ''
     hex = name.removeprefix('aviator.') if name.startswith('aviator.') else None
-    if hex and _swept.get(fs.config.name, (None,))[0] != hex:
-        _swept[fs.config.name] = (hex, time.monotonic())
-    _following[fs.config.name] = hex
+    _on_top[fs.config.name] = hex
+    if hex:
+        seen = _seen_on_top.setdefault(fs.config.name, set())
+        if hex not in seen:
+            seen.add(hex)
+            _swept[fs.config.name] = (hex, time.monotonic())
+            if len(seen) > 64:
+                seen.clear()
+        _following[fs.config.name] = hex
+
+def on_top(fs: FrameState) -> str | None:
+    return _on_top.get(fs.config.name)
 
 def following(fs: FrameState) -> str | None:
-    return _following.get(fs.config.name)
+    st = ADSBxStateManager().get_state(fs)
+    hex = _following.get(fs.config.name)
+    return hex if hex in st.planes and (hex in st.overhead or hex in OpenedStateManager().get_state(fs).opened) else None
 
 def position(p: dict, now: float, after: float = 0) -> tuple[float, float]:
     # Dead reckoning from the last position: the poller updates every second, the frames are smoother.
@@ -116,7 +167,7 @@ def chevron(ctx: cairo.Context, x: float, y: float, track: float, size: float):
     ctx.restore()
 
 def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list):
-    # A dim grey scope around home, the window's bearings a shade lighter, rings and spokes.
+    # A dim grey scope around home, rings and spokes, the window's bearings between brighter ones.
     r = max(w, h) * 1.5
     g = cairo.RadialGradient(hx, hy, 0, hx, hy, radius * s * 1.2)
     g.add_color_stop_rgb(0, *scope_center)
@@ -125,11 +176,6 @@ def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up:
     ctx.paint()
     start, end = app_config.aviator_window
     start, end = start - up, end - up
-    ctx.move_to(hx, hy)
-    ctx.arc(hx, hy, r, to_angle(start), to_angle(start + (end - start) % 360))
-    ctx.close_path()
-    ctx.set_source_rgba(*window_tint)
-    ctx.fill()
     ctx.set_source_rgba(*window_edge)
     for b in (start, start + (end - start) % 360):
         ctx.move_to(hx, hy)
@@ -157,15 +203,17 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     opened = OpenedStateManager().get_state(fs).opened
     w, h = fs.config.width, fs.config.height
     now = time.time()
-    following = _following.get(fs.config.name)
-    up = fs.config.aviator_map_up
+    followed = following(fs)
+    up = map_up(fs)
     rot = rotated(up)
     target = view(st.focus, st.radius, rot, w, h)
     clear = clear or (0, 0, w, h)
-    if following in st.planes:
-        xy = rot(*position(st.planes[following], now))
+    if followed:
+        xy = rot(*position(st.planes[followed], now))
         swept_at = _swept.get(fs.config.name, (None, 0))[1]
-        target = zoomed(target, xy, clear, w, h) if time.monotonic() - swept_at < sweep else keep_in(target, xy, clear, w, h)
+        target = zoomed(target, xy, clear, w, h) if time.monotonic() - swept_at < sweep else held(fs, target, xy, clear, w, h)
+    else:
+        _held.pop(fs.config.name, None)
     cx, cy, s = camera(fs, target)
     project = lambda x, y: (w / 2 + (x - cx) * s, h / 2 - (y - cy) * s)
     to_px = lambda x, y: project(*rot(x, y))
@@ -173,7 +221,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     ctx = cairo.Context(surface)
     ctx.set_line_width(1)
-    labels = []
+    labels, taken = [], []
     hx, hy = to_px(0, 0)
     scope(ctx, hx, hy, s, st.radius, up, w, h, labels)
 
@@ -182,21 +230,22 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.set_source_rgba(*airport_color)
         ctx.rectangle(round(ax) - 1.5, round(ay) - 1.5, 4, 4)
         ctx.stroke()
-        labels.append((text(a.code, label_style), round(ax) + 4, round(ay) - 2))
+        if at := label_at(code := text(a.code, label_style), round(ax), round(ay), taken):
+            labels.append((code, *at))
     ctx.set_source_rgba(*home_color)
     ctx.rectangle(round(hx) - 1, round(hy) - 1, 3, 3)
     ctx.fill()
 
     targets = []
     # The watched ones last: on top.
-    for hex, p in sorted(st.planes.items(), key=lambda i: (i[0] == following, i[0] in st.watched)):
+    for hex, p in sorted(st.planes.items(), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         watched = hex in st.watched or hex in opened
         fade = watched_fade if watched else trail_fade
         alpha = 2 * trail_alpha if watched else trail_alpha
         trail = p['trail']
         for (_, la0, lo0, _), (t1, la1, lo1, _) in zip(trail, trail[1:]):
-            age = now - t1
+            age = max(now // fade_step * fade_step - t1, 0)
             if age > fade:
                 continue
             ctx.set_source_rgba(*color, alpha * (1 - age / fade))
@@ -223,14 +272,16 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.set_source_rgba(*color, 1 if watched else plane_alpha)
         chevron(ctx, px, py, p['track'] - up, 3 if watched else 2.2)
         ctx.fill()
-        if hex == following:
-            ctx.set_source_rgba(1, 1, 1, 0.55 + 0.35 * math.sin(now * 5))
+        if hex == followed:
+            ctx.set_source_rgba(1, 1, 1, 0.85)
             ctx.arc(px, py, 6.5, 0, 2 * math.pi)
             ctx.stroke()
         elif watched:
             ctx.set_source_rgba(1, 1, 1, 0.3)
             ctx.arc(px, py, 5.5, 0, 2 * math.pi)
             ctx.stroke()
+        if n := number(st, hex):
+            labels.append((pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
         targets.append(Target(round(px) - 6, round(py) - 6, 13, 13, 'aviator.open', {'hex': hex}))
 
     img = to_pil(surface)
@@ -243,14 +294,31 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
 hold = 90       # s the radar stays after the last reason to show it
 _active_at = {}
 
+def throttled(fs: FrameState, draw) -> Frame:
+    at, f = _drawn.get(fs.config.name, (0, None))
+    now = time.monotonic()
+    if f is None or now - at >= (redraw_moving if _moving.get(fs.config.name) else redraw_every):
+        f = draw()
+        _drawn[fs.config.name] = (now, f)
+    return f
+
 def quiet(fs: FrameState) -> bool:
     t = fs.now.strftime('%H:%M')
     return any(a <= t < b for a, b in app_config.aviator_quiet)
 
+def map_up(fs: FrameState) -> float:
+    return OpenedStateManager().get_state(fs).map_up.get(fs.config.name, fs.config.aviator_map_up)
+
+def view_mode(fs: FrameState) -> str:
+    return OpenedStateManager().get_state(fs).view or fs.config.aviator_view
+
 def active(fs: FrameState) -> bool:
     # A plane seen from the window, a queue at an airport, a card open. Never in the quiet hours.
+    # The sky has the sun in it: it's the solar clock too, always there.
     if quiet(fs):
         return False
+    if view_mode(fs) == 'sky':
+        return True
     st = ADSBxStateManager().get_state(fs)
     if st.focus or OpenedStateManager().get_state(fs).opened:
         _active_at[fs.config.name] = time.monotonic()

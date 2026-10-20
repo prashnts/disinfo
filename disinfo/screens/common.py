@@ -14,7 +14,8 @@ def background(fs: FrameState, style: AnalogClockStyle, clear: tuple) -> Frame:
     clear: the box the cards leave free, the radar keeps the plane of the card on top in it.
     '''
     if aviator.app.active(fs):
-        return FadeIn('aviator', duration=0.6).mut(aviator.app.radar(fs, clear)).draw(fs)
+        draw = aviator.sky.sky if aviator.app.view_mode(fs) == 'sky' else aviator.app.radar
+        return FadeIn('aviator', duration=0.6).mut(aviator.app.throttled(fs, lambda: draw(fs, clear))).draw(fs)
     return FadeIn('solar', duration=0.3).mut(solar.draw(fs, style)).draw(fs)
 
 def side_cards(fs: FrameState) -> list:

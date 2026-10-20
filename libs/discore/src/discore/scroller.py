@@ -81,6 +81,8 @@ class Scroller(metaclass=ScopedInstance):
         if reset:
             self.pos = 0
             self.last_step = 0
+        # The content can get shorter (a title, a list): the position stays in it.
+        self.pos %= max(self._get_frame_size(), 1)
 
     def _get_frame(self, frame: Frame) -> Frame:
         self._true_w = frame.width

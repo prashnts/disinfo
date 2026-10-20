@@ -40,7 +40,8 @@ class PubSubManager(metaclass=UniqInstance):
         except KeyError:
             return
 
-        for channels, callback in self.subscribers.values():
+        # A copy: state managers attach from other threads (the renderer's) while messages come in.
+        for channels, callback in list(self.subscribers.values()):
             if channel_name in channels:
                 try:
                     callback(channel_name, msg)
