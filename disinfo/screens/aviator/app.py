@@ -305,9 +305,6 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     return Frame(img, targets=tuple(targets)).tag(('aviator.radar', fs.config.name))
 
 
-hold = 90       # s the radar stays after the last reason to show it
-_active_at = {}
-
 def throttled(fs: FrameState, draw) -> Frame:
     at, f = _drawn.get(fs.config.name, (0, None))
     now = time.monotonic()
@@ -325,15 +322,3 @@ def map_up(fs: FrameState) -> float:
 
 def view_mode(fs: FrameState) -> str:
     return OpenedStateManager().get_state(fs).view or fs.config.aviator_view
-
-def active(fs: FrameState) -> bool:
-    # A plane seen from the window, a queue at an airport, a card open. Never in the quiet hours.
-    # The sky has the sun in it: it's the solar clock too, always there.
-    if quiet(fs) or view_mode(fs) == 'solar':
-        return False
-    if view_mode(fs) == 'sky':
-        return True
-    st = ADSBxStateManager().get_state(fs)
-    if st.focus or OpenedStateManager().get_state(fs).opened:
-        _active_at[fs.config.name] = time.monotonic()
-    return time.monotonic() - _active_at.get(fs.config.name, -hold) < hold

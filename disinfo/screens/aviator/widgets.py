@@ -18,7 +18,7 @@ from disinfo import fonts
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .flags import find_icao_range
-from .app import chevron, on_top, pill, number, map_up
+from .app import chevron, on_top, pill, number, map_up, view_mode
 from . import lookup
 
 
@@ -156,7 +156,11 @@ def planes(fs: FrameState) -> list[Widget]:
     seen = [st.planes[h] for h in st.watched if h in st.planes and h not in carded]
     shown = on_top(fs)
     # After the other cards (the printer's, the music's): they take the stack only when tapped.
-    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == shown), style=widget_style, priority=0.4, focus=h in opened, wait_time=10)
+    # On top of the stack, they bring the radar behind (the map or the sky).
+    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == shown), background='aviator', style=widget_style, priority=0.4, focus=h in opened, wait_time=10)
              for h in carded]
     # Not 'aviator.<hex>': the radar follows the cards only.
-    return cards + ([Widget('aviator-tile', frame=tile(fs, seen), style=widget_style, priority=0.3, wait_time=10)] if seen else [])
+    # The solar view keeps to the planes passing overhead.
+    if not seen or view_mode(fs) == 'solar':
+        return cards
+    return cards + [Widget('aviator-tile', frame=tile(fs, seen), background='aviator', style=widget_style, priority=0.3, wait_time=10)]

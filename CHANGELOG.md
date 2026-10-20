@@ -41,6 +41,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 Branch [`llm-v1`](https://github.com/prashnts/disinfo/tree/llm-v1), created 2026-09-27 from [`299bdf0`](https://github.com/prashnts/disinfo/commit/299bdf0). The work on this branch is AI-assisted (Claude Code).
 
 ### Added
+- `discore.widget`: `background=`, the background a widget brings while it's on top of its stack (`Stack.current`); the screens build their stacks first and show what the cards on top ask for. A plane's card or the planes' tile on top brings the radar (the map or the sky), the solar clock otherwise; the sky view stays up (it has the sun). The `solar` view offers only the cards of the planes passing overhead (or tapped). The entry screen fits 266x160 (3x on the Guition: fewer pixels to compose and send): smaller buttons, the time at 1x (uncommitted).
 - A screen for esp-displays' T4-S3 (`di_pcstate`, 200x150, 3x on its 600x450 AMOLED, over USB): its own composer, the same sensors. The web server serves any screen to such displays: `/display/<screen>/stream.mjpg` (the newest frame, a whole-number scale to fit `w`x`h`), `/buttons` (shown on the display), `/press`.
 - Music slides, with album art cached and a Spotify mark ([`6ce6bbb`](https://github.com/prashnts/disinfo/commit/6ce6bbb)). Listening sessions (`utils/sessions.py`, [`d2d38aa`](https://github.com/prashnts/disinfo/commit/d2d38aa)).
 - GIF renderer: `--fps` and `--warmup` options (uncommitted).

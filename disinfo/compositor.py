@@ -72,7 +72,15 @@ def compose_big_frame(fs: FrameState):
     elif rmt_reader('right'):
         publish('di.pubsub.remote', action='btn_metro')
     
-    # composite_at(screens.aviator.app.radar(fs), image, 'mm')
+    # The stacks first: the background is the one their cards on top bring.
+    stack_conf = StackStyle(size=config.height, scrollbar=_leftward, align='right' if _leftward else 'left', horizontal=False)
+    stack = Stack('main_cards', style=stack_conf).mut(side_cards(fs))
+    stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)
+    stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut(bottom_cards(fs))
+    if rmt_reader('down'):
+        stack.next_widget()
+    screens.aviator.app.follow(fs, stack_hor.current)
+
     if awake:
         solar_style = AnalogClockStyle(
             cx=75 + p_stack_offset(),
@@ -83,7 +91,7 @@ def compose_big_frame(fs: FrameState):
             background=sky,
         )
         # The plane cards cover the bottom.
-        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80)), image, 'mm')
+        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80), [stack.current, stack_hor.current]), image, 'mm')
     image = composite_at(
         screens.date_time.flip_clock(fs, align=_clock_align),
         image,
@@ -93,16 +101,6 @@ def compose_big_frame(fs: FrameState):
         frost=1)
     # if rmt_state.show_debug:
     #     composite_at(screens.demo.draw(fs), image, 'mm')
-
-    stack_conf = StackStyle(size=config.height, scrollbar=_leftward, align='right' if _leftward else 'left', horizontal=False)
-    stack = Stack('main_cards', style=stack_conf).mut(side_cards(fs))
-
-    stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)
-    stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut(bottom_cards(fs))
-
-    if rmt_reader('down'):
-        stack.next_widget()
-    screens.aviator.app.follow(fs, stack_hor.current)
 
     if awake:
         image = composite_at(stack.draw(fs), image, 'mr' if _leftward else 'ml', dx=p_stack_offset(), frost=1.8)
@@ -182,8 +180,6 @@ def compose_display_frame(fs: FrameState):
             needle_radius_multiplier=0.42,
             background=screens.solar.app.sky_color(fs),   # TODO: color sensor, see compose_big_frame
         )
-        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80)), image, 'mm')
-
         stack = Stack('main_cards', style=StackStyle(size=config.height, align='left', horizontal=False)).mut([
             *side_cards(fs),
             screens.date_time.calendar_widget(fs),
@@ -192,6 +188,8 @@ def compose_display_frame(fs: FrameState):
         screens.aviator.app.follow(fs, stack_hor.current)
         if RuntimeStateManager().get_state(fs).show_metro:
             stack.mut([*screens.paris_metro.widgets(fs)])
+        # The background is the one their cards on top bring.
+        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80), [stack.current, stack_hor.current]), image, 'mm')
         image = composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
         image = composite_at(stack_hor.draw(fs), image, 'bl', dy=-p_stack_offset(), frost=1.8)
         image = composite_at(shazam_indicators(fs).draw(fs), image, 'br')

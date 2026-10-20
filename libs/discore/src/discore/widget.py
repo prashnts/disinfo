@@ -25,6 +25,8 @@ class Widget:
     transition_exit: TimedTransition[Frame] = Resize
     ease_in: ease.EasingFn = ease.cubic.cubic_in
     ease_out: ease.EasingFn = ease.cubic.cubic_out
+    # The background it brings while it's on top of its stack (Stack.current): the screen shows it behind.
+    background: Optional[str] = None
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
         style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')

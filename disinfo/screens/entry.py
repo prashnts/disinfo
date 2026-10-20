@@ -40,22 +40,26 @@ def big(f: Frame | None, k: int = 2) -> Frame | None:
     return Frame(img, hash=('big', k, f.hash), targets=scaled(f.targets, k, k))
 
 
-def styles(width: int) -> tuple[ButtonStyle, ButtonStyle]:
+def compact(fs: FrameState) -> bool:
+    # Shown at 3x (266x160 on the 800x480 panel): smaller buttons, the time at 1x.
+    return fs.config.width < 300
+
+def styles(width: int, pad: int = 5) -> tuple[ButtonStyle, ButtonStyle]:
     # Normal, and on (the scene last turned on, the light on).
-    cell = dict(width=width, height=24, padding=5, radius=4, border=1, anchor='mm')
+    cell = dict(width=width, height=24 if pad > 2 else 16, padding=pad, radius=4 if pad > 2 else 2, border=1, anchor='mm')
     return (ButtonStyle(normal=DivStyle(background='#00000080', border_color='#ffffff30', **cell),
                         pressed=DivStyle(background='#ffffff60', border_color='#ffffffb0', **cell)),
             ButtonStyle(normal=DivStyle(background='#40300c90', border_color='#e0a040b0', **cell),
                         pressed=DivStyle(background='#e0a04080', border_color='#ffd080', **cell)))
 
 def control(fs: FrameState, label: str, payload: dict, on: bool, width: int) -> Frame:
-    normal, active = styles(width)
+    normal, active = styles(width, 2 if compact(fs) else 5)
     return button(text(label, label_style), 'ha.call', payload,
                   pressed=TouchStateManager().is_pressed(fs, 'ha.call', payload), style=active if on else normal)
 
 def controls(fs: FrameState, width: int) -> Frame:
     # One row across: the scenes, then the mirror's light.
-    each = (width - GAP * len(SCENES)) // (len(SCENES) + 1) - 2 * 5 - 2
+    each = (width - GAP * len(SCENES)) // (len(SCENES) + 1) - 2 * (2 if compact(fs) else 5) - 2
     scenes = [(name, get_entity(eid)) for name, eid in SCENES]
     # A scene's state is when it was last turned on.
     last = max((e.state for _, e in scenes if e), default=None)
@@ -83,9 +87,9 @@ def compose(fs: FrameState) -> Frame:
                              dial_radius_multiplier=0.36, needle_radius_multiplier=0.42, background=sky_color(fs))
     # What the cards leave of the radar: between the stacks.
     clear = (GAP + (side_f.width if side_f else 0), GAP, w - GAP - (bottom_f.width if bottom_f else 0), above)
-    canvas = composite_at(background(fs, clock, clear), canvas, 'mm')
+    canvas = composite_at(background(fs, clock, clear, [side.current, bottom.current]), canvas, 'mm')
     canvas = composite_at(side_f, canvas, 'tl', dx=GAP, dy=GAP, frost=1.8)
     canvas = composite_at(bottom_f, canvas, 'br', dx=-GAP, dy=-(h - above), frost=1.8)
-    canvas = composite_at(big(flip_digital_clock(fs, align='right')), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
+    canvas = composite_at(big(flip_digital_clock(fs, align='right'), 1 if compact(fs) else 2), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
     canvas = composite_at(buttons, canvas, 'bm', dy=-GAP, frost=1.8)
     return canvas.tag('entry')

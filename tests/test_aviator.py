@@ -69,3 +69,18 @@ def test_watched_keeps_its_planes(monkeypatch):
     # One leaves the view: the nearest new one takes its place.
     del tasks.table['a']
     assert tasks.watched(0, 40) == ['b', 'c']
+
+def test_the_card_on_top_brings_the_radar(monkeypatch):
+    from discore.widget import Widget
+    from disinfo.screens import common
+    fs = type('fs', (), {'config': type('c', (), {'name': 'test', 'aviator_view': 'map', 'aviator_quiet': []}), 'now': __import__('pendulum').parse('2026-10-20T12:00:00')})()
+    monkeypatch.setattr(app, 'view_mode', lambda fs: fs.config.aviator_view)
+    monkeypatch.setattr(app, 'quiet', lambda fs: False)
+    plane, weather = Widget('aviator.a', background='aviator'), Widget('weather')
+    assert common.radar_wanted(fs, [weather, plane])
+    assert not common.radar_wanted(fs, [weather, None])
+    # The sky's always there; never in the quiet hours.
+    fs.config.aviator_view = 'sky'
+    assert common.radar_wanted(fs, [weather])
+    monkeypatch.setattr(app, 'quiet', lambda fs: True)
+    assert not common.radar_wanted(fs, [plane])

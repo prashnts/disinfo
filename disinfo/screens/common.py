@@ -8,12 +8,18 @@ from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
 
 
-def background(fs: FrameState, style: AnalogClockStyle, clear: tuple) -> Frame:
-    '''The radar when there's something to see from the window, the solar clock otherwise.
+def radar_wanted(fs: FrameState, on_top: list) -> bool:
+    if aviator.app.quiet(fs):
+        return False
+    return aviator.app.view_mode(fs) == 'sky' or any(w and w.background == 'aviator' for w in on_top)
+
+def background(fs: FrameState, style: AnalogClockStyle, clear: tuple, on_top: list) -> Frame:
+    '''The background the widgets on top of the stacks bring (a plane's card: the radar), the solar clock otherwise.
+    The sky view has the sun in it: it's the solar clock too, always there. Never the radar in the quiet hours.
 
     clear: the box the cards leave free, the radar keeps the plane of the card on top in it.
     '''
-    if aviator.app.active(fs):
+    if radar_wanted(fs, on_top):
         draw = aviator.sky.sky if aviator.app.view_mode(fs) == 'sky' else aviator.app.radar
         return FadeIn('aviator', duration=0.6).mut(aviator.app.throttled(fs, lambda: draw(fs, clear))).draw(fs)
     return FadeIn('solar', duration=0.3).mut(solar.draw(fs, style)).draw(fs)
