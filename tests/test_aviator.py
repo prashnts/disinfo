@@ -84,3 +84,15 @@ def test_the_card_on_top_brings_the_radar(monkeypatch):
     assert common.radar_wanted(fs, [weather])
     monkeypatch.setattr(app, 'quiet', lambda fs: True)
     assert not common.radar_wanted(fs, [plane])
+
+def test_motion_is_a_sensor_turning_on(monkeypatch):
+    from disinfo.screens import common
+    states = {'binary_sensor.a': 'off'}
+    monkeypatch.setattr(common, 'get_entity', lambda e: type('s', (), {'state': states[e]}))
+    monkeypatch.setattr(common, '_motion', {})
+    fs = type('fs', (), {'config': type('c', (), {'name': 'test.motion', 'presence_sensors': ['binary_sensor.a']})})()
+    assert not common.motion(fs)
+    states['binary_sensor.a'] = 'on'
+    assert common.motion(fs)
+    # Still on: nothing new.
+    assert not common.motion(fs)

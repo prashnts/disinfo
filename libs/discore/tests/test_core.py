@@ -264,3 +264,39 @@ def test_fade_restarts_from_what_it_shows():
         after = f.draw(FrameState(tick=t + 2.5, now=None, config=None)).image.getpixel((0, 0))[0]
         assert abs(after - half) <= 2, (half, after)
         assert f.draw(FrameState(tick=t + 3.6, now=None, config=None)).image.getpixel((0, 0))[0] == 100
+
+def test_stack_gives_its_widgets_about_equal_time():
+    # Waits of 2, 10 and 5 s, and a press now and then: over ten minutes each is on top about as long.
+    card = lambda name, wait: Widget(name, Frame(Image.new('RGBA', (4, 4))), wait_time=wait)
+    with scope('test.fair'):
+        s = Stack('test.fair', StackStyle(size=32)).mut([card('a', 2), card('b', 10), card('c', 5)])
+        s._prev_widgets = s._widgets
+        s._frames = {w: w.frame for w in s._widgets}
+        total = {}
+        for k in range(6000):
+            step = k * 0.1
+            s.scroller.on_target = True
+            s.tick(FrameState(tick=step, now=None, config=None))
+            if k % 370 == 0:
+                s.next_widget()
+            total[s._widgets[s.pos].name] = total.get(s._widgets[s.pos].name, 0) + 0.1
+        assert max(total.values()) / min(total.values()) < 1.35, total
+
+def test_a_new_widget_gets_a_turn_not_the_stack():
+    card = lambda name: Widget(name, Frame(Image.new('RGBA', (4, 4))), wait_time=2)
+    with scope('test.newcomer'):
+        s = Stack('test.newcomer', StackStyle(size=32)).mut([card('a'), card('b')])
+        s._prev_widgets = s._widgets
+        s._frames = {w: w.frame for w in s._widgets}
+        for k in range(3000):
+            s.scroller.on_target = True
+            s.tick(FrameState(tick=k * 0.1, now=None, config=None))
+        s.mut([card('a'), card('b'), card('c')])
+        s._frames = {w: w.frame for w in s._widgets}
+        on = {}
+        for k in range(3000, 3600):
+            s.scroller.on_target = True
+            s.tick(FrameState(tick=k * 0.1, now=None, config=None))
+            s._prev_widgets = s._widgets
+            on[s._widgets[s.pos].name] = on.get(s._widgets[s.pos].name, 0) + 0.1
+        assert on.get('c', 0) < 30, on

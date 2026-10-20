@@ -22,6 +22,9 @@ class StackStyle:
     static_if_small: bool = False
     align: str = 'left'
     horizontal: bool = False
+    # Moving on, the widget shown least lately goes next: over time each gets about the same, whatever moved
+    # the stack on (its wait, a motion, a press). Lately: the time on top fades by half over this many seconds.
+    half_life: float = 600
 
 class Stack(metaclass=ScopedInstance):
     def __init__(self, name: str, style: StackStyle):
@@ -32,6 +35,8 @@ class Stack(metaclass=ScopedInstance):
 
         self.last_step = 0
         self.pos = 0
+        self.shown = {}             # widget name -> seconds on top, lately
+        self._shown_at = None
 
         if self.style.horizontal:
             self.scroller = HScroller(
@@ -79,15 +84,43 @@ class Stack(metaclass=ScopedInstance):
         return div(vstack(frames, gap=2, align=self.style.align), DivStyle(padding=(0, 0, 0, 2))), pos
     
     def next_widget(self):
-        self.pos += 1
-        self.pos %= len(self._widgets)
+        if self._widgets:
+            self.pos = self._least_shown(stay=False)
+            self.scroller.on_target = False
+
+    def _visible(self) -> list[int]:
+        frames = getattr(self, '_frames', {})
+        seen = lambda w: (f := frames.get(w, w.frame)) is not None and (f.width + f.height) > 2
+        return [i for i, w in enumerate(self._widgets) if seen(w)]
+
+    def _least_shown(self, stay: bool = True) -> int:
+        # The one in view on top the least lately, the stack's order between equals. A short one stays on until
+        # it's had its share; moved on (stay=False), another.
+        visible = self._visible()
+        others = [i for i in visible if stay or i != self.pos] or visible or [0]
+        # A newcomer starts level with the least shown: a turn, not minutes catching up.
+        known = [self.shown[w.name] for w in self._widgets if w.name in self.shown]
+        start = min(known, default=0)
+        return min(others, key=lambda i: (round(self.shown.get(self._widgets[i].name, start), 1), i))
+
+    def _count(self, step: float):
+        # The one on top gains the time since the last frame, all fade.
+        dt = min(max(step - self._shown_at, 0), 1) if self._shown_at is not None else 0
+        k = 0.5 ** (dt / self.style.half_life)
+        self.shown = {n: t * k for n, t in self.shown.items() if t * k > 0.05}
+        name = self._widgets[self.pos].name
+        self.shown[name] = self.shown.get(name, 0) + dt
+        self._shown_at = step
 
     def tick(self, fs: FrameState):
         step = fs.tick
         _visible = lambda w: (self._frames[w].width + self._frames[w].height) > 2
         curr_widget = self._widgets[self.pos]
+        self._count(step)
         items_in_focus = [w for w in self._widgets if _visible(w) and w.focus]
-        items_just_added = [w for w in self._widgets if _visible(w) and w not in self._prev_widgets]
+        # By name: a widget whose picture changed isn't a new one.
+        before = {w.name for w in self._prev_widgets}
+        items_just_added = [w for w in self._widgets if _visible(w) and w.name not in before]
 
         if len(items_in_focus) == 1:
             self.pos = [i for i, w in enumerate(self._widgets) if _visible(w) and w.focus][0]
@@ -111,14 +144,7 @@ class Stack(metaclass=ScopedInstance):
             elif len([w for w in self._widgets if _visible(w)]) == 1:
                 self.pos = [i for i, w in enumerate(self._widgets) if _visible(w)][0]
             else:
-                pos = self.pos
-                while True:
-                    # pos = random.randint(0, len(self._widgets) - 1)
-                    pos += 1
-                    pos %= len(self._widgets)
-                    if _visible(self._widgets[pos]) and pos != self.pos:
-                        self.pos = pos
-                        break
+                self.pos = self._least_shown()
             self.scroller.on_target = False
             self.last_step = step
 

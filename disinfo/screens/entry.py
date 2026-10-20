@@ -16,7 +16,7 @@ from disinfo import fonts
 from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
 from . import aviator
-from .common import background, side_cards, bottom_cards
+from .common import background, side_cards, bottom_cards, motion
 from .date_time import flip_digital_clock
 from .solar.app import AnalogClockStyle, sky_color
 
@@ -80,6 +80,9 @@ def compose(fs: FrameState) -> Frame:
     right = w - SIDE - 2 * GAP
     side = Stack('main_cards', StackStyle(size=above, align='left', horizontal=False)).mut(side_cards(fs))
     bottom = Stack('bottom_cards', StackStyle(align='bottom', horizontal=True, offset_top=0, size=right)).mut(bottom_cards(fs))
+    if motion(fs):
+        side.next_widget()
+        bottom.next_widget()
     aviator.app.follow(fs, bottom.current)
     side_f, bottom_f = side.draw(fs), bottom.draw(fs)
 

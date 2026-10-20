@@ -16,7 +16,7 @@ from .screens.solar import AnalogClockStyle
 from .screens.music.shazam import widgets as shazam_widgets
 from .screens.music.shazam import indicators as shazam_indicators
 from .screens.stream import widget as stream_widget
-from .screens.common import background, side_cards, bottom_cards
+from .screens.common import background, side_cards, bottom_cards, motion
 from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
@@ -79,6 +79,10 @@ def compose_big_frame(fs: FrameState):
     stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut(bottom_cards(fs))
     if rmt_reader('down'):
         stack.next_widget()
+    # Someone moving by: the next cards, the ones shown least lately.
+    if motion(fs):
+        stack.next_widget()
+        stack_hor.next_widget()
     screens.aviator.app.follow(fs, stack_hor.current)
 
     if awake:
@@ -185,6 +189,9 @@ def compose_display_frame(fs: FrameState):
             screens.date_time.calendar_widget(fs),
         ])
         stack_hor = Stack('bottom_cards', style=StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)).mut(bottom_cards(fs))
+        if motion(fs):
+            stack.next_widget()
+            stack_hor.next_widget()
         screens.aviator.app.follow(fs, stack_hor.current)
         if RuntimeStateManager().get_state(fs).show_metro:
             stack.mut([*screens.paris_metro.widgets(fs)])

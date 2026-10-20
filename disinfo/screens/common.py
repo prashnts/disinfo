@@ -1,4 +1,6 @@
 '''What the screens share: the background, the cards in the side and bottom stacks.'''
+import time
+
 from discore.data_structures import FrameState
 from discore.elements import Frame
 from discore.transitions import FadeIn
@@ -6,6 +8,19 @@ from discore.transitions import FadeIn
 from . import aviator, debug_info, dishwasher, klipper, now_playing, solar, trash_pickup, washing_machine, weather
 from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
+from disinfo.utils.hass import get_entity
+
+
+motion_every = 10       # s at least between two: a sensor flickering doesn't spin the cards
+_motion = {}            # screen -> (the sensors on, when it last moved the stacks on)
+
+def motion(fs: FrameState) -> bool:
+    '''A presence sensor of the screen just turned on: someone came, or moved into its range.'''
+    on = {e for e in fs.config.presence_sensors if (s := get_entity(e)) and s.state == 'on'}
+    before, at = _motion.get(fs.config.name, (on, 0))
+    moved = bool(on - before) and time.monotonic() - at > motion_every
+    _motion[fs.config.name] = (on, time.monotonic() if moved else at)
+    return moved
 
 
 def radar_wanted(fs: FrameState, on_top: list) -> bool:
