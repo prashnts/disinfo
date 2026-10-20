@@ -146,7 +146,8 @@ def scene(now: float) -> dict:
     if not (_queue_focus and len(q[_queue_focus]) >= queue_min - 1):
         _queue_focus = next((a.code for a in airports if len(q[a.code]) >= queue_min), None)
     focus = 'home' if watch else _queue_focus
-    return {'focus': focus, 'watched': watch, 'queues': q, 'radius': r}
+    overhead = [h for h in watch if is_overhead(table[h], now)]
+    return {'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r}
 
 def adsbx_task():
     now, aircraft = fetch_planes()

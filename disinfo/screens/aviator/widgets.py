@@ -25,7 +25,7 @@ from . import lookup
 card_width = 80
 photo_size = (card_width, 48)
 # Fixed widths: longer text scrolls, slowly.
-callsign_width = card_width - 9 - 7 - 4
+callsign_width = card_width - 9 - 7 - 3 * 2    # the icon, the flag, the gaps
 airline_width = 34
 scroll_speed = 0.05
 callsign_style = TextStyle(font=fonts.px_op_mono_8, color='#3fa05a')
@@ -130,11 +130,28 @@ def card(fs: FrameState, p: dict, active: bool) -> Frame:
     return Frame(f.image, targets=(Target(0, 0, f.width, f.height, 'aviator.close', {'hex': p['hex']}),)).tag(('aviator.card', p['hex'], all(places), bool(pic)))
 
 
+def tile(fs: FrameState, planes: list[dict]) -> Frame:
+    # One line for the planes seen from the window, scrolling: callsign, route, where to look.
+    def item(p: dict) -> Frame:
+        route = lookup.route(p) or {}
+        places = route.get('from'), route.get('to')
+        return hstack([
+            plane_icon(round(p['track'] / 15) * 15 % 360, marker_color(p['alt']).hex),
+            text(route.get('number') or p['flight'] or p['r'] or p['hex'], value_style),
+            hstack([text(places[0]['iata'] or '?', tiny_style), text('→', arrow_style), text(places[1]['iata'] or '?', tiny_style)], gap=1, align='center') if all(places) and places[0] != places[1] else None,
+            where(p),
+        ], gap=2, align='center')
+    line = hstack([item(p) for p in planes], gap=8, align='center')
+    return scrolling(fs, line, card_width, 'avi.tile').tag(('aviator.tile', tuple(p['hex'] for p in planes)))
+
 def planes(fs: FrameState) -> list[Widget]:
-    # A card for the planes seen from the window and the one tapped.
+    # A card for the planes passing overhead and the one tapped, a tile for the others seen from the window.
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
-    shown = [h for h in [*opened, *st.watched] if h in st.planes]
+    carded = [h for h in dict.fromkeys([*opened, *st.overhead]) if h in st.planes]
+    seen = [st.planes[h] for h in st.watched if h in st.planes and h not in carded]
     on_top = following(fs)
-    return [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == on_top), style=widget_style, priority=3, focus=True, wait_time=10)
-            for h in dict.fromkeys(shown)]
+    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == on_top), style=widget_style, priority=3, focus=True, wait_time=10)
+             for h in carded]
+    # Not 'aviator.<hex>': the radar follows the cards only.
+    return cards + ([Widget('aviator-tile', frame=tile(fs, seen), style=widget_style, priority=2, wait_time=10)] if seen else [])

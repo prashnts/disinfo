@@ -14,6 +14,7 @@ class AviatorState(AppBaseModel):
     planes: dict[str, dict] = {}
     focus: str | None = None
     watched: list[str] = []
+    overhead: list[str] = []        # of the watched, the ones passing overhead: they get a card
     queues: dict[str, list[str]] = {}
     radius: float = radius_km
 

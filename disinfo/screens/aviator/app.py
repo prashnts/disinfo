@@ -23,7 +23,9 @@ spokes = 30             # degrees between them
 # The radar is a background: dim, the cards go on top.
 scope_center = (0.09, 0.10, 0.11)
 scope_edge = (0.04, 0.045, 0.05)
-window_tint = (1, 1, 1, 0.035)
+# The LEDs crush the dark greys: the window's half needs a clear step, and its edges.
+window_tint = (1, 1, 1, 0.08)
+window_edge = (1, 1, 1, 0.22)
 grid_color = (1, 1, 1, 0.09)
 home_color = (0.9, 0.55, 0.2, 1)
 airport_color = (0.55, 0.57, 0.6, 0.7)
@@ -128,6 +130,11 @@ def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up:
     ctx.close_path()
     ctx.set_source_rgba(*window_tint)
     ctx.fill()
+    ctx.set_source_rgba(*window_edge)
+    for b in (start, start + (end - start) % 360):
+        ctx.move_to(hx, hy)
+        ctx.line_to(hx + r * math.sin(math.radians(b)), hy - r * math.cos(math.radians(b)))
+    ctx.stroke()
     ctx.set_source_rgba(*grid_color)
     for b in range(-round(up), 360 - round(up), spokes):
         ctx.move_to(hx, hy)
