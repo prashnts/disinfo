@@ -85,7 +85,13 @@ class Config(AppBaseModel):
     moonraker_api_key: SecretStr | None = None
 
     # Aviator
-    adsbx_host: str = '10.0.1.131:8080'
+    adsbx_url: str = 'https://adsb.nb.malow.im'
+    # Bearings seen from the window, clockwise from north. The planes in there get the cards.
+    aviator_window: tuple[float, float] = (0, 180)
+    # Solar only, local time.
+    aviator_quiet: list[tuple[str, str]] = [('06:00', '07:30')]
+    # The bearing up on this screen's map: where one faces looking at it (270: facing west).
+    aviator_map_up: float = 0
 
     shazam: ShazamConfig = ShazamConfig()
 

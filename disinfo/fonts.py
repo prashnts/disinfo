@@ -1,7 +1,7 @@
 from discore import fonts
 from discore.fonts import TTFFont
 
-# All font paths are from the repo root.
+# All font paths are from the repo root. Licenses: assets/fonts/LICENSES (README.md lists every font).
 
 # TAMZEN
 # > License   Free (non-standard)
@@ -46,14 +46,14 @@ creep = TTFFont('assets/fonts/creep.bdf', 16, license='MIT')
 
 
 # Pixel-lcd-machine
-# > License   CC-SA
+# > License   CC BY-SA 3.0
 # > Source    https://www.dafont.com/fr/Pixel-lcd-machine.font
-pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16, license='CC-SA')
+pixel_lcd = TTFFont('assets/fonts/Pixel-lcd-machine.ttf', 16, license='CC-BY-SA')
 
 
 # 15x5
-# > License   ?
-s15x5 = TTFFont('assets/fonts/15x5.ttf', 16)
+# > License   CC BY-NC 3.0
+s15x5 = TTFFont('assets/fonts/15x5.ttf', 16, license='CC-BY-NC')
 
 
 # Dansk
@@ -83,8 +83,8 @@ s16x8 = TTFFont('assets/fonts/16x8pxl-mono.ttf', 20, license='OFL')
 
 
 # Pixel Play
-# > License   Free
-pixelplay = TTFFont('assets/fonts/pixelplay.ttf', 16)
+# > License   CC BY-SA 3.0
+pixelplay = TTFFont('assets/fonts/pixelplay.ttf', 16, license='CC-BY-SA')
 
 mixserif = TTFFont('assets/fonts/MixSerifCondense.ttf', 16)
 dymsmall = TTFFont('assets/fonts/dymsmall.ttf', 10)
@@ -93,11 +93,11 @@ pixwriter = TTFFont('assets/fonts/5pixwriter.ttf', 16, license='CC-BY-SA')
 
 everyday = TTFFont('assets/fonts/Everyday.ttf', 10, license='free (nc)') # no accents
 fffextra = TTFFont('assets/fonts/FFFEXTRA.TTF', 8, license='free (nc)') # cloverleaf
-gaiatype = TTFFont('assets/fonts/Gaiatype.ttf', 16, license='CC0')
-mecha_cond = TTFFont('assets/fonts/Mecha_Condensed.ttf', 16, license='free (nc)')
-mecha_bold = TTFFont('assets/fonts/Mecha_Bold.ttf', 16, license='free (nc)')
-mecha_cb = TTFFont('assets/fonts/Mecha_Condensed_Bold.ttf', 16, license='free (nc)')
-mecha = TTFFont('assets/fonts/Mecha.ttf', 16, license='free (nc)')
+gaiatype = TTFFont('assets/fonts/Gaiatype.ttf', 16, license='CC-BY-NC-SA')
+mecha_cond = TTFFont('assets/fonts/Mecha_Condensed.ttf', 16, license='CC-BY-SA')
+mecha_bold = TTFFont('assets/fonts/Mecha_Bold.ttf', 16, license='CC-BY-SA')
+mecha_cb = TTFFont('assets/fonts/Mecha_Condensed_Bold.ttf', 16, license='CC-BY-SA')
+mecha = TTFFont('assets/fonts/Mecha.ttf', 16, license='CC-BY-SA')
 serifpx7 = TTFFont('assets/fonts/serif_pixel-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum = TTFFont('assets/fonts/zx_spectrum-7.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
 zx_spectrum_b = TTFFont('assets/fonts/zx_spectrum-7_bold.ttf', 10, license='free (nc)', credit='http://www.styleseven.com')
@@ -105,20 +105,38 @@ zx_spectrum_b = TTFFont('assets/fonts/zx_spectrum-7_bold.ttf', 10, license='free
 bitocra7 = TTFFont('assets/fonts/bitocra7.bdf', 7, license='OFL', credit='https://github.com/ninjaaron/bitocra')
 fiveel = TTFFont('assets/fonts/5thElement.bdf', 5, license='OFL', credit='https://github.com/ninjaaron/bitocra')
 vdj = TTFFont('assets/fonts/virtual-dj.ttf', 8, license='free', credit='https://www.dafont.com/fr/virtual-dj.font')
-long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10, license='free')
+long_pixel = TTFFont('assets/fonts/long_pixel-7.ttf', 10, license='free (nc)')
 slkscre = TTFFont('assets/fonts/slkscre.ttf', 8, license='free')
-aztech = TTFFont('assets/fonts/aztech.ttf', 16, license='CC0', credit='https://www.dafont.com/fr/aztech.font')
-small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8, license='free', credit='https://www.dafont.com/fr/small-pixel.font')
+aztech = TTFFont('assets/fonts/aztech.ttf', 16, license='CC-BY-SA', credit='https://www.dafont.com/fr/aztech.font')
+small_pixel = TTFFont('assets/fonts/small_pixel.ttf', 8, license='CC-BY-SA', credit='https://www.dafont.com/fr/small-pixel.font')
 megan_serif = TTFFont('assets/fonts/Megan_Serif.ttf', 8, license='free')
 double01 = TTFFont('assets/fonts/double01.ttf', 8, license='free (nc)')
 double01b = TTFFont('assets/fonts/double01b.ttf', 8, license='free (nc)')
 sg09 = TTFFont('assets/fonts/SG09.ttf', 8)
 two_slice = TTFFont('assets/fonts/Two Slice.ttf', 3, license='CC-BY-SA', credit='https://joefatula.com/twoslice.html', spacing=1)
-exsmall = TTFFont('assets/fonts/Extremely-Small-Fonts.ttf', 4, license='free (nc)', spacing=2)
+exsmall = TTFFont('assets/fonts/Extremely-Small-Fonts.ttf', 4, license='CC-BY-SA', spacing=2)
 microfont_35_mono = TTFFont('assets/fonts/3x5-Microfont-Mono.ttf', 8, license='CC0', credit='https://github.com/nimaid/microfont')
 microfont_35_reg = TTFFont('assets/fonts/3x5-Microfont.ttf', 8, license='CC0', credit='https://github.com/nimaid/microfont')
 
 ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 5, license='free', spacing=2)
+
+# GALMURI
+# > License   OFL v1.1
+# > Source    https://github.com/quiple/galmuri
+galmuri7 = TTFFont('assets/fonts/Galmuri7.ttf', 8, license='OFL', credit='https://github.com/quiple/galmuri')
+galmuri9 = TTFFont('assets/fonts/Galmuri9.ttf', 10, license='OFL', credit='https://github.com/quiple/galmuri')
+galmuri_mono9 = TTFFont('assets/fonts/GalmuriMono9.ttf', 10, license='OFL', credit='https://github.com/quiple/galmuri')
+
+# FUSION PIXEL
+# > License   OFL v1.1
+# > Source    https://github.com/TakWolf/fusion-pixel-font
+fusion8 = TTFFont('assets/fonts/fusion-pixel-8px-proportional-latin.ttf', 8, license='OFL', credit='https://github.com/TakWolf/fusion-pixel-font')
+
+# PXPLUS HP 100LX (Ultimate Oldschool PC Font Pack)
+# > License   CC BY-SA 4.0
+# > Source    https://int10h.org/oldschool-pc-fonts/
+hp100lx = TTFFont('assets/fonts/PxPlus_HP_100LX_6x8.ttf', 8, license='CC-BY-SA', credit='https://int10h.org/oldschool-pc-fonts/')
+
 unifont = TTFFont(
     'https://unifoundry.com/pub/unifont/unifont-17.0.05/font-builds/unifont-17.0.05.otf',
     size=16,

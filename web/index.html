@@ -257,6 +257,20 @@
             </div>`
         }
 
+        function RadarRadius(props) {
+            // How far the radar shows, and the planes that get a card: km from home.
+            const [km, setKm] = useState(40)
+            const didChange = e => {
+                setKm(e.currentTarget.value)
+                fetch('/remote', {
+                    method: 'POST',
+                    body: JSON.stringify({action: 'aviator.radius', payload: {km: e.currentTarget.value}}),
+                    headers: {'Content-Type': 'application/json'},
+                })
+            }
+            return html`<label>radar <input type="range" min="5" max="60" step="5" value=${km} onChange=${didChange}/> ${km} km</label>`
+        }
+
         function TriggerButton(props) {
             const didClick = () => {
                 fetch('/trigger', {
@@ -289,6 +303,9 @@
                     <${RemoteButton} action="show_fonts_credit" />
                     <${RemoteButton} action="show_printers" />
                     <${RemoteButton} action="show_flex_demo" title="flex demo" />
+                </div>
+                <div>
+                    <${RadarRadius}/>
                 </div>
                 <div>
                     <${RemoteButton} action="show_stream" />

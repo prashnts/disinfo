@@ -16,6 +16,7 @@ from .screens.solar import AnalogClockStyle
 from .screens.music.shazam import widgets as shazam_widgets
 from .screens.music.shazam import indicators as shazam_indicators
 from .screens.stream import widget as stream_widget
+from .screens.common import background, side_cards, bottom_cards
 from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
@@ -54,11 +55,12 @@ def compose_big_frame(fs: FrameState):
     telermt = TelemetryStateManager(fs.config.name).get_state(fs)
     awake = should_turn_on_display(fs)
     # TODO: the color sensor's reading flickers the whole background (clouds, its own light): redo it, sky color meanwhile.
-    background = screens.solar.app.sky_color(fs)
+    sky = screens.solar.app.sky_color(fs)
     _leftward = config.name == 'distudy'
     _clock_align = 'left' if _leftward else 'right'
 
-    image = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 255))
+    # A frame, not an image: it keeps the touch targets, for the web page.
+    image = Frame(Image.new('RGBA', (config.width, config.height), (0, 0, 0, 255)))
 
     gesture = telermt.light_sensor.gesture.read('comp')
     if gesture and gesture != '--':
@@ -78,12 +80,11 @@ def compose_big_frame(fs: FrameState):
             tick_radius_multiplier=0.40,
             dial_radius_multiplier=0.40,
             needle_radius_multiplier=0.45,
-            background=background,
+            background=sky,
         )
-        solar_frame = screens.solar.draw(fs, solar_style)
-        
-        composite_at(FadeIn('solar', duration=0.3).mut(solar_frame).draw(fs), image, 'mm')
-    composite_at(
+        # The plane cards cover the bottom.
+        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80)), image, 'mm')
+    image = composite_at(
         screens.date_time.flip_clock(fs, align=_clock_align),
         image,
         'tl' if _leftward else 'tr',
@@ -94,36 +95,22 @@ def compose_big_frame(fs: FrameState):
     #     composite_at(screens.demo.draw(fs), image, 'mm')
 
     stack_conf = StackStyle(size=config.height, scrollbar=_leftward, align='right' if _leftward else 'left', horizontal=False)
-    stack = Stack('main_cards', style=stack_conf).mut([
-        screens.weather.widgets.weather(fs),
-        # *screens.aviator.widgets.planes(fs),
-        *shazam_widgets(fs),
-        screens.now_playing.slideshow_widget(fs),
-        screens.weather.widgets.moon_phase(fs),
-        screens.dishwasher.widget(fs),
-        screens.washing_machine.widget(fs),
-        # *screens.klipper.widget(fs),
-        screens.trash_pickup.widget(fs),
-    ])
+    stack = Stack('main_cards', style=stack_conf).mut(side_cards(fs))
 
     stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)
-    stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut([
-        screens.now_playing.widget(fs),
-        *screens.klipper.widget(fs),
-        *screens.debug_info.widgets(fs),
-        # *screens.paris_metro.widgets(fs),
-    ])
+    stack_hor = Stack('bottom_cards', style=stack_hor_conf).mut(bottom_cards(fs))
 
     if rmt_reader('down'):
         stack.next_widget()
+    screens.aviator.app.follow(fs, stack_hor.current)
 
     if awake:
-        composite_at(stack.draw(fs), image, 'mr' if _leftward else 'ml', dx=p_stack_offset(), frost=1.8)
-        composite_at(stack_hor.draw(fs), image, 'bl', dy=p_stack_offset() * -1, frost=1.8)
-        composite_at(shazam_indicators(fs).draw(fs), image, 'br')
+        image = composite_at(stack.draw(fs), image, 'mr' if _leftward else 'ml', dx=p_stack_offset(), frost=1.8)
+        image = composite_at(stack_hor.draw(fs), image, 'bl', dy=p_stack_offset() * -1, frost=1.8)
+        image = composite_at(shazam_indicators(fs).draw(fs), image, 'br')
         # composite_at(screens.numbers.draw(fs), image, 'bl')
 
-    composite_at(screens.date_time.flip_digital_clock(fs, align=_clock_align), image, 'tl' if _leftward else 'tr', dy=p_time_offset(), dx=1 if _leftward else -1, frost=1.8)
+    image = composite_at(screens.date_time.flip_digital_clock(fs, align=_clock_align), image, 'tl' if _leftward else 'tr', dy=p_time_offset(), dx=1 if _leftward else -1, frost=1.8)
 
     s = RuntimeStateManager().get_state(fs)
     pos = rmt_reader('encoder')
@@ -133,21 +120,21 @@ def compose_big_frame(fs: FrameState):
     # place_at(cursor_f.opacity(0.4), image, x, y, 'tl', frost=1)
 
     if awake:
-        composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
-        composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)
+        image = composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
+        image = composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
+        image = composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)
 
         if config.height >= 120:
-            composite_at(stream_widget(fs).draw(fs), image, 'bm')
-    composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(timer_app(fs).draw(fs), image, 'br' if _leftward else 'bl', frost=2)
+            image = composite_at(stream_widget(fs).draw(fs), image, 'bm')
+    image = composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    image = composite_at(timer_app(fs).draw(fs), image, 'br' if _leftward else 'bl', frost=2)
 
     if config.name == 'distudy':
         # dead pixel on border.
-        draw = ImageDraw.Draw(image)
+        draw = ImageDraw.Draw(image.image)
         draw.rectangle(((0, 0), (config.width - 1, config.height - 1)), outline=(0, 0, 0), width=1)
 
-    return Frame(image).tag(awake)
+    return image.tag(awake)
 
 def compose_small_frame(fs: FrameState):
     image = Image.new('RGBA', (fs.config.width, fs.config.height), (0, 0, 0, 255))
@@ -184,7 +171,7 @@ def compose_display_frame(fs: FrameState):
     config = fs.config
     telermt = TelemetryStateManager(config.name).get_state(fs)
     awake = should_turn_on_display(fs)
-    image = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 255))
+    image = Frame(Image.new('RGBA', (config.width, config.height), (0, 0, 0, 255)))
 
     if awake:
         solar_style = AnalogClockStyle(
@@ -195,36 +182,27 @@ def compose_display_frame(fs: FrameState):
             needle_radius_multiplier=0.42,
             background=screens.solar.app.sky_color(fs),   # TODO: color sensor, see compose_big_frame
         )
-        composite_at(FadeIn('solar', duration=0.3).mut(screens.solar.draw(fs, solar_style)).draw(fs), image, 'mm')
+        image = composite_at(background(fs, solar_style, (0, 0, config.width, config.height - 80)), image, 'mm')
 
         stack = Stack('main_cards', style=StackStyle(size=config.height, align='left', horizontal=False)).mut([
-            screens.weather.widgets.weather(fs),
-            *shazam_widgets(fs),
-            screens.now_playing.slideshow_widget(fs),
-            screens.weather.widgets.moon_phase(fs),
-            screens.dishwasher.widget(fs),
-            screens.washing_machine.widget(fs),
-            screens.trash_pickup.widget(fs),
+            *side_cards(fs),
             screens.date_time.calendar_widget(fs),
         ])
-        stack_hor = Stack('bottom_cards', style=StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)).mut([
-            screens.now_playing.widget(fs),
-            *screens.klipper.widget(fs),
-            *screens.debug_info.widgets(fs),
-        ])
+        stack_hor = Stack('bottom_cards', style=StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)).mut(bottom_cards(fs))
+        screens.aviator.app.follow(fs, stack_hor.current)
         if RuntimeStateManager().get_state(fs).show_metro:
             stack.mut([*screens.paris_metro.widgets(fs)])
-        composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
-        composite_at(stack_hor.draw(fs), image, 'bl', dy=-p_stack_offset(), frost=1.8)
-        composite_at(shazam_indicators(fs).draw(fs), image, 'br')
-        composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
-        composite_at(stream_widget(fs).draw(fs), image, 'bm')
+        image = composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset(), frost=1.8)
+        image = composite_at(stack_hor.draw(fs), image, 'bl', dy=-p_stack_offset(), frost=1.8)
+        image = composite_at(shazam_indicators(fs).draw(fs), image, 'br')
+        image = composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
+        image = composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
+        image = composite_at(stream_widget(fs).draw(fs), image, 'bm')
 
-    composite_at(screens.date_time.flip_digital_clock(fs, align='right'), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
-    composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(timer_app(fs).draw(fs), image, 'bl', frost=2)
-    return Frame(image).tag(awake)
+    image = composite_at(screens.date_time.flip_digital_clock(fs, align='right'), image, 'tr', dy=p_time_offset(), dx=-1, frost=1.8)
+    image = composite_at(screens.twenty_two.draw(fs), image, 'mm')
+    image = composite_at(timer_app(fs).draw(fs), image, 'bl', frost=2)
+    return image.tag(awake)
 
 
 def compose(fs: FrameState) -> Frame:

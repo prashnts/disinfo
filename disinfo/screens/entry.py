@@ -1,6 +1,6 @@
 '''dientry: the entrance's screen (the Guition, 800x480 at 2x).
 
-The time and the solar clock, weather and moon, the music playing; scenes and the mirror's light to touch.
+The time, the radar or the solar clock, the salon's cards; scenes and the mirror's light to touch.
 '''
 from PIL import Image
 
@@ -9,20 +9,25 @@ from discore.data_structures import FrameState
 from discore.elements import Frame, scaled
 from discore.layers import DivStyle
 from discore.layouts import composite_at, hstack, vstack
+from discore.stack import Stack, StackStyle
 from discore.text import text, TextStyle
 
 from disinfo import fonts
 from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
-from . import now_playing
+from . import aviator
+from .common import background, side_cards, bottom_cards
 from .date_time import flip_digital_clock
-from .solar import draw as solar
 from .solar.app import AnalogClockStyle, sky_color
-from .weather import widgets as weather
 
-SCENES = [('lumos', 'scene.lumos'), ('dodo', 'scene.dodo'), ('soir', 'scene.soir'), ('nuit', 'scene.nuit')]
+SCENES = [
+    ('lumos', 'scene.lumos'),
+    ('dodo', 'scene.dodo'),
+    ('soir', 'scene.soir'),
+    ('nuit', 'scene.nuit')]
 MIRROR = 'light.ikea_driver_study_kallax'
 GAP = 6
+SIDE = 2 * 88       # the side stack's cards at 2x
 
 label_style = TextStyle(font=fonts.cozette, color='#e0e0e0', overflow='fit')
 
@@ -62,14 +67,25 @@ def controls(fs: FrameState, width: int) -> Frame:
     return hstack(buttons, gap=GAP)
 
 def compose(fs: FrameState) -> Frame:
+    # Like the salon: the radar or the solar clock, the side and bottom stacks (at 2x), the scenes to touch.
     w, h = fs.config.width, fs.config.height
     canvas = Frame(Image.new('RGBA', (w, h), (0, 0, 0, 255)))
+    buttons = controls(fs, w - 2 * GAP)
+    above = h - buttons.height - 2 * GAP        # what the buttons leave
+    # The bottom stack takes the right of the side stack's cards.
+    right = w - SIDE - 2 * GAP
+    side = Stack('main_cards', StackStyle(size=above // 2, align='left', horizontal=False)).mut(side_cards(fs))
+    bottom = Stack('bottom_cards', StackStyle(align='bottom', horizontal=True, offset_top=0, size=right // 2)).mut(bottom_cards(fs))
+    aviator.app.follow(fs, bottom.current)
+    side_f, bottom_f = big(side.draw(fs)), big(bottom.draw(fs))
+
     clock = AnalogClockStyle(cx=w // 2 + 60, cy=h // 2 - 20, tick_radius_multiplier=0.36,
                              dial_radius_multiplier=0.36, needle_radius_multiplier=0.42, background=sky_color(fs))
-    canvas = composite_at(solar(fs, clock), canvas, 'mm')
-    cards = vstack([big(weather.weather(fs).draw(fs)), big(weather.moon_phase(fs).draw(fs)),
-                    big(now_playing.widget(fs).draw(fs))], gap=6)
-    canvas = composite_at(cards, canvas, 'tl', dx=6, dy=6, frost=1.8)
-    canvas = composite_at(big(flip_digital_clock(fs, align='right')), canvas, 'tr', dx=-6, dy=6, frost=1.8)
-    canvas = composite_at(controls(fs, w - 2 * GAP), canvas, 'bm', dy=-GAP, frost=1.8)
+    # What the cards leave of the radar: between the stacks.
+    clear = (GAP + (side_f.width if side_f else 0), GAP, w - GAP - (bottom_f.width if bottom_f else 0), above)
+    canvas = composite_at(background(fs, clock, clear), canvas, 'mm')
+    canvas = composite_at(side_f, canvas, 'tl', dx=GAP, dy=GAP, frost=1.8)
+    canvas = composite_at(bottom_f, canvas, 'br', dx=-GAP, dy=-(h - above), frost=1.8)
+    canvas = composite_at(big(flip_digital_clock(fs, align='right')), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
+    canvas = composite_at(buttons, canvas, 'bm', dy=-GAP, frost=1.8)
     return canvas.tag('entry')

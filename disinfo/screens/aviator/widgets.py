@@ -1,141 +1,140 @@
+import math
+import cairocffi as cairo
+
 from functools import cache
 
-from discore.elements import Frame
+from discore.cairo import to_pil
+from discore.elements import Frame, Target
 from discore.data_structures import FrameState
 from discore.widget import Widget
 from discore.layers import div, DivStyle
-from discore.layouts import hstack, vstack
+from discore.layouts import hstack, vstack, Spacer, composite_at
 from discore.text import TextStyle, text
 from discore.transitions import text_slide_in
+from discore.scroller import HScroller
+from discore.cairo import load_svg_string
 from disinfo import fonts
-from discore.cairo import load_svg_string, load_svg
-from disinfo.screens.colors import gray
 
-from .state import ADSBxStateManager
-from .markers import shapes, svg_shape_to_svg, get_base_marker
+from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .flags import find_icao_range
+from .app import chevron, following
+from . import lookup
 
 
-def flight_icon(category: str, altitude: float, track: float) -> str:
-    shape_name, scale = get_base_marker(category, altitude=altitude)
-    shape = shapes[shape_name]
+card_width = 80
+photo_size = (card_width, 48)
+# Fixed widths: longer text scrolls, slowly.
+callsign_width = card_width - 9 - 7 - 4
+airline_width = 34
+scroll_speed = 0.05
+callsign_style = TextStyle(font=fonts.px_op_mono_8, color='#3fa05a')
+value_style = TextStyle(font=fonts.bitocra7, color='#a6a6a6')
+muted_style = TextStyle(font=fonts.bitocra7, color='#808080')
+unit_style = TextStyle(font=fonts.bitocra7, color='#5b5e64')
+tiny_style = TextStyle(font=fonts.microfont_35_reg, color='#808080')
+tiny_dim_style = TextStyle(font=fonts.microfont_35_reg, color='#5b5e64')
+credit_style = TextStyle(font=fonts.exsmall, color='#5b5e64')
+# bitocra has no arrows.
+arrow_style = TextStyle(font=fonts.scientifica__r, color='#5b5e64')
+widget_style = DivStyle(padding=3, radius=3, background='#0a1a3a50', border=1, border_color='#00000088')
 
-    alt = altitude or 0
-    alt = 0 if type(alt) == str else alt * 0.3048
-    
-    svg = svg_shape_to_svg(
-        shape,
-        fillColor=marker_color(alt).hex,
-        strokeColor=marker_color(alt).hex,
-        strokeWidth=0,
-        scale=0.6*scale,
-        angle=track - 90,
-    )
-
-    return load_svg_string(svg)
 
 @cache
-def flag(hexid: str) -> Frame:
-    reg = find_icao_range(hexid)
-    country_code = reg.get("country_code", '').upper()
+def plane_icon(track: int, color: str) -> Frame:
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 9, 9)
+    ctx = cairo.Context(surface)
+    ctx.set_source_rgb(*marker_color_rgb(color))
+    chevron(ctx, 4.5, 4.5, track, 3)
+    ctx.fill()
+    return Frame(to_pil(surface), hash=('aviator.icon', track, color))
 
-    if not country_code:
-        return
+def marker_color_rgb(hex: str) -> tuple[float, float, float]:
+    return tuple(int(hex[i:i + 2], 16) / 255 for i in (1, 3, 5))
 
-    with open(f'assets/flags/3x2/{country_code}.svg', 'r') as fp:
-        flag_icon = fp.read()
-    
-    width = 7
-    height = 7
-    
-    svg = f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}">'
-    svg += flag_icon
-    svg += '</svg>'
+@cache
+def flag(hexid: str) -> Frame | None:
+    cc = find_icao_range(hexid).get('country_code', '').upper()
+    if not cc:
+        return None
+    with open(f'assets/flags/3x2/{cc}.svg', 'r') as fp:
+        svg = f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 7 7">{fp.read()}</svg>'
+    return load_svg_string(svg)
 
-    flag_icon = load_svg_string(svg)
+def value(fs: FrameState, v: str, unit: str, name: str, arrow: str = '') -> Frame:
+    return hstack([text_slide_in(fs, v, value_style, name=name), text(unit, unit_style), text(arrow, arrow_style) if arrow else None], align='bottom', gap=1)
 
-    return hstack([
-        flag_icon,
-        text(reg.get('country_code', '').upper(), TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
-    ], align='center', gap=1)
+compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
+def where(p: dict) -> Frame:
+    # Where to look from the window: the direction and how high above the horizon.
+    if p['elev'] >= 60:
+        return text('overhead', TextStyle(font=fonts.bitocra7, color='#b7925e'))
+    return hstack([text(compass[round(p['bearing'] / 45) % 8], muted_style), text(f'{round(p["elev"])}', value_style), text('°', arrow_style)], gap=1, align='bottom')
 
-def airplane_widget(fs: FrameState, plane: dict) -> Widget:
-    distance = plane.get('distance') or 9000
-    hexname = plane.get('hex') or '000000'
-    alt = plane.get('alt_baro') or -69
-    alt = 0 if type(alt) == str else alt * 0.3048
-    alt = int(alt)
-    frame = hstack([
-        flight_icon(plane.get('category', 'A3'), plane.get('alt_baro'), plane.get('track', 0)),
-        vstack([
-            text_slide_in(fs, plane.get('flight').strip(), name=f'avi.w.{plane["hex"]}.flight', style=TextStyle(font=fonts.px_op_mono_8, color='#106822')),
-            hstack([
-                flag(hexname),
-                hstack([
-                    text_slide_in(fs, f"{plane.get('distance'):0.1f}", name=f'avi.w.{plane["hex"]}.dist', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.1).hex)),
-                    text('km', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
-                ], align='bottom', gap=1),
-                hstack([
-                    text_slide_in(fs, f"{alt:0d}", name=f'avi.w.{plane["hex"]}.alt', style=TextStyle(font=fonts.bitocra7, color=gray.darken(0.2).hex)),
-                    text('m', TextStyle(font=fonts.bitocra7, color=gray.darken(0.3).hex)),
-                ], align='bottom', gap=1),
-            ], gap=2),
-        ], gap=2),
-    ], gap=1)
-    return Widget(name=f'aviator.airplane_widget.{hexname}', frame=frame, priority=2, wait_time=10, focus=distance <= 3)
+def photo(photo: dict) -> Frame | None:
+    # Cropped to photo_size, the photographer in its corner.
+    pic = lookup.photo_frame(photo['src'], photo_size) if photo.get('src') else None
+    if not pic:
+        return None
+    w, h = pic.size
+    x, y = (w - photo_size[0]) // 2, (h - photo_size[1]) // 2
+    pic = Frame(pic.image.crop((x, y, x + photo_size[0], y + photo_size[1])), ('aviator.photo', photo['src'])).brightness(0.85)
+    credit = div(text(photo['by'] or '', credit_style, overflow='fit'), padding=(1, 1, 1, 2), background='#00000090')
+    return composite_at(credit, pic, 'tr')
 
-sample_plane = {
-    'hex': '4402db',
-    'type': 'adsb_icao',
-    'flight': 'EJU71TQ ',
-    'alt_baro': 5125,
-    'alt_geom': 5650,
-    'gs': 278.0,
-    'ias': 248,
-    'tas': 274,
-    'mach': 0.42,
-    'oat': 14,
-    'tat': 24,
-    'track': -100.25,
-    'track_rate': -0.06,
-    'roll': -0.53,
-    'mag_heading': 263.5,
-    'true_heading': 265.31,
-    'baro_rate': -2432,
-    'geom_rate': -2240,
-    'squawk': '1000',
-    'category': 'A3',
-    'nav_qnh': 1016.0,
-    'nav_altitude_mcp': 4992,
-    'lat': 48.900333,
-    'lon': 2.175943,
-    'nic': 8,
-    'rc': 186,
-    'seen_pos': 0.6,
-    'version': 2,
-    'nic_baro': 1,
-    'nac_p': 9,
-    'nac_v': 1,
-    'sil': 3,
-    'sil_type': 'perhour',
-    'gva': 2,
-    'sda': 2,
-    'alert': 0,
-    'spi': 0,
-    'mlat': [],
-    'tisb': [],
-    'messages': 6512,
-    'seen': 0.2,
-    'rssi': -24.0,
-    'distance': 1.05826323753527
-}
+def scrolling(fs: FrameState, f: Frame, width: int, name: str) -> Frame:
+    return HScroller(size=width, pause_at_loop=True, speed=scroll_speed, name=name).set_frame(f).draw(fs.tick)
+
+def card(fs: FrameState, p: dict, active: bool) -> Frame:
+    # Compact. The one on top of the stack has the photo, the callsign and route on frost over its bottom.
+    uname = lambda x: f'avi.{p["hex"]}.{x}'
+    route = lookup.route(p) or {}
+    pic = photo(lookup.photo(p) or {}) if active else None
+    color = marker_color(p['alt']).hex
+    trend = '↑' if p['vr'] > 120 else '↓' if p['vr'] < -120 else ''
+
+    head = hstack([
+        plane_icon(round(p['track'] / 15) * 15 % 360, color),
+        scrolling(fs, text(route.get('number') or p['flight'] or p['r'] or p['hex'], callsign_style), callsign_width, uname('callsign')),
+        Spacer(),
+        flag(p['hex']),
+    ], gap=2, align='center')
+    places = route.get('from'), route.get('to')
+    # adsbdb has stale routes, some go nowhere.
+    places = places if all(places) and places[0] != places[1] else (None, None)
+    trip = hstack([
+        hstack([text(places[0]['iata'] or '?', value_style), text('→', arrow_style), text(places[1]['iata'] or '?', value_style)], gap=2, align='bottom') if all(places) else None,
+        Spacer(),
+        where(p),
+    ], gap=2, align='bottom')
+    stats = hstack([
+        value(fs, f'{p["alt"]}', 'm', uname('alt'), trend),
+        Spacer(),
+        value(fs, f'{p["gs"]}', 'km/h', uname('gs')),
+    ], gap=3, align='bottom')
+    kind = hstack([
+        text(p['t'] or '', tiny_style),
+        text(p['r'] or '', tiny_dim_style),
+        Spacer(),
+        scrolling(fs, text(route.get('airline') or '', tiny_dim_style), airline_width, uname('airline')) if route.get('airline') else None,
+    ], gap=3)
+
+    if pic:
+        over = div(vstack([head, trip], gap=2), padding=(2, 2, 1, 2), background='#0a1a3a60', width=card_width)
+        top = composite_at(over, pic, 'bl', frost=2)
+    else:
+        top = vstack([head, trip], gap=3)
+    f = div(vstack([top, stats, kind], gap=3), width=card_width)
+    # The tag changes when the route comes in or the photo shows, so the widget animates the resize.
+    return Frame(f.image, targets=(Target(0, 0, f.width, f.height, 'aviator.close', {'hex': p['hex']}),)).tag(('aviator.card', p['hex'], all(places), bool(pic)))
 
 
 def planes(fs: FrameState) -> list[Widget]:
-    planes = ADSBxStateManager().get_state(fs)
-    # if app_config.devmode:
-    #     planes = [sample_plane]
-    widgets = [airplane_widget(fs, plane) for plane in planes if plane['distance'] <= 8]
-    return widgets
+    # A card for the planes seen from the window and the one tapped.
+    st = ADSBxStateManager().get_state(fs)
+    opened = OpenedStateManager().get_state(fs).opened
+    shown = [h for h in [*opened, *st.watched] if h in st.planes]
+    on_top = following(fs)
+    return [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == on_top), style=widget_style, priority=3, focus=True, wait_time=10)
+            for h in dict.fromkeys(shown)]

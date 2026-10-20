@@ -57,6 +57,10 @@ class Stack(metaclass=ScopedInstance):
         self.pos = min(self.pos, max(len(self._widgets) - 1, 0))
         return self
 
+    @property
+    def current(self) -> Optional[Widget]:
+        return self._widgets[self.pos] if self._widgets else None
+
     def surface(self, fs: FrameState):
         curr_widget = self._widgets[self.pos]
         visible_widgets = [(i, w) for i, w in enumerate(self._widgets) if w.frame and (w.frame.width + w.frame.height) > 2]

@@ -230,7 +230,7 @@ def _news_deck(fs: FrameState):
         outline=1,
         outline_color="#000000A1")
     sumry_style = TextStyle(
-        font=fonts.scientifica__r,
+        font=fonts.galmuri7,
         width=112,
         color="#CACACACC",
         spacing=0,

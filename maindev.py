@@ -48,7 +48,7 @@ if __name__ == "__main__":
     procs = {
         'webserver': run_server,
         'renderer': run_background_renderer,
-        # 'data_loop': data_service_main,
+        'data_loop': data_service_main,
         'sensor_loop': run_sensors,
     }
     processes = []

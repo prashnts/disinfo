@@ -7,6 +7,7 @@ from schedule import Scheduler
 from ..redis import publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
+from ..screens.aviator.tasks import adsbx_task
 
 
 class SafeScheduler(Scheduler):
@@ -59,6 +60,7 @@ def on_pubsub(channel_name: str, message: PubSubMessage):
 scheduler = SafeScheduler(reschedule_on_failure=True)
 
 scheduler.every(1).minutes.do(get_metro_info)
+scheduler.every(1).seconds.do(adsbx_task)
 
 
 def main():
