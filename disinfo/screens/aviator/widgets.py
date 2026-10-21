@@ -14,6 +14,7 @@ from discore.transitions import text_slide_in
 from discore.scroller import HScroller
 from discore.cairo import load_svg_string
 from disinfo import fonts
+from disinfo.drat.app_states import RuntimeStateManager
 
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
@@ -154,6 +155,9 @@ def planes(fs: FrameState) -> list[Widget]:
     opened = OpenedStateManager().get_state(fs).opened
     carded = [h for h in dict.fromkeys([*opened, *st.overhead]) if h in st.planes]
     seen = [st.planes[h] for h in st.watched if h in st.planes and h not in carded]
+    # Cards hidden (the web page's show_planes): theirs first in the tile.
+    if not (show := RuntimeStateManager().get_state(fs).show_planes):
+        seen, carded = [st.planes[h] for h in carded] + seen, []
     shown = on_top(fs)
     # After the other cards (the printer's, the music's): they take the stack only when tapped.
     # On top of the stack, they bring the radar behind (the map or the sky).
@@ -161,6 +165,6 @@ def planes(fs: FrameState) -> list[Widget]:
              for h in carded]
     # Not 'aviator.<hex>': the radar follows the cards only.
     # The solar view keeps to the planes passing overhead.
-    if not seen or view_mode(fs) == 'solar':
+    if not seen or (view_mode(fs) == 'solar' and show):
         return cards
     return cards + [Widget('aviator-tile', frame=tile(fs, seen), background='aviator', style=widget_style, priority=0.3, wait_time=10)]

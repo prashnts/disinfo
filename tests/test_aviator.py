@@ -96,3 +96,23 @@ def test_motion_is_a_sensor_turning_on(monkeypatch):
     assert common.motion(fs)
     # Still on: nothing new.
     assert not common.motion(fs)
+
+def test_hidden_cards_go_in_the_tile(monkeypatch):
+    from types import SimpleNamespace as NS
+    from PIL import Image
+    from discore.elements import Frame
+    from disinfo.screens.aviator import widgets
+    from disinfo.screens.aviator.state import AviatorState
+    st = AviatorState(planes={h: plane(hex=h) for h in 'abc'}, overhead=['a'], watched=['a', 'b', 'c'])
+    runtime = NS(show_planes=True)
+    monkeypatch.setattr(widgets, 'ADSBxStateManager', lambda: NS(get_state=lambda fs: st))
+    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={'b': 0})))
+    monkeypatch.setattr(widgets, 'RuntimeStateManager', lambda: NS(get_state=lambda fs: runtime))
+    monkeypatch.setattr(widgets, 'on_top', lambda fs: None)
+    monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'solar')
+    tiled = []
+    monkeypatch.setattr(widgets, 'card', lambda fs, p, active: Frame(Image.new('RGBA', (2, 2))))
+    monkeypatch.setattr(widgets, 'tile', lambda fs, ps: tiled.append([p['hex'] for p in ps]) or Frame(Image.new('RGBA', (2, 2))))
+    assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator.a']     # the solar view: cards only
+    runtime.show_planes = False
+    assert [w.name for w in widgets.planes(None)] == ['aviator-tile'] and tiled == [['b', 'a', 'c']]
