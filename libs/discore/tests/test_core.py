@@ -201,7 +201,7 @@ def test_scroller_keeps_its_hash_while_the_content_does():
 
 
 from discore.elements import Target
-from discore.button import button
+from discore.button import button, ButtonStyle
 from discore.layouts import place_at
 
 def boxes(f):
@@ -349,3 +349,12 @@ def test_grid_width_shares_and_clips_with_the_targets():
 def test_grid_renders_boxes_in_their_cells():
     f = grid([Grow(red(2, 2), anchor='tl'), red(10, 2)], ncols=1, anchor='tr')
     assert opaque_at(f, 0, 0) and not opaque_at(f, 9, 0)   # the Grow fills its cell, the frame in it at its anchor
+
+def test_hold_button_fills_in_its_shape():
+    style = ButtonStyle(fill='#00ff00ff')
+    b = lambda p: button(red(20, 6), 'b', hold=5, progress=p, style=style)
+    assert b(0).targets[0].hold == 5 and button(red(4, 4), 'b').targets[0].hold == 0
+    half = b(0.5).image
+    assert half.getpixel((3, 6)) != b(0).image.getpixel((3, 6))     # filled on the left
+    assert half.getpixel((b(0).width - 4, 6)) == b(0).image.getpixel((b(0).width - 4, 6))   # not yet on the right
+    assert half.getpixel((0, 0))[3] < 64 and half.getpixel((3, 6))[1] == 255   # the corner stays round, the fill shows

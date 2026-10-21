@@ -2,6 +2,10 @@
 
 The time, the radar or the solar clock, the salon's cards; scenes and the mirror's light to touch.
 '''
+import math
+from functools import lru_cache
+
+import numpy as np
 from PIL import Image
 
 from discore.button import button, ButtonStyle
@@ -34,6 +38,7 @@ BUTTONS = [
     ('vacuum', 'button.roborock_qrevo_master_full_clean', 'robot-vacuum', 'pill'),
     ('study', 'button.roborock_qrevo_master_clean_study', 'robot-vacuum', 'pill'),
 ]
+HOLD = 5            # s on a button entity to press it, a bar filling it meanwhile
 GAP = 6
 SIDE = 88           # the side stack's cards
 
@@ -62,12 +67,13 @@ def styles(kind: str, fs: FrameState) -> tuple[ButtonStyle, ButtonStyle]:
     cell = dict(padding=p, min_width=36 if compact(fs) else 48)
     cell |= dict(radius=3, border=1, anchor='mm')
     return (ButtonStyle(normal=DivStyle(background='#00000080', border_color='#ffffff30', **cell),
-                        pressed=DivStyle(background='#ffffff60', border_color='#ffffffb0', **cell)),
+                        pressed=DivStyle(background='#ffffff60', border_color='#ffffffb0', **cell), fill='#e0a04090'),
             ButtonStyle(normal=DivStyle(background='#40300c90', border_color='#e0a040b0', **cell),
-                        pressed=DivStyle(background='#e0a04080', border_color='#ffd080', **cell)))
+                        pressed=DivStyle(background='#e0a04080', border_color='#ffd080', **cell), fill='#e0a04090'))
 
-def control(fs: FrameState, label: str, payload: dict, on: bool, mdi: str | None, kind: str, outline: bool = False) -> Frame:
-    # outline: the icon's outline, if mdi has one.
+def control(fs: FrameState, label: str, payload: dict, on: bool, mdi: str | None, kind: str,
+            outline: bool = False, hold: float = 0) -> Frame:
+    # outline: the icon's outline, if mdi has one. hold: the seconds to hold it, filling.
     normal, active = styles(kind, fs)
     size = (13 if compact(fs) else 16) if kind == 'big' else (8 if compact(fs) else 10)
     ic = mdi and ((outline and icon(f'{mdi}-outline', size)) or icon(mdi, size))
@@ -76,8 +82,10 @@ def control(fs: FrameState, label: str, payload: dict, on: bool, mdi: str | None
     else:
         content = hstack([ic, text(label, label_style)], gap=2)
     # A Frame: a div puts a Box's content at the top left, not by its anchor.
+    touch = TouchStateManager()
     return button(render(content, *measure(content, UNBOUNDED, UNBOUNDED)), 'ha.call', payload,
-                  pressed=TouchStateManager().is_pressed(fs, 'ha.call', payload), style=active if on else normal)
+                  pressed=touch.is_pressed(fs, 'ha.call', payload), style=active if on else normal,
+                  hold=hold, progress=hold and touch.held_for(fs, 'ha.call', payload) / hold)
 
 def action(entity, last_scene) -> tuple[str, bool]:
     # The service and whether it's on, by the domain. A scene's (a button's) state is when it was last used.
@@ -99,13 +107,29 @@ def controls(fs: FrameState, width: int, ncols: int = 3) -> Frame:
     for name, e, mdi, kind in entities:
         service, on = action(e, last)
         buttons.append(control(fs, name, {'service': service, 'target': {'entity_id': e.entity_id}}, on, mdi, kind,
-                               outline=service == 'homeassistant.toggle' and not on))
+                               outline=service == 'homeassistant.toggle' and not on, hold=HOLD if service.endswith('.press') else 0))
     # Fewer columns till it fits: cut to width, the buttons lose their right edges. One column is cut anyway.
     for n in range(ncols, 0, -1):
         g = grid(buttons, ncols=n, gap=GAP//2, anchor='tm', masonry=True)
         if g.width <= width:
             return g
     return grid(buttons, ncols=1, gap=GAP, anchor='tm', width=width)
+
+def holding(fs: FrameState) -> bool:
+    # A button entity held down: its HOLD running.
+    p = TouchStateManager().state.pressed.get(fs.config.name)
+    return bool(p) and p[0] == 'ha.call' and p[1].get('service', '').endswith('.press')
+
+@lru_cache(maxsize=16)
+def checkered(w: int, h: int, k: int, t: int) -> Frame:
+    # The screen's edge, t px: yellow ticks of 2k, black ones of 4k.
+    ys, xs = np.mgrid[:h, :w]
+    ring = (xs < t) | (xs >= w - t) | (ys < t) | (ys >= h - t)
+    yellow = (xs + ys) % (6 * k) < 2 * k
+    arr = np.zeros((h, w, 4), np.uint8)
+    arr[ring] = (0, 0, 0, 255)
+    arr[ring & yellow] = (240, 190, 20, 255)
+    return Frame(Image.fromarray(arr), hash=('checkered', w, h, k, t))
 
 def compose(fs: FrameState) -> Frame:
     # Like the salon: the radar or the solar clock, the side and bottom stacks, the scenes to touch. The time at 2x.
@@ -134,4 +158,8 @@ def compose(fs: FrameState) -> Frame:
     canvas = composite_at(big(flip_digital_clock(fs, align='right'), 1 if compact(fs) else 2), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
     canvas = composite_at(buttons, canvas, 'br', frost=1.8)
     canvas = composite_at(twenty_two(fs), canvas, 'mm')
+    if holding(fs):
+        # Its thickness pulses, k to 2k, once a second.
+        k = 2 if compact(fs) else 3
+        canvas = composite_at(checkered(w, h, k, round(k * (1.5 - 0.5 * math.cos(2 * math.pi * fs.tick)))), canvas, 'mm')
     return canvas.tag('entry')

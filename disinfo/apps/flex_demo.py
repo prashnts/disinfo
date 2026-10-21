@@ -1,6 +1,7 @@
-'''Flex demo: discore's layout, live. Toggled by show_flex_demo.
+'''Flex and grid demo: discore's layouts, live, in tabs. Toggled by show_flex_demo.
 
 Each slide sits in a box whose width breathes, so the layout reflows on screen.
+A tab (touched, or layout_demo_tab from the remote) picks flex or grid.
 '''
 import math
 
@@ -10,13 +11,14 @@ from discore import ease
 from discore.data_structures import FrameState
 from discore.elements import Frame, Box
 from discore.layers import div, DivStyle, rounded_rectangle
-from discore.layouts import hstack, vstack, composite_at, Spacer, Grow
+from discore.button import button, ButtonStyle
+from discore.layouts import hstack, vstack, grid, composite_at, Spacer, Grow
 from discore.progress import progress_bar, ProgressStyle
 from discore.slides import Slides, SlidesStyle
 from discore.text import text, TextStyle
 from discore.widget import Widget
 from disinfo import fonts
-from disinfo.drat.app_states import RuntimeStateManager
+from disinfo.drat.app_states import RuntimeStateManager, TouchStateManager
 
 title_style = TextStyle(font=fonts.bitocra7, color='#a6a6a6')
 label_style = TextStyle(font=fonts.microfont_35_reg, color='#808080')
@@ -100,7 +102,7 @@ def ruler(w: int) -> Frame:
 
 def slide(title: str, w: int, body: Frame) -> Frame:
     head = hstack([text(title, title_style), Spacer(), text(f'w {w}', dim_style)], gap=4)
-    return vstack([head, ruler(w), div(body, width=w)], gap=3)
+    return vstack([head, ruler(w), div(body, width=w, anchor='ml')], gap=3)
 
 
 # Where Spacers put the blocks: the free space goes to them.
@@ -147,16 +149,78 @@ def shapes_slide(fs: FrameState, width: int) -> Frame:
     ], gap=4, align='hstretch'))
 
 
+# Grid: the same seven blocks, every few seconds another shape.
+shapes = [dict(ncols=2), dict(ncols=3), dict(ncols=4), dict(nrows=2), dict()]
+
+def grid_shape_slide(fs: FrameState, width: int) -> Frame:
+    kw = shapes[int(fs.tick // 2.4) % len(shapes)]
+    cells = [Swatch(palette[i % 5], 8 + 4 * (i % 3), 6, label=str(i + 1)) for i in range(7)]
+    name = ' '.join(f'{k} {v}' for k, v in kw.items()) or 'square'
+    return slide('grid', width, vstack([text(name, label_style), grid(cells, gap=2, anchor='ml', **kw)], gap=3))
+
+def masonry_slide(fs: FrameState, width: int) -> Frame:
+    # The same blocks: in rows, the tallest sets each row; masonry, under the shortest column.
+    cells = [Swatch(palette[i % 5], 8, h) for i, h in enumerate([10, 4, 7, 4, 12, 6, 5, 8])]
+    side = lambda name, masonry: vstack([text(name, label_style), grid(cells, ncols=3, gap=2, anchor='tm', masonry=masonry)], gap=3)
+    return slide('masonry', width, hstack([side('rows', False), side('masonry', True)], gap=12, align='top'))
+
+def share_slide(fs: FrameState, width: int) -> Frame:
+    w = breathe(fs, width // 3, width)
+    cells = [Swatch(palette[0], 6, 7, grow=1, label='grow'), Swatch(palette[1], 10, 7), Swatch(palette[2], 6, 7, grow=1),
+             Swatch(palette[3], 10, 7), Swatch(palette[4], 46, 7, label='too wide, cut'), Swatch(palette[1], 6, 5)]
+    return slide('width', w, vstack([
+        text('cols share w', label_style),
+        grid(cells, ncols=3, gap=2, width=w),
+    ], gap=3))
+
+anchors = ['tl', 'tm', 'tr', 'mr', 'br', 'bm', 'bl', 'ml', 'mm']
+
+def anchor_slide(fs: FrameState, width: int) -> Frame:
+    w = breathe(fs, width // 2, width)
+    a = anchors[int(fs.tick // 1.2) % len(anchors)]
+    cells = [Swatch(palette[i % 5], 6 + 2 * (i % 2), 4) for i in range(6)]
+    # The cells: growers fill theirs.
+    under = grid([Swatch('#ffffff14', 1, 1, grow=1)] * 6, ncols=3, gap=2, width=w, height=30)
+    g = grid(cells, ncols=3, gap=2, width=w, height=30, anchor=a)
+    return slide('anchor', w, vstack([text(f'anchor {a}', label_style), composite_at(g, under, 'tl')], gap=3))
+
+
+tab_cell = dict(padding=(1, 4, 1, 4), radius=2, border=1)
+tab_styles = {
+    False: ButtonStyle(normal=DivStyle(background='#00000000', border_color='#ffffff20', **tab_cell),
+                       pressed=DivStyle(background='#ffffff40', border_color='#ffffff90', **tab_cell)),
+    True: ButtonStyle(normal=DivStyle(background='#ffffff20', border_color='#ffffff60', **tab_cell),
+                      pressed=DivStyle(background='#ffffff40', border_color='#ffffff90', **tab_cell)),
+}
+
+def tabs(fs: FrameState, current: str) -> Frame:
+    def tab(name):
+        payload = {'tab': name}
+        return button(text(name, title_style if name == current else dim_style), 'layout_demo_tab', payload,
+                      pressed=TouchStateManager().is_pressed(fs, 'layout_demo_tab', payload), style=tab_styles[name == current])
+    return hstack([tab('flex'), tab('grid')], gap=2)
+
 def composer(fs: FrameState) -> Frame | None:
-    if not RuntimeStateManager().get_state(fs).show_flex_demo:
+    state = RuntimeStateManager().get_state(fs)
+    if not state.show_flex_demo:
         return None
     width = min(fs.config.width - 24, 160)
-    return Slides('flexdemo', SlidesStyle(width=width, height=min(fs.config.height - 30, 80))).mut([
-        (lambda: spacer_slide(fs, width), 12),
-        (lambda: grow_slide(fs, width), 12),
-        (lambda: text_slide(fs, width), 12),
-        (lambda: shapes_slide(fs, width), 12),
-    ]).draw(fs)
+    style = SlidesStyle(width=width, height=min(fs.config.height - 42, 80))
+    if state.layout_demo_tab == 'grid':
+        slides = Slides('griddemo', style).mut([
+            (lambda: grid_shape_slide(fs, width), 12),
+            (lambda: masonry_slide(fs, width), 12),
+            (lambda: share_slide(fs, width), 12),
+            (lambda: anchor_slide(fs, width), 12),
+        ])
+    else:
+        slides = Slides('flexdemo', style).mut([
+            (lambda: spacer_slide(fs, width), 12),
+            (lambda: grow_slide(fs, width), 12),
+            (lambda: text_slide(fs, width), 12),
+            (lambda: shapes_slide(fs, width), 12),
+        ])
+    return vstack([tabs(fs, state.layout_demo_tab), slides.draw(fs)], gap=4)
 
 def flex_demo_app(fs: FrameState) -> Widget:
     return Widget(

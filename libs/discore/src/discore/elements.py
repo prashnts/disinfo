@@ -23,6 +23,7 @@ class Target(NamedTuple):
     h: int
     action: str
     payload: Any = None
+    hold: float = 0     # s a touch stays on it before the action, 0: on release
 
 def shifted(targets: tuple, dx: int, dy: int) -> tuple:
     return tuple(t._replace(x=t.x + dx, y=t.y + dy) for t in targets) if dx or dy else targets

@@ -4,6 +4,7 @@ import zlib
 import base64
 import json
 import asyncio
+import threading
 
 from collections import defaultdict
 from PIL import Image
@@ -131,7 +132,7 @@ def load_frame(channel_name, message: PubSubMessage):
 
 targets = {}    # screen -> [[x, y, w, h, action, payload], ...] from the renderer, in the frame's px
 awake = {}      # screen -> someone's there (its presence sensors): a display's backlight
-held = {}       # screen -> the target a touch went down on
+held = {}       # screen -> the target a touch went down on, and when
 
 def load_targets(channel_name, message: PubSubMessage):
     targets[message.action] = message.payload['targets']
@@ -139,21 +140,36 @@ def load_targets(channel_name, message: PubSubMessage):
         awake[message.action] = message.payload.get('awake', True)
         notify(message.action)
 
+def hold(t) -> float:
+    return t[6] if len(t) > 6 else 0
+
 def touched(screen: str, x: int, y: int, phase: str):
-    '''A touch on a screen's frame: the target under it held on down, its action done on up inside it.'''
+    '''A touch on a screen's frame: the target under it held on down, its action done on up inside it.
+    A target with a hold acts once the touch stayed on it that long, not on up.'''
     hit = next((t for t in reversed(targets.get(screen, [])) if t[0] <= x < t[0] + t[2] and t[1] <= y < t[1] + t[3]), None)
     if phase == 'down':
-        held[screen] = hit
+        held[screen] = press = (hit, time.time()) if hit else None
+        if hit and hold(hit):
+            threading.Timer(hold(hit), held_long, (screen, press)).start()
     elif phase == 'move':
-        if not held.get(screen) or hit == held[screen]:
+        if not held.get(screen) or hit == held[screen][0]:
             return
         held[screen] = None         # slid off it: no press
     elif phase == 'up':
-        t = held.pop(screen, None)
-        if t and t == hit:
-            act(t[4], t[5])
-    t = held.get(screen)
-    publish('di.pubsub.touch', action=screen, payload={'pressed': [t[4], t[5]] if t else None})
+        p = held.pop(screen, None)
+        if p and p[0] == hit and not hold(hit):
+            act(hit[4], hit[5])
+    published_press(screen)
+
+def held_long(screen: str, press):
+    if held.get(screen) is press:       # still that touch
+        held[screen] = None
+        act(press[0][4], press[0][5])
+        published_press(screen)
+
+def published_press(screen: str):
+    p = held.get(screen)
+    publish('di.pubsub.touch', action=screen, payload={'pressed': [p[0][4], p[0][5]] if p else None})
 
 def act(action: str, payload):
     # ha.call: a Home Assistant service, from here (one server; the renderers are many). Else as the remote's.

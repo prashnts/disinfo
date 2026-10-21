@@ -4,6 +4,7 @@ State managers hold runtime-persistent states.
 PubSubStateManager uses redis pubsub for inter-process communication.
 '''
 import json
+import time
 import numpy as np
 
 from typing import Generic, TypeVar, Callable
@@ -96,6 +97,7 @@ class RuntimeState(AppBaseModel):
     show_sensors: bool = False
     show_printers: bool = False
     show_flex_demo: bool = False
+    layout_demo_tab: str = 'flex'      # the flex demo's tab: flex or grid
     screen_capture: bool = False
 
     # Extras
@@ -127,6 +129,8 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.screen_capture = not self.state.screen_capture
             case 'show_twentytwo':
                 self.state.show_twentytwo = not self.state.show_twentytwo
+            case 'layout_demo_tab':
+                self.state.layout_demo_tab = data.payload['tab']
             case 'set_stream_url':
                 self.state.stream_url = data.payload['url']
             case action if action.startswith('show_'):
@@ -135,16 +139,24 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
 
 class TouchState(AppBaseModel):
     pressed: dict[str, list | None] = {}    # screen -> [action, payload] of the target held down (web/server.py)
+    since: dict[str, float] = {}            # screen -> when that press came, here: no clocks to agree
 
 class TouchStateManager(PubSubStateManager[TouchState]):
     model = TouchState
     channels = ('di.pubsub.touch',)
 
     def process_message(self, channel: str, data: PubSubMessage):
-        self.state.pressed[data.action] = data.payload.get('pressed')
+        pressed = data.payload.get('pressed')
+        if pressed != self.state.pressed.get(data.action):
+            self.state.since[data.action] = time.time()
+        self.state.pressed[data.action] = pressed
 
     def is_pressed(self, fs: FrameState, action: str, payload=None) -> bool:
         return self.state.pressed.get(fs.config.name) == [action, payload]
+
+    def held_for(self, fs: FrameState, action: str, payload=None) -> float:
+        # The seconds it's been held down, 0 if it's not.
+        return time.time() - self.state.since.get(fs.config.name, time.time()) if self.is_pressed(fs, action, payload) else 0
 
 
 brightness_min: float = 10
