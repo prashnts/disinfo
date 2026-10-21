@@ -219,7 +219,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = following(fs)
     up = map_up(fs)
     rot = rotated(up)
-    target = view(st.focus, st.radius, rot, w, h)
+    target = zoomed_view(view(st.focus, st.radius, rot, w, h), zoom(fs))
     clear = clear or (0, 0, w, h)
     if followed:
         xy = rot(*position(st.planes[followed], now))
@@ -319,6 +319,15 @@ def quiet(fs: FrameState) -> bool:
 
 def map_up(fs: FrameState) -> float:
     return OpenedStateManager().get_state(fs).map_up.get(fs.config.name, fs.config.aviator_map_up)
+
+def zoom(fs: FrameState) -> float:
+    return OpenedStateManager().get_state(fs).zoom.get(fs.config.name, fs.config.aviator_zoom)
+
+def zoomed_view(target: tuple[float, float, float], z: float) -> tuple[float, float, float]:
+    # z times closer. Pulling out, the center comes to home: all around it shows.
+    cx, cy, s = target
+    k = min(z, 1)
+    return cx * k, cy * k, s * z
 
 def view_mode(fs: FrameState) -> str:
     return OpenedStateManager().get_state(fs).view or fs.config.aviator_view

@@ -44,6 +44,7 @@ class OpenedState(AppBaseModel):
     opened: dict[str, float] = {}       # hex -> when it was tapped
     view: str | None = None
     map_up: dict[str, float] = {}       # screen -> the bearing up on its map, from the web page; until a restart
+    zoom: dict[str, float] = {}         # screen -> its map's zoom, the same
 
 class OpenedStateManager(PubSubStateManager[OpenedState]):
     # Tapping a plane on the radar opens its card, tapping the card closes it. The web page sets the radius.
@@ -67,6 +68,8 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 db.set(VIEW_KEY, self.state.view)
             case 'aviator.map_up':
                 self.state.map_up[data.payload['screen']] = float(data.payload['deg']) % 360
+            case 'aviator.zoom':
+                self.state.zoom[data.payload['screen']] = max(float(data.payload['zoom']), 0.05)
             case 'aviator.radius':
                 # The poller reads it, every renderer gets it back with the table.
                 db.set(RADIUS_KEY, float(data.payload['km']))

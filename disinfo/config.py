@@ -92,6 +92,8 @@ class Config(AppBaseModel):
     aviator_quiet: list[tuple[str, str]] = [('06:00', '07:30')]
     # The bearing up on this screen's map: where one faces looking at it (270: facing west).
     aviator_map_up: float = 0
+    # The map's zoom on its view (the window's slice): under 1 it pulls out, centered on home at the end.
+    aviator_zoom: float = 1
     # 'map': the radar from above, when there's something to see. 'sky': out of the window, the sun and the planes, always.
     # 'solar': the solar clock, no planes in the background.
     aviator_view: str = 'map'

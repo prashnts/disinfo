@@ -276,9 +276,18 @@
         }
 
         function MapAngle(props) {
-            // The bearing up on a screen's map: where one faces looking at it. Its config's after a restart.
+            // The bearing up on a screen's map: where one faces looking at it, and its zoom. Its config's after a restart.
             const [screen, setScreen] = useState('disalon')
             const [deg, setDeg] = useState('')
+            const [zoom, setZoom] = useState(1)
+            const sendZoom = e => {
+                setZoom(e.currentTarget.value)
+                fetch('/remote', {
+                    method: 'POST',
+                    body: JSON.stringify({action: 'aviator.zoom', payload: {screen, zoom: e.currentTarget.value}}),
+                    headers: {'Content-Type': 'application/json'},
+                })
+            }
             const send = () => fetch('/remote', {
                 method: 'POST',
                 body: JSON.stringify({action: 'aviator.map_up', payload: {screen, deg}}),
@@ -289,7 +298,8 @@
                     ${['disalon', 'distudy', 'di_pcstate', 'dientry'].map(s => html`<option value=${s}>${s}</option>`)}
                 </select>
                 <input type="number" min="0" max="359" step="15" size="4" placeholder="deg" value=${deg} onChange=${e => setDeg(e.currentTarget.value)}/>°
-                <button class='remote_button' onClick=${send}>set</button></label>`
+                <button class='remote_button' onClick=${send}>set</button></label>
+                <label>zoom <input type="range" min="0.25" max="4" step="0.25" value=${zoom} onChange=${sendZoom}/> ${zoom}x</label>`
         }
 
         function TriggerButton(props) {
