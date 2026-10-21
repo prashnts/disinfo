@@ -314,3 +314,38 @@ def test_stack_moves_on_by_itself():
             s.tick(FrameState(tick=k * 0.1, now=None, config=None))
             seen.add(s._widgets[s.pos].name)
         assert seen == {'a', 'b', 'c'}, seen
+
+
+from discore.layouts import grid
+
+red = lambda w, h: solid((255, 0, 0, 255), (w, h))
+
+def test_grid_shape_from_rows_cols_both_or_none():
+    cells = [red(4, 4)] * 5
+    size = lambda **kw: grid(cells, gap=1, **kw).size
+    assert size(ncols=2) == (9, 14)          # 3 rows
+    assert size(nrows=2) == (14, 9)          # 3 columns
+    assert size(nrows=1, ncols=2) == (9, 14) # the overflow takes rows
+    assert size() == (14, 9)                 # as square as it gets
+    assert size(ncols=9) == (24, 4)          # no empty columns
+    assert grid([None, None]).size == (1, 1)
+
+def test_grid_lines_up_columns_and_rows():
+    f = grid([red(2, 2), red(6, 2), red(2, 5), red(2, 2)], ncols=2, anchor='tl')
+    assert f.size == (8, 7)                  # widest per column, tallest per row
+    assert opaque_at(f, 2, 0) and not opaque_at(f, 4, 2) and opaque_at(f, 2, 2)
+
+def test_masonry_fills_the_shortest_column():
+    f = grid([red(4, 10), red(4, 2), red(4, 2), red(4, 2)], ncols=2, gap=1, masonry=True, anchor='tl')
+    assert f.size == (9, 10)                 # rows would take 10 + 1 + 2
+    assert opaque_at(f, 5, 7) and not opaque_at(f, 5, 9)   # three under each other on the right
+
+def test_grid_width_shares_and_clips_with_the_targets():
+    b = button(red(20, 4), 'b')
+    f = grid([b, b], ncols=2, gap=2, width=20, anchor='tl')
+    assert f.width == 20 and boxes(f) == [(0, 0, 9, b.height, 'b'), (11, 0, 9, b.height, 'b')]
+    assert grid([red(4, 4)] * 4, ncols=2, height=5).height == 5
+
+def test_grid_renders_boxes_in_their_cells():
+    f = grid([Grow(red(2, 2), anchor='tl'), red(10, 2)], ncols=1, anchor='tr')
+    assert opaque_at(f, 0, 0) and not opaque_at(f, 9, 0)   # the Grow fills its cell, the frame in it at its anchor

@@ -262,6 +262,110 @@ def vstack(
 
     return Frame(img, hash=('vstack', gap, align, tuple(elements)), targets=targets)
 
+def _clipped(targets: tuple, w: int, h: int) -> tuple:
+    '''The targets cut to (0, 0, w, h); what's left outside goes.'''
+    out = ()
+    for t in targets:
+        x0, y0, x1, y1 = max(t.x, 0), max(t.y, 0), min(t.x + t.w, w), min(t.y + t.h, h)
+        if x1 > x0 and y1 > y0:
+            out += (t._replace(x=x0, y=y0, w=x1 - x0, h=y1 - y0),)
+    return out
+
+def grid(
+    elements: Sequence[Optional[Frame]],
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
+    gap: int = 0,
+    anchor: ComposeAnchor = 'mm',
+    masonry: bool = False,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> Frame:
+    '''Places the elements in a grid of `nrows` and/or `ncols`.
+
+    One given, the other follows from the count; both, and the overflow
+    takes more rows; none, as square as it gets. An element sits in its
+    cell by `anchor`; Boxes are measured in theirs, growers fill it.
+
+    Row by row, each column is as wide as its widest element and each row
+    as tall as its tallest. With `masonry` there are no rows: each element
+    goes under the shortest column so far.
+
+        ┌──┬────┬─┐          ┌──┬────┬─┐
+        │▪▪│▪▪▪▪│▪│          │▪▪│▪▪▪▪│▪│
+        ├──┼────┼─┤          │▪▪├────┤ │
+        │▪ │ ▪▪ │ │          ├──┤ ▪▪ ├─┤
+        │▪ │ ▪▪ │ │          │▪ │ ▪▪ │▪│
+        └──┴────┴─┘          └──┴────┴─┘
+          rows, 'mm'           masonry
+
+    With a `width` the columns share it, with a `height` the rows do
+    (masonry columns just stop there). What doesn't fit is clipped.
+
+    Returns a new frame.
+    '''
+    _elems = [e for e in elements if e]
+    hash_ = ('grid', nrows, ncols, gap, anchor, masonry, width, height, tuple(_elems))
+    if not _elems:
+        return Frame(Image.new('RGBA', (max(width or 1, 1), max(height or 1, 1))), hash=hash_)
+
+    n = len(_elems)
+    if ncols is None:
+        ncols = math.ceil(n / nrows) if nrows else math.ceil(math.sqrt(n))
+    ncols = max(min(ncols, n), 1)
+    gaps_x = gap * (ncols - 1)
+    shared = _share(max(width - gaps_x, 0), [1] * ncols) if width is not None else None
+
+    # Cells: (element, x, y, w, h).
+    cells = []
+    if masonry:
+        sizes = [measure(e, shared[0] if shared else UNBOUNDED, UNBOUNDED) for e in _elems]
+        cols, tops = [[] for _ in range(ncols)], [0] * ncols
+        for i, (_, h) in enumerate(sizes):
+            c = tops.index(min(tops))
+            cols[c].append((i, tops[c]))
+            tops[c] += h + gap
+        widths = shared or [max([sizes[i][0] for i, _ in col] + [0]) for col in cols]
+        x = 0
+        for col, w in zip(cols, widths):
+            cells += [(_elems[i], x, y, w, sizes[i][1]) for i, y in col]
+            x += w + gap
+        full_h = max(tops) - gap
+    else:
+        rows = [list(range(i, min(i + ncols, n))) for i in range(0, n, ncols)]
+        widths = shared or [max(measure(_elems[r[c]], UNBOUNDED, UNBOUNDED)[0] for r in rows if c < len(r)) for c in range(ncols)]
+        heights = [max(measure(_elems[i], w, UNBOUNDED)[1] for i, w in zip(r, widths)) for r in rows]
+        if height is not None:
+            heights = _share(max(height - gap * (len(rows) - 1), 0), [1] * len(rows))
+        y = 0
+        for r, h in zip(rows, heights):
+            x = 0
+            for i, w in zip(r, widths):
+                cells.append((_elems[i], x, y, w, h))
+                x += w + gap
+            y += h + gap
+        full_h = y - gap
+
+    W, H = width if width is not None else sum(widths) + gaps_x, height if height is not None else full_h
+    img = Image.new('RGBA', (max(W, 1), max(H, 1)), (0, 0, 0, 0))
+    targets = ()
+    for e, x, y, w, h in cells:
+        w, h = min(w, W - x), min(h, H - y)        # the canvas clips the cell
+        if w <= 0 or h <= 0:
+            continue
+        mw, mh = measure(e, w, h)
+        if isinstance(e, Box):      # growers fill their cell
+            mw, mh = w if e.grow_along('x') else mw, h if e.grow_along('y') else mh
+        f = render(e, mw, mh)
+        dx = max({'l': 0, 'm': (w - f.width) // 2, 'r': w - f.width}[anchor[1]], 0)
+        dy = max({'t': 0, 'm': (h - f.height) // 2, 'b': h - f.height}[anchor[0]], 0)
+        # The cell clips the element.
+        cw, ch = min(f.width, w - dx), min(f.height, h - dy)
+        img.alpha_composite(f.image.crop((0, 0, cw, ch)), (x + dx, y + dy))
+        targets += shifted(_clipped(f.targets, cw, ch), x + dx, y + dy)
+
+    return Frame(img, hash=hash_, targets=targets)
+
 def cut_alpha(left: Image.Image, right: Image.Image, threshold: int = 1, opaque: bool = False) -> Image.Image:
     '''Makes `left` transparent where `right` is (nearly) transparent, in place.
     Elsewhere left keeps its alpha, or becomes opaque.'''
