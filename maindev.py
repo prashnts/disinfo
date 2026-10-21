@@ -41,7 +41,7 @@ def run_server():
     uvicorn.run("disinfo.web.server:app", host="0.0.0.0", port=4200)
 
 def run_background_renderer():
-    background_renderer(fps=38, stats=False)
+    background_renderer(fps=38, stats=False, config=['.config.json', '.config-dientry.json'])
 
 
 if __name__ == "__main__":

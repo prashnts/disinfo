@@ -19,6 +19,7 @@ from . import aviator
 from .common import background, side_cards, bottom_cards, motion
 from .date_time import flip_digital_clock
 from .solar.app import AnalogClockStyle, sky_color
+from .twenty_two import draw as twenty_two
 
 SCENES = [
     ('lumos', 'scene.lumos'),
@@ -91,8 +92,9 @@ def compose(fs: FrameState) -> Frame:
     # What the cards leave of the radar: between the stacks.
     clear = (GAP + (side_f.width if side_f else 0), GAP, w - GAP - (bottom_f.width if bottom_f else 0), above)
     canvas = composite_at(background(fs, clock, clear, [side.current, bottom.current]), canvas, 'mm')
-    canvas = composite_at(side_f, canvas, 'tl', dx=GAP, dy=GAP, frost=1.8)
+    canvas = composite_at(big(side_f, 2), canvas, 'tl', dx=GAP, dy=GAP, frost=1.8)
     canvas = composite_at(bottom_f, canvas, 'br', dx=-GAP, dy=-(h - above), frost=1.8)
     canvas = composite_at(big(flip_digital_clock(fs, align='right'), 1 if compact(fs) else 2), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
     canvas = composite_at(buttons, canvas, 'bm', dy=-GAP, frost=1.8)
+    canvas = composite_at(twenty_two(fs), canvas, 'mm')
     return canvas.tag('entry')
