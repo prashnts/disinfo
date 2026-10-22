@@ -58,7 +58,8 @@ has to stay in sight and from the spots they've lit longest (burn-in), on averag
   (`distudy`, right) and the T4-S3 (`di_pcstate`, left, `compose_display_frame`, no date). Choices: side stack
   `m<side>` with the time and date in a top corner (one list: the time across from the stack is free, on the
   stack's side +0.3, the stack on its other side +0.5, the bottom corners +0.2 and only `calm`), and the bottom
-  stack `bl`. `time_side='left'|'right'` keeps the time on that side. `covering` and `stacked`: the two stacks.
+  stack `bl`. `time_side='left'|'right'` keeps the time on that side. `compositor.DATE_BESIDE` (the desk): the date may go in the
+  time's row (item `timedate`, +0.4), chosen when its own spot below the time would be under the cards. `covering` and `stacked`: the two stacks.
 - The entry, `screens/entry.py` `screen`: the side stack `tl` (`tr` +0.5), the time across (+0.3 on the stack's
   side), the bottom stack and the buttons fixed (`bl`, `br`: hands expect them). Not dimmed-asleep aware: it's
   dark then anyway (`compositor.compose_entry`).

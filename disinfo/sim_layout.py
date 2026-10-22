@@ -45,7 +45,7 @@ def main(hours: float = 72, night: float = 8):
             continue
         items = {k: v for k, v in seen['items'].items() if not asleep or k in ('time', 'date')}
         s.arrange(seen['fs'], items, None if asleep else seen['focus'], when={'calm'} if asleep else ())
-        now = (s.spot('side').anchor, s.spot('time').anchor)
+        now = (s.spot('side').anchor, (s.spot('time') or s.spot('timedate')).anchor)
         spent[('asleep' if asleep else 'awake', *now)] += 10
         moves += before is not None and now != before
         before = now

@@ -1,6 +1,7 @@
 import os
 import json
 
+from pathlib import Path
 from typing import Optional
 from pydantic import SecretStr, field_validator
 
@@ -33,6 +34,22 @@ class ShazamConfig(AppBaseModel):
 class UDPPanel(AppBaseModel):
     ip: str
     size: int
+
+screen_data_path = Path(os.environ.get('DI_SCREEN_DATA_PATH', Path(__file__).parent.parent / 'config' / 'screen_data.json'))
+
+class AviatorData(AppBaseModel):
+    # (lat, lon) of what's visible from the window.
+    landmarks: list[tuple[float, float]] = []
+
+class ScreenData(AppBaseModel):
+    # Shared by all the screens, from config/screen_data.json.
+    aviator: AviatorData = AviatorData()
+
+def load_screen_data() -> ScreenData:
+    if not screen_data_path.exists():
+        return ScreenData()
+    with open(screen_data_path) as f:
+        return ScreenData(**json.load(f))
 
 class Config(AppBaseModel):
     devmode: bool = False
@@ -85,6 +102,7 @@ class Config(AppBaseModel):
     moonraker_api_key: SecretStr | None = None
 
     # Aviator
+    overpass_url: str = 'https://overpass-api.de/api/interpreter'
     adsbx_url: str = 'https://adsb.nb.malow.im'
     # Bearings seen from the window, clockwise from north. The planes in there get the cards.
     aviator_window: tuple[float, float] = (0, 180)
@@ -101,6 +119,8 @@ class Config(AppBaseModel):
     aviator_eye_m: float = 35
 
     shazam: ShazamConfig = ShazamConfig()
+
+    screen_data: ScreenData = load_screen_data()
 
     # Music Widget
     speaker_entity: str = 'media_player.sonos_beam'

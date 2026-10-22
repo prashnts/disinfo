@@ -28,6 +28,7 @@ COPY --from=build --chown=di /app/.venv .venv
 COPY web web
 COPY assets assets
 COPY disinfo disinfo
+COPY config/screen_data.json config/screen_data.json
 
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER di

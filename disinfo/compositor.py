@@ -92,13 +92,17 @@ def compose_big_frame(fs: FrameState):
     screens.aviator.app.follow(fs, stack_hor.current)
     on_top = [stack.current, stack_hor.current]
 
-    align = 'right' if screen.spot('time').anchor[1] == 'r' else 'left'
+    align = 'right' if (screen.spot('time') or screen.spot('timedate')).anchor[1] == 'r' else 'left'
+    clock, date = screens.date_time.flip_digital_clock(fs, align=align), screens.date_time.flip_clock(fs, align=align)
     items = {
-        'time': screens.date_time.flip_digital_clock(fs, align=align),
-        'date': screens.date_time.flip_clock(fs, align=align),
+        'time': clock,
+        'date': date,
         'side': stack.draw(fs) if awake else None,
         'bottom': stack_hor.draw(fs) if awake else None,
     }
+    if config.name in DATE_BESIDE:
+        # The date in the time's row: one item instead of two, where the date alone would be under the cards.
+        items['timedate'] = hstack([date, clock] if align == 'right' else [clock, date], gap=1, align='top')
     # The solar clock where it's designed, across while the side stack is on its other side. Kept clear.
     def solar_style(spots) -> AnalogClockStyle:
         return AnalogClockStyle(
@@ -116,6 +120,7 @@ def compose_big_frame(fs: FrameState):
     if awake:
         image = composite_at(background(fs, solar_style(screen.spots()), layout.clear, on_top), image, 'mm')
     image = layout.place('date', items['date'], image, frost=1)
+    image = layout.place('timedate', items.get('timedate'), image, frost=1.8)
     # if rmt_state.show_debug:
     #     composite_at(screens.demo.draw(fs), image, 'mm')
 
@@ -235,20 +240,24 @@ def compose_display_frame(fs: FrameState):
     return image.tag(awake)
 
 
+DATE_BESIDE = {'distudy'}      # the date may go in the time's row, when below it the cards would cover it
+beside_penalty = 0.4
+
 def big_screen(name: str, side: str, time_side: str | None = None, compose=None) -> Screen:
     '''The salon, the desk and the display: the side stack on its designated side, the time and date in the top
     corner across, the bottom stack along the bottom. The other side costs a little, the time on the stack's side
     too; the time goes down only while calm. time_side: the time kept on that side.'''
     l, r = ('l', 'r') if side == 'left' else ('r', 'l')
     inwards = lambda h: 1 if h == 'l' else -1
-    def option(s: str, v: str, h: str, penalty: float, when: str | None = None) -> Option:
-        return Option({
-            'side': Spot(f'm{s}', jitter=(3, 0)),
-            'time': Spot(f'{v}{h}', dx=inwards(h), dy=2 if v == 't' else -2, jitter=(1, 8)),
-            'date': Spot(f'{v}{h}', dy=60 if v == 't' else -48, jitter=(6, 3)),
-        }, penalty, when)
-    options = [option(s, v, h, (0 if s == l else 0.5) + (0 if h != s else 0.3) + (0 if v == 't' else 0.2), None if v == 't' else 'calm')
-               for s in (l, r) for v in 'tb' for h in (r, l) if not time_side or h == time_side[0]]
+    def option(s: str, v: str, h: str, penalty: float, when: str | None = None, beside: bool = False) -> Option:
+        time = Spot(f'{v}{h}', dx=inwards(h), dy=2 if v == 't' else -2, jitter=(1, 8))
+        spots = {'side': Spot(f'm{s}', jitter=(3, 0))}
+        if beside:
+            return Option({**spots, 'timedate': time}, penalty + beside_penalty, when)
+        return Option({**spots, 'time': time, 'date': Spot(f'{v}{h}', dy=60 if v == 't' else -48, jitter=(6, 3))}, penalty, when)
+    options = [option(s, v, h, (0 if s == l else 0.5) + (0 if h != s else 0.3) + (0 if v == 't' else 0.2), None if v == 't' else 'calm', beside)
+               for s in (l, r) for v in 'tb' for h in (r, l) if not time_side or h == time_side[0]
+               for beside in ((False, True) if name in DATE_BESIDE else (False,))]
     load, save = heat_store(name)
     return Screen(name, [
         sorted(options, key=lambda o: o.penalty),

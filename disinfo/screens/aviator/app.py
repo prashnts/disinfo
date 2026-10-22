@@ -15,6 +15,7 @@ from disinfo.config import app_config
 
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
+from . import basemap
 from .utils import airports, local_xy
 
 
@@ -30,8 +31,12 @@ window_edge = (1, 1, 1, 0.22)
 grid_color = (1, 1, 1, 0.09)
 home_color = (0.9, 0.55, 0.2, 1)
 airport_color = (0.55, 0.57, 0.6, 0.7)
+landmark_color = (0.6, 0.75, 0.95, 0.45)
+landmark_px = (4, 1.5)  # dot size at the resting view, near to far; it grows with the zoom, by its square root
+landmark_max = 8
+landmark_far = 20       # km: the size of the farthest
 trail_alpha = 0.4
-trail_fade = 180        # s: the table keeps 10 minutes, the background shows the last few
+# The table keeps 10 minutes, the background shows the last few: st.trail, from the web page.
 watched_fade = 600      # the watched planes show their whole approach
 ahead = 120             # s of the path ahead of the watched planes, dashed
 plane_alpha = 0.8
@@ -219,7 +224,8 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = following(fs)
     up = map_up(fs)
     rot = rotated(up)
-    target = zoomed_view(view(st.focus, st.radius, rot, w, h), zoom(fs))
+    rest = view(st.focus, st.radius, rot, w, h)
+    target = zoomed_view(rest, zoom(fs))
     clear = clear or (0, 0, w, h)
     if followed:
         xy = rot(*position(st.planes[followed], now))
@@ -238,6 +244,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     labels, taken = [], []
     hx, hy = to_px(0, 0)
     scope(ctx, hx, hy, s, st.radius, up, w, h, labels)
+    basemap.draw(ctx, now, (cx, cy, s), up, w, h)
 
     for a in airports:
         ax, ay = to_px(a.x, a.y)
@@ -246,6 +253,15 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.stroke()
         if at := label_at(code := text(a.code, label_style), round(ax), round(ay), taken):
             labels.append((code, *at))
+    near, far = landmark_px
+    grow = math.sqrt(s / rest[2])
+    ctx.set_source_rgba(*landmark_color)
+    for lat, lon in app_config.screen_data.aviator.landmarks:
+        x, y = local_xy(lat, lon)
+        lx, ly = to_px(x, y)
+        if -4 < lx < w + 4 and -4 < ly < h + 4:
+            ctx.arc(lx, ly, min((near + (far - near) * min(math.hypot(x, y) / landmark_far, 1)) * grow, landmark_max) / 2, 0, 2 * math.pi)
+            ctx.fill()
     ctx.set_source_rgba(*home_color)
     ctx.rectangle(round(hx) - 1, round(hy) - 1, 3, 3)
     ctx.fill()
@@ -255,7 +271,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     for hex, p in sorted(st.planes.items(), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         watched = hex in st.watched or hex in opened
-        fade = watched_fade if watched else trail_fade
+        fade = watched_fade if watched else st.trail
         alpha = 2 * trail_alpha if watched else trail_alpha
         trail = p['trail']
         for (_, la0, lo0, _), (t1, la1, lo1, _) in zip(trail, trail[1:]):
@@ -328,10 +344,12 @@ def quiet(fs: FrameState) -> bool:
     return any(a <= t < b for a, b in app_config.aviator_quiet)
 
 def map_up(fs: FrameState) -> float:
-    return OpenedStateManager().get_state(fs).map_up.get(fs.config.name, fs.config.aviator_map_up)
+    m = OpenedStateManager().get_state(fs)
+    return m.map_up.get(fs.config.name, m.map_up.get('*', fs.config.aviator_map_up))
 
 def zoom(fs: FrameState) -> float:
-    return OpenedStateManager().get_state(fs).zoom.get(fs.config.name, fs.config.aviator_zoom)
+    m = OpenedStateManager().get_state(fs)
+    return m.zoom.get(fs.config.name, m.zoom.get('*', fs.config.aviator_zoom))
 
 def zoomed_view(target: tuple[float, float, float], z: float) -> tuple[float, float, float]:
     # z times closer. Pulling out, the center comes to home: all around it shows.

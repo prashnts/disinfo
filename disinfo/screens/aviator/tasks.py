@@ -10,6 +10,7 @@ from .utils import Airport, airports, local_xy, closest_approach, elevation, bea
 
 TABLE_KEY = 'di.aviator.table'
 RADIUS_KEY = 'di.aviator.radius'      # km, set from the web page: how far the radar shows and cards go
+TRAIL_KEY = 'di.aviator.trail'        # s, set from the web page: how long the radar's trails are
 MAX_ALT_KEY = 'di.aviator.max_alt'    # m, set from the web page: planes above it are left out
 # Only planes within this of home are kept, the receiver sees ~300 km around.
 keep_km = 60
@@ -23,6 +24,7 @@ passed_for = 60         # s a pass stays 'overhead' after it
 # Seen from the window: in its bearings, above the roofs, not too far. The nearest ones are watched.
 min_elev = 2
 radius_km = 40
+trail_s = 180            # the radar's trails: the table keeps trail_len * trail_every = 10 minutes
 max_alt_m = 13000       # the slider's top: no filter
 max_watched = 2
 # A queue: planes low around an airport, climbing or descending.
@@ -110,6 +112,12 @@ def radius() -> float:
     except ValueError:
         return radius_km
 
+def trail() -> float:
+    try:
+        return float(db.get(TRAIL_KEY) or trail_s)
+    except ValueError:
+        return trail_s
+
 def max_alt() -> float:
     try:
         return float(db.get(MAX_ALT_KEY) or max_alt_m)
@@ -161,7 +169,7 @@ def scene(now: float) -> dict:
         _queue_focus = next((a.code for a in airports if len(q[a.code]) >= queue_min), None)
     focus = 'home' if watch else _queue_focus
     overhead = [h for h in watch if is_overhead(planes[h], now)]
-    return {'planes': planes, 'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r}
+    return {'planes': planes, 'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r, 'trail': trail()}
 
 def adsbx_task():
     now, aircraft = fetch_planes()

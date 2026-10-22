@@ -15,3 +15,20 @@ def test_time_kept_on_a_side():
     s = compositor.big_screen('test.pinned', 'left', time_side='right')
     assert {o.spots['time'].anchor[1] for o in s.choices[0]} == {'r'}
     assert {o.spots['side'].anchor for o in s.choices[0]} == {'ml', 'mr'}      # the stack still moves
+
+def test_date_in_the_time_row_only_when_covered():
+    from types import SimpleNamespace
+    from PIL import Image
+    from discore.elements import Frame
+    fs = SimpleNamespace(config=SimpleNamespace(width=128, height=128))
+    box = lambda w, h: Frame(Image.new('RGBA', (w, h), (255, 255, 255, 255)))
+    def items(card):
+        return {'time': box(40, 30), 'date': box(40, 30), 'timedate': box(80, 30), 'side': card, 'bottom': None}
+    free = compositor.big_screen('distudy', 'right')
+    free.arrange(fs, items(box(50, 50)), relayout=True)
+    assert 'date' in free.spots() and 'timedate' not in free.spots()
+    # A card over where the date goes, below the time at the top corner: it moves into the time's row.
+    covered = compositor.big_screen('distudy', 'right', time_side='left')
+    covered.arrange(fs, items(box(128, 100)), relayout=True)
+    layout = covered.arrange(fs, items(box(128, 100)), relayout=True)
+    assert 'timedate' in covered.spots() and 'timedate' in layout.positions and 'date' not in layout.positions
