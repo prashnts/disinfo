@@ -241,7 +241,7 @@ def compose_display_frame(fs: FrameState):
 
 
 DATE_BESIDE = {'distudy'}      # the date may go in the time's row, when below it the cards would cover it
-beside_penalty = 0.4
+beside_penalty = 1.2     # over what the burn-in heat gives it (the date as an item of its own wears one more spot)
 
 def big_screen(name: str, side: str, time_side: str | None = None, compose=None) -> Screen:
     '''The salon, the desk and the display: the side stack on its designated side, the time and date in the top

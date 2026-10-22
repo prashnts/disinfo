@@ -9,6 +9,8 @@ from disinfo.redis import db
 from .tasks import TABLE_KEY, RADIUS_KEY, MAX_ALT_KEY, TRAIL_KEY, radius_km, trail_s
 
 VIEW_KEY = 'di.aviator.view'     # map, sky or solar on every screen, from the web page; their config's otherwise
+MAP_UP_KEY = 'di.aviator.map_up'  # screen -> bearing, a JSON dict
+ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 VIEWS = ['map', 'sky', 'solar']
 
 
@@ -44,8 +46,14 @@ class ADSBxStateManager(PubSubStateManager[AviatorState]):
 class OpenedState(AppBaseModel):
     opened: dict[str, float] = {}       # hex -> when it was tapped
     view: str | None = None
-    map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; until a restart
+    map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
     zoom: dict[str, float] = {}         # screen ('*': all) -> its map's zoom, the same
+
+def read_dict(key: str) -> dict[str, float]:
+    try:
+        return {k: float(v) for k, v in json.loads(db.get(key) or '{}').items()}
+    except (ValueError, AttributeError):
+        return {}
 
 class OpenedStateManager(PubSubStateManager[OpenedState]):
     # Tapping a plane on the radar opens its card, tapping the card closes it. The web page sets the radius.
@@ -54,7 +62,7 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     keep_open = 90
 
     def initial_state(self) -> OpenedState:
-        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None)
+        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY))
 
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
@@ -68,9 +76,9 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 self.state.view = (data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0]
                 db.set(VIEW_KEY, self.state.view)
             case 'aviator.map_up':
-                self.set_all(self.state.map_up, data.payload['screen'], float(data.payload['deg']) % 360)
+                self.set_all(self.state.map_up, MAP_UP_KEY, data.payload['screen'], float(data.payload['deg']) % 360)
             case 'aviator.zoom':
-                self.set_all(self.state.zoom, data.payload['screen'], max(float(data.payload['zoom']), 0.05))
+                self.set_all(self.state.zoom, ZOOM_KEY, data.payload['screen'], max(float(data.payload['zoom']), 0.05))
             case 'aviator.radius':
                 # The poller reads it, every renderer gets it back with the table.
                 db.set(RADIUS_KEY, float(data.payload['km']))
@@ -80,12 +88,13 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 db.set(MAX_ALT_KEY, float(data.payload['m']))
 
     @staticmethod
-    def set_all(d: dict, screen: str, v: float):
+    def set_all(d: dict, key: str, screen: str, v: float):
         # 'all' is every screen, '*': the ones set after it keep their own.
         if screen == 'all':
             d.clear()
             screen = '*'
         d[screen] = v
+        db.set(key, json.dumps(d))
 
     def get_state(self, fs: FrameState | None = None) -> OpenedState:
         now = time.time()

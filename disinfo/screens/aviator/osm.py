@@ -20,7 +20,8 @@ from .utils import local_xy
 reach_km = 50           # around home
 ttl = 90 * 24 * 3600
 retry = 600             # s before asking again after a failure
-tolerance = 0.25        # km, the shapes stay that close to the real ones
+# km, the shapes stay that close to the real ones: the built-up areas are the loosest, they're only a tint.
+tolerance = {'builtup': 0.6, 'green': 0.3, 'water': 0.2, 'river': 0.2, 'coast': 0.4, 'motorway': 0.3}
 version = 1
 
 # group -> (the Overpass selectors, a query each for ways and for relations)
@@ -31,6 +32,7 @@ groups = {
     'road': ['["highway"="motorway"]'],
 }
 # Smaller than that is left out: km2 for an area, km for a line.
+areas_kinds = {'builtup', 'green', 'water'}
 min_size = {'builtup': 1.0, 'green': 0.2, 'water': 0.05, 'river': 1.0, 'coast': 2.0, 'motorway': 2.0}
 _pending = set()
 _turn = threading.Lock()
@@ -45,8 +47,20 @@ class Feature(NamedTuple):
     bbox: tuple                 # x0, y0, x1, y1
 
 
-def feature_of(f: dict) -> Feature:
-    parts = [[tuple(p) for p in part] for part in f['p']]
+def refine(pts: list, kind: str) -> list | None:
+    # Fewer points, 45 degree edges. None when nothing's left of it.
+    tol, closed = tolerance[kind], kind in areas_kinds
+    pts = simplify(pts + pts[:1], tol)[:-1] if closed else simplify(pts, tol)
+    if len(pts) < (3 if closed else 2) or (closed and area(pts) < tol ** 2):
+        return None
+    out = octilinear(pts, closed)
+    return out if len(out) >= (3 if closed else 2) else None
+
+def feature_of(f: dict) -> Feature | None:
+    # Cached with an earlier tolerance: simplified again, a no-op when it's the same.
+    parts = [r for part in f['p'] if (r := refine([tuple(p) for p in part], f['k']))]
+    if not parts:
+        return None
     xs, ys = [x for p in parts for x, _ in p], [y for p in parts for _, y in p]
     return Feature(f['k'], f['s'], parts, (min(xs), min(ys), max(xs), max(ys)))
 
@@ -102,20 +116,15 @@ def build(elements: list) -> list[dict]:
             size = sum(area(km(r)) for r in rings) - sum(area(km(r)) for r in holes)
             if size < min_size[kind]:
                 continue
-            parts = []
-            for r in rings + holes:
-                if len(r) > 2:
-                    ring = simplify(km(r), tolerance)[:-1] if r[0] == r[-1] else simplify(km(r), tolerance)
-                    if len(ring) > 2 and area(ring) > tolerance ** 2:
-                        parts.append(octilinear(ring, closed=True))
+            parts = [r for ring in rings + holes if len(ring) > 2 and (r := refine(km(ring[:-1] if ring[0] == ring[-1] else ring), kind))]
             if parts:
                 out.append({'k': kind, 's': round(size, 2), 'p': parts})
     for kind, ways in lines.items():
         for line in chains(ways):
             pts = km(line)
             size = length(pts)
-            if size >= min_size[kind]:
-                out.append({'k': kind, 's': round(size, 1), 'p': [octilinear(simplify(pts, tolerance))]})
+            if size >= min_size[kind] and (r := refine(pts, kind)):
+                out.append({'k': kind, 's': round(size, 1), 'p': [r]})
     for f in out:
         f['p'] = [[(round(x, 2), round(y, 2)) for x, y in p] for p in f['p']]
     return out
@@ -162,7 +171,7 @@ def features(now: float) -> list[Feature]:
         if group not in _loaded and now - _checked.get(group, 0) > 20:
             _checked[group] = now
             if v := db.get(key(group)):
-                _loaded[group] = [feature_of(f) for f in json.loads(v)]
+                _loaded[group] = [x for f in json.loads(v) if (x := feature_of(f))]
             else:
                 ask(group)
         out += _loaded.get(group, [])

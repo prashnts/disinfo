@@ -70,3 +70,19 @@ def test_rounded_survives_repeated_points():
     ctx = cairo.Context(cairo.ImageSurface(cairo.FORMAT_A8, 1, 1))
     shapes.rounded(ctx, [(0, 0), (0, 0), (4, 0), (4, 0), (4, 4), (0, 4)], True, 1)
     shapes.rounded(ctx, [(0, 0), (0, 0), (4, 0)], False, 1)
+
+def test_refine_loosens_cached_shapes():
+    ring = [(x / 5, 0.05 * (x % 2)) for x in range(50)] + [(10, 10), (0, 10)]
+    out = osm.refine(ring, 'builtup')
+    assert out and len(out) < len(ring) / 2
+    angles_ok(out, closed=True)
+    assert osm.refine([(0, 0), (0.1, 0), (0, 0.1)], 'builtup') is None
+
+def test_map_up_and_zoom_are_kept(monkeypatch):
+    from disinfo.screens.aviator import state
+    kept = {}
+    monkeypatch.setattr(state, 'db', type('db', (), {'set': lambda self, k, v: kept.update({k: v}), 'get': lambda self, k: kept.get(k)})())
+    d = {}
+    state.OpenedStateManager.set_all(d, state.MAP_UP_KEY, 'all', 90)
+    state.OpenedStateManager.set_all(d, state.MAP_UP_KEY, 'distudy', 270)
+    assert state.read_dict(state.MAP_UP_KEY) == {'*': 90, 'distudy': 270}
