@@ -42,11 +42,12 @@ dark = Theme(
     (0.09, 0.10, 0.11), (0.04, 0.045, 0.05), (1, 1, 1, 0.22), (1, 1, 1, 0.09),
     (0.9, 0.55, 0.2, 1), (0.55, 0.57, 0.6, 0.7), (0.6, 0.75, 0.95, 0.45), (1, 1, 1),
     TextStyle(font=fonts.microfont_35_reg, color='#8b8e94b0'), TextStyle(font=fonts.exsmall, color='#5b5e6490'))
-# The light mode, for a bright room: a mid grey, not a light one (an LED panel: glare and power), what's over it light.
+# The light mode, for a bright room: the dark one inverted, on a medium grey, not a light one (an LED panel: glare
+# and power). What's drawn over it is dark.
 light = Theme(
-    (0.34, 0.36, 0.39), (0.22, 0.235, 0.255), (1, 1, 1, 0.30), (1, 1, 1, 0.11),
-    (1, 0.62, 0.25, 1), (0.80, 0.82, 0.86, 0.75), (0.75, 0.85, 1, 0.6), (1, 1, 1),
-    TextStyle(font=fonts.microfont_35_reg, color='#c6c9d0c0'), TextStyle(font=fonts.exsmall, color='#a4a8b090'))
+    (0.60, 0.62, 0.65), (0.47, 0.49, 0.52), (0, 0, 0, 0.32), (0, 0, 0, 0.12),
+    (0.80, 0.35, 0.02, 1), (0.12, 0.13, 0.16, 0.75), (0.05, 0.15, 0.45, 0.6), (0, 0, 0),
+    TextStyle(font=fonts.microfont_35_reg, color='#1c1e24c8'), TextStyle(font=fonts.exsmall, color='#2c2f3698'))
 landmark_px = (4, 1.5)  # dot size at the resting view, near to far; it grows with the zoom, by its square root
 landmark_max = 8
 landmark_far = 20       # km: the size of the farthest
@@ -55,6 +56,7 @@ trail_alpha = 0.4
 watched_fade = 600      # the watched planes show their whole approach
 ahead = 120             # s of the path ahead of the watched planes, dashed
 plane_alpha = 0.8
+plane_outline = (0, 0, 0, 0.7)
 # Dark digits on the plane's color: the planes seen from the window are numbered, on the map and in the tile.
 pill_style = TextStyle(font=fonts.microfont_35_reg, color='#000000')
 
@@ -237,7 +239,8 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = following(fs)
     up = map_up(fs)
     rot = rotated(up)
-    is_light = OpenedStateManager().get_state(fs).light
+    opened_state = OpenedStateManager().get_state(fs)
+    is_light = opened_state.light
     theme = light if is_light else dark
     rest = view(st.focus, st.radius, rot, w, h)
     target = zoomed_view(rest, zoom(fs))
@@ -259,7 +262,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     labels, taken = [], []
     hx, hy = to_px(0, 0)
     scope(ctx, hx, hy, s, st.radius, up, w, h, labels, theme)
-    basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light)
+    basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light, frozenset(opened_state.off), fs.config.name)
 
     for a in airports:
         ax, ay = to_px(a.x, a.y)
@@ -314,9 +317,17 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         if not (-8 < px < w + 8 and -8 < py < h + 8):
             continue
 
-        ctx.set_source_rgba(*color, 1 if watched else plane_alpha)
         chevron(ctx, px, py, p['track'] - up, 3 if watched else 2.2)
+        # The outline is drawn first and the fill over it: only its outer half shows.
+        ctx.set_source_rgba(*plane_outline)
+        ctx.set_line_width(1.6)
+        ctx.stroke_preserve()
+        ctx.set_line_width(1)
+        # SOURCE: the fill replaces what's under it, the outline's inner half too, or it would darken the plane.
+        ctx.set_operator(cairo.OPERATOR_SOURCE)
+        ctx.set_source_rgba(*color, 1 if watched else plane_alpha)
         ctx.fill()
+        ctx.set_operator(cairo.OPERATOR_OVER)
         if hex == followed:
             ctx.set_source_rgba(*theme.halo, 0.85)
             ctx.arc(px, py, 6.5, 0, 2 * math.pi)

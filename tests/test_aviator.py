@@ -106,7 +106,7 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
     st = AviatorState(planes={h: plane(hex=h) for h in 'abc'}, overhead=['a'], watched=['a', 'b', 'c'])
     runtime = NS(show_planes=True)
     monkeypatch.setattr(widgets, 'ADSBxStateManager', lambda: NS(get_state=lambda fs: st))
-    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={'b': 0})))
+    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={'b': 0}, light=False)))
     monkeypatch.setattr(widgets, 'RuntimeStateManager', lambda: NS(get_state=lambda fs: runtime))
     monkeypatch.setattr(widgets, 'on_top', lambda fs: None)
     monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'solar')

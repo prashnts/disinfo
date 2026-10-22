@@ -210,7 +210,16 @@ async def index() -> RedirectResponse:
 
 class RemoteInput(AppBaseModel):
     action: str
-    payload: dict[str, str] | None = None
+    payload: dict[str, str|bool] | None = None
+
+@app.get('/aviator/settings')
+async def aviator_settings():
+    # What the radar's controls show on load: kept in redis by the state manager (aviator/state.py).
+    try:
+        off = json.loads(db.get('di.aviator.layers') or '[]')
+    except ValueError:
+        off = []
+    return {'light': db.get('di.aviator.light') == b'1', 'off': off}
 
 @app.post('/remote')
 async def trigger_remote(rinput: RemoteInput):

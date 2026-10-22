@@ -86,3 +86,47 @@ def test_map_up_and_zoom_are_kept(monkeypatch):
     state.OpenedStateManager.set_all(d, state.MAP_UP_KEY, 'all', 90)
     state.OpenedStateManager.set_all(d, state.MAP_UP_KEY, 'distudy', 270)
     assert state.read_dict(state.MAP_UP_KEY) == {'*': 90, 'distudy': 270}
+
+def test_widget_texts_are_darker_in_light_mode():
+    from disinfo.screens.aviator import widgets
+    lum = lambda c: sum(int(c[i:i + 2], 16) for i in (1, 3, 5))
+    for name in ('callsign', 'value', 'muted', 'unit', 'tiny', 'tiny_dim'):
+        assert lum(getattr(widgets.light, name).color) < lum(getattr(widgets.dark, name).color), name
+
+def test_transit_lines_joined_with_dots_at_the_ends():
+    la, lo = app_config.latitude, app_config.longitude
+    def g(x0, x1):
+        return [{'lat': la, 'lon': lo + x / 111.32 / math.cos(math.radians(la))} for x in (x0, x1)]
+    def route(members, **tags):
+        return {'type': 'relation', 'id': 1, 'tags': {'route': 'subway', 'ref': '7', 'colour': '#FA9ABA', **tags}, 'members': members}
+    way = lambda ref, a, b, role='': {'type': 'way', 'ref': ref, 'role': role, 'geometry': g(a, b)}
+    stop = {'type': 'node', 'ref': 9, 'role': 'stop', 'lat': la, 'lon': lo}
+    # Two directions share their ways; the platform isn't track.
+    out = osm.lines_of([route([way(1, 0, 3), way(2, 3, 6), stop, way(3, 1, 2, 'platform')]), route([way(2, 3, 6), way(1, 0, 3)])])
+    assert len(out) == 1 and out[0]['k'] == 'metro' and out[0]['c'] == (0.98, 0.6, 0.73)
+    assert len(out[0]['p']) == 1 and len(out[0]['e']) == 2
+    assert osm.lines_of([route([way(1, 0, 3)], route='bus')]) == []
+
+def test_layers_switched_off(monkeypatch):
+    feats = [osm.feature_of({'k': k, 's': 5, 'p': [[(0, 0), (1, 0), (1, 1)]]}) for k in ('green', 'river', 'water', 'metro')]
+    monkeypatch.setattr(basemap, 'sources', [lambda now: feats])
+    basemap._order = (0, [])
+    assert len(basemap.ordered(0)) == 4
+    basemap._order = (0, [])
+    assert sorted(f.kind for f in basemap.ordered(0, frozenset({'water', 'transit'}))) == ['green']
+
+def test_resize_blends_one_value_for_another_without_a_dip():
+    import time
+    from PIL import Image
+    from types import SimpleNamespace as NS
+    from discore.elements import Frame
+    from discore.transitions import Resize
+    a = Frame(Image.new('RGBA', (20, 10), (200, 50, 50, 255)), ('a',))
+    b = Frame(Image.new('RGBA', (20, 10), (50, 50, 200, 255)), ('b',))
+    r, t = Resize('dip', 1.0, lambda x: x), time.time()
+    r.mut(a)
+    r.draw(NS(tick=t))
+    r.draw(NS(tick=t + 2))
+    r.mut(b).start_at = t + 2
+    mid = r.draw(NS(tick=t + 2.5)).image.getpixel((10, 5))
+    assert mid[3] == 255 and mid[1] == 50     # opaque, and not darker than both

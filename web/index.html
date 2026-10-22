@@ -86,6 +86,16 @@
             margin: auto;
             align-items: center;
         }
+
+        .in.slider label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .in.slider input {
+            width: 120px;
+        }
+
     </style>
 </head>
 <body>
@@ -217,7 +227,7 @@
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
-        import { useState } from 'https://esm.sh/preact@10/hooks';
+        import { useState, useEffect } from 'https://esm.sh/preact@10/hooks';
         import htm from 'https://esm.sh/htm@3';
 
         // Initialize htm with Preact
@@ -268,25 +278,44 @@
                     headers: {'Content-Type': 'application/json'},
                 })
             }
-            return html`<label>radar <input type="range" min="5" max="60" step="5" value=${km} onChange=${didChange}/> ${km} km</label>
+            return html`
+                <${RemoteButton} action="show_planes" />
+                <div class="in slider">
+                    <label>
+                        <strong>Map Radius</strong>
+                        <input type="range" min="5" max="60" step="5" value=${km} onChange=${didChange}/>
+                        <code>${km}km</code>
+                    </label>
+                </div>
                 <${RemoteButton} action="aviator.view" payload=${{view: 'map'}} title="map" />
                 <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
                 <${RemoteButton} action="aviator.view" payload=${{view: 'solar'}} title="solar" />
-                <${RemoteButton} action="show_planes" />`
+                `
         }
 
-        function LightMode(props) {
-            // The radar's map in light mode, on every screen.
-            const [on, setOn] = useState(false)
-            const didChange = e => {
-                setOn(e.currentTarget.checked)
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'aviator.light', payload: {on: e.currentTarget.checked}}),
-                    headers: {'Content-Type': 'application/json'},
-                })
+        function MapLayers(props) {
+            // The radar's map: light mode and the layers, on every screen. What's set is read back on load.
+            const names = ['builtup', 'green', 'water', 'roads', 'transit']
+            const [light, setLight] = useState(false)
+            const [off, setOff] = useState([])
+            useEffect(() => {
+                fetch('/aviator/settings').then(r => r.json()).then(s => { setLight(s.light); setOff(s.off) })
+            }, [])
+            const send = (action, payload) => fetch('/remote', {
+                method: 'POST',
+                body: JSON.stringify({action, payload}),
+                headers: {'Content-Type': 'application/json'},
+            })
+            const setLayer = (name, on) => {
+                setOff(on ? off.filter(n => n !== name) : [...off, name])
+                send('aviator.layer', {layer: name, on})
             }
-            return html`<label><input type="checkbox" checked=${on} onChange=${didChange}/> light map</label>`
+            return html`<div>
+                <label><input type="checkbox" checked=${light} onChange=${e => { setLight(e.currentTarget.checked); send('aviator.light', {on: e.currentTarget.checked}) }}/> Light Mode</label>
+                ${names.map(n => html`<div>
+                        <label> <input type="checkbox" checked=${!off.includes(n)} onChange=${e => setLayer(n, e.currentTarget.checked)}/> ${n}</label>
+                    </div>`)}
+            </div>`
         }
 
         function TrailLength(props) {
@@ -300,7 +329,13 @@
                     headers: {'Content-Type': 'application/json'},
                 })
             }
-            return html`<label>trails <input type="range" min="1" max="10" step="1" value=${min} onChange=${didChange}/> ${min} min</label>`
+            return html`<div class="in slider">
+                <label>
+                    <strong>trails</strong>
+                    <input type="range" min="1" max="10" step="1" value=${min} onChange=${didChange}/>
+                    <code>${min} min</code>
+                </label>
+            </div>`
         }
 
         function MaxAltitude(props) {
@@ -314,7 +349,13 @@
                     headers: {'Content-Type': 'application/json'},
                 })
             }
-            return html`<label>max alt <input type="range" min="500" max="13000" step="500" value=${m} onChange=${didChange}/> ${m >= 13000 ? 'all' : m + ' m'}</label>`
+            return html`<div class="in slider">
+                <label>
+                    <strong>max alt</strong>
+                    <input type="range" min="500" max="13000" step="500" value=${m} onChange=${didChange}/>
+                    <code>${m >= 13000 ? 'all' : m + ' m'}</code>
+                </label>
+            </div>`
         }
 
         function MapAngle(props) {
@@ -383,7 +424,7 @@
                     <${RadarRadius}/>
                     <${MaxAltitude}/>
                     <${TrailLength}/>
-                    <${LightMode}/>
+                    <${MapLayers}/>
                     <${MapAngle}/>
                 </div>
                 <div>

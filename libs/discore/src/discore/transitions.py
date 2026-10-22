@@ -159,9 +159,16 @@ class Resize(TimedTransition[Frame]):
 
         img = Image.new('RGBA', new_size, (0, 0, 0, 0))
 
-        if self.prev_value:
-            composite_at(self.prev_value.opacity(opacity_prev).resize(new_size), img, 'mm')
-        composite_at(current.opacity(opacity_curr).resize(new_size), img, 'mm')
+        if self.prev_value and self.curr_value:
+            # One value for another: a blend. Both fading over each other dips to 75% opaque half way (a blink).
+            before = Image.new('RGBA', new_size, (0, 0, 0, 0))
+            composite_at(self.prev_value.resize(new_size), before, 'mm')
+            composite_at(current.resize(new_size), img, 'mm')
+            img = Image.blend(before, img, pos)
+        else:
+            if self.prev_value:
+                composite_at(self.prev_value.opacity(opacity_prev).resize(new_size), img, 'mm')
+            composite_at(current.opacity(opacity_curr).resize(new_size), img, 'mm')
 
         return Frame(img, hash=self.hash, targets=self.settled() if self.curr_value else ())
 
