@@ -1,13 +1,18 @@
 '''What the screens share: the background, the cards in the side and bottom stacks.'''
+import io
 import time
+
+import numpy as np
 
 from discore.data_structures import FrameState
 from discore.elements import Frame
+from discore.screen import Focus
 from discore.transitions import FadeIn
 
 from . import aviator, debug_info, dishwasher, klipper, now_playing, solar, trash_pickup, washing_machine, weather
 from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
+from disinfo.redis import db
 from disinfo.utils.hass import get_entity
 
 
@@ -41,6 +46,38 @@ def background(fs: FrameState, style: AnalogClockStyle, clear: tuple, on_top: li
         frame = solar.draw(fs, style)
     # One fade for whichever is up: switching, the new one fades over the last.
     return FadeIn('background', duration=0.8).mut(frame).draw(fs)
+
+def heat_store(name: str):
+    # A screen's burn-in, kept over restarts.
+    key = f'di.screen.heat.{name}'
+    def load():
+        raw = db.get(key)
+        return np.load(io.BytesIO(raw)) if raw else None
+    def save(heat):
+        buf = io.BytesIO()
+        np.save(buf, heat)
+        db.set(key, buf.getvalue())
+    return load, save
+
+def across(screen, spots: dict, x: float, width: int) -> float:
+    # x where it's designed, mirrored while the side stack is on its other side.
+    designated = screen.choices[0][0].spots['side'].anchor[1]
+    return x if spots['side'].anchor[1] == designated else width - x
+
+def focus(fs: FrameState, on_top: list, solar_style):
+    '''What the cards shouldn't cover: the planes when the radar's up, the solar clock otherwise.
+    solar_style: the clock's style for an arrangement's spots (it goes across from the side stack).'''
+    size = (fs.config.width, fs.config.height)
+    if radar_wanted(fs, on_top):
+        f = Focus(size)
+        for x, y, weight in aviator.app.plane_marks(fs):
+            f.disk(x, y, 5, weight)
+        return f
+    def clock(spots) -> Focus:
+        s = solar_style(spots)
+        cx, cy = s.cx or size[0] / 2, s.cy or size[1] / 2
+        return Focus(size).disk(cx, cy, min(cx, cy) * max(s.dial_radius_multiplier, s.needle_radius_multiplier))
+    return clock
 
 def side_cards(fs: FrameState) -> list:
     return [

@@ -305,6 +305,16 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     return Frame(img, targets=tuple(targets)).tag(('aviator.radar', fs.config.name))
 
 
+def plane_marks(fs: FrameState) -> list[tuple[float, float, float]]:
+    # The planes on the radar (or the sky) drawn last: where, and how much they matter. The followed one most,
+    # then the numbered ones, then the others.
+    f = _drawn.get(fs.config.name, (0, None))[1]
+    if not f:
+        return []
+    st, followed = ADSBxStateManager().get_state(fs), following(fs)
+    return [(t.x + t.w / 2, t.y + t.h / 2, 8 if t.payload['hex'] == followed else 4 if number(st, t.payload['hex']) else 1)
+            for t in f.targets if t.action == 'aviator.open']
+
 def throttled(fs: FrameState, draw) -> Frame:
     at, f = _drawn.get(fs.config.name, (0, None))
     now = time.monotonic()

@@ -2,6 +2,99 @@
 
 Running notes: the state of things, findings, decisions. The hand-off on top is the current state.
 
+## Hand-off: layouts, the grid and screens that move (2026-10-22)
+
+Uncommitted. CHANGELOG (Unreleased, Added: Screen layouts, Grid layout; Performance) has the details and numbers.
+
+### Grid (`discore.layouts.grid`)
+
+- `grid(elements, nrows, ncols, gap, anchor, masonry, width, height)`, next to `hstack`/`vstack`. One of
+  `nrows`/`ncols` given, the other follows from the count; both, the overflow takes rows; none, about square.
+- Rows: each column as wide as its widest, each row as tall as its tallest, `anchor` places an element in its
+  cell. `masonry=True`: no rows, each element under the shortest column (columns as wide as their widest).
+- `width`/`height`: the columns (rows) share it evenly; growers (`Grow`, a `Box` with `grow`) fill their cell;
+  the rest is clipped, touch targets too (`_clipped`). Without them it's the natural size.
+- It's a function returning a `Frame`, not a `Box` like `Flex`: a grid can't be a grower inside a flex row yet.
+- Users: the entry's buttons (`screens/entry.py` `controls`: masonry, 3 columns, fewer till it fits the width),
+  the flex demo's grid tab (`apps/flex_demo.py`: shapes, rows vs masonry, width, anchors). Tests: `test_grid_*`.
+- Gotcha met on the way: a `div` around a `Box` (`DivBox`) puts its content top left whatever the `anchor`
+  (deliberate, its comment says). The entry's buttons render their content to a `Frame` first to get it centered.
+
+### Screens that move (`discore.screen`)
+
+The idea: the items of a screen (stacks, time, date, buttons) move between a few allowed places, away from what
+has to stay in sight and from the spots they've lit longest (burn-in), on average on their designed side.
+
+- **Setup, in code, like a widget**: `Screen(name, choices, compose, ..., covering, stacked)`. `choices` is a list
+  of lists of `Option`s, an arrangement takes one option of each list. An `Option` puts items on `Spot`s
+  (`anchor`, `dx`/`dy`, `jitter` rolled inwards at each relayout), with a `penalty` and an optional `when`
+  (offered only while the composer says that condition holds, e.g. `'calm'`). The first option of the first list
+  is the designated layout (`common.across` reads its side).
+- **Each frame**: `layout = screen.arrange(fs, items, focus, when, relayout)` with the drawn item frames (`None`:
+  not shown, ignored); then `layout.place(item, frame, dest, frost)` and `layout.clear` (the largest box the
+  items leave free; the radar keeps the followed plane in it). The composer reads `screen.spot(item)` before
+  drawing for what depends on the side (the stack's `align`, the time's `align`).
+- **Scoring**, once a second, every allowed arrangement, on a 4 px grid (`cell`); about 0-1 each, weighed by the
+  module constants:
+  - focus (`focus_weight` 3): the share of the `Focus` under the `covering` items. `Focus.disk(x, y, r, weight)`,
+    each disk weighs its weight in all. The focus can be a function of the arrangement's spots (the solar clock
+    moves with the side stack, so each arrangement gets its own).
+  - overlap (2): per item, its share under the others; `stacked` items may share a corner (the two stacks did
+    in the original layouts). Masks are on/off: a frosted card counts whole (its alpha hid overlaps at first).
+  - off screen (2), the options' penalties.
+  - heat (1): per item, how long its cells have been lit, against the most worn cell or an hour at least.
+    Fades by half over 12 h (`heat_half_life`), saved every 5 min in Redis `di.screen.heat.<screen>`
+    (`common.heat_store`).
+- **When it moves**: on `relayout` (the composer passes `motion(fs)`: someone came), every `every_s` (15 min,
+  jitter re-rolled too), when the current option isn't allowed any more (calm ended), or any time the current
+  arrangement is worse than the best by `anytime_margin` (0.3: a plane under a card). On relayout the best wins
+  if better by `switch_margin` (0.05). Items slide from where they were (`move_s` 0.8, cubic in-out).
+
+### The screens
+
+- `compositor.big_screen(name, side, time_side=None, compose=None)`: the salon (`disalon`, left), the desk
+  (`distudy`, right) and the T4-S3 (`di_pcstate`, left, `compose_display_frame`, no date). Choices: side stack
+  `m<side>` with the time and date in a top corner (one list: the time across from the stack is free, on the
+  stack's side +0.3, the stack on its other side +0.5, the bottom corners +0.2 and only `calm`), and the bottom
+  stack `bl`. `time_side='left'|'right'` keeps the time on that side. `covering` and `stacked`: the two stacks.
+- The entry, `screens/entry.py` `screen`: the side stack `tl` (`tr` +0.5), the time across (+0.3 on the stack's
+  side), the bottom stack and the buttons fixed (`bl`, `br`: hands expect them). Not dimmed-asleep aware: it's
+  dark then anyway (`compositor.compose_entry`).
+- `compositor.SCREENS` and `screen_for(name)` (a left `big_screen` for any other name); `compose()` goes through
+  `screen.compose`, except `picowpanel` (`compose_small_frame`, untouched).
+- `calm` = nobody there or a plane's card on top (the bottom stack: the time at the bottom is then fine).
+- The solar clock: where it was designed (salon/desk cx 75, display w/2+22, entry w/2+60), mirrored while the side
+  stack is on its other side (`common.across`). Its small random offset (`p_stack_offset`) is the last left.
+- Plane focus: `aviator.app.plane_marks(fs)` reads the last radar/sky frame's touch targets (`aviator.open`):
+  followed 8, numbered 4, others 1 (protect as many as possible, those most).
+
+### Checking
+
+- Tests: `libs/discore/tests/test_core.py` (`test_screen_*`, `test_grid_*`), `tests/test_screens.py`.
+- **A screen over days**: `DI_CONFIG_PATH=.config.json python -m disinfo.sim_layout 72 8 2>&1 >/dev/null`
+  (hours, asleep hours a day): its real items and focus, a fake clock, the time per side and corner and the
+  moves. Last run, 3 days: a move every ~40 min; side stack off its side 22 % salon, 42 % desk, 24 % display,
+  23 % entry; time and date in all four corners while asleep. The first day moves more (no history yet).
+- To see why an arrangement wins, print `screen.costs` (arrangement -> cost) after a compose, and the parts by hand
+  (the `_cost` body; a script did that per component: penalty, overlap per item, off, focus).
+- Bench as before (`disinfo.bench --at "2026-10-19 17:00"`): `arrange` 0.3 ms a frame, 0.7 ms with the scoring.
+- Test renders save heat into the PC's Redis: `redis-cli --scan --pattern 'di.screen.heat.*' | xargs -r redis-cli del`.
+
+### Open, ideas
+
+- The weights and margins are tuned on simulations only; watch the real panels (moves too often? the side too
+  long on the other side?). Penalties are the knob for "on average on the designated side".
+- `motion(fs)` is stateful: call it once a frame (the composers do, and pass it as `relayout`).
+- Costs use the items' frames of the scoring second and no jitter; a stack that scrolls a card under the time is
+  caught at the next second by `anytime_margin`.
+- Heat counts the items only (static, bright), not the background (the solar clock's dial and the sky are
+  lit too, and the clock doesn't move except across).
+- The solar clock could follow `layout.clear` (centered in the free space) instead of two fixed places; it'd need
+  easing so it doesn't jump when cards resize.
+- `picowpanel` has no screen. The entry's buttons never move (a jitter could, small).
+- Name clash: `web/server.py` also has a `Screen` (the server's frame store), unrelated.
+- The grid could become a `Box` (grow/shrink inside flex) and a screen could use it for a cards area.
+
 ## Hand-off: the client-server model (2026-10-19)
 
 Nothing below is committed yet: disinfo since `024a6f0` (flex), esp-displays since `02d7a74`. CHANGELOG

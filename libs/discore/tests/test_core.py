@@ -1,5 +1,7 @@
 import time
 
+import numpy as np
+
 from PIL import Image
 
 from discore.elements import Frame
@@ -358,3 +360,68 @@ def test_hold_button_fills_in_its_shape():
     assert half.getpixel((3, 6)) != b(0).image.getpixel((3, 6))     # filled on the left
     assert half.getpixel((b(0).width - 4, 6)) == b(0).image.getpixel((b(0).width - 4, 6))   # not yet on the right
     assert half.getpixel((0, 0))[3] < 64 and half.getpixel((3, 6))[1] == 255   # the corner stays round, the fill shows
+
+
+from types import SimpleNamespace
+from discore import screen as scr
+from discore.screen import Screen, Spot, Option, Focus
+
+def sides(**kw):
+    # A card on the left (designated) or the right, the time top right or, when calm, bottom right.
+    return Screen('t', [
+        [Option({'card': Spot('ml')}), Option({'card': Spot('mr')}, penalty=0.5)],
+        [Option({'time': Spot('tr')}), Option({'time': Spot('br')}, penalty=0.3, when='calm')],
+    ], **kw)
+
+screen_fs = SimpleNamespace(config=SimpleNamespace(width=64, height=48))
+card, clock = red(20, 30), red(16, 8)
+
+def test_screen_keeps_the_designated_places():
+    s = sides()
+    l = s.arrange(screen_fs, {'card': card, 'time': clock})
+    assert l.positions == {'card': (0, 9), 'time': (48, 0)}
+    assert l.clear[0] >= 20 and l.clear[2] == 64     # the box right of the card
+
+def test_screen_moves_off_the_focus_and_slides():
+    s = sides()
+    s.arrange(screen_fs, {'card': card, 'time': clock})
+    under_card = Focus((64, 48)).disk(8, 24, 6)
+    l = s.arrange(screen_fs, {'card': card, 'time': clock}, under_card, relayout=True)
+    assert s.spot('card').anchor == 'mr' and l.positions['card'][0] < 44     # on its way right
+    s.moves = {}
+    assert s.arrange(screen_fs, {'card': card, 'time': clock}, under_card).positions['card'] == (44, 9)
+
+def test_screen_options_only_when():
+    s = sides()
+    s.current = (0, 1)          # the time was down while calm
+    s.arrange(screen_fs, {'card': card, 'time': clock}, Focus((64, 48)).disk(56, 4, 4))
+    assert s.spot('time').anchor == 'tr'     # not calm: forced back up, focus or not
+    s.arrange(screen_fs, {'card': card, 'time': clock}, Focus((64, 48)).disk(56, 4, 4), when={'calm'}, relayout=True)
+    assert s.spot('time').anchor == 'br'
+
+def test_screen_burn_in_takes_turns():
+    s = sides()
+    s.arrange(screen_fs, {'card': card, 'time': clock})
+    s.heat[:, :5] = 20 * 3600   # the designated side lit for long
+    s.arrange(screen_fs, {'card': card, 'time': clock}, relayout=True)
+    assert s.spot('card').anchor == 'mr'
+
+def test_screen_heat_is_kept():
+    saved = []
+    s = sides(load_heat=lambda: np.full((12, 16), 7, np.float32), save_heat=saved.append, save_every_s=0)
+    s.arrange(screen_fs, {'card': card, 'time': clock})
+    s.scored_at -= 2
+    s.arrange(screen_fs, {'card': card, 'time': clock}, relayout=True)
+    assert s.heat[0, 0] > 6.9 and saved     # loaded, fading a little
+
+def test_screen_counts_only_the_covering_items():
+    s = sides(covering={'card'})
+    under_time = Focus((64, 48)).disk(56, 4, 4)
+    s.arrange(screen_fs, {'card': card, 'time': clock}, under_time, when={'calm'}, relayout=True)
+    assert s.spot('time').anchor == 'tr'     # the time over it is fine
+
+def test_screen_sees_frosted_items_overlap():
+    faint = lambda w, h: solid((0, 0, 0, 90), (w, h))
+    s = Screen('t', [[Option({'a': Spot('tl')})], [Option({'b': Spot('tl')}), Option({'b': Spot('tr')}, penalty=0.3)]])
+    s.arrange(screen_fs, {'a': faint(20, 20), 'b': faint(20, 20)}, relayout=True)
+    assert s.spot('b').anchor == 'tr'

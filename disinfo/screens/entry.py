@@ -3,6 +3,7 @@
 The time, the radar or the solar clock, the salon's cards; scenes and the mirror's light to touch.
 '''
 import math
+from dataclasses import replace as dc_replace
 from functools import lru_cache
 
 import numpy as np
@@ -13,6 +14,7 @@ from discore.data_structures import FrameState
 from discore.elements import Frame, UNBOUNDED, measure, render, scaled
 from discore.layers import DivStyle
 from discore.layouts import composite_at, grid, hstack, vstack
+from discore.screen import Screen, Spot, Option
 from discore.stack import Stack, StackStyle
 from discore.text import text, TextStyle
 
@@ -21,7 +23,7 @@ from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
 from disinfo.utils.mdi import icon
 from . import aviator
-from .common import background, side_cards, bottom_cards, motion
+from .common import background, side_cards, bottom_cards, motion, focus, heat_store, across
 from .date_time import flip_digital_clock
 from .solar.app import AnalogClockStyle, sky_color
 from .twenty_two import draw as twenty_two
@@ -41,6 +43,15 @@ BUTTONS = [
 HOLD = 5            # s on a button entity to press it, a bar filling it meanwhile
 GAP = 6
 SIDE = 88           # the side stack's cards
+
+# The side stack top left, or top right for a while (the time and the solar clock go across); the cards along the
+# bottom; the buttons where hands expect them.
+screen = Screen('dientry', [
+    [Option({'side': Spot('tl', dx=GAP, dy=GAP, jitter=(2, 2))}), Option({'side': Spot('tr', dx=-GAP, dy=GAP, jitter=(2, 2))}, penalty=0.5)],
+    [Option({'time': Spot('tr', dx=-GAP, dy=GAP, jitter=(2, 3))}), Option({'time': Spot('tl', dx=GAP, dy=GAP, jitter=(2, 3))}, penalty=0.3)],
+    [Option({'bottom': Spot('bl'), 'buttons': Spot('br')})],
+], load_heat=(store := heat_store('dientry'))[0], save_heat=store[1], covering={'side', 'bottom', 'buttons'},
+                stacked={'side', 'bottom', 'buttons'})
 
 label_style = TextStyle(font=fonts.galmuri7, color='#e0e0e0', overflow='fit')
 
@@ -135,28 +146,35 @@ def compose(fs: FrameState) -> Frame:
     # Like the salon: the radar or the solar clock, the side and bottom stacks, the scenes to touch. The time at 2x.
     w, h = fs.config.width, fs.config.height
     canvas = Frame(Image.new('RGBA', (w, h), (0, 0, 0, 255)))
-    # buttons = controls(fs, w - 2 * GAP)
     buttons = controls(fs, int(w // 1.5))
     above = h - buttons.height - 2 * GAP        # what the buttons leave
-    # The bottom stack takes the right of the side stack's cards.
-    right = w - SIDE - 2 * GAP
-    side = Stack('main_cards', StackStyle(size=above, align='left', horizontal=False)).mut(side_cards(fs))
+    side_conf = StackStyle(size=above, align='left', horizontal=False)
+    side = Stack('main_cards', side_conf).mut(side_cards(fs))
+    side.style = dc_replace(side_conf, align='right' if screen.spot('side').anchor[1] == 'r' else 'left')
     bottom = Stack('bottom_cards', StackStyle(align='bottom', horizontal=True, offset_top=0, size=w)).mut(bottom_cards(fs))
-    if motion(fs):
+    if moved := motion(fs):
         side.next_widget()
         bottom.next_widget()
     aviator.app.follow(fs, bottom.current)
-    side_f, bottom_f = side.draw(fs), bottom.draw(fs)
+    on_top = [side.current, bottom.current]
+    align = 'right' if screen.spot('time').anchor[1] == 'r' else 'left'
+    items = {
+        'side': side.draw(fs),
+        'bottom': bottom.draw(fs),
+        'time': big(flip_digital_clock(fs, align=align), 1 if compact(fs) else 2),
+        'buttons': buttons,
+    }
 
-    clock = AnalogClockStyle(cx=w // 2 + 60, cy=h // 2 - 20, tick_radius_multiplier=0.36,
-                             dial_radius_multiplier=0.36, needle_radius_multiplier=0.42, background=sky_color(fs))
-    # What the cards leave of the radar: between the stacks.
-    clear = (GAP + (side_f.width if side_f else 0), GAP, w - GAP - (bottom_f.width if bottom_f else 0), above)
-    canvas = composite_at(background(fs, clock, clear, [side.current, bottom.current]), canvas, 'mm')
-    canvas = composite_at(big(side_f, 1), canvas, 'tl', dx=GAP, dy=GAP, frost=1.8)
-    canvas = composite_at(bottom_f, canvas, 'bl', dx=0, dy=0, frost=1.8)
-    canvas = composite_at(big(flip_digital_clock(fs, align='right'), 1 if compact(fs) else 2), canvas, 'tr', dx=-GAP, dy=GAP, frost=1.8)
-    canvas = composite_at(buttons, canvas, 'br', frost=1.8)
+    # The solar clock across from the side stack.
+    clock = lambda spots: AnalogClockStyle(cx=across(screen, spots, w // 2 + 60, w), cy=h // 2 - 20, tick_radius_multiplier=0.36,
+                                           dial_radius_multiplier=0.36, needle_radius_multiplier=0.42, background=sky_color(fs))
+    calm = any(c and c.background == 'aviator' for c in on_top)
+    layout = screen.arrange(fs, items, focus(fs, on_top, clock), when={'calm'} if calm else (), relayout=moved)
+    canvas = composite_at(background(fs, clock(screen.spots()), layout.clear, on_top), canvas, 'mm')
+    canvas = layout.place('side', items['side'], canvas, frost=1.8)
+    canvas = layout.place('bottom', items['bottom'], canvas, frost=1.8)
+    canvas = layout.place('time', items['time'], canvas, frost=1.8)
+    canvas = layout.place('buttons', buttons, canvas, frost=1.8)
     canvas = composite_at(twenty_two(fs), canvas, 'mm')
     if holding(fs):
         # Its thickness pulses, k to 2k, once a second.
