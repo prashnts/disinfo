@@ -10,6 +10,7 @@ from .utils import Airport, airports, local_xy, closest_approach, elevation, bea
 
 TABLE_KEY = 'di.aviator.table'
 RADIUS_KEY = 'di.aviator.radius'      # km, set from the web page: how far the radar shows and cards go
+MAX_ALT_KEY = 'di.aviator.max_alt'    # m, set from the web page: planes above it are left out
 # Only planes within this of home are kept, the receiver sees ~300 km around.
 keep_km = 60
 trail_every = 5         # s between trail points
@@ -22,6 +23,7 @@ passed_for = 60         # s a pass stays 'overhead' after it
 # Seen from the window: in its bearings, above the roofs, not too far. The nearest ones are watched.
 min_elev = 2
 radius_km = 40
+max_alt_m = 13000       # the slider's top: no filter
 max_watched = 2
 # A queue: planes low around an airport, climbing or descending.
 queue_km = 15
@@ -108,16 +110,26 @@ def radius() -> float:
     except ValueError:
         return radius_km
 
+def max_alt() -> float:
+    try:
+        return float(db.get(MAX_ALT_KEY) or max_alt_m)
+    except ValueError:
+        return max_alt_m
+
+def shown(a: float) -> dict[str, dict]:
+    return table if a >= max_alt_m else {h: p for h, p in table.items() if p['alt'] <= a}
+
 def is_visible(p: dict, r: float) -> bool:
     return not p['ground'] and in_window(p['bearing']) and p['elev'] >= min_elev and p['slant'] <= r
 
 _watched = []
 
-def watched(now: float, r: float) -> list[str]:
+def watched(now: float, r: float, planes: dict | None = None) -> list[str]:
     # Overhead ones, then the nearest seen from the window. A plane keeps its card while it's seen.
     global _watched
-    seen = sorted((h for h, p in table.items() if is_visible(p, r)), key=lambda h: table[h]['slant'])
-    overhead = [h for h, p in table.items() if is_overhead(p, now)]
+    planes = table if planes is None else planes
+    seen = sorted((h for h, p in planes.items() if is_visible(p, r)), key=lambda h: planes[h]['slant'])
+    overhead = [h for h, p in planes.items() if is_overhead(p, now)]
     kept = [h for h in _watched if h in seen or h in overhead]
     _watched = list(dict.fromkeys([*overhead, *kept, *seen]))[:max(max_watched, len(overhead))]
     return _watched
@@ -125,10 +137,11 @@ def watched(now: float, r: float) -> list[str]:
 def nearest_airport(p: dict) -> tuple[float, Airport]:
     return min((math.hypot(p['x'] - a.x, p['y'] - a.y), a) for a in airports)
 
-def queues() -> dict[str, list[str]]:
+def queues(planes: dict | None = None) -> dict[str, list[str]]:
     # Planes low around their nearest airport, climbing or descending. CDG and LBG are 9 km apart.
+    planes = table if planes is None else planes
     q = {a.code: [] for a in airports}
-    for h, p in table.items():
+    for h, p in planes.items():
         d, a = nearest_airport(p)
         if d < queue_km and not p['ground'] and p['alt'] < queue_alt and abs(p['vr']) > 60:
             q[a.code].append(h)
@@ -141,19 +154,20 @@ def scene(now: float) -> dict:
     # An airport keeps the focus until its queue is a plane under: counts hover around queue_min.
     global _queue_focus
     r = radius()
-    watch = watched(now, r)
-    q = queues()
+    planes = shown(max_alt())
+    watch = watched(now, r, planes)
+    q = queues(planes)
     if not (_queue_focus and len(q[_queue_focus]) >= queue_min - 1):
         _queue_focus = next((a.code for a in airports if len(q[a.code]) >= queue_min), None)
     focus = 'home' if watch else _queue_focus
-    overhead = [h for h in watch if is_overhead(table[h], now)]
-    return {'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r}
+    overhead = [h for h in watch if is_overhead(planes[h], now)]
+    return {'planes': planes, 'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r}
 
 def adsbx_task():
     now, aircraft = fetch_planes()
     if not table:
         load_table()
     update(now, aircraft)
-    state = {'now': now, 'planes': table, **scene(now)}
+    state = {'now': now, **scene(now)}
     db.set(TABLE_KEY, json.dumps(state), ex=300)
     publish('di.pubsub.aviator', action='update', payload={'now': now})

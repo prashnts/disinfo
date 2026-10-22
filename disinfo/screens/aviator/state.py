@@ -6,7 +6,7 @@ from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubStateManager, PubSubMessage
 from disinfo.redis import db
 
-from .tasks import TABLE_KEY, RADIUS_KEY, radius_km
+from .tasks import TABLE_KEY, RADIUS_KEY, MAX_ALT_KEY, radius_km
 
 VIEW_KEY = 'di.aviator.view'     # map, sky or solar on every screen, from the web page; their config's otherwise
 VIEWS = ['map', 'sky', 'solar']
@@ -73,6 +73,8 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
             case 'aviator.radius':
                 # The poller reads it, every renderer gets it back with the table.
                 db.set(RADIUS_KEY, float(data.payload['km']))
+            case 'aviator.max_alt':
+                db.set(MAX_ALT_KEY, float(data.payload['m']))
 
     def get_state(self, fs: FrameState | None = None) -> OpenedState:
         now = time.time()

@@ -275,6 +275,20 @@
                 <${RemoteButton} action="show_planes" />`
         }
 
+        function MaxAltitude(props) {
+            // Planes above this are left out: m, the top is no filter.
+            const [m, setM] = useState(13000)
+            const didChange = e => {
+                setM(e.currentTarget.value)
+                fetch('/remote', {
+                    method: 'POST',
+                    body: JSON.stringify({action: 'aviator.max_alt', payload: {m: e.currentTarget.value}}),
+                    headers: {'Content-Type': 'application/json'},
+                })
+            }
+            return html`<label>max alt <input type="range" min="500" max="13000" step="500" value=${m} onChange=${didChange}/> ${m >= 13000 ? 'all' : m + ' m'}</label>`
+        }
+
         function MapAngle(props) {
             // The bearing up on a screen's map: where one faces looking at it, and its zoom. Its config's after a restart.
             const [screen, setScreen] = useState('disalon')
@@ -339,6 +353,7 @@
                 </div>
                 <div>
                     <${RadarRadius}/>
+                    <${MaxAltitude}/>
                     <${MapAngle}/>
                 </div>
                 <div>
