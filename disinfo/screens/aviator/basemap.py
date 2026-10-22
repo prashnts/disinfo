@@ -25,6 +25,15 @@ styles = {
     'river': Style(3, (0.25, 0.50, 0.90, 0.35), 1.5),
     'motorway': Style(4, (0.95, 0.75, 0.35, 0.35), 1),
 }
+# The light mode: the same kinds on a mid grey, a little stronger.
+light_styles = {
+    'builtup': Style(0, (0.80, 0.82, 0.90, 0.10)),
+    'green': Style(1, (0.35, 0.78, 0.45, 0.30)),
+    'water': Style(2, (0.30, 0.58, 1.00, 0.42)),
+    'coast': Style(3, (0.30, 0.58, 1.00, 0.55), 1),
+    'river': Style(3, (0.30, 0.58, 1.00, 0.50), 1.5),
+    'motorway': Style(4, (1.00, 0.80, 0.40, 0.45), 1),
+}
 round_km = 0.5          # the corners' radius
 sources = [osm.features]
 
@@ -37,7 +46,7 @@ def path_of(f) -> list:
     # Built once, in km: cairo keeps a path in user space, so it's drawn under any view.
     if (p := _paths.get(id(f.parts))) is None:
         ctx = cairo.Context(cairo.ImageSurface(cairo.FORMAT_A8, 1, 1))
-        closed = styles[f.kind].width is None
+        closed = styles[f.kind].width is None   # the same in both modes
         for part in f.parts:
             if len(part) > 2 or not closed:
                 rounded(ctx, part, closed, round_km)
@@ -56,18 +65,18 @@ def view_matrix(cx: float, cy: float, s: float, up: float, w: int, h: int) -> ca
     c, sn = math.cos(math.radians(up)), math.sin(math.radians(up))
     return cairo.Matrix(s * c, -s * sn, -s * sn, -s * c, w / 2 - cx * s, h / 2 + cy * s)
 
-def draw(ctx: cairo.Context, now: float, view: tuple[float, float, float], up: float, w: int, h: int):
+def draw(ctx: cairo.Context, now: float, view: tuple[float, float, float], up: float, w: int, h: int, light: bool = False):
     # The same view as last time (the camera at rest, the planes moving) is painted from the last drawing.
     feats = ordered(now)
-    key = (*(round(v, 3) for v in view), up, len(feats))
+    key = (*(round(v, 3) for v in view), up, len(feats), light)
     if (cached := _drawn.get((w, h))) is None or cached[0] != key:
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-        paint(cairo.Context(surface), feats, view, up, w, h)
+        paint(cairo.Context(surface), feats, view, up, w, h, light_styles if light else styles)
         cached = _drawn[w, h] = key, surface
     ctx.set_source_surface(cached[1])
     ctx.paint()
 
-def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up: float, w: int, h: int):
+def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up: float, w: int, h: int, look: dict):
     cx, cy, s = view
     m = view_matrix(cx, cy, s, up, w, h)
     ctx.transform(m)
@@ -79,7 +88,7 @@ def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up:
         px, py = zip(*(m.transform_point(x, y) for x in (x0, x1) for y in (y0, y1)))
         if max(px) < 0 or min(px) > w or max(py) < 0 or min(py) > h:
             continue
-        st = styles[f.kind]
+        st = look[f.kind]
         ctx.new_path()
         ctx.append_path(path_of(f))
         ctx.set_source_rgba(*st.color)

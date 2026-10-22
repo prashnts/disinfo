@@ -11,6 +11,7 @@ from .tasks import TABLE_KEY, RADIUS_KEY, MAX_ALT_KEY, TRAIL_KEY, radius_km, tra
 VIEW_KEY = 'di.aviator.view'     # map, sky or solar on every screen, from the web page; their config's otherwise
 MAP_UP_KEY = 'di.aviator.map_up'  # screen -> bearing, a JSON dict
 ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
+LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
 VIEWS = ['map', 'sky', 'solar']
 
 
@@ -46,6 +47,7 @@ class ADSBxStateManager(PubSubStateManager[AviatorState]):
 class OpenedState(AppBaseModel):
     opened: dict[str, float] = {}       # hex -> when it was tapped
     view: str | None = None
+    light: bool = False                 # the map's light mode, from the web page; kept in redis
     map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
     zoom: dict[str, float] = {}         # screen ('*': all) -> its map's zoom, the same
 
@@ -62,7 +64,7 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     keep_open = 90
 
     def initial_state(self) -> OpenedState:
-        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY))
+        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1')
 
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
@@ -75,6 +77,10 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 current = self.state.view or 'map'
                 self.state.view = (data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0]
                 db.set(VIEW_KEY, self.state.view)
+            case 'aviator.light':
+                # The one asked for, or the other.
+                self.state.light = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.light
+                db.set(LIGHT_KEY, '1' if self.state.light else '0')
             case 'aviator.map_up':
                 self.set_all(self.state.map_up, MAP_UP_KEY, data.payload['screen'], float(data.payload['deg']) % 360)
             case 'aviator.zoom':

@@ -3,6 +3,7 @@ import time
 import cairocffi as cairo
 
 from functools import cache
+from typing import NamedTuple
 
 from discore.cairo import to_pil
 from discore.elements import Frame, Target
@@ -24,14 +25,28 @@ sweep = 4               # s zoomed on the plane of a card the first time it come
 sweep_zoom = 2.5
 rings = [5, 10, 20, 30]
 spokes = 30             # degrees between them
+class Theme(NamedTuple):
+    scope_center: tuple
+    scope_edge: tuple
+    window_edge: tuple
+    grid: tuple
+    home: tuple
+    airport: tuple
+    landmark: tuple
+    halo: tuple         # around the planes with a card
+    label: TextStyle
+    ring: TextStyle
+
 # The radar is a background: dim, the cards go on top. Dark greys only (the lighter window half cost power and data).
-scope_center = (0.09, 0.10, 0.11)
-scope_edge = (0.04, 0.045, 0.05)
-window_edge = (1, 1, 1, 0.22)
-grid_color = (1, 1, 1, 0.09)
-home_color = (0.9, 0.55, 0.2, 1)
-airport_color = (0.55, 0.57, 0.6, 0.7)
-landmark_color = (0.6, 0.75, 0.95, 0.45)
+dark = Theme(
+    (0.09, 0.10, 0.11), (0.04, 0.045, 0.05), (1, 1, 1, 0.22), (1, 1, 1, 0.09),
+    (0.9, 0.55, 0.2, 1), (0.55, 0.57, 0.6, 0.7), (0.6, 0.75, 0.95, 0.45), (1, 1, 1),
+    TextStyle(font=fonts.microfont_35_reg, color='#8b8e94b0'), TextStyle(font=fonts.exsmall, color='#5b5e6490'))
+# The light mode, for a bright room: a mid grey, not a light one (an LED panel: glare and power), what's over it light.
+light = Theme(
+    (0.34, 0.36, 0.39), (0.22, 0.235, 0.255), (1, 1, 1, 0.30), (1, 1, 1, 0.11),
+    (1, 0.62, 0.25, 1), (0.80, 0.82, 0.86, 0.75), (0.75, 0.85, 1, 0.6), (1, 1, 1),
+    TextStyle(font=fonts.microfont_35_reg, color='#c6c9d0c0'), TextStyle(font=fonts.exsmall, color='#a4a8b090'))
 landmark_px = (4, 1.5)  # dot size at the resting view, near to far; it grows with the zoom, by its square root
 landmark_max = 8
 landmark_far = 20       # km: the size of the farthest
@@ -40,8 +55,6 @@ trail_alpha = 0.4
 watched_fade = 600      # the watched planes show their whole approach
 ahead = 120             # s of the path ahead of the watched planes, dashed
 plane_alpha = 0.8
-label_style = TextStyle(font=fonts.microfont_35_reg, color='#8b8e94b0')
-ring_style = TextStyle(font=fonts.exsmall, color='#5b5e6490')
 # Dark digits on the plane's color: the planes seen from the window are numbered, on the map and in the tile.
 pill_style = TextStyle(font=fonts.microfont_35_reg, color='#000000')
 
@@ -184,22 +197,22 @@ def chevron(ctx: cairo.Context, x: float, y: float, track: float, size: float):
     ctx.close_path()
     ctx.restore()
 
-def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list):
+def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list, theme: Theme):
     # A dim grey scope around home, rings and spokes, the window's bearings between brighter ones.
     r = max(w, h) * 1.5
     g = cairo.RadialGradient(hx, hy, 0, hx, hy, radius * s * 1.2)
-    g.add_color_stop_rgb(0, *scope_center)
-    g.add_color_stop_rgb(1, *scope_edge)
+    g.add_color_stop_rgb(0, *theme.scope_center)
+    g.add_color_stop_rgb(1, *theme.scope_edge)
     ctx.set_source(g)
     ctx.paint()
     start, end = app_config.aviator_window
     start, end = start - up, end - up
-    ctx.set_source_rgba(*window_edge)
+    ctx.set_source_rgba(*theme.window_edge)
     for b in (start, start + (end - start) % 360):
         ctx.move_to(hx, hy)
         ctx.line_to(hx + r * math.sin(math.radians(b)), hy - r * math.cos(math.radians(b)))
     ctx.stroke()
-    ctx.set_source_rgba(*grid_color)
+    ctx.set_source_rgba(*theme.grid)
     for b in range(-round(up), 360 - round(up), spokes):
         ctx.move_to(hx, hy)
         ctx.line_to(hx + r * math.sin(math.radians(b)), hy - r * math.cos(math.radians(b)))
@@ -209,7 +222,7 @@ def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up:
     for km in rings:
         ctx.new_sub_path()
         ctx.arc(hx, hy, km * s, 0, 2 * math.pi)
-        labels.append((text(f'{km}', ring_style), round(hx + km * s * math.sin(b)) + 1, round(hy - km * s * math.cos(b)) + 1))
+        labels.append((text(f'{km}', theme.ring), round(hx + km * s * math.sin(b)) + 1, round(hy - km * s * math.cos(b)) + 1))
     ctx.stroke()
 
 def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
@@ -224,6 +237,8 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = following(fs)
     up = map_up(fs)
     rot = rotated(up)
+    is_light = OpenedStateManager().get_state(fs).light
+    theme = light if is_light else dark
     rest = view(st.focus, st.radius, rot, w, h)
     target = zoomed_view(rest, zoom(fs))
     clear = clear or (0, 0, w, h)
@@ -243,26 +258,26 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.set_line_width(1)
     labels, taken = [], []
     hx, hy = to_px(0, 0)
-    scope(ctx, hx, hy, s, st.radius, up, w, h, labels)
-    basemap.draw(ctx, now, (cx, cy, s), up, w, h)
+    scope(ctx, hx, hy, s, st.radius, up, w, h, labels, theme)
+    basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light)
 
     for a in airports:
         ax, ay = to_px(a.x, a.y)
-        ctx.set_source_rgba(*airport_color)
+        ctx.set_source_rgba(*theme.airport)
         ctx.rectangle(round(ax) - 1.5, round(ay) - 1.5, 4, 4)
         ctx.stroke()
-        if at := label_at(code := text(a.code, label_style), round(ax), round(ay), taken):
+        if at := label_at(code := text(a.code, theme.label), round(ax), round(ay), taken):
             labels.append((code, *at))
     near, far = landmark_px
     grow = math.sqrt(s / rest[2])
-    ctx.set_source_rgba(*landmark_color)
+    ctx.set_source_rgba(*theme.landmark)
     for lat, lon in app_config.screen_data.aviator.landmarks:
         x, y = local_xy(lat, lon)
         lx, ly = to_px(x, y)
         if -4 < lx < w + 4 and -4 < ly < h + 4:
             ctx.arc(lx, ly, min((near + (far - near) * min(math.hypot(x, y) / landmark_far, 1)) * grow, landmark_max) / 2, 0, 2 * math.pi)
             ctx.fill()
-    ctx.set_source_rgba(*home_color)
+    ctx.set_source_rgba(*theme.home)
     ctx.rectangle(round(hx) - 1, round(hy) - 1, 3, 3)
     ctx.fill()
 
@@ -303,11 +318,11 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         chevron(ctx, px, py, p['track'] - up, 3 if watched else 2.2)
         ctx.fill()
         if hex == followed:
-            ctx.set_source_rgba(1, 1, 1, 0.85)
+            ctx.set_source_rgba(*theme.halo, 0.85)
             ctx.arc(px, py, 6.5, 0, 2 * math.pi)
             ctx.stroke()
         elif watched:
-            ctx.set_source_rgba(1, 1, 1, 0.3)
+            ctx.set_source_rgba(*theme.halo, 0.3)
             ctx.arc(px, py, 5.5, 0, 2 * math.pi)
             ctx.stroke()
         if n := number(st, hex):

@@ -275,6 +275,20 @@
                 <${RemoteButton} action="show_planes" />`
         }
 
+        function LightMode(props) {
+            // The radar's map in light mode, on every screen.
+            const [on, setOn] = useState(false)
+            const didChange = e => {
+                setOn(e.currentTarget.checked)
+                fetch('/remote', {
+                    method: 'POST',
+                    body: JSON.stringify({action: 'aviator.light', payload: {on: e.currentTarget.checked}}),
+                    headers: {'Content-Type': 'application/json'},
+                })
+            }
+            return html`<label><input type="checkbox" checked=${on} onChange=${didChange}/> light map</label>`
+        }
+
         function TrailLength(props) {
             // How long the radar's trails are: minutes, the planes with a card show their whole approach.
             const [min, setMin] = useState(3)
@@ -369,6 +383,7 @@
                     <${RadarRadius}/>
                     <${MaxAltitude}/>
                     <${TrailLength}/>
+                    <${LightMode}/>
                     <${MapAngle}/>
                 </div>
                 <div>
