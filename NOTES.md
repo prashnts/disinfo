@@ -47,7 +47,9 @@ has to stay in sight and from the spots they've lit longest (burn-in), on averag
     (`common.heat_store`).
 - **When it moves**: on `relayout` (the composer passes `motion(fs)`: someone came), every `every_s` (15 min,
   jitter re-rolled too), when the current option isn't allowed any more (calm ended), or any time the current
-  arrangement is worse than the best by `anytime_margin` (0.3: a plane under a card). On relayout the best wins
+  arrangement is worse than the best by `anytime_margin` (0.3) for `anytime_s` (30 s: cards cycle and slide; it
+  swapped sides every few seconds on the desk without it). A `Focus(follows=True)` (the planes: drawn for the current
+  arrangement, the radar re-frames after a move) counts only on relayout, else it ping-pongs. On relayout the best wins
   if better by `switch_margin` (0.05). Items slide from where they were (`move_s` 0.8, cubic in-out).
 
 ### The screens
@@ -86,7 +88,7 @@ has to stay in sight and from the spots they've lit longest (burn-in), on averag
   long on the other side?). Penalties are the knob for "on average on the designated side".
 - `motion(fs)` is stateful: call it once a frame (the composers do, and pass it as `relayout`).
 - Costs use the items' frames of the scoring second and no jitter; a stack that scrolls a card under the time is
-  caught at the next second by `anytime_margin`.
+  caught by `anytime_margin` if it stays there 30 s.
 - Heat counts the items only (static, bright), not the background (the solar clock's dial and the sky are
   lit too, and the clock doesn't move except across).
 - The solar clock could follow `layout.clear` (centered in the free space) instead of two fixed places; it'd need

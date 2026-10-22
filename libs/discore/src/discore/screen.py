@@ -42,17 +42,20 @@ overlap_weight = 2
 off_weight = 2
 heat_weight = 1
 switch_margin = 0.05    # on relayout: the best, if better by this
-anytime_margin = 0.3    # in between: only if much better (a plane went under a card)
+anytime_margin = 0.3    # in between: only if much better (a card stays over the date)...
+anytime_s = 30          # ...for this long: the stacks' cards come and go, slide, resize
 heat_half_life = 12 * 3600
 heat_least = 3600
 rescore_s = 1
 
 
 class Focus:
-    '''What has to stay in sight, on the screen's grid. Each disk weighs its weight in all.'''
+    '''What has to stay in sight, on the screen's grid. Each disk weighs its weight in all.
+    follows: it's drawn for the current arrangement (the radar frames its plane in the clear box), so it can't
+    say where another one would leave it: it counts only on relayout.'''
 
-    def __init__(self, size: tuple[int, int], cell: int = 4):
-        self.cell = cell
+    def __init__(self, size: tuple[int, int], cell: int = 4, follows: bool = False):
+        self.cell, self.follows = cell, follows
         self.grid = np.zeros((math.ceil(size[1] / cell), math.ceil(size[0] / cell)), np.float32)
 
     def disk(self, cx: float, cy: float, r: float, weight: float = 1) -> 'Focus':
@@ -125,6 +128,7 @@ class Screen:
         self.heat = None                # the grid: seconds lit, fading by heat_half_life
         self.last = {}                  # item -> where it was drawn
         self.scored_at = self.saved_at = 0
+        self.worse_since = None         # the current one much worse than the best since then
         self.relaid_at = time.monotonic()
         self.costs = {}
 
@@ -180,7 +184,7 @@ class Screen:
         shape = self._shape(size)
         return sum((self._placed(masks[i], *p, shape) for i, p in positions.items() if i in masks), np.zeros(shape, np.float32))
 
-    def _cost(self, arrangement: tuple, masks: dict, sizes: dict, focus: Optional[Focus], size) -> float:
+    def _cost(self, arrangement: tuple, masks: dict, sizes: dict, focus: Optional[Focus], size, relayout: bool = True) -> float:
         shape, occs, off, covers = self._shape(size), {}, 0, []
         for item, spot in self.spots(arrangement).items():
             if item not in masks:
@@ -200,7 +204,7 @@ class Screen:
         overlap = sum(under(i, o) for i, o in occs.items())
         cost = penalty + off_weight * off / len(occs) + overlap_weight * overlap
         focus = focus(self.spots(arrangement)) if callable(focus) else focus
-        if focus is not None and focus.grid.sum() and covers:
+        if focus is not None and focus.grid.sum() and covers and (relayout or not focus.follows):
             cost += focus_weight * (focus.grid * np.clip(sum(covers), 0, 1)).sum() / focus.grid.sum()
         if self.heat is not None:
             # Per item: each one's own wear counts whole, however small it is. Against the most worn, an hour at least:
@@ -213,14 +217,16 @@ class Screen:
         masks = {i: self._mask(f) for i, f in items.items() if f}
         sizes = {i: f.size for i, f in items.items() if f}
         self._heat(masks, size, now)
-        self.costs = {a: self._cost(a, masks, sizes, focus, size) for a in product(*allowed)}
+        self.costs = {a: self._cost(a, masks, sizes, focus, size, relayout) for a in product(*allowed)}
         best = min(self.costs, key=self.costs.get)
         current = self.costs.get(self.current, math.inf)
-        switch = forced or self.costs[best] < current - (switch_margin if relayout else anytime_margin)
+        worse = not relayout and self.costs[best] < current - anytime_margin
+        self.worse_since = (self.worse_since or now) if worse else None
+        switch = forced or (self.costs[best] < current - switch_margin if relayout else worse and now - self.worse_since >= anytime_s)
         if switch or relayout:
             old = self.last
             if switch:
-                self.current = best
+                self.current, self.worse_since = best, None
             if relayout:
                 self.relaid_at = now
                 self.jitter = {i: rolled(s) for i, s in self.spots().items()}

@@ -425,3 +425,25 @@ def test_screen_sees_frosted_items_overlap():
     s = Screen('t', [[Option({'a': Spot('tl')})], [Option({'b': Spot('tl')}), Option({'b': Spot('tr')}, penalty=0.3)]])
     s.arrange(screen_fs, {'a': faint(20, 20), 'b': faint(20, 20)}, relayout=True)
     assert s.spot('b').anchor == 'tr'
+
+def test_screen_waits_before_moving_in_between(monkeypatch):
+    now = [time.monotonic()]
+    monkeypatch.setattr(scr.time, 'monotonic', lambda: now[0])
+    s, under_card = sides(), Focus((64, 48)).disk(8, 24, 6)
+    for _ in range(scr.anytime_s):
+        s.arrange(screen_fs, {'card': card, 'time': clock}, under_card)
+        now[0] += 1
+    assert s.spot('card').anchor == 'ml'     # a card passing by
+    s.arrange(screen_fs, {'card': card, 'time': clock}, under_card)
+    assert s.spot('card').anchor == 'mr'     # it stays
+
+def test_screen_following_focus_only_on_relayout(monkeypatch):
+    now = [time.monotonic()]
+    monkeypatch.setattr(scr.time, 'monotonic', lambda: now[0])
+    s, radar = sides(), Focus((64, 48), follows=True).disk(8, 24, 6)
+    for _ in range(scr.anytime_s + 5):
+        s.arrange(screen_fs, {'card': card, 'time': clock}, radar)
+        now[0] += 1
+    assert s.spot('card').anchor == 'ml'     # drawn for this arrangement: says nothing of the others
+    s.arrange(screen_fs, {'card': card, 'time': clock}, radar, relayout=True)
+    assert s.spot('card').anchor == 'mr'

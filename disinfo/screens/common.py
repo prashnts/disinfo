@@ -69,7 +69,7 @@ def focus(fs: FrameState, on_top: list, solar_style):
     solar_style: the clock's style for an arrangement's spots (it goes across from the side stack).'''
     size = (fs.config.width, fs.config.height)
     if radar_wanted(fs, on_top):
-        f = Focus(size)
+        f = Focus(size, follows=True)
         for x, y, weight in aviator.app.plane_marks(fs):
             f.disk(x, y, 5, weight)
         return f
