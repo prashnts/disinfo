@@ -104,6 +104,9 @@ class Config(AppBaseModel):
     # Aviator
     overpass_url: str = 'https://overpass-api.de/api/interpreter'
     adsbx_url: str = 'https://adsb.nb.malow.im'
+    meteo_france_api_key__radar: SecretStr | None = None
+    meteo_france_api_key__vigil: SecretStr | None = None
+    vigilance_domain: str = '75'      # the département on the weather card
     # Bearings seen from the window, clockwise from north. The planes in there get the cards.
     aviator_window: tuple[float, float] = (0, 180)
     # Solar only, local time.

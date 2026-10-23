@@ -8,6 +8,8 @@ from ..redis import publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
 from ..screens.aviator.tasks import adsbx_task
+from ..screens.weather import vigilance
+from ..screens.aviator.weather import radar_task, wind_task, sat_task
 
 
 class SafeScheduler(Scheduler):
@@ -61,6 +63,11 @@ scheduler = SafeScheduler(reschedule_on_failure=True)
 
 scheduler.every(1).minutes.do(get_metro_info)
 scheduler.every(1).seconds.do(adsbx_task)
+scheduler.every(5).minutes.do(radar_task)
+scheduler.every(30).minutes.do(wind_task)
+scheduler.every(10).minutes.do(sat_task)
+scheduler.every(15).minutes.do(vigilance.task)
+scheduler.every(30).minutes.do(vigilance.forecast_task)
 
 
 def main():

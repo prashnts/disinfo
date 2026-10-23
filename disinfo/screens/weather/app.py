@@ -8,12 +8,14 @@ from disinfo import fonts
 from discore.elements import Frame, StillImage
 from discore.text import TextStyle, text
 from discore.layers import div, DivStyle
+from discore.scroller import HScroller
 from discore.layouts import hstack, vstack, composite_at, place_at, Spacer
 from discore.spriteim import SpriteIcon
 from discore.data_structures import FrameState
 from discore.elements import Box
 from disinfo.screens.colors import light_gray
 
+from . import vigilance
 from .state import get_weather_data
 from .assets import temperature_color
 
@@ -31,6 +33,8 @@ s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
 s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
 s_moon_phase = TextStyle(font=fonts.bitocra7, color='#818284')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
+s_forecast = TextStyle(font=fonts.bitocra7, color='#7fb5e8')
+vigil_colors = {2: '#e0b400', 3: '#f7a401', 4: '#e03030'}      # yellow, orange, red
 
 
 
@@ -109,6 +113,16 @@ def temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
     return hstack([value(t_low), RangeBar(t_current, t_high, t_low), value(t_high)], gap=2, align='bottom')
 
 
+def vigil_lines(now: float, tick: float, width: int) -> Frame | None:
+    '''What Météo-France warns of (rain, cold first), then the next rain and the lowest temperature: one line, scrolled
+    in the card's own width, so the card does not change.'''
+    parts = [text(t, style=TextStyle(font=fonts.bitocra7, color=vigil_colors[c])) for c, t in vigilance.lines(now)]
+    parts += [text(t, style=s_forecast) for t in vigilance.forecast_lines(now)]
+    if not parts:
+        return None
+    line = hstack(parts, gap=6, align='center')
+    return HScroller(size=width, pause_at_loop=True, name='weather.vigil').set_frame(line).draw(tick)
+
 def composer(fs: FrameState):
     if not (state := get_weather_data(fs)):
         return
@@ -117,7 +131,7 @@ def composer(fs: FrameState):
     weather_icon.set_icon(f'assets/unicorn-weather-icons/{s.icon_name}.png')
 
     # Temperature centered, range graph across.
-    return vstack([
+    card = vstack([
         hstack([
             Spacer(),
             composite_at(warning_icon if state.is_outdated else None, weather_icon.draw(fs.tick), 'br'),
@@ -129,3 +143,6 @@ def composer(fs: FrameState):
         ], gap=2, align='bottom'),
         temp_range(s.temperature, s.t_high, s.t_low),
     ], gap=3, align='hstretch')
+    if warn := vigil_lines(fs.now.timestamp(), fs.tick, card.width):
+        return vstack([card, warn], gap=3, align='hstretch')
+    return card

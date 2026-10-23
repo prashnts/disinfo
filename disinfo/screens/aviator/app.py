@@ -199,6 +199,35 @@ def chevron(ctx: cairo.Context, x: float, y: float, track: float, size: float):
     ctx.close_path()
     ctx.restore()
 
+def compass(ctx: cairo.Context, up: float, w: int, h: int):
+    # A Material-style compass, half transparent, bottom right: a disc and a two-colour needle pointing north.
+    r = min(max(min(w, h) * 0.06, 6), 13)
+    cx, cy = w - r - 4, h - r - 4
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.push_group()
+    ctx.set_source_rgba(0.13, 0.15, 0.19, 0.85)
+    ctx.arc(0, 0, r, 0, 2 * math.pi)
+    ctx.fill_preserve()
+    ctx.set_source_rgba(1, 1, 1, 0.5)
+    ctx.set_line_width(max(r / 12, 0.8))
+    ctx.stroke()
+    ctx.rotate(math.radians(-up))       # north is turned the way the map is
+    n = r * 0.72
+    for tip, rgba in ((-n, (0.96, 0.26, 0.21, 1)), (n, (0.93, 0.93, 0.95, 1))):     # Material red 500 north, grey 50 south
+        ctx.move_to(0, tip)
+        ctx.line_to(-r * 0.26, 0)
+        ctx.line_to(r * 0.26, 0)
+        ctx.close_path()
+        ctx.set_source_rgba(*rgba)
+        ctx.fill()
+    ctx.set_source_rgba(0.13, 0.15, 0.19, 1)
+    ctx.arc(0, 0, r * 0.07 + 0.3, 0, 2 * math.pi)
+    ctx.fill()
+    ctx.pop_group_to_source()
+    ctx.paint_with_alpha(0.6)
+    ctx.restore()
+
 def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list, theme: Theme):
     # A dim grey scope around home, rings and spokes, the window's bearings between brighter ones.
     r = max(w, h) * 1.5
@@ -340,6 +369,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
             labels.append((pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
         targets.append(Target(round(px) - 6, round(py) - 6, 13, 13, 'aviator.open', {'hex': hex}))
 
+    compass(ctx, up, w, h)
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')

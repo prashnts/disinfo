@@ -10,7 +10,7 @@ from cairocffi.context import _encode_path
 
 from typing import NamedTuple
 
-from . import osm
+from . import osm, weather
 from .shapes import rounded
 
 
@@ -86,21 +86,26 @@ def view_matrix(cx: float, cy: float, s: float, up: float, w: int, h: int) -> ca
 def draw(ctx: cairo.Context, now: float, view: tuple[float, float, float], up: float, w: int, h: int, light: bool = False, off: frozenset = frozenset(), name: str = ''):
     # The same view as last time (the camera at rest, the planes moving) is painted from the last drawing.
     feats = ordered(now, off)
-    key = (*(round(v, 3) for v in view), up, len(feats), light, off)
+    rain = None if 'rain' in off else weather.rain_doc()
+    wind = None if 'wind' in off else weather.wind_doc()
+    sat = None if 'clouds' in off else weather.sat_doc()
+    key = (*(round(v, 3) for v in view), up, len(feats), light, off, rain and rain['at'], wind and wind['at'], sat and sat['at'])
     if (cached := _drawn.get((name, w, h))) is None or cached[0] != key:
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-        paint(cairo.Context(surface), feats, view, up, w, h, light_styles if light else styles)
+        paint(cairo.Context(surface), feats, view, up, w, h, light_styles if light else styles, rain and light, wind and light, sat and light)
         cached = _drawn[name, w, h] = key, surface
     ctx.set_source_surface(cached[1])
     ctx.paint()
 
-def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up: float, w: int, h: int, look: dict):
+def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up: float, w: int, h: int, look: dict, rain: bool | None = None, wind: bool | None = None, sat: bool | None = None):
     cx, cy, s = view
     m = view_matrix(cx, cy, s, up, w, h)
     ctx.transform(m)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+    if sat is not None:
+        weather.paint_sat(ctx, sat)
     for f in feats:
         x0, y0, x1, y1 = f.bbox
         # Where its box falls on the screen: the transformed center, the half sizes turned.
@@ -127,3 +132,7 @@ def paint(ctx: cairo.Context, feats: list, view: tuple[float, float, float], up:
                 ctx.new_path()
                 ctx.arc(x, y, max(st.width * 1.4, 1.2) / s, 0, 2 * math.pi)
                 ctx.fill()
+    if rain is not None:
+        weather.paint_rain(ctx, rain)
+    if wind is not None:
+        weather.paint_wind(ctx, view, up, w, h, wind)
