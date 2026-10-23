@@ -22,7 +22,7 @@ class StackStyle:
     static_if_small: bool = False
     align: str = 'left'
     horizontal: bool = False
-    # Moving on, the widget shown least lately goes next: over time each gets about the same, whatever moved
+    # Moving on, the widget shown least lately goes next: over time each gets about its share (Widget.share), whatever moved
     # the stack on (its wait, a motion, a press). Lately: the time on top fades by half over this many seconds.
     half_life: float = 600
 
@@ -99,7 +99,11 @@ class Stack(metaclass=ScopedInstance):
         visible = self._visible()
         others = [i for i in visible if stay or i != self.pos] or visible or [0]
         # Between equals, another than the one on top.
-        return min(others, key=lambda i: (round(self.shown.get(self._widgets[i].name, 0), 1), i == self.pos, i))
+        return min(others, key=lambda i: (round(self._fair(self._widgets[i]), 1), i == self.pos, i))
+
+    def _fair(self, w: Widget) -> float:
+        # Its time on top lately against its share.
+        return self.shown.get(w.name, 0) / w.share
 
     def _count(self, step: float):
         # The one on top gains the time since the last frame, all fade.
@@ -109,9 +113,9 @@ class Stack(metaclass=ScopedInstance):
         here = {w.name for w in self._widgets}
         self.shown = {n: t * k for n, t in self.shown.items() if n in here or t * k > 1}
         # A newcomer starts level with the least shown: a turn, not minutes catching up.
-        start = min(self.shown.values(), default=0)
+        start = min((self._fair(w) for w in self._widgets if w.name in self.shown), default=0)
         for w in self._widgets:
-            self.shown.setdefault(w.name, start)
+            self.shown.setdefault(w.name, start * w.share)
         name = self._widgets[self.pos].name
         self.shown[name] = self.shown.get(name, 0) + dt
         self._shown_at = step

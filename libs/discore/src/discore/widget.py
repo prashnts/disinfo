@@ -19,6 +19,8 @@ class Widget:
     active: bool = True
     focus: bool = False
     wait_time: float = 2
+    # Its part of the stack's time on top against the others' (1 each): 3, three times a card's time.
+    share: float = 1
     transition_duration: float = 0.25
     style: DivStyle = DivStyle(padding=3, radius=2, background="#00000085", border=1, border_color="#00000088")
     transition_enter: TimedTransition[Frame] = Resize
