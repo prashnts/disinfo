@@ -97,7 +97,7 @@ class RuntimeState(AppBaseModel):
     show_sensors: bool = False
     show_printers: bool = False
     show_flex_demo: bool = False
-    show_planes: bool = True      # the aviator's big cards; off, their planes go in the tile
+    show_planes: bool = False      # the aviator's big cards; off, their planes go in the tile
     layout_demo_tab: str = 'flex'      # the flex demo's tab: flex or grid
     screen_capture: bool = False
 

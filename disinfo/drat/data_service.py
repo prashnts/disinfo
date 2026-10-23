@@ -4,7 +4,7 @@ import datetime
 from traceback import format_exc
 from schedule import Scheduler
 
-from ..redis import publish
+from ..redis import db, publish
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
 from ..screens.aviator.tasks import adsbx_task
@@ -59,15 +59,33 @@ def on_pubsub(channel_name: str, message: PubSubMessage):
         get_metro_info(force=True)
 
 
+starting = True        # until the first run of all the jobs is done
+
+def cached(name: str, every: float, fn):
+    '''A fetch that records when it last succeeded (fn returns True), in redis: at a restart it is not asked again
+    until its interval has passed since then (the data it wrote is still there, with its own expiry).'''
+    key = f'di.dataservice.ran.{name}'
+    def run():
+        if starting:
+            try:
+                if time.time() - float(db.get(key) or 0) < every:
+                    print(f'[Data Service] {name}: fetched {round(time.time() - float(db.get(key)))} s ago, not again yet')
+                    return
+            except (TypeError, ValueError):
+                pass
+        if fn():
+            db.set(key, time.time())
+    return run
+
 scheduler = SafeScheduler(reschedule_on_failure=True)
 
 scheduler.every(1).minutes.do(get_metro_info)
 scheduler.every(1).seconds.do(adsbx_task)
-scheduler.every(5).minutes.do(radar_task)
-scheduler.every(30).minutes.do(wind_task)
-scheduler.every(10).minutes.do(sat_task)
-scheduler.every(15).minutes.do(vigilance.task)
-scheduler.every(30).minutes.do(vigilance.forecast_task)
+scheduler.every(5).minutes.do(cached('radar', 300, radar_task))
+scheduler.every(30).minutes.do(cached('wind', 1800, wind_task))
+scheduler.every(10).minutes.do(cached('sat', 600, sat_task))
+scheduler.every(15).minutes.do(cached('vigil', 900, vigilance.task))
+scheduler.every(30).minutes.do(cached('forecast', 1800, vigilance.forecast_task))
 
 
 def main():
@@ -78,6 +96,8 @@ def main():
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)
+    global starting
+    starting = False
     while True:
         scheduler.run_pending()
         time.sleep(1)

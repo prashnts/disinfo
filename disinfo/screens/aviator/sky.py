@@ -7,6 +7,7 @@ turned towards the planes seen from the window. The view stays at home: it turns
 import math
 import time
 import random
+import numpy as np
 import cairocffi as cairo
 
 from functools import cache
@@ -24,7 +25,7 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app
+from . import app, astro, skylook, weather
 
 
 horizon = 0.7           # of the height, from the top
@@ -99,12 +100,12 @@ def landmark_points(eye: float) -> list[tuple]:
         out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape))
     return out
 
-def roofs(ctx: cairo.Context, in_view, to_px, h: int):
+def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None):
     # Pixel-crisp: sharp on the LEDs, and nothing changes between frames when the view's still.
     ctx.set_antialias(cairo.ANTIALIAS_NONE)
     far, near = city()
     for blocks, color in ((far, far_color), (near, near_color)):
-        rims = []
+        rims, lit = [], []
         for b0, b1, cornice, top, chimneys in blocks:
             if not (in_view(b0, 5) or in_view(b1, 5)):
                 continue
@@ -121,6 +122,8 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int):
                 cx, _ = to_px(c, top)
                 ctx.rectangle(round(cx), round(yt) - 2, 1, 2)
             rims.append(outline)
+            if sunlight and (k := max(0, 1 - abs(wrap((b0 + b1) / 2 - sunlight[0])) / 70) * sunlight[1]) > 0.03:
+                lit.append((outline, k, x0, x1, yc, b0))
         ctx.set_source_rgb(*color)
         ctx.fill()
         ctx.set_source_rgba(*rim_color)
@@ -129,6 +132,18 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int):
             for p in outline[1:]:
                 ctx.line_to(*p)
         ctx.stroke()
+        # The sunset on the roofs facing it: a warm rim and a few windows catching it.
+        for outline, k, x0, x1, yc, b0 in lit:
+            ctx.set_source_rgba(*(c / 255 for c in skylook.glow_rgb), min(0.75 * k, 0.75))
+            ctx.move_to(*outline[0])
+            for p in outline[1:]:
+                ctx.line_to(*p)
+            ctx.stroke()
+            rnd = random.Random(round(b0 * 1000))
+            for _ in range(max(1, round((x1 - x0) / 3))):
+                ctx.set_source_rgba(1, 0.75, 0.45, min(0.9 * k, 0.85) * rnd.uniform(0.5, 1))
+                ctx.rectangle(round(rnd.uniform(x0, x1)), round(yc + rnd.uniform(2, 14)), 1, 1)
+                ctx.fill()
     ctx.set_source_rgb(*far_color)
     for b, e, width, shape in landmark_points(_eye['m']):
         if not in_view(b, 5):
@@ -190,7 +205,8 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float]:
     if followed:
         p = st.planes[followed]
         b, _ = sky_point(*app.position(p, time.time()), p['alt'])
-        if time.monotonic() - app._swept.get(fs.config.name, (None, 0))[1] < app.sweep:
+        swept_hex, swept_at = app._swept.get(fs.config.name, (None, 0))
+        if swept_hex == followed and time.monotonic() - swept_at < app.sweep:
             zoom = max(fov_min, fov / app.sweep_zoom)
             return b - middle / w * zoom, zoom
         px = w / 2 + wrap(b - (yaw if yaw is not None else b)) / fov * w
@@ -208,6 +224,74 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float]:
 
 def shade(hex: str, k: float) -> tuple[float, float, float]:
     return tuple(min(int(hex[i:i + 2], 16) / 255 * k, 1) for i in (1, 3, 5))
+
+cloud_color = (0.72, 0.75, 0.82)
+cloud_alpha = 0.55
+cloud_weights = (0.4, 0.3, 0.2, 0.1)       # the nearer, the more it counts
+rain_color = (0.68, 0.76, 0.9)
+rain_weights = (1, 0.8, 0.6, 0.45, 0.3)
+cloud_base_km = 4       # the rain hangs from here: higher in the view the nearer it is
+col_step = 2            # px between the columns of a band
+
+def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int):
+    # A band of cloud over the horizon, as high as the cover is thick in each direction, grey going to nothing upwards.
+    # Returns the cover (0..1) by bearing, for what it hides.
+    if not (prof := weather.sky_profile('clouds')):
+        return lambda b: 0.0
+    values = prof[0]
+    xs = np.arange(0, w + col_step, col_step)
+    cover = (weather.along(values, yaw + (xs - w / 2) / w * fov) * np.array(cloud_weights, np.float32)).sum(axis=1)
+    top = hz - hz * 0.95 * np.clip(cover * 2.5, 0, 1) ** 0.8
+    if top.min() < hz - 1:
+        g = cairo.LinearGradient(0, top.min(), 0, hz)
+        g.add_color_stop_rgba(0, *cloud_color, 0)
+        g.add_color_stop_rgba(1, *cloud_color, cloud_alpha)
+        ctx.set_source(g)
+        ctx.move_to(0, hz)
+        for x, y in zip(xs, top):
+            ctx.line_to(float(x), float(y))
+        ctx.line_to(w, hz)
+        ctx.close_path()
+        ctx.fill()
+    return lambda b: float(np.clip(weather.along(values, np.array([b]))[0] @ np.array(cloud_weights, np.float32) * 2.5, 0, 1))
+
+def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, now: float):
+    # Curtains of rain hanging in the directions it rains in, nearer ones higher and stronger; a few drops across
+    # the whole view when it rains at home.
+    if not (prof := weather.sky_profile('rain')):
+        return
+    values, home_mm = prof
+    xs = np.arange(0, w, col_step)
+    along = weather.along(values, yaw + (xs - w / 2) / w * fov) * np.array(rain_weights, np.float32)
+    best = along.argmax(axis=1)
+    power = along.max(axis=1)
+    ctx.set_line_width(1)
+    for i, (x, k) in enumerate(zip(xs, best)):
+        if power[i] < 0.05:
+            continue
+        e = math.degrees(math.atan2(cloud_base_km, weather.rain_bins[k]))
+        top = hz - hz * (min(e, 90) / 90) ** elev_gamma
+        # Streaky: each column its own strength.
+        streak = 0.5 + 0.5 * ((x * 37 + k * 11) % 7) / 6
+        ctx.set_source_rgba(*rain_color, min(power[i] * 1.4, 0.6) * streak)
+        ctx.move_to(float(x) + 0.5, top)
+        ctx.line_to(float(x) + 0.5, hz)
+        ctx.stroke()
+    if home_mm >= 0.2:
+        a = min(0.15 + home_mm / 12, 0.45)
+        ctx.set_source_rgba(*rain_color, a)
+        for i in range(int(w * h / 500)):
+            x = (i * 0.6180339887) % 1 * w
+            y = ((i * 0.7548776662) % 1 * h + now * 40 + i * 13) % h
+            ctx.move_to(x, y)
+            ctx.line_to(x - 1.5, y + 5)
+        ctx.stroke()
+
+def overhead_cover() -> float | None:
+    # The cloud cover over home from the satellite (the nearest bins, every bearing), 0..1; None without data.
+    if not (prof := weather.sky_profile('clouds')):
+        return None
+    return float(np.clip(prof[0][:, :2].mean() * 2.5, 0, 1))
 
 def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     st = ADSBxStateManager().get_state(fs)
@@ -227,36 +311,49 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.set_line_width(1)
     labels, taken = [], []
 
-    # The sky, lighter towards the horizon.
-    sky_hex = sky_color(fs)
-    g = cairo.LinearGradient(0, 0, 0, hz)
-    g.add_color_stop_rgb(0, *shade(sky_hex, 0.5))
-    g.add_color_stop_rgb(1, *shade(sky_hex, 1.3))
-    ctx.set_source(g)
-    ctx.rectangle(0, 0, w, hz)
-    ctx.fill()
+    # The sky: the sun's height, the weather state and the room's light (skylook.py).
+    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
+    state = skylook.weather_state(fs)
+    # No weather state (HA down): the satellite's cover over home stands in.
+    lk = skylook.look(se, state or skylook.conditions['partlycloudy'], skylook.light_gain(fs), None if state else overhead_cover())
+    skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
     ctx.set_source_rgba(*horizon_color)
     ctx.move_to(0, hz)
     ctx.line_to(w, hz)
     ctx.stroke()
 
+    off = OpenedStateManager().get_state(fs).off
+    info, show_planes = 'info' not in off, 'planes' not in off
+    cloud_dim = clouds(ctx, yaw, fov, w, hz, h) if 'clouds' not in off else lambda b: 0.0
+
     # The sun where it is, its glow over the horizon a little after it's set.
-    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
-    sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     if se > -6 and in_view(sb, 20):
         sx, sy = to_px(sb, se)
         glow = cairo.RadialGradient(sx, sy, 0, sx, sy, 16)
-        glow.add_color_stop_rgba(0, *sun_color, 0.35 if se > 0 else 0.2)
+        dim = 1 - 0.8 * cloud_dim(sb)       # a cloud band in front of it
+        glow.add_color_stop_rgba(0, *sun_color, (0.35 if se > 0 else 0.2) * dim)
         glow.add_color_stop_rgba(1, *sun_color, 0)
         ctx.set_source(glow)
         ctx.paint()
         if se > 0:
-            ctx.set_source_rgb(*sun_color)
+            ctx.set_source_rgba(*sun_color, dim)
             ctx.arc(sx, sy, 2.5, 0, 2 * math.pi)
             ctx.fill()
 
+    # Stars once the sun is well down (dimmed by the cloud), the moon where it is, fainter in daylight.
+    clear_sky = 1 - 0.9 * lk.cloud
+    astro.draw_stars(ctx, now, fs.config.latitude, fs.config.longitude, to_px, in_view, min(max((-se - 3) / 12, 0), 1) * clear_sky)
+    mb, me, phase = astro.moon_at(now, fs.config.latitude, fs.config.longitude)
+    if me > -1 and in_view(mb, 10):
+        mx, my = to_px(mb, max(me, 0))
+        astro.draw_moon(ctx, mx, my, 3, phase, (1 - 0.65 * min(max(se / 10, 0), 1)) * (1 - 0.8 * cloud_dim(mb)) * (1 - 0.5 * lk.cloud))
+
+    if 'rain' not in off:
+        rain(ctx, yaw, fov, w, hz, h, now)
+
     targets, lit = [], []
-    for hex, p in sorted(st.planes.items(), key=lambda i: (i[0] == followed, i[0] in st.watched)):
+    for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         x, y = app.position(p, now)
         b, e = sky_point(x, y, p['alt'])
@@ -295,20 +392,20 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.fill()
         if hex == followed:
             lit.append((px, py))
-        if n := app.number(st, hex):
+        if info and (n := app.number(st, hex)):
             labels.append((app.pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
 
     # The roofs over all that: a low plane goes behind them. Its number and the ring stay on top.
-    roofs(ctx, in_view, to_px, h)
-    for px, py in lit:
+    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None)
+    for px, py in (lit if info else ()):
         ctx.set_source_rgba(1, 1, 1, 0.85)
         ctx.arc(px, py, 6.5, 0, 2 * math.pi)
         ctx.stroke()
-    for i, name in enumerate(compass):
+    for i, name in enumerate(compass if info else ()):
         if in_view(i * 45, 0):
             if at := app.label_at(t := text(name, label_style), round(to_x(i * 45)), hz + 4, taken):
                 labels.append((t, *at))
-    for a in airports:
+    for a in (airports if info else ()):
         ab = bearing(a.x, a.y)
         if in_view(ab, 0) and (at := app.label_at(t := text(a.code, label_style), round(to_x(ab)), hz + 4, taken)):
             labels.append((t, *at))

@@ -87,10 +87,13 @@ def radar_task():
     '''The scheduled one: no key, no h5py/numpy/pyproj or a failed fetch leaves the last mosaic (it expires after 15 min).'''
     try:
         radar_job()
+        return True
     except ImportError as e:
         print(f'weather radar off, missing {e.name}')
     except Exception as e:
         print(f'weather radar: {e!r}')
+    return False
+
 
 
 # The rain on the map: transparent under 0.25 mm/h, then light blue -> violet -> pink with the rate; deeper in the light mode.
@@ -187,8 +190,11 @@ def wind_job():
 def wind_task():
     try:
         wind_job()
+        return True
     except Exception as e:
         print(f'weather wind: {e!r}')
+    return False
+
 
 _wind = {'read': 0.0, 'doc': None}
 
@@ -298,8 +304,11 @@ def sat_job():
 def sat_task():
     try:
         sat_job()
+        return True
     except Exception as e:
         print(f'weather satellite: {e!r}')
+    return False
+
 
 _sat = {'read': 0.0, 'doc': None}
 
@@ -354,3 +363,52 @@ def paint_sat(ctx: cairo.Context, light: bool):
     ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
     ctx.paint()
     ctx.restore()
+
+
+# What the sky view sees: the rain and the clouds along each bearing from home, a few distances out.
+sky_bearings = 120      # one a 3 degrees
+rain_bins = (8, 18, 32, 50, 80)         # km
+cloud_bins = (10, 30, 60, 100)
+rain_full = 8           # mm/h that is full strength
+_profiles = {}          # kind -> (at, (bearings, values [bearing, bin]))
+
+def polar(grey, doc: dict, bins: tuple) -> 'numpy.ndarray':
+    import numpy as np
+    b = np.radians(np.arange(sky_bearings) * 360 / sky_bearings)[:, None]
+    d = np.array(bins, np.float32)[None, :]
+    x, y = d * np.sin(b), d * np.cos(b)             # km east and north of home
+    n = grey.shape[0]
+    col = np.clip(((x + doc['half_km']) / doc['px_km']).astype(int), 0, n - 1)
+    row = np.clip(((doc['half_km'] - y) / doc['px_km']).astype(int), 0, n - 1)
+    return grey[row, col]
+
+def grey_of(doc: dict):
+    import base64
+    import numpy as np
+    from PIL import Image
+    return np.asarray(Image.open(io.BytesIO(base64.b64decode(doc['png']))).convert('L'), dtype=np.float32)
+
+def sky_profile(kind: str):
+    '''(values [bearing, bin] in 0..1, the grid's value at home for rain) or None. Built once per update.'''
+    import numpy as np
+    doc = rain_doc() if kind == 'rain' else sat_doc()
+    if not doc:
+        return None
+    if (cached := _profiles.get(kind)) and cached[0] == doc['at']:
+        return cached[1]
+    g = grey_of(doc)
+    if kind == 'rain':
+        values = np.clip(polar(g, doc, rain_bins) / doc.get('scale', scale) / rain_full, 0, 1)
+        n = g.shape[0]
+        home_mm = float(g[n // 2 - 1:n // 2 + 1, n // 2 - 1:n // 2 + 1].max()) / doc.get('scale', scale)
+    else:
+        values = np.clip((polar(g, doc, cloud_bins) - sat_floor) / (255 - sat_floor), 0, 1) ** 1.3
+        home_mm = 0.0
+    _profiles[kind] = doc['at'], (values.astype(np.float32), home_mm)
+    return _profiles[kind][1]
+
+def along(values, bearings):
+    '''values [bearing, bin] at these bearings (degrees, any number of them): [n, bin], linear between the profile's.'''
+    import numpy as np
+    at = np.arange(sky_bearings) * 360 / sky_bearings
+    return np.stack([np.interp(bearings % 360, at, values[:, k], period=360) for k in range(values.shape[1])], axis=1)

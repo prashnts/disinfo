@@ -18,9 +18,10 @@ trail_every = 5         # s between trail points
 trail_len = 120         # points: 10 minutes
 forget_after = 60       # s without a position
 # Overhead: degrees above the horizon, now or at the closest approach within lookahead. Seen from anywhere.
-overhead_deg = 60
-lookahead = 150
-passed_for = 60         # s a pass stays 'overhead' after it
+overhead_deg = 60       # (the old rule: elevation; unused now)
+overhead_km = 3.5       # overhead = its reach (utils.closest_approach: altitude counts a quarter) within this, now or within lookahead
+lookahead = 90
+passed_for = 30         # s a pass stays 'overhead' after it
 # Seen from the window: in its bearings, above the roofs, not too far. The nearest ones are watched.
 min_elev = 2
 radius_km = 40
@@ -47,6 +48,13 @@ def fetch_planes() -> tuple[float, list]:
     r.raise_for_status()
     data = r.json()
     return data['now'], data['aircraft']
+
+def plane_reach(p: dict) -> float:
+    return math.hypot(p['dist'], p['alt'] / 4000)
+
+def nearness(p: dict) -> float:
+    # Now or at its closest approach, the nearer (a table from before 'reach' counts as far).
+    return min(plane_reach(p), p.get('cpa', {}).get('reach', 99))
 
 def plane_of(p: dict, at: float) -> dict | None:
     if 'lat' not in p or 'alt_baro' not in p:
@@ -96,7 +104,7 @@ def update(now: float, aircraft: list):
             plane[k] = plane[k] or prev.get(k)
         plane['cpa'] = closest_approach(plane, lookahead)
         plane['overhead_at'] = prev.get('overhead_at')
-        if max(plane['elev'], plane['cpa']['elev']) >= overhead_deg and not plane['ground']:
+        if nearness(plane) <= overhead_km and not plane['ground']:
             plane['overhead_at'] = now
         table[plane['hex']] = plane
 
@@ -137,8 +145,11 @@ def watched(now: float, r: float, planes: dict | None = None) -> list[str]:
     global _watched
     planes = table if planes is None else planes
     seen = sorted((h for h, p in planes.items() if is_visible(p, r)), key=lambda h: planes[h]['slant'])
-    overhead = [h for h, p in planes.items() if is_overhead(p, now)]
-    kept = [h for h in _watched if h in seen or h in overhead]
+    over = {h for h, p in planes.items() if is_overhead(p, now)}
+    # The order is kept (a plane doesn't swap places with another every second): the ones already there first, the
+    # new overhead ones by nearness.
+    overhead = [h for h in _watched if h in over] + sorted(over - set(_watched), key=lambda h: nearness(planes[h]))
+    kept = [h for h in _watched if h in seen or h in over]
     _watched = list(dict.fromkeys([*overhead, *kept, *seen]))[:max(max_watched, len(overhead))]
     return _watched
 
@@ -168,7 +179,7 @@ def scene(now: float) -> dict:
     if not (_queue_focus and len(q[_queue_focus]) >= queue_min - 1):
         _queue_focus = next((a.code for a in airports if len(q[a.code]) >= queue_min), None)
     focus = 'home' if watch else _queue_focus
-    overhead = [h for h in watch if is_overhead(planes[h], now)]
+    overhead = [h for h in watch if is_overhead(planes[h], now)]       # in the order they came
     return {'planes': planes, 'focus': focus, 'watched': watch, 'overhead': overhead, 'queues': q, 'radius': r, 'trail': trail()}
 
 def adsbx_task():

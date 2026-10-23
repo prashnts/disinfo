@@ -55,4 +55,5 @@ def closest_approach(p: dict, lookahead: float) -> dict:
     t = min(max(t, 0), lookahead)
     d = math.hypot(p['x'] + vx * t, p['y'] + vy * t)
     alt = max(p['alt'] + p['vr'] * t / 60, 0)
-    return {'t': round(t), 'd': round(d, 3), 'elev': round(elevation(alt, d), 1)}
+    # reach: how near it is felt, the altitude counting a quarter (right over at 12 km is as near as 3 km away on the ground).
+    return {'t': round(t), 'd': round(d, 3), 'elev': round(elevation(alt, d), 1), 'reach': round(math.hypot(d, alt / 4000), 2)}

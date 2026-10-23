@@ -52,8 +52,11 @@ def job():
 def task():
     try:
         job()
+        return True
     except Exception as e:
         print(f'weather vigilance: {e!r}')
+    return False
+
 
 _cache = {'read': 0.0, 'doc': None}
 
@@ -79,7 +82,7 @@ def lines(now: float, d: dict | None = None) -> list[tuple[int, str]]:
             continue
         begin, end, color = max(live, key=lambda w: (w[2], -w[0]))
         t = lambda s: pendulum.from_timestamp(s, 'Europe/Paris')
-        span = f'→ {t(end).format("H")}h' if begin <= now else f'{t(begin).format("H")}h → {t(end).format("H")}h'
+        span = f'jusqu\'à {t(end).format("H")}h' if begin <= now else f'{t(begin).format("H")}h-{t(end).format("H")}h'
         out.append((color, f'{PHENOMENA.get(ph, ph)} {LEVELS[color]} {span}'))
     return sorted(out, key=lambda l: -l[0])
 
@@ -105,8 +108,11 @@ def forecast_job():
 def forecast_task():
     try:
         forecast_job()
+        return True
     except Exception as e:
         print(f'weather forecast: {e!r}')
+    return False
+
 
 _fcache = {'read': 0.0, 'doc': None}
 
@@ -135,10 +141,10 @@ def forecast_lines(now: float, d: dict | None = None) -> list[str]:
         while last + 1 < len(hours) and hours[last + 1][1] >= rain_mm:
             last += 1
         most = max(h[1] for h in hours[first:last + 1])
-        span = f'→ {t(hours[last][0] + 3600)}h' if hours[first][0] <= now else f'{t(hours[first][0])}h → {t(hours[last][0] + 3600)}h'
+        span = f'jusqu\'à {t(hours[last][0] + 3600)}h' if hours[first][0] <= now else f'{t(hours[first][0])}h-{t(hours[last][0] + 3600)}h'
         out.append(f'Pluie {span} {most:.0f}mm/h' if most >= 1 else f'Pluie {span}')
     if hours:
         low = min(hours, key=lambda h: h[2])
         if low[2] <= cold_c:
-            out.append(f'Min {low[2]:.0f}° à {t(low[0])}h')
+            out.append(f'Min {low[2]:.0f}C à {t(low[0])}h')
     return out

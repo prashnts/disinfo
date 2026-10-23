@@ -64,6 +64,7 @@ _cams = {}              # screen -> [x, y, s, at]: center in km, px per km; ease
 _on_top = {}            # screen -> the plane of the card on top of the stack
 _following = {}         # screen -> the plane followed: the last card on top, while it has a card
 _swept = {}             # screen -> (plane, when its card first came on top)
+_near = {}              # screen -> the nearest overhead plane framed when no card is on top (kept while it is overhead)
 _seen_on_top = {}       # screen -> the planes zoomed on already: once each, cards take turns on top
 _held = {}              # screen -> the view while following: moved only when the plane leaves the clear box
 _moving = {}            # screen -> the camera's still easing towards its view
@@ -130,11 +131,16 @@ def inside(target: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int,
     px, py = w / 2 + (xy[0] - cx) * s, h / 2 - (xy[1] - cy) * s
     return clear[0] + margin <= px <= clear[2] - margin and clear[1] + margin <= py <= clear[3] - margin
 
+def framed(base: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int) -> tuple[float, float, float]:
+    # Close to home: the view between home and the plane when both fit in the clear box at this scale, else on the plane.
+    t = zoomed(base, (xy[0] / 2, xy[1] / 2), clear, w, h, 1)
+    return t if inside(t, xy, clear, w, h) and inside(t, (0, 0), clear, w, h) else zoomed(base, xy, clear, w, h, 1)
+
 def held(fs: FrameState, base: tuple, xy: tuple[float, float], clear: tuple, w: int, h: int) -> tuple[float, float, float]:
-    # Still while the plane's in the clear box; it's put back in its middle when it leaves.
+    # Still while the plane's in the clear box; it's put back (framed with home) when it leaves.
     t = _held.get(fs.config.name)
     if t is None or t[2] != base[2] or not inside(t, xy, clear, w, h):
-        t = zoomed(base, xy, clear, w, h, 1)
+        t = framed(base, xy, clear, w, h)
     _held[fs.config.name] = t
     return t
 
@@ -180,7 +186,13 @@ def on_top(fs: FrameState) -> str | None:
 def following(fs: FrameState) -> str | None:
     st = ADSBxStateManager().get_state(fs)
     hex = _following.get(fs.config.name)
-    return hex if hex in st.planes and (hex in st.overhead or hex in OpenedStateManager().get_state(fs).opened) else None
+    if hex in st.planes and (hex in st.overhead or hex in OpenedStateManager().get_state(fs).opened):
+        return hex
+    # No card on top: the nearest plane passing overhead is still the one to frame (the one framed stays while it is overhead).
+    keep = _near.get(fs.config.name)
+    near = keep if keep in st.planes and keep in st.overhead else next((h for h in st.overhead if h in st.planes), None)
+    _near[fs.config.name] = near
+    return near
 
 def position(p: dict, now: float, after: float = 0) -> tuple[float, float]:
     # Dead reckoning from the last position: the poller updates every second, the frames are smoother.
@@ -228,7 +240,7 @@ def compass(ctx: cairo.Context, up: float, w: int, h: int):
     ctx.paint_with_alpha(0.6)
     ctx.restore()
 
-def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list, theme: Theme):
+def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list, theme: Theme, info: bool = True):
     # A dim grey scope around home, rings and spokes, the window's bearings between brighter ones.
     r = max(w, h) * 1.5
     g = cairo.RadialGradient(hx, hy, 0, hx, hy, radius * s * 1.2)
@@ -236,6 +248,8 @@ def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up:
     g.add_color_stop_rgb(1, *theme.scope_edge)
     ctx.set_source(g)
     ctx.paint()
+    if not info:
+        return
     start, end = app_config.aviator_window
     start, end = start - up, end - up
     ctx.set_source_rgba(*theme.window_edge)
@@ -271,13 +285,14 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     opened_state = OpenedStateManager().get_state(fs)
     is_light = opened_state.light
     theme = light if is_light else dark
+    info, show_planes = 'info' not in opened_state.off, 'planes' not in opened_state.off
     rest = view(st.focus, st.radius, rot, w, h)
     target = zoomed_view(rest, zoom(fs))
     clear = clear or (0, 0, w, h)
     if followed:
         xy = rot(*position(st.planes[followed], now))
-        swept_at = _swept.get(fs.config.name, (None, 0))[1]
-        target = zoomed(target, xy, clear, w, h) if time.monotonic() - swept_at < sweep else held(fs, target, xy, clear, w, h)
+        swept_hex, swept_at = _swept.get(fs.config.name, (None, 0))
+        target = zoomed(target, xy, clear, w, h) if swept_hex == followed and time.monotonic() - swept_at < sweep else held(fs, target, xy, clear, w, h)
     else:
         _held.pop(fs.config.name, None)
         target = drift(target)
@@ -290,32 +305,33 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.set_line_width(1)
     labels, taken = [], []
     hx, hy = to_px(0, 0)
-    scope(ctx, hx, hy, s, st.radius, up, w, h, labels, theme)
+    scope(ctx, hx, hy, s, st.radius, up, w, h, labels, theme, info)
     basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light, frozenset(opened_state.off), fs.config.name)
 
-    for a in airports:
-        ax, ay = to_px(a.x, a.y)
-        ctx.set_source_rgba(*theme.airport)
-        ctx.rectangle(round(ax) - 1.5, round(ay) - 1.5, 4, 4)
-        ctx.stroke()
-        if at := label_at(code := text(a.code, theme.label), round(ax), round(ay), taken):
-            labels.append((code, *at))
-    near, far = landmark_px
-    grow = math.sqrt(s / rest[2])
-    ctx.set_source_rgba(*theme.landmark)
-    for lat, lon in app_config.screen_data.aviator.landmarks:
-        x, y = local_xy(lat, lon)
-        lx, ly = to_px(x, y)
-        if -4 < lx < w + 4 and -4 < ly < h + 4:
-            ctx.arc(lx, ly, min((near + (far - near) * min(math.hypot(x, y) / landmark_far, 1)) * grow, landmark_max) / 2, 0, 2 * math.pi)
-            ctx.fill()
-    ctx.set_source_rgba(*theme.home)
-    ctx.rectangle(round(hx) - 1, round(hy) - 1, 3, 3)
-    ctx.fill()
+    if info:
+        for a in airports:
+            ax, ay = to_px(a.x, a.y)
+            ctx.set_source_rgba(*theme.airport)
+            ctx.rectangle(round(ax) - 1.5, round(ay) - 1.5, 4, 4)
+            ctx.stroke()
+            if at := label_at(code := text(a.code, theme.label), round(ax), round(ay), taken):
+                labels.append((code, *at))
+        near, far = landmark_px
+        grow = math.sqrt(s / rest[2])
+        ctx.set_source_rgba(*theme.landmark)
+        for lat, lon in app_config.screen_data.aviator.landmarks:
+            x, y = local_xy(lat, lon)
+            lx, ly = to_px(x, y)
+            if -4 < lx < w + 4 and -4 < ly < h + 4:
+                ctx.arc(lx, ly, min((near + (far - near) * min(math.hypot(x, y) / landmark_far, 1)) * grow, landmark_max) / 2, 0, 2 * math.pi)
+                ctx.fill()
+        ctx.set_source_rgba(*theme.home)
+        ctx.rectangle(round(hx) - 1, round(hy) - 1, 3, 3)
+        ctx.fill()
 
     targets = []
     # The watched ones last: on top.
-    for hex, p in sorted(st.planes.items(), key=lambda i: (i[0] == followed, i[0] in st.watched)):
+    for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         watched = hex in st.watched or hex in opened
         fade = watched_fade if watched else st.trail
@@ -357,7 +373,9 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.set_source_rgba(*color, 1 if watched else plane_alpha)
         ctx.fill()
         ctx.set_operator(cairo.OPERATOR_OVER)
-        if hex == followed:
+        if not info:
+            pass
+        elif hex == followed:
             ctx.set_source_rgba(*theme.halo, 0.85)
             ctx.arc(px, py, 6.5, 0, 2 * math.pi)
             ctx.stroke()
@@ -365,11 +383,12 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
             ctx.set_source_rgba(*theme.halo, 0.3)
             ctx.arc(px, py, 5.5, 0, 2 * math.pi)
             ctx.stroke()
-        if n := number(st, hex):
+        if info and (n := number(st, hex)):
             labels.append((pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
         targets.append(Target(round(px) - 6, round(py) - 6, 13, 13, 'aviator.open', {'hex': hex}))
 
-    compass(ctx, up, w, h)
+    if info:
+        compass(ctx, up, w, h)
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')

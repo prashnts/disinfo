@@ -224,3 +224,5 @@ OE      12        18
 
 - `uvicorn disinfo.web.server:app --host 0.0.0.0 --port 4200 --reload` -- run a local server showing the screen.
 - `watchmedo auto-restart -d disinfo -d assets --patterns="*.py;*.png;*.bdf;*.ttf" --recursive -- python -m disinfo.renderers.background --fps 25` -- to feed the webpage.
+
+Clear cache: `redis-cli del di.dataservice.ran.radar`. [wind, sat, vigil, forecast]
