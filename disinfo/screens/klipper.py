@@ -66,6 +66,8 @@ pill_style = TextStyle(font=fonts.bitocra7, color='#000000')
 # Seconds per slide: the camera is what's worth watching.
 slide_times = {'camera': 14, 'job': 6, 'stats': 5}
 focus_seconds = 45
+# The camera stays up this long after a print is done or failed.
+camera_minutes = 15
 
 # Raw printer statuses -> phase: offline, idle, printing, paused, done, failed.
 bambu_phases = {
@@ -433,13 +435,31 @@ def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
         ], gap=3),
     ], gap=3)
 
-def camera_slide(fs: FrameState, state: PrinterState, view: Frame) -> Frame:
-    # The stage sits on a scrim over the bottom of the camera.
+def on_scrim(info: Frame, w: int, h: int) -> Frame:
+    # Sits on a scrim over the bottom of the camera. Sized by the width first: unsized, the scrim fills all of h.
+    return div(div(info, padding=(1, 2, 1, 2), background='#000000a0', width=w - 4), width=w, height=h, anchor='bl')
+
+def camera_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
     color = phase_colors.get(state.phase, '#5b5e64')
     eta = text(state.completion_time, muted_small_style) if state.completion_time else None
-    info = hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3)
-    scrim = div(info, padding=(1, 2, 1, 2), background='#000000a0')
-    return div(scrim, width=view.width, height=view.height, anchor='bl', background_frame=view)
+    return on_scrim(hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3), w, h)
+
+def job_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
+    return on_scrim(hstack([text(title_of(state) or 'Job', tiny_bright_style, overflow='fit'), Spacer()]), w, h)
+
+def stats_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
+    # Brighter than the stats slide: it's on the camera.
+    uname = lambda x: f'{x}_{state.printer_id}'
+    temp = lambda icon, value, target, name: hstack([icon, text_slide_in(fs, f'{round(value)}', warn_small_style if target and value < target - 3 else bright_small_style, name=name)], gap=2) if value is not None and value >= 0 else None
+    return on_scrim(vstack([
+        hstack([
+            temp(toolt_icon, state.extruder_temp, state.extruder_target, uname('toolt')),
+            temp(bedt_icon, state.bed_temp, state.bed_target, uname('bedt')),
+            hstack([text('ch', tiny_style), text(f'{round(state.chamber_temp)}', bright_small_style)], gap=2) if state.chamber_temp else None,
+            Spacer(),
+        ], gap=5),
+        hstack([text(state.active_tray, tiny_bright_style, overflow='fit') if state.active_tray else None, Spacer(), text(f'{state.weight:g}g', tiny_bright_style) if state.weight else None], gap=3),
+    ], gap=3), w, h)
 
 
 def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
@@ -466,9 +486,14 @@ def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
         budget -= n
     return hstack([vstack(kept, gap=2), div(view, radius=2) if view else None], gap=3, align='top')
 
+def watching(fs: FrameState, state: PrinterState) -> bool:
+    # While printing and for a while after: the camera is the card.
+    since = (fs.now - state.phase_at).total_seconds() if state.phase_at else None
+    return state.is_printing or (state.phase in ('done', 'failed') and since is not None and since < camera_minutes * 60)
+
 def composer(fs: FrameState, state: PrinterState):
-    # show_printers expands every online printer, otherwise only the ones printing.
-    expanded = state.is_printing or state.phase in live_phases or (state.is_on and RuntimeStateManager().get_state(fs).show_printers)
+    # show_printers expands every online printer, otherwise only the ones printing or just done.
+    expanded = watching(fs, state) or state.phase in live_phases or (state.is_on and RuntimeStateManager().get_state(fs).show_printers)
     if not (state.is_visible or expanded):
         return
     uname = lambda x: f'{x}_{state.printer_id}'
@@ -503,19 +528,25 @@ def composer(fs: FrameState, state: PrinterState):
     if state.model == 'klipper':
         return card(limn_body(fs, state, h - 4))
 
-    # Slides below the progress: camera, the job, details.
+    # The camera below the progress, the stage, the job and details cycle over it.
     # Live stream when configured (nothing while it connects), cropped to the prints. The camera snapshot otherwise.
     # The snapshot fetch blocks, so it's never used as a stream fallback.
     if state.stream_url:
         stream = MJPEGStream(state.stream_url)
-        # Zoomed on the prints while printing, the whole bed otherwise.
-        box = ObjectFinder(state.printer_id).crop(stream, state.tray_color, card_width / h) if state.is_printing else fit_box((0, 0, 1, 1), card_width / h)
+        # Zoomed on the prints while watching, the whole bed otherwise.
+        box = ObjectFinder(state.printer_id).crop(stream, state.tray_color, card_width / h) if watching(fs, state) else fit_box((0, 0, 1, 1), card_width / h)
         view = stream.read(card_width, h, box)
     else:
         view = image_from_url(state.thumbnail, resize=(card_width, card_width * 9 // 16), ratio_fn=min)
         view = view.crop_even(vertical=max(view.height - h, 0) // 2) if view else None
+    if view:
+        overlays = Slides(uname('klipper.overlays'), SlidesStyle(width=card_width, height=h)).mut([
+            (lambda: camera_overlay(fs, state, card_width, h), slide_times['camera']),
+            (lambda: job_overlay(fs, state, card_width, h), slide_times['job']),
+            (lambda: stats_overlay(fs, state, card_width, h), slide_times['stats']),
+        ]).draw(fs)
+        return card(div(overlays, width=card_width, height=h, radius=2, background_frame=view))
     body = Slides(uname('klipper.slides'), SlidesStyle(width=card_width, height=h, radius=2)).mut([
-        (lambda: camera_slide(fs, state, view), slide_times['camera']) if view else None,
         (lambda: job_slide(fs, state, h), slide_times['job']),
         (lambda: stats_slide(fs, state, h), slide_times['stats']),
     ]).draw(fs)
@@ -549,6 +580,6 @@ def widget(fs: FrameState):
             style=widget_style,
             priority=2 if state.is_printing else 1,
             focus=wants_focus(fs, state),
-            wait_time=sum(slide_times.values()) if state.is_printing else 5)
+            wait_time=sum(slide_times.values()) if watching(fs, state) else 5)
         widgets.append(w)
     return widgets
