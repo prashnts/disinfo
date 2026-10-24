@@ -45,6 +45,7 @@ class State:
     last_timer_at: float = 0
     active_pk: str = ''
     direction: bool = False
+    down: bool = False
 
 states = defaultdict(State)   # per screen
 
@@ -104,8 +105,9 @@ def timer_view(fs: FrameState):
         act(fs, 'haptics', 'boop', 'ok')
         act(fs, 'buzzer', 'ok', 'ok')
 
-    if remote('down'):
+    if remote('down') and not state.down:
         act(fs, 'buzzer', 'boop', str(fs.tick))
+    state.down = remote('down')
 
     style_list = TextStyle(font=fonts.px_op__r)
     style_done = TextStyle(font=fonts.px_op__r, color="#b7b7b7")
@@ -152,15 +154,13 @@ def timer_view(fs: FrameState):
     timers.sort(key=lambda t: t.end)
     for timer in timers:
         rows.append(timecard(timer))
-        trigger = 7 if timer.duration > 10 else 1
-        if timer.triggerred < trigger and fs.now.diff(timer.end, False).in_seconds() <= trigger:
+        if not timer.triggerred and fs.now.diff(timer.end, False).in_seconds() <= 0:
+            # Once: acts get there now (they used to be sent a few times over, hoping one would).
             melody = 'boop' if timer.duration < 10 else 'ok'
             melody = 'fmart' if timer.duration > 25 else melody
             melody = 'fmart.slow' if timer.duration > 180 else melody
-            act(fs, 'buzzer', melody, timer.pk)
-            act(fs, 'buzzer', 'boop', timer.pk)
-            act(fs, 'buzzer', 'rest_1s', timer.pk)
-            timer.triggerred += 1
+            act(fs, 'buzzer', [melody, 'boop'], timer.pk)
+            timer.triggerred = 1
             timer.save()
         
     if not rows:

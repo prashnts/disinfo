@@ -68,6 +68,28 @@ def test_slides_follow_their_durations():
     f = s.draw(FrameState(tick=3.5, now=None))
     assert f.size == (10, 6) and drawn == [(0, 255, 0, 255)]   # only the slide on screen is drawn
 
+def test_ticker_rolls_up_by_the_old_line():
+    # Slides with an edge: the new line pushes the old one out, whatever their heights.
+    from discore.transitions import SlideIn
+    line = lambda c, h: Frame(Image.new('RGBA', (4, h), c)).tag((c, h))
+    with scope('test.ticker'):
+        s = SlideIn('test.ticker', duration=1, edge='bottom')
+        t = time.time()
+        s.mut(line((255, 0, 0, 255), 6)); s.draw(FrameState(tick=t + 2, now=None))
+        s.mut(line((0, 255, 0, 255), 3)); s.start_at = t + 2
+        mid = s.draw(FrameState(tick=t + 2.5, now=None))
+        assert mid.size == (4, 6) and mid.image.getpixel((0, 0))[0] == 255 and mid.image.getpixel((0, 3))[1] == 255
+        end = s.draw(FrameState(tick=t + 3.1, now=None))
+        assert end.size == (4, 3) and end.image.getpixel((0, 0))[1] == 255
+
+def test_placed_frames_differ_by_what_is_under_and_where():
+    from discore.layouts import place_at, composite_at
+    card, a, b = solid((255, 0, 0, 255)), solid((0, 0, 0, 255), (8, 8)), solid((0, 0, 255, 255), (8, 8))
+    assert place_at(card, a, 4, 4) != place_at(card, b, 4, 4)
+    assert place_at(card, a, 4, 4) != place_at(card, a, 5, 4)
+    assert place_at(card, a, 4, 4) == place_at(card, a, 4, 4)
+    assert composite_at(card, a, 'mm') != composite_at(card, b, 'mm') != composite_at(card, b, 'mm', frost=1)
+
 def test_progress_bar_fills_whole_pixels():
     from discore.progress import progress_bar, ProgressStyle
     style = ProgressStyle(width=10, color='#ff0000', track='#00000000')

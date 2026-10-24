@@ -27,6 +27,8 @@ class Slides(metaclass=ScopedInstance):
     Only the slide on screen is drawn. Which one follows fs.tick, so there's
     no state to keep in sync. A fixed size keeps the card from resizing
     between slides. None in the list is skipped, for slides without content.
+    With an edge they slide in from it instead: 'bottom' and no height is a ticker,
+    as tall as the slide on.
     '''
 
     def __init__(self, name: str, style: SlidesStyle = SlidesStyle()):

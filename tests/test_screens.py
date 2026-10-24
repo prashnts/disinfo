@@ -32,3 +32,24 @@ def test_date_in_the_time_row_only_when_covered():
     covered.arrange(fs, items(box(128, 100)), relayout=True)
     layout = covered.arrange(fs, items(box(128, 100)), relayout=True)
     assert 'timedate' in covered.spots() and 'timedate' in layout.positions and 'date' not in layout.positions
+
+def test_design_demo_pages_draw_in_their_room():
+    import time
+    import pendulum
+    from discore.data_structures import FrameState
+    from disinfo.config import app_config
+    from disinfo.drat.app_states import RuntimeStateManager, PubSubMessage
+    from disinfo.apps import design_demo as dd
+    fs = FrameState(tick=time.time(), now=pendulum.now(), config=app_config)
+    m = RuntimeStateManager()
+    m.state.show_design_demo, m.state.stream_url = True, None
+    m.state.design_demo = {}
+    for tab, pages in dd.tabs.items():
+        for i, (name, page) in enumerate(pages):
+            if name == 'stream':
+                continue        # starts a reader
+            m.process_message('di.pubsub.remote', PubSubMessage(action='design_demo', payload={'tab': tab, 'page': i}))
+            f = dd.composer(fs, 118, 94)
+            assert f.size == (118, 94), (tab, name)
+    m.process_message('di.pubsub.remote', PubSubMessage(action='design_demo', payload={'taps': 3}))
+    assert m.state.design_demo['tab'] == 'touch' and m.state.design_demo['taps'] == 3     # merged

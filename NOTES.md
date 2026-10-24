@@ -16,7 +16,7 @@ Uncommitted. CHANGELOG (Unreleased, Added: Screen layouts, Grid layout; Performa
   the rest is clipped, touch targets too (`_clipped`). Without them it's the natural size.
 - It's a function returning a `Frame`, not a `Box` like `Flex`: a grid can't be a grower inside a flex row yet.
 - Users: the entry's buttons (`screens/entry.py` `controls`: masonry, 3 columns, fewer till it fits the width),
-  the flex demo's grid tab (`apps/flex_demo.py`: shapes, rows vs masonry, width, anchors). Tests: `test_grid_*`.
+  the design demo's grid tab (`apps/design_demo.py`: shapes, rows vs masonry, width, anchors). Tests: `test_grid_*`.
 - Gotcha met on the way: a `div` around a `Box` (`DivBox`) puts its content top left whatever the `anchor`
   (deliberate, its comment says). The entry's buttons render their content to a `Frame` first to get it centered.
 
@@ -114,7 +114,7 @@ Nothing below is committed yet: disinfo since `024a6f0` (flex), esp-displays sin
   frame, the 8 before it (`prev`) for regions. One server process serves every screen.
   - `/ws2/<screen>?fmt=rgbz|png|rgb565z`: pushed. Whole frames, then the regions that changed since the frame the
     client has (16x16 tiles merged into boxes, all in one message; whole again past 50% or 8 frames behind). Format
-    in `transport.py`'s docstring. Text out: `{"display": {"on"}}` (on change, and first), `{"acts"}`,
+    in `transport.py`'s docstring. Text out: `{"display": {"on"}}` (on change, and first), `{"acts", "acts_id"}` (before frames; `?since=<acts_id>` replays after a reconnect, 10 s at most),
     `{"alive"}` every 2 s, `{"time"}` first (displays without NTP set their clock). Text in: `{"touch": [x, y, "down|move|up"]}` (frame px), `{"resync": 1}`, telemetry
     `{"_node", "telemetry": "<json string>"}` (also sent to Home Assistant, below).
   - `/ws/<screen>`: v1, a JSON + base64 PNG per request; the HUB75 panels still on it. `/png/<screen>` (snapshot),

@@ -6,7 +6,7 @@ import json
 import asyncio
 import threading
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from PIL import Image
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Response
 from starlette.staticfiles import StaticFiles
@@ -24,7 +24,10 @@ from discore.imops import apply_gamma
 app = FastAPI()
 
 frames = {}     # screen -> JSON payload, from renderers still publishing PNGs
-action_buffer = defaultdict(list)
+
+ACTS_TTL = 10   # s: an act older than that (a beep) isn't worth playing any more
+acts = defaultdict(lambda: deque(maxlen=64))    # screen -> (id, time, cmd), newest last
+_act_id = 0
 
 
 HISTORY = 8     # frames a client can be behind and still get regions
@@ -125,7 +128,6 @@ def load_frame(channel_name, message: PubSubMessage):
     dest = message.action
     payload = {
         'img': message.payload['img'],
-        'acts': action_buffer[dest],
         'd': dest,
     }
     frames[dest] = payload
@@ -179,12 +181,23 @@ def act(action: str, payload):
         publish('di.pubsub.remote', action=action, payload=payload or {})
 
 def load_acts(channel_name, message: PubSubMessage):
-    action_buffer[message.payload['dest']].append(message.payload['cmd'])
+    # Ids in µs: they keep growing across server restarts, a client's since stays good.
+    global _act_id
+    _act_id = max(_act_id + 1, time.time_ns() // 1000)
+    acts[message.payload['dest']].append((_act_id, time.time(), message.payload['cmd']))
     notify(message.payload['dest'])
+
+def last_act(screen: str) -> int:
+    return acts[screen][-1][0] if acts[screen] else 0
+
+def acts_after(screen: str, since: int) -> tuple[list, int]:
+    '''The acts a connection hasn't had, and the id to go on from. Each connection has its own: none drains them for the others.'''
+    new = [a for a in list(acts[screen]) if a[0] > since and time.time() - a[1] < ACTS_TTL]
+    return [cmd for _, _, cmd in new], new[-1][0] if new else since
 
 def v1_payload(screen: str) -> dict | None:
     if s := screens.get(screen):
-        return {'img': base64.b64encode(s.encode(PNG)).decode(), 'acts': action_buffer[screen], 'd': screen}
+        return {'img': base64.b64encode(s.encode(PNG)).decode(), 'd': screen}
     return frames.get(screen)
 
 def screen_image(screen: str) -> Image.Image | None:
@@ -236,8 +249,11 @@ async def trigger_actions(tinput: TriggerInput):
     return {'status': 'ok'}
 
 @app.websocket('/ws/{screen}')
-async def websocket_endpoint(websocket: WebSocket, screen: str):
+async def websocket_endpoint(websocket: WebSocket, screen: str, since: int | None = None):
+    '''A frame for each message from the client, with the acts since the last one.
+    since: the last acts_id the client had (after a reconnect), else the acts from now on.'''
     await websocket.accept()
+    seen = last_act(screen) if since is None else since
 
     while True:
         try:
@@ -245,24 +261,22 @@ async def websocket_endpoint(websocket: WebSocket, screen: str):
         except WebSocketDisconnect:
             return
         try:
-            msg = json.loads(data)
-            if msg.get('telemetry') and msg.get('_node'):
-                action_buffer[screen] = []
-            publish_telemetry(screen, msg)
+            publish_telemetry(screen, json.loads(data))
         except json.JSONDecodeError:
             pass
         if payload := v1_payload(screen):
-            await websocket.send_text(json.dumps(payload))
+            new, seen = acts_after(screen, seen)
+            await websocket.send_text(json.dumps({**payload, 'acts': new, 'acts_id': seen}))
 
 @app.websocket('/ws2/{screen}')
-async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz'):
-    '''Pushes the newest frame as it changes: a slow client skips frames.
+async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz', since: int | None = None):
+    '''Pushes the newest frame as it changes: a slow client skips frames, never acts (sent first, since: as in /ws).
     From the client: telemetry, or {"resync": 1} for a whole frame.'''
     global _loop
     _loop = asyncio.get_running_loop()
     encoding = ENCODINGS[fmt]
     await websocket.accept()
-    sent = 0
+    sent, seen = 0, last_act(screen) if since is None else since
 
     async def receive():
         nonlocal sent
@@ -281,22 +295,22 @@ async def websocket_v2(websocket: WebSocket, screen: str, fmt: str = 'rgbz'):
                 asyncio.create_task(asyncio.to_thread(ha_states.publish, msg['_node'], json.loads(msg['telemetry'])))
 
     async def send():
-        nonlocal sent
+        nonlocal sent, seen
         last, told = time.monotonic(), None
         await websocket.send_text(json.dumps({'time': time.time()}))     # displays without NTP (over USB) set their clock
         while True:
             # After each send, look again: what came during it woke no one.
             s = screens.get(screen)
+            new, upto = acts_after(screen, seen)
             if awake.get(screen, True) != told:
                 told = awake.get(screen, True)
                 await websocket.send_text(json.dumps({'display': {'on': told}}))
+            elif new:
+                await websocket.send_text(json.dumps({'acts': new, 'acts_id': upto}))
+                seen, last = upto, time.monotonic()
             elif s and s.seq != sent:
                 await websocket.send_bytes(await asyncio.to_thread(s.message, sent, encoding))
                 sent, last = s.seq, time.monotonic()
-            elif action_buffer[screen]:
-                acts, action_buffer[screen] = action_buffer[screen], []
-                await websocket.send_text(json.dumps({'acts': acts}))
-                last = time.monotonic()
             elif time.monotonic() - last > 2:
                 await websocket.send_text(json.dumps({'alive': sent}))
                 last = time.monotonic()

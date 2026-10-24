@@ -5,6 +5,7 @@ import io
 import base64
 import websocket
 
+from collections import deque
 from typing import Callable
 
 from pydantic import BaseModel
@@ -72,6 +73,7 @@ class WebsocketClient:
         self.retry_delay_after_max_retries = 5 # seconds
         self.max_retries = 5
         self.callback = callback
+        self.acts_id = None     # the last acts the server sent: a reconnect asks for what came after
     
     def on_message(self, ws, msg):
         self.callback(self, msg)
@@ -99,7 +101,7 @@ class WebsocketClient:
         if self.connected:
             return
         self.ws = websocket.WebSocketApp(
-            self.url,
+            self.url + (f"{'&' if '?' in self.url else '?'}since={self.acts_id}" if self.acts_id else ''),
             on_message=self.on_message,
             on_open=self.on_open,
             on_close=self.on_close,
@@ -121,7 +123,7 @@ class WebsocketClient:
 
 def main(conf: Config):
     frame = None
-    acts = []
+    acts = deque()      # from the websocket's thread to the sensors'
     prev_frame = None
     last_ping = 0
     telemetry = {}
@@ -148,19 +150,19 @@ def main(conf: Config):
     Image.open('test.jpg')
 
     def _set_telemetry(values: dict):
-        nonlocal telemetry, acts
+        nonlocal telemetry
         telemetry = values
-        if acts:
-            local_acts = acts.copy()
-            acts = []
-            return local_acts
+        return [acts.popleft() for _ in range(len(acts))]
+
+    def _got_acts(ws: WebsocketClient, msg: dict):
+        acts.extend(msg.get('acts') or [])
+        ws.acts_id = msg.get('acts_id', ws.acts_id)
 
     def _set_frame(ws: WebsocketClient, msg: str):
-        nonlocal frame, last_ping, acts
+        nonlocal frame, last_ping
         try:
             msg = json.loads(msg)
-            if msg.get('acts'):
-                acts.extend(msg.get('acts'))
+            _got_acts(ws, msg)
 
             bytes_ = base64.b64decode(msg['img'])
             with io.BytesIO(bytes_) as img_io:
@@ -177,7 +179,7 @@ def main(conf: Config):
         last_ping = time.monotonic()
         try:
             if isinstance(msg, str):
-                acts.extend(json.loads(msg).get('acts') or [])
+                _got_acts(ws, json.loads(msg))
             elif assembler.apply(msg):
                 frame = assembler.frame
             else:

@@ -34,7 +34,8 @@ s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
 s_moon_phase = TextStyle(font=fonts.bitocra7, color='#818284')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 s_forecast = TextStyle(font=fonts.bitocra7, color='#7fb5e8')
-vigil_colors = {2: '#e0b400', 3: '#f7a401', 4: '#e03030'}      # yellow, orange, red
+vigil_colors = {2: '#e0b400', 3: '#f7a401', 4: '#e03030'}      # yellow, orange, red: a warning is a pill of its colour
+s_vigil = TextStyle(font=fonts.bitocra7, color='#000000')
 
 
 
@@ -116,7 +117,8 @@ def temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
 def vigil_lines(now: float, tick: float, width: int) -> Frame | None:
     '''What Météo-France warns of (rain, cold first), then the next rain and the lowest temperature: one line, scrolled
     in the card's own width, so the card does not change.'''
-    parts = [text(t, style=TextStyle(font=fonts.bitocra7, color=vigil_colors[c])) for c, t in vigilance.lines(now)]
+    parts = [div(text(t, style=s_vigil), DivStyle(background=vigil_colors[c], padding=(1, 2, 1, 2), radius=2))
+             for c, t in vigilance.lines(now)]
     parts += [text(t, style=s_forecast) for t in vigilance.forecast_lines(now)]
     if not parts:
         return None

@@ -24,7 +24,7 @@ from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
 from disinfo.apps.news import news_app
-from disinfo.apps.flex_demo import flex_demo_app
+from disinfo.apps.design_demo import design_demo_app
 from disinfo.utils.hass import get_entity
 
 
@@ -51,6 +51,15 @@ def p_stack_offset():
     return random.randint(0, 3)
 
 
+
+def below_time(fs: FrameState, app, layout, items: dict, image: Frame, gap: int = 2) -> Frame:
+    # The app full width, in the rows the time leaves: below it, above it when it's down.
+    key = 'timedate' if 'timedate' in layout.positions else 'time'
+    if key not in layout.positions:
+        return image
+    y, h = layout.positions[key][1], items[key].height
+    y0, y1 = (y + h + gap, fs.config.height) if y < fs.config.height // 2 else (0, y - gap)
+    return place_at(app(fs, (fs.config.width, y1 - y0)).draw(fs), image, fs.config.width // 2, y0, 'tm', frost=1.5)
 
 def compose_big_frame(fs: FrameState):
     config = fs.config
@@ -141,7 +150,7 @@ def compose_big_frame(fs: FrameState):
 
     if awake:
         image = composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        image = composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
+        image = below_time(fs, design_demo_app, layout, items, image)
         image = composite_at(screens.debug_info.fonts_demo(fs).draw(fs), image, 'bm', frost=1.8)
 
         if config.height >= 120:
@@ -231,10 +240,11 @@ def compose_display_frame(fs: FrameState):
         image = layout.place('bottom', items['bottom'], image, frost=1.8)
         image = composite_at(shazam_indicators(fs).draw(fs), image, 'br')
         image = composite_at(news_app(fs).draw(fs), image, 'bm', frost=1)
-        image = composite_at(flex_demo_app(fs).draw(fs), image, 'mm', frost=1.5)
         image = composite_at(stream_widget(fs).draw(fs), image, 'bm')
 
     image = layout.place('time', items['time'], image, frost=1.8)
+    if awake:
+        image = below_time(fs, design_demo_app, layout, items, image)
     image = composite_at(screens.twenty_two.draw(fs), image, 'mm')
     image = composite_at(timer_app(fs).draw(fs), image, 'br' if screen.spot('side').anchor[1] == 'r' else 'bl', frost=2)
     return image.tag(awake)

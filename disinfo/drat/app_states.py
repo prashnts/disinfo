@@ -96,9 +96,9 @@ class RuntimeState(AppBaseModel):
     show_fonts_credit: bool = False
     show_sensors: bool = False
     show_printers: bool = False
-    show_flex_demo: bool = False
+    show_design_demo: bool = False
     show_planes: bool = False      # the aviator's big cards; off, their planes go in the tile
-    layout_demo_tab: str = 'flex'      # the flex demo's tab: flex or grid
+    design_demo: dict = {}      # the design demo's tab, page and its touch tab's toys
     screen_capture: bool = False
 
     # Extras
@@ -130,8 +130,8 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.screen_capture = not self.state.screen_capture
             case 'show_twentytwo':
                 self.state.show_twentytwo = not self.state.show_twentytwo
-            case 'layout_demo_tab':
-                self.state.layout_demo_tab = data.payload['tab']
+            case 'design_demo':
+                self.state.design_demo = {**self.state.design_demo, **data.payload}
             case 'set_stream_url':
                 self.state.stream_url = data.payload['url']
             case action if action.startswith('show_'):

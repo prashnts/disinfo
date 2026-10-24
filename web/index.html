@@ -416,9 +416,8 @@
                     <${RemoteButton} action="motion_toggle" />
                     <${RemoteButton} action="show_fonts_credit" />
                     <${RemoteButton} action="show_printers" />
-                    <${RemoteButton} action="show_flex_demo" title="flex demo" />
-                    <${RemoteButton} action="layout_demo_tab" payload=${{tab: 'flex'}} title="flex tab" />
-                    <${RemoteButton} action="layout_demo_tab" payload=${{tab: 'grid'}} title="grid tab" />
+                    <${RemoteButton} action="show_design_demo" title="design demo" />
+                    ${['flex', 'grid', 'stack', 'type', 'box', 'motion', 'scroll', 'media', 'touch'].map(tab => html`<${RemoteButton} action="design_demo" payload=${{tab, page: null}} title=${tab} />`)}
                 </div>
                 <div>
                     <${RadarRadius}/>

@@ -467,17 +467,11 @@ class Buzzer:
     enabled: bool = False
 
     active: bool = False
-    notes: tuple[tuple[str, int]] = field(default_factory=tuple)
-    ix: int = 0
     duration: int = 125
-    scale: float = 0.8
+    queue_max: int = 3      # distinct sounds waiting: more are dropped, they'd only stack up
 
-    async_rest: bool = True
-
-    _is_resting: bool = False
-    _resting_at: float = 0
-    _rest_for: int = 0
-    _buffer: list[tuple[list, int]] = field(default_factory=list)
+    _buffer: list[tuple[str, tuple]] = field(default_factory=list)
+    _wake: threading.Event = field(default_factory=threading.Event)
 
 
     # RTTTL = {
@@ -597,74 +591,67 @@ class Buzzer:
 
 
     def update(self):
-        if not self.enabled:
-            return
-        if not self.active:
-            if self._buffer:
-                _, notes, scale = self._buffer[0]
+        pass    # plays in its own thread (_run): tones block, the sensors and acts don't wait for them
+
+    def _run(self):
+        # Each I2C write is one transfer to the kernel: sharing the bus with the sensor thread is fine.
+        while True:
+            self._wake.wait()
+            self._wake.clear()
+            while self._buffer:
                 self.active = True
-                self.ix = 0
-                self.notes = notes
-                self.scale = scale
-            return
+                for note, dur in self._buffer[0][1]:
+                    if note == 'REST':
+                        time.sleep(dur / 1000)
+                    else:
+                        self.spk.tone(note if isinstance(note, int) else ModulinoBuzzer.NOTES[note], dur - 5, blocking=True)
+                self._buffer.pop(0)
+            self.active = False
 
-        if self._is_resting and time.time() > (self._resting_at + (self._rest_for / 1000)):
-            self._is_resting = False
-
-        remaining_notes = list(self.notes)[self.ix:]
-
-        for i, (note, dur) in enumerate(remaining_notes):
-            if self.async_rest and note == 'REST':
-                self.ix += (i + 1)
-                self._rest_for = dur
-                self._resting_at = time.time()
-                self._is_resting = True
-                return
-            note1 = ModulinoBuzzer.NOTES[note]
-            duration = int(dur * self.scale) - 5
-            if self.spk:
-                self.spk.tone(note1, duration, blocking=True)
-        self.active = False
-        self._buffer.pop(0)
-    
     def serialize(self) -> dict:
         return {
             'active': self.active,
             'duration': self.duration,
         }
 
-    def act(self, params: str, hash_: str):
-        if not self.enabled:
+    def act(self, params: str | list[str], hash_: str):
+        '''params: a sound, or a list of them played as one (a melody, then a boop).'''
+        if not self.enabled or not params:
             return
-        if not params:
-            return
-        if params == 'boop':
-            self._play(hash_, [('D5', 70), ('REST', 100)])
-        elif params == 'rest_1s':
-            self._play(hash_, [('REST', 1000)])
-        elif params == 'encoder':
-            self._play(hash_, [('A5', 10), ('REST', 10)])
-        elif params == 'encoder-':
-            self._play(hash_, [('D5', 10), ('REST', 10)])
-        elif params == 'ok':
-            self._play(hash_, [('E5', 125)])
-        elif params == 'siren':
-            self._play(hash_, self.generate_siren(440, 880, 4000, 200, 2))
-        elif params == 'nokia':
-            self._play(hash_, self.MELODIES['nokia'])
-        elif params == 'fmart':
-            self._play(hash_, self.MELODIES['family_mart'], scale=1.25)
-        elif params == 'fmart.mid':
-            self._play(hash_, self.MELODIES['family_mart'], scale=1.35)
-        elif params == 'fmart.slow':
-            self._play(hash_, self.MELODIES['family_mart'], scale=2)
-        elif params == 'fmart2':
-            self._play(hash_, self.MELODIES['family_mart_2'], scale=1.2)
-    
-    def _play(self, hash_, notes, block=True, scale=1):
-        sig = (hash_, tuple(notes), scale)
-        if sig not in self._buffer:
+        notes = sum((self._sound(p) for p in ([params] if isinstance(params, str) else params)), [])
+        sig = (hash_, tuple(notes))
+        # The same sound again while it waits or plays: once is enough.
+        if notes and sig not in self._buffer and len(self._buffer) < self.queue_max:
             self._buffer.append(sig)
+            self._wake.set()
+
+    def _sound(self, name: str) -> list[tuple[str | int, int]]:
+        def scaled(notes, scale, rest=None):
+            # rest: each rest that long whatever it says (ms). The family mart tunes had theirs as one sensor loop, ~60 ms.
+            return [(n, rest if rest and n == 'REST' else int(d * scale)) for n, d in notes]
+        if name == 'boop':
+            return [('D5', 70), ('REST', 100)]
+        elif name == 'rest_1s':
+            return [('REST', 1000)]
+        elif name == 'encoder':
+            return [('A5', 10), ('REST', 10)]
+        elif name == 'encoder-':
+            return [('D5', 10), ('REST', 10)]
+        elif name == 'ok':
+            return [('E5', 125)]
+        elif name == 'siren':
+            return self.generate_siren(440, 880, 4000, 200, 2)
+        elif name == 'nokia':
+            return list(self.MELODIES['nokia'])
+        elif name == 'fmart':
+            return scaled(self.MELODIES['family_mart'], 1.25, rest=60)
+        elif name == 'fmart.mid':
+            return scaled(self.MELODIES['family_mart'], 1.35, rest=60)
+        elif name == 'fmart.slow':
+            return scaled(self.MELODIES['family_mart'], 2, rest=60)
+        elif name == 'fmart2':
+            return scaled(self.MELODIES['family_mart_2'], 1.2, rest=60)
+        return []
 
     @classmethod
     def setup(cls, bus: board.I2C, conf: Config, **kwargs):
@@ -673,6 +660,7 @@ class Buzzer:
         try:
             buzzer = ModulinoBuzzer(bus, address=int(conf.buzzer_address, base=16))
             buzz = cls(spk=buzzer, enabled=True, **kwargs)
+            threading.Thread(target=buzz._run, daemon=True).start()
             # buzz.act('fmart.mid', '_init')
             # buzz.act('encoder', '_init')
             buzz.act('boop', '_init')

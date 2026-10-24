@@ -181,14 +181,69 @@ def test_ws2_resync_sends_the_whole_frame_again(server):
         receive_frame(ws, f)
     assert same(f.frame, a)
 
-def test_ws2_acts(server):
+def act(srv, dest: str, cmd: list):
     from disinfo.drat.app_states import PubSubMessage
+    srv.load_acts('di.pubsub.acts', PubSubMessage(action='act', payload={'dest': dest, 'cmd': cmd}))
+
+def test_ws2_acts(server):
     srv, client = server
     publish(srv, 't.acts', picture())
     with client.websocket_connect('/ws2/t.acts') as ws:
         receive_frame(ws, frames.FrameAssembler())
-        srv.load_acts('di.pubsub.acts', PubSubMessage(action='act', payload={'dest': 't.acts', 'cmd': ['buzzer', 'boop', 1]}))
-        assert json.loads(ws.receive_text()) == {'acts': [['buzzer', 'boop', 1]]}
+        act(srv, 't.acts', ['buzzer', 'boop', 1])
+        msg = json.loads(ws.receive_text())
+    assert msg == {'acts': [['buzzer', 'boop', 1]], 'acts_id': srv.last_act('t.acts')}
+
+def test_ws2_acts_before_frames(server):
+    srv, client = server
+    publish(srv, 't.first', picture(seed=1))
+    with client.websocket_connect('/ws2/t.first') as ws:
+        receive_frame(ws, frames.FrameAssembler())
+        publish(srv, 't.first', picture(seed=2))
+        act(srv, 't.first', ['buzzer', 'ok', 1])
+        while 'text' not in (msg := ws.receive()) or 'alive' in msg['text']:
+            assert 'bytes' not in msg
+    assert json.loads(msg['text'])['acts'] == [['buzzer', 'ok', 1]]
+
+def v1_acts(ws, node='t') -> list:
+    ws.send_text(json.dumps({'telemetry': '{}', '_node': node}))
+    return json.loads(ws.receive_text())['acts']
+
+def test_v1_acts_between_frames(server):
+    # The telemetry that asks for a frame used to clear what came since the last one.
+    srv, client = server
+    publish(srv, 't.v1', picture())
+    got = []
+    with client.websocket_connect('/ws/t.v1') as ws:
+        for i in range(5):
+            got += v1_acts(ws)
+            act(srv, 't.v1', ['buzzer', 'boop', i])
+        got += v1_acts(ws) + v1_acts(ws)
+    assert got == [['buzzer', 'boop', i] for i in range(5)]
+
+def test_acts_to_each_client_once(server):
+    srv, client = server
+    publish(srv, 't.two', picture())
+    with client.websocket_connect('/ws/t.two') as a, client.websocket_connect('/ws/t.two') as b:
+        v1_acts(a), v1_acts(b)
+        act(srv, 't.two', ['buzzer', 'ok', 1])
+        assert v1_acts(a) == v1_acts(b) == [['buzzer', 'ok', 1]]
+        assert v1_acts(a) == v1_acts(b) == []
+
+def test_acts_since_after_a_reconnect(server):
+    srv, client = server
+    publish(srv, 't.since', picture())
+    with client.websocket_connect('/ws/t.since') as ws:
+        v1_acts(ws)
+        since = srv.last_act('t.since')
+    act(srv, 't.since', ['buzzer', 'ok', 1])
+    with client.websocket_connect('/ws/t.since') as ws:
+        assert v1_acts(ws) == []                      # a new client: from now on
+    with client.websocket_connect(f'/ws/t.since?since={since}') as ws:
+        assert v1_acts(ws) == [['buzzer', 'ok', 1]]
+    srv.acts['t.since'][-1] = (srv.last_act('t.since'), time.time() - srv.ACTS_TTL, ['buzzer', 'ok', 1])
+    with client.websocket_connect(f'/ws/t.since?since={since}') as ws:
+        assert v1_acts(ws) == []                      # too old to play
 
 def test_ws2_sends_only_what_changed(server):
     srv, client = server

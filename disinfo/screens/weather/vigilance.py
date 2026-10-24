@@ -19,7 +19,6 @@ PHENOMENA = {
 }
 # Shown from yellow (1 is green, 2 yellow, 3 orange, 4 red in the colour ids: green is 1).
 CARED = {'2', '5', '7'}         # rain, snow/ice, cold: from yellow; the others from orange
-LEVELS = {2: 'jaune', 3: 'orange', 4: 'rouge'}
 
 
 def fetch(key: str) -> dict:
@@ -71,7 +70,7 @@ def doc() -> dict | None:
     return _cache['doc']
 
 def lines(now: float, d: dict | None = None) -> list[tuple[int, str]]:
-    '''[(color, text)], the worst first: the worst colour still to come (or now) for each phenomenon and when.'''
+    '''[(color, text)], the worst first (the colour is the level, the card draws it): the worst colour still to come (or now) for each phenomenon and when.'''
     d = d or doc()
     if not d:
         return []
@@ -83,7 +82,7 @@ def lines(now: float, d: dict | None = None) -> list[tuple[int, str]]:
         begin, end, color = max(live, key=lambda w: (w[2], -w[0]))
         t = lambda s: pendulum.from_timestamp(s, 'Europe/Paris')
         span = f'jusqu\'à {t(end).format("H")}h' if begin <= now else f'{t(begin).format("H")}h-{t(end).format("H")}h'
-        out.append((color, f'{PHENOMENA.get(ph, ph)} {LEVELS[color]} {span}'))
+        out.append((color, f'{PHENOMENA.get(ph, ph)} {span}'))
     return sorted(out, key=lambda l: -l[0])
 
 
