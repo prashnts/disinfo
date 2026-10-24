@@ -435,23 +435,20 @@ def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
         ], gap=3),
     ], gap=3)
 
-def on_scrim(info: Frame, w: int, h: int) -> Frame:
-    # Sits on a scrim over the bottom of the camera. Sized by the width first: unsized, the scrim fills all of h.
-    return div(div(info, padding=(1, 2, 1, 2), background='#000000a0', width=w - 4), width=w, height=h, anchor='bl')
-
-def camera_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
+# Overlays: lines of a ticker on a scrim over the bottom of the camera, w wide.
+def camera_overlay(fs: FrameState, state: PrinterState, w: int) -> Frame:
     color = phase_colors.get(state.phase, '#5b5e64')
     eta = text(state.completion_time, muted_small_style) if state.completion_time else None
-    return on_scrim(hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3), w, h)
+    return div(hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3), width=w)
 
-def job_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
-    return on_scrim(hstack([text(title_of(state) or 'Job', tiny_bright_style, overflow='fit'), Spacer()]), w, h)
+def job_overlay(fs: FrameState, state: PrinterState, w: int) -> Frame:
+    return div(hstack([text(title_of(state) or 'Job', tiny_bright_style, overflow='fit'), Spacer()]), width=w)
 
-def stats_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
+def stats_overlay(fs: FrameState, state: PrinterState, w: int) -> Frame:
     # Brighter than the stats slide: it's on the camera.
     uname = lambda x: f'{x}_{state.printer_id}'
     temp = lambda icon, value, target, name: hstack([icon, text_slide_in(fs, f'{round(value)}', warn_small_style if target and value < target - 3 else bright_small_style, name=name)], gap=2) if value is not None and value >= 0 else None
-    return on_scrim(vstack([
+    return div(vstack([
         hstack([
             temp(toolt_icon, state.extruder_temp, state.extruder_target, uname('toolt')),
             temp(bedt_icon, state.bed_temp, state.bed_target, uname('bedt')),
@@ -459,7 +456,18 @@ def stats_overlay(fs: FrameState, state: PrinterState, w: int, h: int) -> Frame:
             Spacer(),
         ], gap=5),
         hstack([text(state.active_tray, tiny_bright_style, overflow='fit') if state.active_tray else None, Spacer(), text(f'{state.weight:g}g', tiny_bright_style) if state.weight else None], gap=3),
-    ], gap=3), w, h)
+    ], gap=3), width=w)
+
+def ticker(fs: FrameState, state: PrinterState, view: Frame, h: int) -> Frame:
+    # The scrim stays, the lines roll up in it. It's as tall as the line on.
+    w = card_width - 4
+    rolled = Slides(f'klipper.ticker_{state.printer_id}', SlidesStyle(width=w, edge='bottom')).mut([
+        (lambda: camera_overlay(fs, state, w), slide_times['camera']),
+        (lambda: job_overlay(fs, state, w), slide_times['job']),
+        (lambda: stats_overlay(fs, state, w), slide_times['stats']),
+    ]).draw(fs)
+    scrim = div(rolled, padding=(1, 2, 1, 2), background='#000000a0')
+    return div(scrim, width=card_width, height=h, radius=2, anchor='bl', background_frame=view)
 
 
 def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
@@ -540,12 +548,7 @@ def composer(fs: FrameState, state: PrinterState):
         view = image_from_url(state.thumbnail, resize=(card_width, card_width * 9 // 16), ratio_fn=min)
         view = view.crop_even(vertical=max(view.height - h, 0) // 2) if view else None
     if view:
-        overlays = Slides(uname('klipper.overlays'), SlidesStyle(width=card_width, height=h)).mut([
-            (lambda: camera_overlay(fs, state, card_width, h), slide_times['camera']),
-            (lambda: job_overlay(fs, state, card_width, h), slide_times['job']),
-            (lambda: stats_overlay(fs, state, card_width, h), slide_times['stats']),
-        ]).draw(fs)
-        return card(div(overlays, width=card_width, height=h, radius=2, background_frame=view))
+        return card(ticker(fs, state, view, h))
     body = Slides(uname('klipper.slides'), SlidesStyle(width=card_width, height=h, radius=2)).mut([
         (lambda: job_slide(fs, state, h), slide_times['job']),
         (lambda: stats_slide(fs, state, h), slide_times['stats']),

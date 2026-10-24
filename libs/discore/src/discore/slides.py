@@ -4,7 +4,8 @@ from typing import Callable, Optional
 from .data_structures import FrameState, ScopedInstance
 from .elements import Frame
 from .layers import div
-from .transitions import FadeIn
+from .transitions import Edges, FadeIn, SlideIn
+from . import ease
 
 
 # A slide: draws its frame when it's on screen, and how many seconds it stays.
@@ -16,6 +17,8 @@ class SlidesStyle:
     height: Optional[int] = None
     radius: int = 0
     fade: float = 0.4
+    # Slides in from this edge instead of fading, over the same time.
+    edge: Optional[Edges] = None
 
 
 class Slides(metaclass=ScopedInstance):
@@ -55,4 +58,6 @@ class Slides(metaclass=ScopedInstance):
         s = self.style
         # Tagged by position: the fade restarts on a new slide, not on each new frame of a live one.
         body = div(frame, width=s.width, height=s.height, anchor='tl', radius=s.radius).tag(('slides', self.name, i, len(self.slides)))
+        if s.edge:
+            return SlideIn(f'{self.name}.slide', s.fade, ease.cubic.cubic_out, edge=s.edge).mut(body).draw(fs)
         return FadeIn(f'{self.name}.fade', s.fade).mut(body).draw(fs)

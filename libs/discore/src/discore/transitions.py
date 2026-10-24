@@ -199,10 +199,12 @@ class SlideIn(TimedTransition[Frame]):
 
     @property
     def max_pos(self):
+        # Pushed out by the new one: the old one's size, when it's first in the stack.
+        frame = self.prev_value if self.prev_value and self.edge in ['bottom', 'right'] else self.curr_value
         if self.edge in ['top', 'bottom']:
-            return self.curr_value.height
+            return frame.height
         else:
-            return self.curr_value.width
+            return frame.width
 
     @property
     def slide_frame(self) -> Frame:
@@ -222,7 +224,11 @@ class SlideIn(TimedTransition[Frame]):
 
     def draw(self, fs: FrameState) -> Frame:
         self.tick(fs.tick)
-        i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
+        size = self.curr_value.size
+        if self.edge == 'bottom' and self.prev_value and self.pos < 1:
+            # As tall as the taller one while it moves: nothing is cut off before it's out.
+            size = (size[0], max(size[1], self.prev_value.height))
+        i = Image.new('RGBA', size, (0, 0, 0, 0))
         pos = int(self.max_pos * self.pos)
         flip_margin = 6
 
