@@ -52,13 +52,15 @@ def p_stack_offset():
 
 
 
-def below_time(fs: FrameState, app, layout, items: dict, image: Frame, gap: int = 2) -> Frame:
+def below_time(fs: FrameState, app, layout, items: dict, image: Frame, gap: int = 2, min_h: int = 100) -> Frame:
     # The app full width, in the rows the time leaves: below it, above it when it's down.
+    # At least min_h tall: on a short screen (the desk) it goes over the time's seconds.
     key = 'timedate' if 'timedate' in layout.positions else 'time'
     if key not in layout.positions:
         return image
     y, h = layout.positions[key][1], items[key].height
-    y0, y1 = (y + h + gap, fs.config.height) if y < fs.config.height // 2 else (0, y - gap)
+    H = fs.config.height
+    y0, y1 = (min(y + h + gap, H - min_h), H) if y < H // 2 else (0, max(y - gap, min_h))
     return place_at(app(fs, (fs.config.width, y1 - y0)).draw(fs), image, fs.config.width // 2, y0, 'tm', frost=1.5)
 
 def compose_big_frame(fs: FrameState):
