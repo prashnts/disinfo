@@ -302,6 +302,33 @@ def puffs(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tupl
             ctx.restore()
             ctx.fill()
 
+cirrus_alpha = 0.35
+# The streaks: (per degree of the view, elevation range, length in degrees).
+cirrus_density, cirrus_elev, cirrus_len = 0.12, (20, 60), (5, 14)
+
+def cirrus(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tuple, lk, k: float):
+    # High cloud (the model's, the light can't tell it): thin streaks high up, each where it is by bearing. They keep
+    # the sunset's colour after it's gone from the low ones.
+    c = tuple(v * (1 - lk.glow) + g / 255 * lk.glow for v, g in zip(color, skylook.glow_rgb))
+    ctx.set_line_width(1)
+    step = 1 / cirrus_density
+    for i in range(math.floor((yaw - fov / 2 - cirrus_len[1]) / step), math.ceil((yaw + fov / 2) / step) + 1):
+        r = (math.sin(i * 91.345 + 3.1) * 43758.5453) % 1
+        if r >= k:
+            continue
+        j = (r * 13.17) % 1
+        b, e = i * step, cirrus_elev[0] + (cirrus_elev[1] - cirrus_elev[0]) * j
+        length = cirrus_len[0] + (cirrus_len[1] - cirrus_len[0]) * ((r * 7.7) % 1)
+        (x0, y0), (x1, y1) = to_px(b, e), to_px(b + length, e - 2 * (j - 0.5))
+        g = cairo.LinearGradient(x0, y0, x1, y1)
+        g.add_color_stop_rgba(0, *c, 0)
+        g.add_color_stop_rgba(0.4, *c, cirrus_alpha * (0.5 + 0.5 * k))
+        g.add_color_stop_rgba(1, *c, 0)
+        ctx.set_source(g)
+        ctx.move_to(x0, y0)
+        ctx.line_to(x1, y1)
+        ctx.stroke()
+
 def fall_tint(lk, color: tuple, k: float = 0.6) -> tuple:
     # Rain and snow are lit by what's around: at night the streetlights.
     k *= lk.city
@@ -391,7 +418,9 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     off = OpenedStateManager().get_state(fs).off
     wet, state, snow = skylook.wetness(fs)
     # No weather state (HA down): the satellite's cover over home stands in.
-    lk = skylook.look(se, state or skylook.conditions['partlycloudy'], skylook.light_gain(fs), None if state else overhead_cover())
+    # The light by the window over both (daylight.py, the same for all screens).
+    cond, cloud, dl = skylook.measured(state, None if state else overhead_cover())
+    lk = skylook.look(se, cond, skylook.light_gain(fs), cloud, dl and dl['warmth'])
     skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
     ctx.set_source_rgba(*horizon_color)
     ctx.move_to(0, hz)
@@ -402,8 +431,13 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     tint, snow_tint = fall_tint(lk, rain_color), fall_tint(lk, snow_color, 0.5)
     if 'clouds' not in off or wet:
         cc = skylook.cloud_color(lk, wet * (1 - 0.7 * snow))
-        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, cc, min(wet * 1.4, 0.8), cloud_alpha + 0.25 * wet)
-        puffs(ctx, yaw, fov, w, to_px, cc, min(wet * 1.4, 0.8))
+        if dl and (model := dl['model']) and model['high'] > 0.05:
+            cirrus(ctx, yaw, fov, w, to_px, cc, lk, model['high'])
+        # The cloud the light says is there, all around: the satellite (infrared) misses the low, warm ones.
+        # A deck when it's steady, puffs when the sun goes in and out.
+        seen, broken = (dl['cloud'], dl['broken'] or 0.3) if dl else (0, 0)
+        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, cc, max(min(wet * 1.4, 0.8), 0.6 * seen * (1 - 0.5 * broken)), cloud_alpha + 0.25 * wet)
+        puffs(ctx, yaw, fov, w, to_px, cc, max(min(wet * 1.4, 0.8), seen * (0.2 + 0.5 * broken)))
     else:
         cloud_dim = lambda b: 0.0
 
@@ -411,7 +445,9 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if se > -6 and in_view(sb, 20):
         sx, sy = to_px(sb, se)
         glow = cairo.RadialGradient(sx, sy, 0, sx, sy, 16)
-        dim = 1 - 0.8 * cloud_dim(sb)       # a cloud band in front of it
+        dim = 1 - 0.8 * cloud_dim(sb)       # a cloud band in front of it, or the light says it's in
+        if dl and dl['sun'] is not None:
+            dim = min(dim, (0.15 + 0.85 * dl['sun']) * (1 - 0.9 * dl['dark']))
         glow.add_color_stop_rgba(0, *sun_color, (0.35 if se > 0 else 0.2) * dim)
         glow.add_color_stop_rgba(1, *sun_color, 0)
         ctx.set_source(glow)

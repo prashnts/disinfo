@@ -50,18 +50,26 @@ class Config(BaseModel):
     node_name: str = 'discreen'
 
 
+# (gain register, integration cycles of 2.78 ms), the most sensitive first: night to the sun on the window.
+color_ranges = [(3, 256), (2, 256), (1, 256), (0, 256), (0, 72), (0, 18)]
+color_gains = [1, 4, 16, 64]
+
 @dataclass
 class APDSColor16:
+    '''Counts as at 4x gain and 712 ms (the driver's old fixed setting), whatever the range: they can go past 65535.'''
     _sensor: APDS9960 = None
-    red: int = 0
-    green: int = 0
-    blue: int = 0
-    clear: int = 0
+    red: float = 0
+    green: float = 0
+    blue: float = 0
+    clear: float = 0
+    range: int = 2
+    settle_until: float = 0.0
     updated_at: float = 0.0
 
     @property
     def as_8bit(self) -> tuple[int, int, int, int]:
-        return (self.red // 256, self.green // 256, self.blue // 256, 255 - (self.clear // 256))
+        b = lambda v: min(int(v) // 256, 255)
+        return (b(self.red), b(self.green), b(self.blue), 255 - b(self.clear))
     
     @property
     def _is_zero(self):
@@ -84,17 +92,39 @@ class APDSColor16:
         r, g, b, a = self.as_8bit
         return f'#{r:02X}{g:02X}{b:02X}{a:02X}'
 
+    def set_range(self, i: int):
+        gain, cycles = color_ranges[i]
+        self._sensor.color_gain = gain
+        self._sensor.color_integration_time = cycles
+        self.range = i
+        # The reading in the registers is the old range's until a whole integration is done.
+        self.settle_until = time.monotonic() + 2 * cycles * 0.00278
+
     def update(self):
-        if not self._sensor:
+        if not self._sensor or time.monotonic() < self.settle_until:
             return
         r, g, b, c = self._sensor.color_data
+        gain, cycles = color_ranges[self.range]
+        top = min(1025 * cycles, 65535)
+        if c > 0.75 * top and self.range < len(color_ranges) - 1:
+            return self.set_range(self.range + 1)
+        if self.range > 0:
+            g1, c1 = color_ranges[self.range - 1]
+            if c * color_gains[g1] * c1 / (color_gains[gain] * cycles) < 0.6 * min(1025 * c1, 65535):
+                return self.set_range(self.range - 1)
+        k = 4 * 256 / (color_gains[gain] * cycles)
+        r, g, b, c = (round(v * k, 2) for v in (r, g, b, c))
         if any([r != self.red, g != self.green, b != self.blue, c != self.clear]):
             self.red = r
             self.green = g
             self.blue = b
             self.clear = c
             self.updated_at = time.monotonic()
-    
+
+    @property
+    def rgbc(self) -> list[float]:
+        return [self.red, self.green, self.blue, self.clear]
+
     def __repr__(self):
         return f"Color(hex={self.hex})"
 
@@ -161,6 +191,8 @@ class LightSensor:
             'color_hex': self.color.hex,
             'color_temp': self.color.temp,
             'lux': self.color.lux,
+            'rgbc': self.color.rgbc,
+            'range': color_ranges[self.color.range],
             'proximity': self.proximity.proximity,
             'gesture': self.gesture.gesture,
             'updated_at': max(self.color.updated_at, self.proximity.updated_at, self.gesture.detected_at),
@@ -176,9 +208,11 @@ class LightSensor:
             apds.enable_gesture = conf.apds_gesture_enable
             apds.enable_color = conf.apds_color_enable
             apds.proximity_interrupt_threshold = tuple(conf.apds_proximity_params)
+            color = APDSColor16(apds)
+            color.set_range(color.range)
 
             return cls(
-                color=APDSColor16(apds),
+                color=color,
                 proximity=APDSProximitySensor(apds),
                 gesture=APDSGesture(apds),
                 **kwargs

@@ -10,6 +10,7 @@ from . import idfm
 from ..screens.aviator.tasks import adsbx_task
 from ..screens.weather import vigilance
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
+from ..screens.aviator import daylight
 
 
 class SafeScheduler(Scheduler):
@@ -74,6 +75,8 @@ scheduler.every(30).minutes.do(cached('wind', 1800, wind_task))
 scheduler.every(10).minutes.do(cached('sat', 600, sat_task))
 scheduler.every(15).minutes.do(cached('vigil', 900, vigilance.task))
 scheduler.every(30).minutes.do(cached('forecast', 1800, vigilance.forecast_task))
+scheduler.every(15).minutes.do(cached('sky', 900, daylight.sky_task))
+scheduler.every(1).minutes.do(daylight.task)
 
 
 def main():
@@ -81,6 +84,7 @@ def main():
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)
+    pubsub.attach('daylight', ('di.pubsub.telemetry',), daylight.on_telemetry)
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)

@@ -252,11 +252,14 @@ def wrap_page(fs: FrameState, width: int, h: int) -> Frame:
 def digits_page(fs: FrameState, w: int, h: int) -> Frame:
     big = TextStyle(font=fonts.cozette, color='#a6a6a6')
     n = f'{int(fs.tick * 2) % 1000:03}'
-    return vstack([
+    # Up from the top, down from the bottom: a value that wanders.
+    wander = f'{round(50 + 40 * math.sin(int(fs.tick) / 3))}'
+    return grid([
         labelled('per digit', text_slide_in(fs, fs.now.strftime('%H:%M:%S'), big, name='dd.clock')),
+        labelled('up, down', text_slide_in(fs, wander, big, name='dd.wander')),
         labelled('from the top', text_slide_in(fs, n, big, edge='top', name='dd.count')),
         labelled('together', text_slide_in(fs, n, big, together=True, name='dd.together')),
-    ], gap=4)
+    ], ncols=2, gap=4)
 
 
 # Boxes: div, frost, images behind, bars.

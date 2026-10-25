@@ -13,7 +13,7 @@ from typing import NamedTuple
 from disinfo.utils.hass import get_entity
 
 from .state import OpenedStateManager
-from . import weather
+from . import weather, daylight
 
 # Sun altitude (degrees) -> zenith and horizon colours (0-255), a little darker than a day sky: it's an LED display.
 palette = [
@@ -83,8 +83,18 @@ def wetness(fs) -> tuple[float, tuple | None, float]:
         snow = 0.0 if t is None else float(np.clip((snow_c[1] - t) / (snow_c[1] - snow_c[0]), 0, 1))
     return wet, state, snow
 
-def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None) -> Look:
-    '''cloud overrides the weather state's (the satellite's, when there is no state).'''
+def measured(state: tuple | None, cloud: float | None) -> tuple[tuple, float | None, dict | None]:
+    '''The weather state and the cloud over home, with what the light by the window says (daylight.py) over them:
+    it dims the sky as much as the cloud dims the light. Its doc when it says something (not at night, shutter down).'''
+    cond = state or conditions['partlycloudy']
+    dl = daylight.doc()
+    if not dl or dl['source'] != 'light':
+        return cond, cloud, None
+    return (cond[0], cond[1], max(cond[2], 0.5 * dl['dark']), *cond[3:]), dl['cloud'], dl
+
+def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None, warmth: float | None = None) -> Look:
+    '''cloud overrides the weather state's (the satellite's, when there is no state, or the light's). warmth: the light's
+    colour, redder (over 0) or bluer than usual: a stronger or weaker sunset.'''
     at = [a for a, _, _ in palette]
     zen = np.array([np.interp(sun_alt, at, [z[i] for _, z, _ in palette]) for i in range(3)])
     hor = np.array([np.interp(sun_alt, at, [h[i] for _, _, h in palette]) for i in range(3)])
@@ -94,7 +104,7 @@ def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = N
     # Cloud takes the colour out and the light down; the horizon keeps a little of the sunset through it.
     zen = (zen * (1 - 0.65 * c) + grey(zen) * 0.65 * c) * (1 - 0.3 * dark - 0.1 * c)
     hor = (hor * (1 - 0.5 * c) + grey(hor) * 0.5 * c) * (1 - 0.2 * dark)
-    glow = max(0, 1 - abs(sun_alt - 1) / 9) * (1 - 0.75 * c)
+    glow = max(0, 1 - abs(sun_alt - 1) / 9) * (1 - 0.75 * c) * (float(np.clip(1 + warmth, 0.5, 1.6)) if warmth else 1)
     city = float(np.clip((-sun_alt - 2) / 8, 0, 1)) * c * gain
     return Look(tuple(np.clip(zen * gain / 255, 0, 1)), tuple(np.clip(hor * gain / 255, 0, 1)), haze, c, glow, city)
 

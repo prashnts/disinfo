@@ -256,6 +256,34 @@ def test_sky_look(monkeypatch):
     assert wet('pouring', 10)[0] == 0
 
 
+def test_daylight():
+    import time
+    import numpy as np
+    from disinfo.screens.aviator import daylight as d
+    # The sun up at noon today, so the bearing is in the envelope.
+    now = time.time() - time.time() % 86400 + 12 * 3600
+    sky = lambda t, k: np.array([0.3, 0.33, 0.37, 1]) * max(0, np.sin(np.radians(d.sun_at(t)[0]))) * 20000 * k
+    lamp = np.array([300, 250, 200, 800])
+    rnd = np.random.default_rng(1)
+    rows = []
+    for i in range(4 * 1440):
+        t, on = now - i * 60, int(rnd.choice([0, 255]))
+        rows.append([t, None, 0, *(sky(t, 1 if i // 600 % 2 else 0.2) + on / 255 * lamp + 40).tolist(), on, 0, 0])
+    # The lamps come off the desk's counts: learnt at night, whatever the day did.
+    coef = d.lamp_model(rows)
+    assert coef[1] == pytest.approx(lamp, abs=1) and coef[0] == pytest.approx(40, abs=1)
+    day = [(r[0], x[3]) for r in rows if (x := d.desk_daylight(r, coef)) is not None]
+    envs = {'sensei': None, 'desk': d.envelope(*zip(*day)), 'coef': coef.tolist(), 'rb': None}
+    model = {'at': now, 'cloud_cover': 50, 'cloud_cover_low': 50, 'cloud_cover_mid': 0, 'cloud_cover_high': 0,
+             'shortwave_radiation': 400, 'direct_radiation': 0}
+    at = lambda k: d.estimate([[now - i * 60, None, 0, *(sky(now - i * 60, k) + 40 + lamp).tolist(), 255, 0, 0] for i in range(15)],
+                              envs, model, now)
+    assert at(1)['cloud'] == 0 and at(1)['sun'] == 1
+    assert at(0.05)['cloud'] == 1 and at(0.05)['dark'] > 0.8 and at(0.05)['sun'] == 0
+    assert at(0.001)['source'] == 'shutter' and at(0.001)['cloud'] is None
+    assert d.estimate([], envs, model, now - 12 * 3600)['source'] == 'night'
+
+
 def test_clouds_without_the_satellite(monkeypatch):
     # Raining at home, no satellite picture: the cover all around is the rain's.
     import cairocffi as cairo

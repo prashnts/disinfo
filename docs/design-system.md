@@ -173,10 +173,16 @@ transition.
 - `Slides` cycles frames, each for its own time, and fades between them. With
   `edge='bottom'` and no height it's a ticker: each line rolls up, and the box is as
   tall as the line that's on.
-- `text_slide_in` slides each character in when it changes, which is what the clocks
-  use. Give it a `name`, it keeps its state under it.
+- `text_slide_in` slides each character in when it changes. Give it a `name`, it keeps
+  its state under it. By default the way the value went picks the edge: higher comes in
+  from the top, lower from the bottom. `edge` is that pair, `(up, down)`, or one edge
+  for always: the clocks use `'top'`, so midnight doesn't run backwards. Text that isn't
+  a number keeps the way it went last.
+- `SlideIn(...).mut(frame, edge)` takes the edge for each new value; a frame on its
+  way keeps the one it had.
 - `NumberTransition` eases a number; draw whatever you want with it.
 
+<img src='img/design-motion-1-digits.png' alt='motion: digits up and down' width=300>
 <img src='img/design-motion-2-ticker.png' alt='motion: ticker' width=300>
 
 ```python
@@ -188,7 +194,8 @@ lines = Slides('ticker', SlidesStyle(width=w, edge='bottom')).mut([
     (lambda: job_line, 6),
 ]).draw(fs)
 
-text_slide_in(fs, fs.now.strftime('%H:%M:%S'), big_style, name='clock')
+text_slide_in(fs, f'{round(temp)}', style, name='nozzle')      # up from the top, down from the bottom
+text_slide_in(fs, fs.now.strftime('%H:%M:%S'), big_style, 'top', name='clock')
 v = NumberTransition('gauge', 1.2, ease.cubic.cubic_in_out, initial=0).mut(target).value(fs)
 ```
 

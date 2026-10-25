@@ -141,6 +141,12 @@ class Config(AppBaseModel):
     aviator_view: str = 'map'
     # The window's height over the street, m: the roofs around sit under the horizon or over it (11th floor).
     aviator_eye_m: float = 35
+    # The light by the window (aviator/daylight.py): Sensei's lux and UV, the desk's colour sensor (its telemetry
+    # node) and the lamps around it, taken off its counts.
+    daylight_lux: str = 'sensor.sensei_lux'
+    daylight_uv: str = 'sensor.sensei_uv'
+    daylight_node: str = 'distudy'
+    daylight_lamps: list[str] = ['light.ikea_driver_study_desk_left', 'light.ikea_driver_study_desk_right', 'light.ikea_e27_study_desklamp']
 
     shazam: ShazamConfig = ShazamConfig()
 

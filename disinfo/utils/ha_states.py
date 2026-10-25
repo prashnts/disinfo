@@ -21,6 +21,9 @@ SENSORS = {
     'visible': ('Visible', None, None),
     'infrared': ('IR', None, None),
     'full_spectrum': ('Full Spectrum', None, None),
+    'clear': ('Clear', None, None),                 # the desk's colour sensor, its clear channel
+    'daylight': ('Daylight', '%', None),            # of the brightest seen with the sun there (aviator/daylight.py)
+    'sky_cloud': ('Sky Cloud', '%', None),
 }
 # The BME680 warms itself: ESPHome took 1 °C off.
 OFFSETS = {'temperature': -1}

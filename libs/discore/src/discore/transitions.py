@@ -1,3 +1,4 @@
+import re
 import time
 import math
 from dataclasses import replace as dc_replace
@@ -197,6 +198,12 @@ class SlideIn(TimedTransition[Frame]):
         self.edge = edge
         self.align = align
 
+    def mut(self, value: Frame, edge: Edges = None) -> 'SlideIn':
+        # Each new value can come in from its own edge; one on its way keeps the one it had.
+        if edge and self.curr_value != value:
+            self.edge = edge
+        return super().mut(value)
+
     @property
     def max_pos(self):
         # Pushed out by the new one: the old one's size, when it's first in the stack.
@@ -277,6 +284,25 @@ class SlideIn(TimedTransition[Frame]):
         return Frame(i, hash=(*self.hash, self.edge))
 
 
+class Rank(metaclass=ScopedInstance):
+    '''Which edge a value comes in from: up when it's higher than the last one, down when lower.'''
+
+    def __init__(self, name: str) -> None:
+        self.value: Optional[float] = None
+        self.edge: Optional[Edges] = None
+
+    def mut(self, value: str, up: Edges, down: Edges) -> Edges:
+        try:
+            n = float(re.sub(r'[^\d.-]', '', value))
+        except ValueError:
+            # Not a number (MON, TUE): it keeps the way it went last.
+            return self.edge or up
+        if self.value is not None and n != self.value:
+            self.edge = up if n > self.value else down
+        self.value = n
+        return self.edge or up
+
+
 class NumberTransition(TimedTransition[float]):
     def value(self, fs: FrameState) -> float:
         self.tick(fs.tick)
@@ -287,7 +313,7 @@ def text_slide_in(
     fs: FrameState,
     value: str,
     style=TextStyle(),
-    edge='bottom',
+    edge: Union[Edges, tuple[Edges, Edges]] = ('top', 'bottom'),
     duration=0.25,
     easing=ease.linear.linear,
     div_style=None,
@@ -295,6 +321,8 @@ def text_slide_in(
     name: str = None) -> Frame:
     if not name:
         name = uname(6)
+    if not isinstance(edge, str):
+        edge = Rank(name).mut(value, *edge)
     if not isinstance(style, list):
         styles = [style] * len(value)
     else:
@@ -319,8 +347,8 @@ def text_slide_in(
             slide = div(frame, style=div_style)
             frames[i] = slide
     for i, frame in enumerate(frames):
-        slide = (SlideIn(f'{name}.{i}', duration=duration, edge=edge, easing=easing)
-                .mut(frame)
+        slide = (SlideIn(f'{name}.{i}', duration=duration, easing=easing)
+                .mut(frame, edge)
                 .draw(fs))
         frames[i] = slide
 

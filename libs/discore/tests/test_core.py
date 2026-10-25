@@ -82,6 +82,20 @@ def test_ticker_rolls_up_by_the_old_line():
         end = s.draw(FrameState(tick=t + 3.1, now=None))
         assert end.size == (4, 3) and end.image.getpixel((0, 0))[1] == 255
 
+def test_digits_come_in_from_the_way_the_value_went():
+    from discore import ease
+    from discore.transitions import Rank, SlideIn, text_slide_in
+    with scope('test.rank'):
+        r = Rank('r')
+        assert [r.mut(v, 'top', 'bottom') for v in ('12:59', '13:00', '09:59', 'MON', '9.5', '-3')] == ['top', 'top', 'bottom', 'bottom', 'bottom', 'bottom']
+        fs = lambda: FrameState(tick=time.time(), now=None)
+        edge = lambda i: SlideIn(f'n.{i}', duration=0.25, easing=ease.linear.linear).edge
+        text_slide_in(fs(), '19', name='n'); text_slide_in(fs(), '21', name='n')
+        assert (edge(0), edge(1)) == ('top', 'top')
+        text_slide_in(fs(), '20', name='n')
+        assert (edge(0), edge(1)) == ('top', 'bottom')   # the 2 didn't change, it keeps its way
+
+
 def test_placed_frames_differ_by_what_is_under_and_where():
     from discore.layouts import place_at, composite_at
     card, a, b = solid((255, 0, 0, 255)), solid((0, 0, 0, 255), (8, 8)), solid((0, 0, 255, 255), (8, 8))
