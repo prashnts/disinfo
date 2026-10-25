@@ -35,6 +35,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ## [Unreleased]
 
+### Added
+- Rain in the sky view: falling rain along the wind when it rains at home, the sky and clouds overcast with it, the city's light on the clouds at night; a drop by the map's compass. A switch on the web page makes it rain.
+
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 
 <img src="assets/changelog/2026-10-25.png" alt="disinfo on 2026-10-25" width="256">

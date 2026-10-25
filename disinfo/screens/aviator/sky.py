@@ -100,7 +100,7 @@ def landmark_points(eye: float) -> list[tuple]:
         out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape))
     return out
 
-def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None):
+def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None, rim: tuple = rim_color):
     # Pixel-crisp: sharp on the LEDs, and nothing changes between frames when the view's still.
     ctx.set_antialias(cairo.ANTIALIAS_NONE)
     far, near = city()
@@ -126,7 +126,7 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
                 lit.append((outline, k, x0, x1, yc, b0))
         ctx.set_source_rgb(*color)
         ctx.fill()
-        ctx.set_source_rgba(*rim_color)
+        ctx.set_source_rgba(*rim)     # wet: shining with the rain's light
         for outline in rims:
             ctx.move_to(*outline[0])
             for p in outline[1:]:
@@ -225,27 +225,29 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float]:
 def shade(hex: str, k: float) -> tuple[float, float, float]:
     return tuple(min(int(hex[i:i + 2], 16) / 255 * k, 1) for i in (1, 3, 5))
 
-cloud_color = (0.72, 0.75, 0.82)
-cloud_alpha = 0.55
+cloud_alpha = 0.55      # 0.8 in a downpour
 cloud_weights = (0.4, 0.3, 0.2, 0.1)       # the nearer, the more it counts
 rain_color = (0.68, 0.76, 0.9)
 rain_weights = (1, 0.8, 0.6, 0.45, 0.3)
 cloud_base_km = 4       # the rain hangs from here: higher in the view the nearer it is
 col_step = 2            # px between the columns of a band
+# The drops at home, far then near: (per px of the view, length px, px/s falling, alpha).
+drop_layers = ((1 / 380, 3, 55, 0.22), (1 / 1100, 6, 120, 0.42))
 
-def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int):
-    # A band of cloud over the horizon, as high as the cover is thick in each direction, grey going to nothing upwards.
-    # Returns the cover (0..1) by bearing, for what it hides.
-    if not (prof := weather.sky_profile('clouds')):
+def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, color: tuple, floor: float = 0, alpha: float = cloud_alpha):
+    # A band of cloud over the horizon, as high as the cover is thick in each direction, going to nothing upwards.
+    # floor: the cover all around when it rains at home. Returns the cover (0..1) by bearing, for what it hides.
+    prof = weather.sky_profile('clouds')
+    if not prof and not floor:
         return lambda b: 0.0
-    values = prof[0]
     xs = np.arange(0, w + col_step, col_step)
-    cover = (weather.along(values, yaw + (xs - w / 2) / w * fov) * np.array(cloud_weights, np.float32)).sum(axis=1)
-    top = hz - hz * 0.95 * np.clip(cover * 2.5, 0, 1) ** 0.8
+    weights = np.array(cloud_weights, np.float32)
+    cover_at = lambda bs: np.maximum(np.clip((weather.along(prof[0], bs) * weights).sum(axis=1) * 2.5, 0, 1) if prof else 0, floor)
+    top = hz - hz * 0.95 * cover_at(yaw + (xs - w / 2) / w * fov) ** 0.8
     if top.min() < hz - 1:
         g = cairo.LinearGradient(0, top.min(), 0, hz)
-        g.add_color_stop_rgba(0, *cloud_color, 0)
-        g.add_color_stop_rgba(1, *cloud_color, cloud_alpha)
+        g.add_color_stop_rgba(0, *color, 0)
+        g.add_color_stop_rgba(1, *color, alpha)
         ctx.set_source(g)
         ctx.move_to(0, hz)
         for x, y in zip(xs, top):
@@ -253,14 +255,18 @@ def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int):
         ctx.line_to(w, hz)
         ctx.close_path()
         ctx.fill()
-    return lambda b: float(np.clip(weather.along(values, np.array([b]))[0] @ np.array(cloud_weights, np.float32) * 2.5, 0, 1))
+    return lambda b: float(cover_at(np.array([b]))[0])
 
-def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, now: float):
-    # Curtains of rain hanging in the directions it rains in, nearer ones higher and stronger; a few drops across
-    # the whole view when it rains at home.
+def rain_tint(lk) -> tuple:
+    # Rain is lit by what's behind it: at night the streetlights.
+    k = 0.6 * lk.city
+    return tuple(c * (1 - k) + v / 255 * k for c, v in zip(rain_color, skylook.city_rgb))
+
+def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, tint: tuple):
+    # Curtains of rain hanging in the directions it rains in, nearer ones higher and stronger.
     if not (prof := weather.sky_profile('rain')):
         return
-    values, home_mm = prof
+    values = prof[0]
     xs = np.arange(0, w, col_step)
     along = weather.along(values, yaw + (xs - w / 2) / w * fov) * np.array(rain_weights, np.float32)
     best = along.argmax(axis=1)
@@ -273,19 +279,30 @@ def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, no
         top = hz - hz * (min(e, 90) / 90) ** elev_gamma
         # Streaky: each column its own strength.
         streak = 0.5 + 0.5 * ((x * 37 + k * 11) % 7) / 6
-        ctx.set_source_rgba(*rain_color, min(power[i] * 1.4, 0.6) * streak)
+        ctx.set_source_rgba(*tint, min(power[i] * 1.4, 0.6) * streak)
         ctx.move_to(float(x) + 0.5, top)
         ctx.line_to(float(x) + 0.5, hz)
         ctx.stroke()
-    if home_mm >= 0.2:
-        a = min(0.15 + home_mm / 12, 0.45)
-        ctx.set_source_rgba(*rain_color, a)
-        for i in range(int(w * h / 500)):
-            x = (i * 0.6180339887) % 1 * w
-            y = ((i * 0.7548776662) % 1 * h + now * 40 + i * 13) % h
+
+def drops(ctx: cairo.Context, w: int, h: int, now: float, wet: float, slant: float, tint: tuple):
+    # The rain at home, across the whole view: the near drops longer, brighter and faster. They fall along the wind.
+    for depth, (per_px, length, speed, alpha) in enumerate(drop_layers):
+        ctx.set_source_rgba(*tint, alpha * (0.5 + 0.5 * wet))
+        for i in range(int(w * h * per_px * (0.3 + wet))):
+            y = ((i * 0.7548776662 + depth * 0.37) % 1 * h + now * speed) % (h + length) - length
+            x = ((i * 0.6180339887 + depth * 0.5) % 1 * (w + 40) - 20 + slant * y) % (w + 40) - 20
             ctx.move_to(x, y)
-            ctx.line_to(x - 1.5, y + 5)
+            ctx.line_to(x + slant * length, y + length)
         ctx.stroke()
+
+def drop_slant(yaw: float) -> float:
+    # The wind at home across the view (right is yaw + 90), in px sideways per px falling.
+    doc = weather.wind_doc()
+    if not doc or not (wv := weather.wind_at(doc, 0, 0)):
+        return -0.25
+    u, v = wv
+    r = math.radians(yaw)
+    return float(np.clip((u * math.cos(r) - v * math.sin(r)) / 8, -0.8, 0.8))
 
 def overhead_cover() -> float | None:
     # The cloud cover over home from the satellite (the nearest bins, every bearing), 0..1; None without data.
@@ -314,7 +331,8 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     # The sky: the sun's height, the weather state and the room's light (skylook.py).
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
-    state = skylook.weather_state(fs)
+    off = OpenedStateManager().get_state(fs).off
+    wet, state = skylook.wetness(fs)
     # No weather state (HA down): the satellite's cover over home stands in.
     lk = skylook.look(se, state or skylook.conditions['partlycloudy'], skylook.light_gain(fs), None if state else overhead_cover())
     skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
@@ -323,9 +341,12 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.line_to(w, hz)
     ctx.stroke()
 
-    off = OpenedStateManager().get_state(fs).off
     info, show_planes = 'info' not in off, 'planes' not in off
-    cloud_dim = clouds(ctx, yaw, fov, w, hz, h) if 'clouds' not in off else lambda b: 0.0
+    tint = rain_tint(lk)
+    if 'clouds' not in off or wet:
+        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, skylook.cloud_color(lk, wet), min(wet * 1.4, 0.8), cloud_alpha + 0.25 * wet)
+    else:
+        cloud_dim = lambda b: 0.0
 
     # The sun where it is, its glow over the horizon a little after it's set.
     if se > -6 and in_view(sb, 20):
@@ -342,15 +363,15 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             ctx.fill()
 
     # Stars once the sun is well down (dimmed by the cloud), the moon where it is, fainter in daylight.
-    clear_sky = 1 - 0.9 * lk.cloud
+    clear_sky = (1 - 0.9 * lk.cloud) * max(1 - 2 * wet, 0)
     astro.draw_stars(ctx, now, fs.config.latitude, fs.config.longitude, to_px, in_view, min(max((-se - 3) / 12, 0), 1) * clear_sky)
     mb, me, phase = astro.moon_at(now, fs.config.latitude, fs.config.longitude)
     if me > -1 and in_view(mb, 10):
         mx, my = to_px(mb, max(me, 0))
-        astro.draw_moon(ctx, mx, my, 3, phase, (1 - 0.65 * min(max(se / 10, 0), 1)) * (1 - 0.8 * cloud_dim(mb)) * (1 - 0.5 * lk.cloud))
+        astro.draw_moon(ctx, mx, my, 3, phase, (1 - 0.65 * min(max(se / 10, 0), 1)) * (1 - 0.8 * cloud_dim(mb)) * (1 - 0.5 * lk.cloud) * max(1 - 2 * wet, 0))
 
     if 'rain' not in off:
-        rain(ctx, yaw, fov, w, hz, h, now)
+        rain(ctx, yaw, fov, w, hz, h, tint)
 
     targets, lit = [], []
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
@@ -396,7 +417,11 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             labels.append((app.pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
 
     # The roofs over all that: a low plane goes behind them. Its number and the ring stay on top.
-    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None)
+    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, (*tint, rim_color[3] + 0.2 * wet) if wet > 0.05 else rim_color)
+    # The rain at home falls in front of all that, at a few frames a second.
+    app._raining[fs.config.name] = wet > 0.05
+    if wet > 0.05:
+        drops(ctx, w, h, now, wet, drop_slant(yaw), tint)
     for px, py in (lit if info else ()):
         ctx.set_source_rgba(1, 1, 1, 0.85)
         ctx.arc(px, py, 6.5, 0, 2 * math.pi)

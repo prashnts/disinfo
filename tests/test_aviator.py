@@ -177,9 +177,14 @@ def test_layers_planes_and_info(monkeypatch):
     monkeypatch.setattr(app, 'following', lambda fs: None)
     monkeypatch.setattr(app, 'drift', lambda t: t)
     monkeypatch.setattr(app, '_cams', {})
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None))
     fs = NS(config=NS(name='layers', width=120, height=80, aviator_map_up=0, aviator_zoom=1))
     full = app.radar(fs)
     assert [t.payload['hex'] for t in full.targets] == ['a']
+    # Raining at home: a badge by the compass.
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.5, None))
+    assert app.radar(fs).image.tobytes() != full.image.tobytes()
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None))
     opened.off = ['planes']
     no_planes = app.radar(fs)
     assert no_planes.targets == ()
@@ -226,6 +231,11 @@ def test_sky_look(monkeypatch):
     # A day sky is much lighter than a night one; the room's light scales it.
     assert sum(noon.zenith) > 5 * sum(night.zenith)
     assert sum(skylook.look(45, clear, 0.55).zenith) < sum(noon.zenith)
+    # The city's light on the cloud: only at night, only with cloud; a cloud is dark and warm then, darker in the rain.
+    rainy_night, rainy_noon = skylook.look(-20, skylook.conditions['rainy']), skylook.look(45, skylook.conditions['rainy'])
+    assert night.city == 0 and rainy_noon.city == 0 and rainy_night.city > 0.8
+    cn, cd = skylook.cloud_color(rainy_night), skylook.cloud_color(rainy_noon)
+    assert sum(cn) < sum(cd) / 2 and cn[0] > cn[2] and sum(skylook.cloud_color(rainy_noon, 1)) < sum(cd)
     # The light sensor: dark room 55%, bright room 100%, none (or garbage) 100%.
     fs = NS(config=NS(ambient_light_sensor='x'))
     for state, want in (('1', 0.55), ('3', 0.55), ('400', 1.0), ('5000', 1.0), ('unavailable', 1.0)):

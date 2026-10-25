@@ -19,10 +19,12 @@ from discore.stack import Stack, StackStyle
 from discore.text import text, TextStyle
 
 from disinfo import fonts
+from disinfo.drat import idfm
 from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
 from disinfo.utils.mdi import icon
 from . import aviator
+from .paris_metro import MetroStateManager
 from .common import background, side_cards, bottom_cards, motion, focus, heat_store, across
 from .date_time import flip_digital_clock
 from .solar.app import AnalogClockStyle, sky_color
@@ -82,21 +84,22 @@ def styles(kind: str, fs: FrameState) -> tuple[ButtonStyle, ButtonStyle]:
             ButtonStyle(normal=DivStyle(background='#40300c90', border_color='#e0a040b0', **cell),
                         pressed=DivStyle(background='#e0a04080', border_color='#ffd080', **cell), fill='#e0a04090'))
 
-def control(fs: FrameState, label: str, payload: dict, on: bool, mdi: str | None, kind: str,
-            outline: bool = False, hold: float = 0) -> Frame:
-    # outline: the icon's outline, if mdi has one. hold: the seconds to hold it, filling.
+def control(fs: FrameState, label: str | None, payload: dict, on: bool, mdi: str | None, kind: str,
+            outline: bool = False, hold: float = 0, act: str = 'ha.call') -> Frame:
+    # outline: the icon's outline, if mdi has one. hold: the seconds to hold it, filling. No label: the icon alone.
     normal, active = styles(kind, fs)
     size = (13 if compact(fs) else 16) if kind == 'big' else (8 if compact(fs) else 10)
     ic = mdi and ((outline and icon(f'{mdi}-outline', size)) or icon(mdi, size))
+    label = label and text(label, label_style)
     if kind == 'big':
-        content = vstack([ic, text(label, label_style)], gap=2, align='center')
+        content = vstack([ic, label], gap=2, align='center')
     else:
-        content = hstack([ic, text(label, label_style)], gap=2)
+        content = hstack([ic, label], gap=2)
     # A Frame: a div puts a Box's content at the top left, not by its anchor.
     touch = TouchStateManager()
-    return button(render(content, *measure(content, UNBOUNDED, UNBOUNDED)), 'ha.call', payload,
-                  pressed=touch.is_pressed(fs, 'ha.call', payload), style=active if on else normal,
-                  hold=hold, progress=hold and touch.held_for(fs, 'ha.call', payload) / hold)
+    return button(render(content, *measure(content, UNBOUNDED, UNBOUNDED)), act, payload,
+                  pressed=touch.is_pressed(fs, act, payload), style=active if on else normal,
+                  hold=hold, progress=hold and touch.held_for(fs, act, payload) / hold)
 
 def action(entity, last_scene) -> tuple[str, bool]:
     # The service and whether it's on, by the domain. A scene's (a button's) state is when it was last used.
@@ -119,6 +122,9 @@ def controls(fs: FrameState, width: int, ncols: int = 3) -> Frame:
         service, on = action(e, last)
         buttons.append(control(fs, name, {'service': service, 'target': {'entity_id': e.entity_id}}, on, mdi, kind,
                                outline=service == 'homeassistant.toggle' and not on, hold=HOLD if service.endswith('.press') else 0))
+    # The metro card: shown or hidden for a while (drat.idfm.press), on while it's up.
+    buttons.append(control(fs, None, None, idfm.visible(fs.now, MetroStateManager().get_state(fs).press), 'subway-variant', 'pill',
+                           act='show_metro'))
     # Fewer columns till it fits: cut to width, the buttons lose their right edges. One column is cut anyway.
     for n in range(ncols, 0, -1):
         g = grid(buttons, ncols=n, gap=GAP//2, anchor='tm', masonry=True)

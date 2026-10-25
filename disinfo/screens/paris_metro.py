@@ -134,7 +134,8 @@ def widgets(fs: FrameState) -> list[Widget]:
     '''In the bottom stack on schedule, on top for a minute when the button's pressed.'''
     s = MetroStateManager().get_state(fs)
     if not idfm.visible(fs.now, s.press):
-        return []
+        # Kept, empty: it shrinks away (Resize), and grows back from nothing.
+        return [Widget('di.metro.info', None, style=card_style)]
     fresh = s.doc and fs.now.timestamp() - s.doc['at'] < fresh_s
     frame = card(fs, s) if fresh else div(metro_paris_banner, padding=10)
     pressed = bool(s.press and fs.now.timestamp() < s.press['until'])

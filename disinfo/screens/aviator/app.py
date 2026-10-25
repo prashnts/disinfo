@@ -1,5 +1,6 @@
 import math
 import time
+import numpy as np
 import cairocffi as cairo
 
 from functools import cache
@@ -16,7 +17,7 @@ from disinfo.config import app_config
 
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
-from . import basemap
+from . import basemap, skylook, weather
 from .utils import airports, local_xy
 
 
@@ -76,6 +77,8 @@ drift_px = 6             # how far the view wanders, px
 drift_zoom = 0.05
 drift_period = 150      # s
 redraw_moving = 1 / 12  # while the camera moves: smooth enough, half the frames a 25 fps renderer makes
+redraw_raining = 1 / 8  # the sky's drops falling
+_raining = {}           # screen -> its sky has drops falling
 fade_step = 15
 _drawn = {}             # screen -> (when, frame)
 
@@ -240,6 +243,40 @@ def compass(ctx: cairo.Context, up: float, w: int, h: int):
     ctx.paint_with_alpha(0.6)
     ctx.restore()
 
+def rain_badge(ctx: cairo.Context, wet: float, w: int, h: int, light: bool):
+    # Raining at home: left of the compass, the same disc, a drop filled as hard as it rains, in the map's rain colours.
+    r = min(max(min(w, h) * 0.06, 6), 13)
+    cx, cy = w - 3 * r - 7, h - r - 4
+    levels = [l for l, _ in weather.rain_colors[light]]
+    level = wet * weather.scale * skylook.rain_home_mm
+    color = [float(np.interp(level, levels, [c[i] for _, c in weather.rain_colors[light]])) for i in range(3)]
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.push_group()
+    ctx.set_source_rgba(0.13, 0.15, 0.19, 0.85)
+    ctx.arc(0, 0, r, 0, 2 * math.pi)
+    ctx.fill_preserve()
+    ctx.set_source_rgba(1, 1, 1, 0.5)
+    ctx.set_line_width(max(r / 12, 0.8))
+    ctx.stroke()
+    d = r * 0.42
+    ctx.move_to(0, -r * 0.68)
+    ctx.curve_to(d * 0.4, -d * 0.6, d, -d * 0.1, d, d * 0.45)
+    ctx.arc(0, d * 0.45, d, 0, math.pi)
+    ctx.curve_to(-d, -d * 0.1, -d * 0.4, -d * 0.6, 0, -r * 0.68)
+    ctx.close_path()
+    ctx.set_source_rgb(*color)
+    ctx.set_line_width(max(r / 10, 0.8))
+    ctx.stroke_preserve()
+    ctx.clip()
+    top, bottom = -r * 0.68, d * 1.45
+    y = bottom - (bottom - top) * max(wet, 0.15)
+    ctx.rectangle(-r, y, 2 * r, bottom - y + 1)
+    ctx.fill()
+    ctx.pop_group_to_source()
+    ctx.paint_with_alpha(0.6)
+    ctx.restore()
+
 def scope(ctx: cairo.Context, hx: float, hy: float, s: float, radius: float, up: float, w: int, h: int, labels: list, theme: Theme, info: bool = True):
     # A dim grey scope around home, rings and spokes, the window's bearings between brighter ones.
     r = max(w, h) * 1.5
@@ -389,6 +426,8 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
 
     if info:
         compass(ctx, up, w, h)
+        if (wet := skylook.wetness(fs)[0]) > 0.05:
+            rain_badge(ctx, wet, w, h, is_light)
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')
@@ -409,7 +448,7 @@ def plane_marks(fs: FrameState) -> list[tuple[float, float, float]]:
 def throttled(fs: FrameState, draw) -> Frame:
     at, f = _drawn.get(fs.config.name, (0, None))
     now = time.monotonic()
-    if f is None or now - at >= (redraw_moving if _moving.get(fs.config.name) else redraw_every):
+    if f is None or now - at >= (redraw_moving if _moving.get(fs.config.name) else redraw_raining if _raining.get(fs.config.name) else redraw_every):
         f = draw()
         _drawn[fs.config.name] = (now, f)
     return f

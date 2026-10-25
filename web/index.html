@@ -297,9 +297,10 @@
             // The radar's map: light mode and the layers, on every screen. What's set is read back on load.
             const names = ['builtup', 'green', 'water', 'roads', 'transit', 'clouds', 'rain', 'wind', 'planes', 'info']
             const [light, setLight] = useState(false)
+            const [rain, setRain] = useState(false)
             const [off, setOff] = useState([])
             useEffect(() => {
-                fetch('/aviator/settings').then(r => r.json()).then(s => { setLight(s.light); setOff(s.off) })
+                fetch('/aviator/settings').then(r => r.json()).then(s => { setLight(s.light); setRain(s.rain); setOff(s.off) })
             }, [])
             const send = (action, payload) => fetch('/remote', {
                 method: 'POST',
@@ -312,6 +313,7 @@
             }
             return html`<div>
                 <label><input type="checkbox" checked=${light} onChange=${e => { setLight(e.currentTarget.checked); send('aviator.light', {on: e.currentTarget.checked}) }}/> Light Mode</label>
+                <label><input type="checkbox" checked=${rain} onChange=${e => { setRain(e.currentTarget.checked); send('aviator.rain', {on: e.currentTarget.checked}) }}/> Make it rain (sky)</label>
                 ${names.map(n => html`<div>
                         <label> <input type="checkbox" checked=${!off.includes(n)} onChange=${e => setLayer(n, e.currentTarget.checked)}/> ${n}</label>
                     </div>`)}

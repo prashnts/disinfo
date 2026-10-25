@@ -1,6 +1,7 @@
 '''The sky's colours from the sun's height, the weather state and the room's light: a gradient by sun altitude (zenith and
 horizon colours, in the spirit of the sky gradients of cpt-city: a purple-pink twilight, an orange horizon at sunset),
 greyed and darkened by cloud, a haze band on the horizon, and the sunset's glow (with its reflection under the horizon).
+At night the city's light comes back from the cloud: an orange-pink glow over the horizon, the lower the cloud, the higher.
 '''
 import math
 import numpy as np
@@ -9,6 +10,9 @@ import cairocffi as cairo
 from typing import NamedTuple
 
 from disinfo.utils.hass import get_entity
+
+from .state import OpenedStateManager
+from . import weather
 
 # Sun altitude (degrees) -> zenith and horizon colours (0-255), a little darker than a day sky: it's an LED display.
 palette = [
@@ -20,14 +24,17 @@ palette = [
     (10, (48, 92, 164), (150, 182, 214)),
     (30, (36, 88, 176), (130, 176, 222)),
 ]
-# HA weather state -> (cloud 0..1, haze 0..1, darker)
+# HA weather state -> (cloud 0..1, haze 0..1, darker, rain 0..1)
 conditions = {
-    'sunny': (0, 0.1, 0), 'clear-night': (0, 0.1, 0), 'partlycloudy': (0.35, 0.2, 0), 'cloudy': (0.8, 0.35, 0.1),
-    'fog': (1, 0.9, 0.1), 'rainy': (0.9, 0.5, 0.25), 'pouring': (1, 0.55, 0.35), 'snowy': (0.9, 0.6, 0.15),
-    'snowy-rainy': (0.9, 0.55, 0.2), 'hail': (1, 0.5, 0.35), 'lightning': (0.9, 0.4, 0.35),
-    'lightning-rainy': (1, 0.5, 0.4), 'windy': (0.3, 0.15, 0), 'windy-variant': (0.5, 0.2, 0.05), 'exceptional': (0.5, 0.3, 0.1),
+    'sunny': (0, 0.1, 0, 0), 'clear-night': (0, 0.1, 0, 0), 'partlycloudy': (0.35, 0.2, 0, 0), 'cloudy': (0.8, 0.35, 0.1, 0),
+    'fog': (1, 0.9, 0.1, 0), 'rainy': (0.9, 0.5, 0.25, 0.4), 'pouring': (1, 0.55, 0.35, 0.85), 'snowy': (0.9, 0.6, 0.15, 0),
+    'snowy-rainy': (0.9, 0.55, 0.2, 0.3), 'hail': (1, 0.5, 0.35, 0.5), 'lightning': (0.9, 0.4, 0.35, 0),
+    'lightning-rainy': (1, 0.5, 0.4, 0.6), 'windy': (0.3, 0.15, 0, 0), 'windy-variant': (0.5, 0.2, 0.05, 0), 'exceptional': (0.5, 0.3, 0.1, 0),
 }
 glow_rgb = (255, 138, 66)
+city_rgb = (150, 82, 52)            # the streetlights on the underside of the cloud
+cloud_rgb = (0.72, 0.75, 0.82)      # a cloud in daylight
+rain_home_mm = 6        # mm/h at home that is a downpour
 lux_dark, lux_bright = 3, 400       # the room: the sky is 55% as bright when dark, full when bright
 
 
@@ -37,6 +44,7 @@ class Look(NamedTuple):
     haze: float         # 0..1
     cloud: float
     glow: float         # the sunset's strength, 0..1
+    city: float         # the city's light on the cloud, 0..1: night and cloud
 
 
 def light_gain(fs) -> float:
@@ -51,21 +59,39 @@ def light_gain(fs) -> float:
 def weather_state(fs) -> tuple[float, float, float] | None:
     '''None: no state from Home Assistant (a state it has no entry for counts as a little cloud).'''
     e = get_entity(fs.config.weather_entity)
-    return None if e is None else conditions.get(e.state, (0.3, 0.2, 0))
+    return None if e is None else conditions.get(e.state, (0.3, 0.2, 0, 0))
+
+def wetness(fs) -> tuple[float, tuple | None]:
+    '''How wet it is at home, 0..1 (the radar, the weather state, or the web page's rain), and the weather state:
+    rainy when the web page makes it rain.'''
+    state = weather_state(fs)
+    opened = OpenedStateManager().get_state(fs)
+    prof = weather.sky_profile('rain')
+    wet = 0.0 if 'rain' in opened.off and not opened.rain else max(min((prof[1] if prof else 0) / rain_home_mm, 1), state[3] if state else 0, 0.45 if opened.rain else 0)
+    if opened.rain and (not state or state[3] < 0.4):
+        state = conditions['rainy']
+    return wet, state
 
 def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None) -> Look:
     '''cloud overrides the weather state's (the satellite's, when there is no state).'''
     at = [a for a, _, _ in palette]
     zen = np.array([np.interp(sun_alt, at, [z[i] for _, z, _ in palette]) for i in range(3)])
     hor = np.array([np.interp(sun_alt, at, [h[i] for _, _, h in palette]) for i in range(3)])
-    c, haze, dark = cond
+    c, haze, dark, _ = cond
     c = c if cloud is None else cloud
     grey = lambda v: np.full(3, v @ [0.3, 0.59, 0.11])
     # Cloud takes the colour out and the light down; the horizon keeps a little of the sunset through it.
     zen = (zen * (1 - 0.65 * c) + grey(zen) * 0.65 * c) * (1 - 0.3 * dark - 0.1 * c)
     hor = (hor * (1 - 0.5 * c) + grey(hor) * 0.5 * c) * (1 - 0.2 * dark)
     glow = max(0, 1 - abs(sun_alt - 1) / 9) * (1 - 0.75 * c)
-    return Look(tuple(np.clip(zen * gain / 255, 0, 1)), tuple(np.clip(hor * gain / 255, 0, 1)), haze, c, glow)
+    city = float(np.clip((-sun_alt - 2) / 8, 0, 1)) * c * gain
+    return Look(tuple(np.clip(zen * gain / 255, 0, 1)), tuple(np.clip(hor * gain / 255, 0, 1)), haze, c, glow, city)
+
+def cloud_color(lk: Look, wet: float = 0) -> tuple:
+    # A cloud is as bright as the sky behind it: white-grey by day, dark at night with the city's light under it,
+    # darker the more it rains.
+    day = min(max(max(lk.horizon) * 1.4, 0.12), 1)
+    return tuple(min(c * day * (1 - 0.35 * wet) + city_rgb[i] / 255 * 0.45 * lk.city, 1) for i, c in enumerate(cloud_rgb))
 
 def paint(ctx: cairo.Context, lk: Look, w: int, hz: int, h: int, glow_x: float | None, below: bool = True):
     '''The gradient, the haze over the horizon, the sunset glow around glow_x (px, None: out of view) and its reflection.'''
@@ -82,6 +108,14 @@ def paint(ctx: cairo.Context, lk: Look, w: int, hz: int, h: int, glow_x: float |
         g = cairo.LinearGradient(0, top, 0, hz)
         g.add_color_stop_rgba(0, *hc, 0)
         g.add_color_stop_rgba(1, *hc, min(0.55 * lk.haze + 0.1, 0.7))
+        ctx.set_source(g)
+        ctx.rectangle(0, top, w, hz - top)
+        ctx.fill()
+    if lk.city > 0.03:
+        top = hz * (1 - 0.35 - 0.4 * lk.city)
+        g = cairo.LinearGradient(0, top, 0, hz)
+        g.add_color_stop_rgba(0, *(v / 255 for v in city_rgb), 0)
+        g.add_color_stop_rgba(1, *(v / 255 for v in city_rgb), 0.5 * lk.city)
         ctx.set_source(g)
         ctx.rectangle(0, top, w, hz - top)
         ctx.fill()

@@ -13,6 +13,7 @@ MAP_UP_KEY = 'di.aviator.map_up'  # screen -> bearing, a JSON dict
 ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
 LAYERS_KEY = 'di.aviator.layers'  # the map's layers switched off: a JSON list
+RAIN_KEY = 'di.aviator.rain'      # rain in the sky whatever the weather, '1' or '0'
 VIEWS = ['map', 'sky', 'solar']
 
 
@@ -50,6 +51,7 @@ class OpenedState(AppBaseModel):
     view: str | None = None
     off: list[str] = []                 # the map's layers switched off, from the web page; kept in redis
     light: bool = False                 # the map's light mode, from the web page; kept in redis
+    rain: bool = False                  # make it rain in the sky, the same
     map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
     zoom: dict[str, float] = {}         # screen ('*': all) -> its map's zoom, the same
 
@@ -72,7 +74,7 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     keep_open = 90
 
     def initial_state(self) -> OpenedState:
-        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY))
+        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', rain=db.get(RAIN_KEY) == b'1', off=read_list(LAYERS_KEY))
 
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
@@ -89,6 +91,9 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 # The one asked for, or the other.
                 self.state.light = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.light
                 db.set(LIGHT_KEY, '1' if self.state.light else '0')
+            case 'aviator.rain':
+                self.state.rain = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.rain
+                db.set(RAIN_KEY, '1' if self.state.rain else '0')
             case 'aviator.layer':
                 layer, on = data.payload['layer'], bool(data.payload['on'])
                 self.state.off = [l for l in self.state.off if l != layer] + ([] if on else [layer])
