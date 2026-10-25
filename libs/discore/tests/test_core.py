@@ -413,6 +413,12 @@ def test_screen_moves_off_the_focus_and_slides():
     s.moves = {}
     assert s.arrange(screen_fs, {'card': card, 'time': clock}, under_card).positions['card'] == (44, 9)
 
+def test_screen_fades_far_moves():
+    s = sides(fading={'card'})
+    s.arrange(screen_fs, {'card': card, 'time': clock})
+    l = s.arrange(screen_fs, {'card': card, 'time': clock}, Focus((64, 48)).disk(8, 24, 6), relayout=True)
+    assert l.positions['card'] == (44, 9) and l.fades['card'] == ((0, 9), 0)     # there already, fading from the left
+
 def test_screen_options_only_when():
     s = sides()
     s.current = (0, 1)          # the time was down while calm

@@ -1,7 +1,7 @@
 import typer
 
 from ..redis import publish
-from .data_service import get_metro_info
+from . import idfm
 
 app = typer.Typer()
 trigger_app = typer.Typer()
@@ -12,7 +12,7 @@ app.add_typer(sync_app, name='sync')
 
 @trigger_app.command(name='metro')
 def trigger_metro():
-    publish('di.pubsub.metro', action='toggle')
+    publish('di.pubsub.remote', action='show_metro')
 
 @trigger_app.command(name='twentytwo')
 def trigger_twenty_two():
@@ -20,7 +20,7 @@ def trigger_twenty_two():
 
 @sync_app.command(name='metro')
 def sync_metro():
-    get_metro_info(force=True)
+    idfm.task(pressed=True)
 
 
 @trigger_app.command(name='motion')

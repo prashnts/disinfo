@@ -1,0 +1,19 @@
+# Weekly update PRs: minor and patch grouped in one PR per ecosystem, majors one each.
+# Security fixes come on their own as soon as there's an alert (Settings > Code security > Dependabot security updates).
+version: 2
+updates:
+  - package-ecosystem: uv
+    directories: ['/', '/libs/discore', '/clients/websocket-rpi-matrix']
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

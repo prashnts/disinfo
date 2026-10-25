@@ -4,7 +4,7 @@ import datetime
 from traceback import format_exc
 from schedule import Scheduler
 
-from ..redis import db, publish
+from ..redis import db
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
 from ..screens.aviator.tasks import adsbx_task
@@ -41,22 +41,10 @@ class SafeScheduler(Scheduler):
             job._schedule_next_run()
 
 
-def get_metro_info(force: bool = False):
-    '''Fetch metro info in morning.'''
-    if not force and not idfm.is_active():
-        print('[i] [fetch] not fetching metro timing')
-        return
-    try:
-        print('[i] [fetch] metro timing')
-        data = idfm.fetch_state()
-        publish('di.pubsub.metro', action='update')
-    except Exception as e:
-        print('[e] metro_info', e)
-
-
 def on_pubsub(channel_name: str, message: PubSubMessage):
-    if message.action == 'fetch_metro':
-        get_metro_info(force=True)
+    # The metro button, here only: one press, one toggle, whatever the screens.
+    if message.action in ('show_metro', 'btn_metro'):
+        idfm.press()
 
 
 starting = True        # until the first run of all the jobs is done
@@ -79,7 +67,7 @@ def cached(name: str, every: float, fn):
 
 scheduler = SafeScheduler(reschedule_on_failure=True)
 
-scheduler.every(1).minutes.do(get_metro_info)
+scheduler.every(15).seconds.do(idfm.task)     # fetches only what's due, while the card is wanted
 scheduler.every(1).seconds.do(adsbx_task)
 scheduler.every(5).minutes.do(cached('radar', 300, radar_task))
 scheduler.every(30).minutes.do(cached('wind', 1800, wind_task))
@@ -92,7 +80,7 @@ def main():
     print('[Data Service] Scheduler Started')
 
     pubsub = PubSubManager()
-    pubsub.attach('data_service', ('di.pubsub.dataservice',), on_pubsub)
+    pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)

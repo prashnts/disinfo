@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Drawing and animation core of disinfo: frames, layouts, text, transitions."
 requires-python = ">=3.11"
 dependencies = [
-    "pillow==11.2.1",
+    "pillow==13.0.0",
     "numpy",
     "lru-dict>=1.4.1",
     "pendulum>=2.1.2",

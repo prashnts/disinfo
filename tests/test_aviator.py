@@ -186,12 +186,12 @@ def test_layers_planes_and_info(monkeypatch):
     opened.off = ['info']
     no_info = app.radar(fs)
     assert [t.payload['hex'] for t in no_info.targets] == ['a']         # the plane and its trail stay, tappable
-    assert list(no_info.image.getdata()) != list(full.image.getdata())
+    assert no_info.image.tobytes() != full.image.tobytes()
     # Planes and info both off: only the background, the same with or without the plane.
     opened.off = ['planes', 'info']
     bare = app.radar(fs)
     st.planes = {}
-    assert list(bare.image.getdata()) == list(app.radar(fs).image.getdata())
+    assert bare.image.tobytes() == app.radar(fs).image.tobytes()
 
 
 def test_stars_and_moon():

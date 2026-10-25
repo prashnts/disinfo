@@ -104,7 +104,6 @@ class RuntimeState(AppBaseModel):
     # Extras
     show_twentytwo: bool = False
     show_news: bool = False
-    show_metro: bool = False
 
     # Streaming MJPEG
     show_stream: bool = False
@@ -134,7 +133,7 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.design_demo = {**self.state.design_demo, **data.payload}
             case 'set_stream_url':
                 self.state.stream_url = data.payload['url']
-            case action if action.startswith('show_'):
+            case action if action.startswith('show_') and action in RuntimeState.model_fields:
                 setattr(self.state, action, not getattr(self.state, action))
 
 

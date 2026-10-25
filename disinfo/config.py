@@ -41,9 +41,30 @@ class AviatorData(AppBaseModel):
     # (lat, lon) of what's visible from the window.
     landmarks: list[tuple[float, float]] = []
 
+class MetroStop(AppBaseModel):
+    line: str               # as on the sign: '1', '3B'
+    line_id: str            # IDFM's: 'C01371'
+    stop_id: str            # the stop's zone: STIF:StopPoint:Q:<stop_id>:
+    stop: str
+    direction: str          # the trains going there, in their direction or destination
+    walk_min: float | None = None       # over MetroData.walk_min
+
+class MetroWindow(AppBaseModel):
+    days: list[int] = [1, 2, 3, 4, 5]   # isoweekday: monday 1
+    start: str = '07:00'
+    end: str = '09:00'
+    month_days: tuple[int, int] = (1, 31)
+
+class MetroData(AppBaseModel):
+    walk_min: float = 5     # trains sooner than this are left out
+    stops: list[MetroStop] = []
+    lines: list[str] = []   # their messages only
+    schedule: list[MetroWindow] = []    # the card's in the bottom stack then, the button shows it any time
+
 class ScreenData(AppBaseModel):
     # Shared by all the screens, from config/screen_data.json.
     aviator: AviatorData = AviatorData()
+    metro: MetroData = MetroData()
 
 def load_screen_data() -> ScreenData:
     if not screen_data_path.exists():

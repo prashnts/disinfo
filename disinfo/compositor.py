@@ -88,7 +88,7 @@ def compose_big_frame(fs: FrameState):
     # The stacks first: the background is the one their cards on top bring. Made on the designated side, turned
     # to the side they're on.
     designated = screen.choices[0][0].spots['side'].anchor[1]
-    stack_conf = StackStyle(size=config.height, scrollbar=designated == 'r', align='right' if designated == 'r' else 'left', horizontal=False)
+    stack_conf = StackStyle(size=config.height, align='right' if designated == 'r' else 'left', horizontal=False)
     stack = Stack('main_cards', style=stack_conf).mut(side_cards(fs))
     stack.style = dc_replace(stack_conf, align='right' if screen.spot('side').anchor[1] == 'r' else 'left')
     stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)
@@ -217,8 +217,6 @@ def compose_display_frame(fs: FrameState):
             stack.next_widget()
             stack_hor.next_widget()
         screens.aviator.app.follow(fs, stack_hor.current)
-        if RuntimeStateManager().get_state(fs).show_metro:
-            stack.mut([*screens.paris_metro.widgets(fs)])
         on_top = [stack.current, stack_hor.current]
         items = {'side': stack.draw(fs), 'bottom': stack_hor.draw(fs)}
     items['time'] = screens.date_time.flip_digital_clock(fs, align='right' if screen.spot('time').anchor[1] == 'r' else 'left')
@@ -275,7 +273,7 @@ def big_screen(name: str, side: str, time_side: str | None = None, compose=None)
         sorted(options, key=lambda o: o.penalty),
         [Option({'bottom': Spot('bl', jitter=(0, 3))})],
     ], compose=compose or compose_big_frame, load_heat=load, save_heat=save,
-                  covering={'side', 'bottom'}, stacked={'side', 'bottom'})
+                  covering={'side', 'bottom'}, stacked={'side', 'bottom'}, fading={'time', 'date', 'timedate'})
 
 def compose_entry(fs: FrameState) -> Frame:
     # Dim while nobody's there (the panel's off then, but a touch lights it): it fades up when someone comes.

@@ -40,6 +40,7 @@ class Scroller(metaclass=ScopedInstance):
         self.scrollbar = scrollbar
         self.pause_offset = pause_offset
         self._last_target = 0
+        self.frame = None
         if not name:
             name = uname()
         self.name = name

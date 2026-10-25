@@ -1,115 +1,58 @@
-import pendulum
-
-from datetime import datetime
 from functools import cache
-from typing import Optional
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 
-from ..utils.drawer import draw_loop
 from disinfo import fonts
 from discore.elements import Frame, StillImage
-from discore.text import Text, MultiLineText, TextStyle
-from discore.layouts import hstack, vstack, mosaic
+from discore.text import TextStyle, text
+from discore.layouts import hstack, vstack, grid, mosaic
 from discore.layers import div, DivStyle, rounded_rectangle
 from discore.frame_cycler import FrameCycler
 from discore.scroller import VScroller, HScroller
-from discore.transitions import VisibilitySlider
-from ..utils.palettes import metro_colors
-from ..utils.time import is_expired
-from ..utils.func import throttle
 from discore.data_structures import FrameState
+from discore.widget import Widget
+from ..utils.palettes import metro_colors
 from ..data_structures import AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
-from ..drat.idfm import fetch_state
 from ..drat import idfm
-from ..redis import get_dict, publish
-from discore.widget import Widget
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
 metro_paris_banner = StillImage('assets/raster/metro-paris-old-52x16.png')
-msg_vscroll = VScroller(size=40, pause_at_loop=True, pause_duration=1.5, speed=0.02)
-status_hscroll = HScroller(size=30, pause_at_loop=True, pause_duration=1, speed=0.02)
-visibility_slider = VisibilitySlider(edge='bottom', duration=0.3)
+msg_vscroll = VScroller(size=40, name='metro.notes', pause_at_loop=True, pause_duration=1.5, speed=0.02)
+status_hscroll = HScroller(size=30, name='metro.issues', pause_at_loop=True, pause_duration=1, pause_offset=0, speed=0.02)
 
-warning_line = mosaic(
-    warning_tile,
-    nx=1,
-    ny=msg_vscroll.size // warning_tile.height,
-    seamless=False)
-
-
-class MetroAppState(AppBaseModel):
-    show: bool = False
-    visible: bool = False
-    valid: bool = False
-    toggled_at: Optional[datetime] = None
-    data: Optional[idfm.MetroData] = None
-    tick: int = 0
+time_style = TextStyle(font=fonts.bitocra7, color='#a57a05')
+note_style = TextStyle(font=fonts.microfont_35_reg, color='#b9b9b9', outline=1, outline_color='#181818', overflow='wrap')
+later_style = TextStyle(font=fonts.microfont_35_reg, color='#7a7a7a', overflow='wrap')
+doubt_style = TextStyle(font=fonts.microfont_35_reg, color='#b7925e', overflow='wrap')
+health_colors = {'ok': '#2f9e44', 'slow': '#b7925e', 'none': '#c93f20'}
+card_style = DivStyle(background='#05153486', padding=3, radius=3, border=1, border_color='#333435C9')
+max_width = 160         # the card's content on the wide screens
+fresh_s = 600           # older data is not shown, the banner is
 
 
-@throttle(27_000)
-def throttled_fetch_state(force: bool = False):
-    if idfm.is_active() or force:
-        try:
-            return idfm.fetch_state()
-        except Exception as e:
-            print('Error fetching metro state:', e)
+class MetroState(AppBaseModel):
+    doc: dict | None = None
+    notes: dict = {}
+    press: dict | None = None
 
-class MetroAppStateManager(PubSubStateManager[MetroAppState]):
-    model = MetroAppState
-    channels = ('di.pubsub.metro', 'di.pubsub.remote')
+class MetroStateManager(PubSubStateManager[MetroState]):
+    '''What the data service fetched (drat.idfm), read again when it says so.'''
+    model = MetroState
+    channels = ('di.pubsub.metro',)
 
-    # TODO support intializing the inner states.
+    def initial_state(self) -> MetroState:
+        return MetroState(
+            doc=idfm.load(idfm.KEY),
+            notes=(idfm.load(idfm.NOTES_KEY) or {}).get('notes', {}),
+            press=idfm.load(idfm.PRESS_KEY))
 
     def process_message(self, channel: str, data: PubSubMessage):
-        if channel.endswith('.metro'):
-            if data.action == 'update':
-                self.update_data()
-            if data.action == 'toggle':
-                self.toggle()
-        if channel.endswith('.remote'):
-            print('Remote message received:', data)
-            if data.action == 'show_metro':
-                self.toggle()
-
-    def initial_state(self) -> MetroAppState:
-        return MetroAppState(data=throttled_fetch_state())
-
-    def toggle(self):
-        s = self.state
-        show = s.show
-        if is_expired(s.toggled_at, seconds=25):
-            show = True
-        else:
-            show = not show
-        if show:
-            self.state.data = throttled_fetch_state(True)
-        self.state.show = show
-        self.state.toggled_at = pendulum.now()
-
-    def update_data(self, fs: FrameState):
-        s = self.state
-        next_state = throttled_fetch_state()
-        if next_state:
-            self.state.data = next_state
-
-    def get_state(self, fs: FrameState):
-        s = self.state
-        self.update_data(fs)
-        if not s.data:
-            s.visible = False
-            s.valid = False
-        else:
-            shown = s.show and not is_expired(s.toggled_at, seconds=25, now=fs.now)
-            s.visible = idfm.is_active() or shown
-            s.valid = not is_expired(s.data.timestamp, minutes=1, seconds=20, now=fs.now)
-
-        return s
+        self.state = self.initial_state()
 
 
 @cache
-def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False) -> Frame:
+def metro_icon(line_name: str, has_problems: bool = False) -> Frame:
     size = 9
     start_x = 0 if len(line_name) > 1 else 1
     background, text_color = metro_colors.get(line_name, ['#C6C6C6', '#000'])
@@ -119,8 +62,8 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
         height=size,
         radius=(4,) * 4,
         fill=background,
-        border=1 if outline else 0,
-        border_color='#ba1c11' if has_problems else '#000')
+        border=1 if has_problems else 0,
+        border_color='#ba1c11')
 
     draw = ImageDraw.Draw(img)
     draw.text(
@@ -130,126 +73,70 @@ def metro_icon(line_name: str, outline: bool = False, has_problems: bool = False
         font=fonts.tamzen__rs.font,
         anchor='mm')
 
-    return Frame(img, hash=('metro_icon', line_name, outline, has_problems))
+    return Frame(img, hash=('metro_icon', line_name, has_problems))
 
 @cache
-def metro_status_icon(line_name: str, issues: bool):
-    frames = [
-        metro_icon(line_name, outline=False),
-        metro_icon(line_name, outline=issues, has_problems=issues),
-    ]
-    return FrameCycler(frames)
+def line_icon(line: str, issues: bool = False) -> FrameCycler:
+    # A red outline blinks while the line has trouble now.
+    return FrameCycler([metro_icon(line), metro_icon(line, has_problems=issues)])
 
 @cache
-def timing_text(value: int) -> Text:
-    return Text(f'{value}'.rjust(2), style=TextStyle(font=fonts.bitocra7, color='#a57a05'))
+def health_bar(state: str) -> Frame:
+    # Trains coming regularly or not, whatever the messages say.
+    return Frame(Image.new('RGBA', (2, 7), health_colors[state]), hash=('metro.health', state))
 
 @cache
-def message_text(value: str) -> MultiLineText:
-    return MultiLineText(
-        value,
-        style=TextStyle(
-            font=fonts.microfont_35_reg,
-            color='#b9b9b9',
-            outline=1,
-            outline_color='#181818',
-            spacing=1,
-            width=69,
-        ),
-    )
+def warning_line(h: int) -> Frame:
+    return mosaic(warning_tile, nx=1, ny=max(h // warning_tile.height, 1), seamless=False)
 
 
-def render_metro_info(fs: FrameState, state: MetroAppState):
-    s = state.data
+def note_row(fs: FrameState, n: dict) -> Frame:
+    style = note_style if n['now'] else later_style
+    # The lines and when on top, what happens under.
+    head = hstack([*[line_icon(l).draw(fs.tick) for l in n['lines']], text(n['when'], later_style, overflow='fit') if n['when'] else None], gap=2)
+    return vstack([head, text(n['text'], style), text(f"? {n['doubt']}", doubt_style) if n['doubt'] else None], gap=1, align='hstretch')
 
-    if not s:
-        return
+def card(fs: FrameState, s: MetroState) -> Frame:
+    now = fs.now.timestamp()
+    doc = s.doc
+    notes = [n for r in doc.get('reports', []) if (n := idfm.note(r, s.notes, now))]
+    notes.sort(key=lambda n: (not n['now'], ['stop', 'slow', 'info'].index(n['level'])))
+    troubled = list(dict.fromkeys(l for n in notes if n['now'] and n['level'] != 'info' for l in n['lines']))
+    n_times = 3 if notes else 4
 
-    train_times = []
-    status_icons = []
-    msg_texts = []
+    stopped = {(st['line'], st['stop']): st['times'] for st in doc['stops']}
+    cells = []
+    for stop in idfm.conf().stops:
+        times = stopped.get((stop.line, stop.stop), [])
+        mins = idfm.catchable(stop, times, now)[:n_times]
+        cells += [line_icon(stop.line, stop.line in troubled).draw(fs.tick), health_bar(idfm.health(times, now))]
+        cells += [text(f'{m}'.rjust(2), time_style) for m in mins] + [text('--', time_style)] * (n_times - len(mins))
+    left = [grid(cells, ncols=2 + n_times, gap=2, anchor='ml')]
+    others = [line_icon(l, True).draw(fs.tick) for l in troubled if l not in {st.line for st in idfm.conf().stops}]
+    if others:
+        ticker = status_hscroll.set_frame(hstack(others, gap=2)).set_size(n_times * 10)
+        left.append(hstack([metro_issue_icon, ticker.draw(fs.tick)], gap=1))
+    left = vstack(left, gap=2)
+    if not notes:
+        return left
 
-    for info in s.information:
-        if info.issues:
-            ticon = metro_status_icon(info.line, issues=True)
-            status_icons.append(ticon.draw(fs.tick))
-
-            msgs = info.messages
-            if msgs:
-                msg_texts.append(ticon.draw(fs.tick))
-                msg_texts.append(message_text('\n---\n'.join(msgs)))
-
-    visible_timing_count = 3 if msg_texts else 4
-
-    for train in s.trains:
-        if not train.timings:
-            next_train_times = ['--', '--']
-        else:
-            next_train_times = [round(t.next_in) for t in train.timings[:visible_timing_count]]
-        ticon = metro_status_icon(train.line, issues=train.information.issues)
-        timings = hstack([timing_text(t) for t in next_train_times], gap=3)
-        time_table = hstack([ticon.draw(fs.tick), timings], gap=3)
-        train_times.append(time_table)
-
-    if not (train_times or status_icons):
-        return
-
-    list_view = [vstack(train_times, gap=1, align='left')]
-    if status_icons:
-        status_icon_ticker = (status_hscroll
-            .set_frame(hstack(status_icons, gap=2), reset=False)
-            .set_size(visible_timing_count * 10)
-            .draw(fs.tick))
-        list_view.append(hstack([
-            metro_issue_icon,
-            status_icon_ticker,
-        ], gap=1))
-
-    main_view = [vstack(list_view, gap=2)]
-
-    if msg_texts:
-        msg_vscroll.set_frame(vstack(msg_texts, gap=4), False)
-        msg_box = hstack([warning_line, msg_vscroll.draw(fs.tick)], gap=1)
-        main_view.append(div(
-            msg_box,
-            style=DivStyle(
-                background="#24242485",
-                padding=1,
-                radius=(2, 2, 0, 0),
-            ),
-        ))
-
-    return hstack(main_view, gap=2)
+    width = min(fs.config.width - 8, max_width) - left.width - 2
+    rows = [div(note_row(fs, n), width=width - warning_tile.width - 3) for n in notes]
+    h = max(left.height, 24)
+    # A stop at each note.
+    msg_vscroll.set_size(h).set_frame(vstack(rows, gap=4), pauses=[sum(r.height + 4 for r in rows[:i]) for i in range(len(rows))], pause_offset=0)
+    box = div(hstack([warning_line(h), msg_vscroll.draw(fs.tick)], gap=1, align='top'),
+              style=DivStyle(background='#24242485', padding=1, radius=(2, 2, 0, 0)))
+    return hstack([left, box], gap=2, align='top')
 
 
-def metro_view(fs: FrameState):
-    state = MetroAppStateManager().get_state(fs)
-    if state.data:
-        content = render_metro_info(fs, state)
-    else:
-        content = div(metro_paris_banner, style=DivStyle(padding=10))
-
-    return content.tag(('metro_view', state.show))
-
-
-def composer(fs: FrameState):
-    state = MetroAppStateManager().get_state(fs)
-    if state.show:
-        return metro_view(fs)
-    return
-
-draw = draw_loop(composer, use_threads=True)
-
-def widgets(fs: FrameState):
-    return [
-        Widget('di.metro.info', draw(fs), wait_time=14, style=DivStyle(
-            background="#05153486",
-            padding=3,
-            margin=0,
-            radius=3,
-            border=1,
-            border_color="#333435C9",
-        ))
-    ]
-
-# todo: Refactor this similar to klipper using RuntimeStateManager.
+def widgets(fs: FrameState) -> list[Widget]:
+    '''In the bottom stack on schedule, on top for a minute when the button's pressed.'''
+    s = MetroStateManager().get_state(fs)
+    if not idfm.visible(fs.now, s.press):
+        return []
+    fresh = s.doc and fs.now.timestamp() - s.doc['at'] < fresh_s
+    frame = card(fs, s) if fresh else div(metro_paris_banner, padding=10)
+    pressed = bool(s.press and fs.now.timestamp() < s.press['until'])
+    return [Widget('di.metro.info', frame.tag(('metro', fresh and s.doc['at'], len(s.notes))), focus=pressed, priority=2 if pressed else 1,
+                   wait_time=14, style=card_style)]

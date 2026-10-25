@@ -1,4 +1,4 @@
-pillow>=8.1.2
+pillow>=13.0.0
 watchdog>=3.0.0
 requests>=2.25.1
 redis[hiredis]>=4.5.4
@@ -7,7 +7,7 @@ paho-mqtt>=2.1.0
 pydash>=7.0.3
 arrow>=1.2.3
 colour>=0.1.5
-typer[all]
+typer
 typing-extensions>=4.5.0
 idfm_api>=1.1.1
 pendulum>=2.1.2
@@ -29,6 +29,7 @@ geopy>=2.4.1
 cartopy>=0.23.0
 shazamio>=0.6.0
 pyaudio>=0.2.14
-py-mjpegnumpy
+py-mjpeg
+numpy
 h5py
 pyproj

@@ -23,5 +23,18 @@
       [48.877704, 2.4675955],
       [48.8594032, 2.4363544]
     ]
+  },
+  "metro": {
+    "walk_min": 5,
+    "stops": [
+      {"line": "1", "line_id": "C01371", "stop": "Reuilly - Diderot", "stop_id": "44637", "direction": "La Défense"},
+      {"line": "8", "line_id": "C01378", "stop": "Montgallet", "stop_id": "44160", "direction": "Balard"},
+      {"line": "6", "line_id": "C01376", "stop": "Daumesnil", "stop_id": "45229", "direction": "Charles de Gaulle - Etoile"}
+    ],
+    "lines": ["13", "4", "3", "14"],
+    "schedule": [
+      {"days": [1, 2, 3, 4, 5], "start": "07:00", "end": "09:00"},
+      {"days": [4], "start": "15:00", "end": "16:30", "month_days": [1, 14]}
+    ]
   }
 }

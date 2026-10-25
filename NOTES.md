@@ -51,6 +51,7 @@ has to stay in sight and from the spots they've lit longest (burn-in), on averag
   swapped sides every few seconds on the desk without it). A `Focus(follows=True)` (the planes: drawn for the current
   arrangement, the radar re-frames after a move) counts only on relayout, else it ping-pongs. On relayout the best wins
   if better by `switch_margin` (0.05). Items slide from where they were (`move_s` 0.8, cubic in-out).
+  Items in `fading` (the time and date) fade instead when they move past their own size: sliding, they crossed the stack.
 
 ### The screens
 

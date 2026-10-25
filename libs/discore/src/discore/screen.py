@@ -9,7 +9,7 @@ on relayout (someone came, or every_s) to the best, or anytime the current one g
 import math
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 from typing import Callable, Optional
 
@@ -71,10 +71,15 @@ class Focus:
 class Layout:
     positions: dict             # item -> its top left, px
     clear: tuple                # the largest box the items leave free: x0, y0, x1, y1
+    fades: dict = field(default_factory=dict)   # item -> (where it was, 0-1): fading from there
 
     def place(self, item: str, frame: Optional[Frame], dest: Frame, frost: float = 0) -> Frame:
         if not frame or item not in self.positions:
             return dest
+        if fade := self.fades.get(item):
+            (x, y), k = fade
+            dest = place_at(frame.opacity(1 - k), dest, x, y, 'tl', frost=frost * (1 - k))
+            frame, frost = frame.opacity(k), frost * k
         return place_at(frame, dest, *self.positions[item], 'tl', frost=frost)
 
 
@@ -120,6 +125,7 @@ class Screen:
     save_every_s: float = 300
     covering: Optional[set] = None      # the items that count covering the focus, None: all
     stacked: set = frozenset()          # items that may go over each other (the stacks: one corner shared)
+    fading: set = frozenset()           # items that fade to a spot past their own size instead of sliding (across the others)
 
     def __post_init__(self):
         self.current = tuple(0 for _ in self.choices)
@@ -148,19 +154,23 @@ class Screen:
         relayout = relayout or forced or now - self.relaid_at > self.every_s
         if relayout or now - self.scored_at >= rescore_s:
             self._score(items, focus, size, allowed, relayout, forced, now)
-        positions = {}
+        positions, fades = {}, {}
         for item, spot in self.spots().items():
             if f := items.get(item):
                 x, y = top_left(spot, self.jitter.get(item, (0, 0)), f.size, size)
                 if m := self.moves.get(item):
-                    k = 1 - ease.cubic.cubic_in_out(min((now - m[2]) / self.move_s, 1))
-                    x, y = round(x + m[0] * k), round(y + m[1] * k)
+                    k = ease.cubic.cubic_in_out(min((now - m[2]) / self.move_s, 1))
+                    if item in self.fading and (abs(m[0]) >= f.width or abs(m[1]) >= f.height):
+                        if k < 1:
+                            fades[item] = ((x + m[0], y + m[1]), k)
+                    else:
+                        x, y = round(x + m[0] * (1 - k)), round(y + m[1] * (1 - k))
                 positions[item] = (x, y)
         self.last = positions
         occ = self._occupancy({i: self._mask(f) for i, f in items.items() if f}, positions, size)
         x0, y0, x1, y1 = largest_free(occ < 0.2)
         c = self.cell
-        return Layout(positions, (x0 * c, y0 * c, min(x1 * c, size[0]), min(y1 * c, size[1])))
+        return Layout(positions, (x0 * c, y0 * c, min(x1 * c, size[0]), min(y1 * c, size[1])), fades)
 
     def _mask(self, f: Frame) -> np.ndarray:
         # Where it shows on the grid, 0-1: any alpha counts, a frosted card is there all the same.
