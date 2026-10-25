@@ -238,11 +238,16 @@ def test_sky_look(monkeypatch):
     assert sum(cn) < sum(cd) / 2 and cn[0] > cn[2] and sum(skylook.cloud_color(rainy_noon, 1)) < sum(cd)
     # The light sensor: dark room 55%, bright room 100%, none (or garbage) 100%.
     fs = NS(config=NS(ambient_light_sensor='x'))
+    monkeypatch.setattr(skylook, 'room_counts', lambda fs: None)
     for state, want in (('1', 0.55), ('3', 0.55), ('400', 1.0), ('5000', 1.0), ('unavailable', 1.0)):
         monkeypatch.setattr(skylook, 'get_entity', lambda i, s=state: NS(state=s))
         assert skylook.light_gain(fs) == pytest.approx(want, abs=0.01)
     monkeypatch.setattr(skylook, 'get_entity', lambda i: None)
     assert skylook.light_gain(fs) == 1.0 and skylook.weather_state(NS(config=NS(weather_entity='w'))) is None
+    # The screen's own sensor first: its counts, dark to bright.
+    for counts, want in ((50, 0.55), (10000, 1.0)):
+        monkeypatch.setattr(skylook, 'room_counts', lambda fs, c=counts: c)
+        assert skylook.light_gain(fs) == pytest.approx(want, abs=0.01)
     # Rain or snow: the state says when it says something falls, else the temperature; none with the layer off.
     opened = NS(off=[])
     monkeypatch.setattr(skylook, 'OpenedStateManager', lambda: NS(get_state=lambda fs: opened))
@@ -273,6 +278,12 @@ def test_daylight(monkeypatch):
     coef = d.lamp_model(rows)
     assert coef[1] == pytest.approx(lamp, abs=1) and coef[0] == pytest.approx(40, abs=1)
     day = [(r[0], x[3]) for r in rows if (x := d.desk_daylight(r, coef)) is not None]
+    # A lamp Home Assistant doesn't know of: its colour gives it away.
+    sig = d.signatures(rows)
+    assert sig and sig['lamp'][0] > sig['day'][0]
+    row = [now, None, 0, *(sky(now, 1) + 40 + 0.7 * lamp).tolist(), 0, 0, 0]
+    assert d.desk_daylight(row, coef)[3] > sky(now, 1)[3] + 400
+    assert d.desk_daylight(row, coef, sig)[3] == pytest.approx(sky(now, 1)[3], rel=0.05)
     envs = {'sensei': None, 'desk': d.envelope(*zip(*day)), 'coef': coef.tolist(), 'rb': None}
     model = {'at': now, 'cloud_cover': 50, 'cloud_cover_low': 50, 'cloud_cover_mid': 0, 'cloud_cover_high': 0,
              'shortwave_radiation': 400, 'direct_radiation': 0}

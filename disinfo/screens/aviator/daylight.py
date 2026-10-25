@@ -142,21 +142,50 @@ def lamp_model(rows: list) -> np.ndarray | None:
     coef[seen] = np.linalg.lstsq(x[:, seen], y, rcond=None)[0]
     return coef
 
-def desk_daylight(row: list, coef) -> np.ndarray | None:
-    # The desk's counts (r, g, b, c) with the lamps taken off; None while they're unknown.
-    if row[3] is None or coef is None or len(row) != 6 + coef.shape[0] or None in row[7:]:
+def signatures(rows: list) -> dict | None:
+    '''The colour of the lamps (at night) and of the daylight (by day, the lamps off), per count of the clear
+    channel: [r, g, b, 1]. None until both are seen, or if they look the same.'''
+    n = len(app_config.daylight_lamps)
+    lamp, day = [], []
+    for r in rows:
+        if r[3] is None or r[6] < 50:
+            continue
+        alt = sun_at(r[0])[0]
+        if alt < night_alt:
+            lamp.append(np.array(r[3:7]) / r[6])
+        elif alt > 10 and r[6] > 200 and len(r) == 7 + n and r[7:] == [0] * n:
+            day.append(np.array(r[3:7]) / r[6])
+    if len(lamp) < 30 or len(day) < 30:
         return None
-    return np.array(row[3:7]) - np.array([1, *(v / 255 for v in row[7:])]) @ coef
+    lamp, day = np.median(lamp, axis=0), np.median(day, axis=0)
+    return {'lamp': lamp.tolist(), 'day': day.tolist()} if np.abs(lamp - day)[:3].max() > 0.03 else None
+
+def desk_daylight(row: list, coef, sig: dict | None = None) -> np.ndarray | None:
+    '''The desk's counts (r, g, b, c) from the daylight: the known lamps taken off (by their brightness, learnt at
+    night), then what's left split by colour (another lamp on). None while neither is known.'''
+    if row[3] is None:
+        return None
+    y = np.array(row[3:7], float)
+    known = coef is not None and len(row) == 6 + coef.shape[0] and None not in row[7:]
+    if known:
+        y = y - np.array([1, *(v / 255 for v in row[7:])]) @ coef
+    if sig:
+        day = np.array(sig['day'])
+        a = np.clip(np.linalg.lstsq(np.array([day, sig['lamp']]).T, y, rcond=None)[0], 0, None)
+        return a[0] * day
+    return y if known else None
 
 def refresh(rows: list) -> dict:
-    '''Once a day: Sensei's envelope from Home Assistant's history (more days than the log), the lamps on the desk,
-    its envelope and its usual colour (log r/b) from the log.'''
+    '''Once a day: Sensei's envelope from Home Assistant's history (more days than the log); from the log, the desk's
+    lamps (by brightness and by colour), its envelope and its usual colour (log r/b).'''
     hist = ha_history(app_config.daylight_lux, log_days)
-    envs = {'at': time.time(), 'sensei': envelope([t for t, _ in hist], [v for _, v in hist]), 'coef': None, 'desk': None, 'rb': None}
-    if (coef := lamp_model(rows)) is None:
+    envs = {'at': time.time(), 'sensei': envelope([t for t, _ in hist], [v for _, v in hist]), 'coef': None, 'desk': None, 'rb': None,
+            'sig': signatures(rows)}
+    coef = lamp_model(rows)
+    envs['coef'] = coef.tolist() if coef is not None else None
+    if coef is None and envs['sig'] is None:
         return envs
-    envs['coef'] = coef.tolist()
-    day = [(r[0], d) for r in rows if (d := desk_daylight(r, coef)) is not None]
+    day = [(r[0], d) for r in rows if (d := desk_daylight(r, coef, envs['sig'])) is not None]
     if len(day) > 2 * 720:
         envs['desk'] = envelope([t for t, _ in day], [d[3] for _, d in day])
     rbs = [math.log(d[0] / d[2]) for t, d in day[::10] if d[0] > 0 and d[2] > 0 and sun_at(t)[0] > 10]
@@ -167,6 +196,7 @@ def estimate(rows: list, envs: dict, sky: dict | None, now: float) -> dict:
     alt, az = sun_at(now)
     env_s, env_d, rb = envs.get('sensei'), envs.get('desk'), envs.get('rb')
     coef = np.array(envs['coef']) if envs.get('coef') else None
+    sig = envs.get('sig')
     model = None
     if sky and now - sky['at'] < 3 * 3600:
         model = {'cloud': sky['cloud_cover'] / 100, 'low': sky['cloud_cover_low'] / 100, 'mid': sky['cloud_cover_mid'] / 100,
@@ -178,14 +208,17 @@ def estimate(rows: list, envs: dict, sky: dict | None, now: float) -> dict:
         return out
 
     def ratio(row):
-        # log10 of the daylight over the brightest seen with the sun there: Sensei's and the desk's, averaged.
+        # log10 of the daylight over the brightest seen with the sun there: Sensei's and the desk's, the desk's
+        # counting twice (the steadier one).
         _, a = sun_at(row[0])
-        logs = []
+        logs, weights = [], []
         if env_s and row[1] is not None and (e := env_at(env_s, a)):
             logs.append(math.log10(max(row[1] - env_s['floor'], 0.05) / e))
-        if env_d and (d := desk_daylight(row, coef)) is not None and (e := env_at(env_d, a)):
+            weights.append(1)
+        if env_d and (d := desk_daylight(row, coef, sig)) is not None and (e := env_at(env_d, a)):
             logs.append(math.log10(max(d[3], 1) / e))
-        return float(np.mean(logs)) if logs else None
+            weights.append(2)
+        return float(np.average(logs, weights=weights)) if logs else None
 
     logs = [v for r in rows if now - r[0] < 20 * 60 and (v := ratio(r)) is not None]
     if not logs:
@@ -207,7 +240,7 @@ def estimate(rows: list, envs: dict, sky: dict | None, now: float) -> dict:
     out.update(source='light', b=round(10 ** lb, 3), cloud=round(cloud, 3), dark=round(dark, 3), sun=round(sun, 3),
                broken=round(float(np.clip(np.std(logs) / 0.2, 0, 1)), 3) if len(logs) >= 8 else None)
     # The colour: redder or bluer than the desk's daylight usually is.
-    if rb is not None and (d := desk_daylight(rows[0], coef)) is not None and d[0] > 0 and d[2] > 0:
+    if rb is not None and (d := desk_daylight(rows[0], coef, sig)) is not None and d[0] > 0 and d[2] > 0:
         out['warmth'] = round(math.log(d[0] / d[2]) - rb, 3)
     return out
 

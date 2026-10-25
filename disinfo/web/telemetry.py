@@ -57,9 +57,11 @@ class DiLightSensorState(AppBaseModel):
     color_hex: str = '#000000FF'
     color_temp: float = 0.0
     lux: float = 0.0
+    rgbc: list[float] = []          # counts as at 4x gain, 712 ms (the client ranges itself)
     proximity: int = 0
     gesture: EdgeTriggerState[str] = EdgeTriggerState[str]('--')
     updated_at: float = 0.0
+    received_at: float = 0.0        # here, time.time(): updated_at is the client's clock
 
     @property
     def color(self) -> AppColor:
@@ -110,8 +112,10 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
                 return
 
             next_state = DiTelemetryState(**data)
-            if next_state.light_sensor.updated_at > self.state.light_sensor.updated_at:
+            # Not 'later': the client's clock starts over when it restarts.
+            if next_state.light_sensor.updated_at != self.state.light_sensor.updated_at:
                 self.state.light_sensor = next_state.light_sensor
+            self.state.light_sensor.received_at = time.time()
             
             if next_state.remote.updated_at > self.state.remote.updated_at:
                 print("Updating remote telemetry,", next_state.remote)

@@ -38,6 +38,7 @@ cloud_rgb = (0.72, 0.75, 0.82)      # a cloud in daylight
 rain_home_mm = 6        # mm/h at home that is a downpour
 snow_c = (0, 2)         # °C at home: snow under the first, rain over the second, sleet between
 lux_dark, lux_bright = 3, 400       # the room: the sky is 55% as bright when dark, full when bright
+room_dark, room_bright = 100, 10000 # the same with the screen's own colour sensor, its clear counts
 
 
 class Look(NamedTuple):
@@ -49,13 +50,23 @@ class Look(NamedTuple):
     city: float         # the city's light on the cloud, 0..1: night and cloud
 
 
+def room_counts(fs) -> float | None:
+    # The screen's own colour sensor (its telemetry), the last minute's.
+    from disinfo.web.telemetry import TelemetryStateManager
+    ls = TelemetryStateManager(fs.config.name).get_state(fs).light_sensor
+    return ls.rgbc[3] if ls.rgbc and time.time() - ls.received_at < 60 else None
+
 def light_gain(fs) -> float:
-    e = get_entity(fs.config.ambient_light_sensor)
-    try:
-        lux = float(e.state)
-    except (AttributeError, TypeError, ValueError):
-        return 1.0
-    k = np.clip((math.log10(max(lux, 1)) - math.log10(lux_dark)) / (math.log10(lux_bright) - math.log10(lux_dark)), 0, 1)
+    '''The room's light: the screen's own sensor, else the configured one in Home Assistant, else full.'''
+    if (v := room_counts(fs)) is not None:
+        lo, hi = room_dark, room_bright
+    else:
+        e = get_entity(fs.config.ambient_light_sensor)
+        try:
+            v, lo, hi = float(e.state), lux_dark, lux_bright
+        except (AttributeError, TypeError, ValueError):
+            return 1.0
+    k = np.clip((math.log10(max(v, 1)) - math.log10(lo)) / (math.log10(hi) - math.log10(lo)), 0, 1)
     return float(0.55 + 0.45 * k)
 
 def weather_state(fs) -> tuple[float, float, float] | None:
