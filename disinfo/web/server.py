@@ -232,7 +232,7 @@ async def aviator_settings():
         off = json.loads(db.get('di.aviator.layers') or '[]')
     except ValueError:
         off = []
-    return {'light': db.get('di.aviator.light') == b'1', 'rain': db.get('di.aviator.rain') == b'1', 'off': off}
+    return {'light': db.get('di.aviator.light') == b'1', 'off': off}
 
 @app.post('/remote')
 async def trigger_remote(rinput: RemoteInput):

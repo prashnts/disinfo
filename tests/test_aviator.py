@@ -177,14 +177,14 @@ def test_layers_planes_and_info(monkeypatch):
     monkeypatch.setattr(app, 'following', lambda fs: None)
     monkeypatch.setattr(app, 'drift', lambda t: t)
     monkeypatch.setattr(app, '_cams', {})
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None))
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None, 0.0))
     fs = NS(config=NS(name='layers', width=120, height=80, aviator_map_up=0, aviator_zoom=1))
     full = app.radar(fs)
     assert [t.payload['hex'] for t in full.targets] == ['a']
     # Raining at home: a badge by the compass.
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.5, None))
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.5, None, 0.0))
     assert app.radar(fs).image.tobytes() != full.image.tobytes()
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None))
+    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None, 0.0))
     opened.off = ['planes']
     no_planes = app.radar(fs)
     assert no_planes.targets == ()
@@ -243,7 +243,29 @@ def test_sky_look(monkeypatch):
         assert skylook.light_gain(fs) == pytest.approx(want, abs=0.01)
     monkeypatch.setattr(skylook, 'get_entity', lambda i: None)
     assert skylook.light_gain(fs) == 1.0 and skylook.weather_state(NS(config=NS(weather_entity='w'))) is None
+    # Rain or snow: the state says when it says something falls, else the temperature; none with the layer off.
+    opened = NS(off=[])
+    monkeypatch.setattr(skylook, 'OpenedStateManager', lambda: NS(get_state=lambda fs: opened))
+    monkeypatch.setattr(skylook.weather, 'sky_profile', lambda kind: (None, 3.0))
+    wet = lambda state, t: (monkeypatch.setattr(skylook, 'weather_state', lambda fs: skylook.conditions.get(state)),
+                            monkeypatch.setattr(skylook, 'temperature', lambda: t), skylook.wetness(None))[-1]
+    assert wet('snowy', 10)[2] == 1 and wet('snowy-rainy', 10)[2] == 0.5 and wet('rainy', -5)[2] == 0
+    assert wet('cloudy', -1)[2] == 1 and wet('cloudy', 1)[2] == 0.5 and wet('cloudy', 5)[2] == 0 and wet(None, None)[2] == 0
+    assert wet('cloudy', 5)[0] == 0.5           # the radar's 3 mm/h
+    opened.off = ['rain']
+    assert wet('pouring', 10)[0] == 0
 
+
+def test_clouds_without_the_satellite(monkeypatch):
+    # Raining at home, no satellite picture: the cover all around is the rain's.
+    import cairocffi as cairo
+    from disinfo.screens.aviator import sky
+    monkeypatch.setattr(sky.weather, 'sky_profile', lambda kind: None)
+    ctx = cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 64, 64))
+    to_px = lambda b, e: (32 + b, 45 - e)
+    assert sky.clouds(ctx, 0, 90, 64, 45, 64, (1, 1, 1), 0.5)(10) == 0.5
+    sky.puffs(ctx, 0, 90, 64, to_px, (1, 1, 1), 0.5)
+    assert sky.clouds(ctx, 0, 90, 64, 45, 64, (1, 1, 1))(10) == 0
 
 def test_overhead_order_is_stable(monkeypatch):
     now = 1000.0

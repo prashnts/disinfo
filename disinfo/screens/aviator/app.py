@@ -243,8 +243,9 @@ def compass(ctx: cairo.Context, up: float, w: int, h: int):
     ctx.paint_with_alpha(0.6)
     ctx.restore()
 
-def rain_badge(ctx: cairo.Context, wet: float, w: int, h: int, light: bool):
+def rain_badge(ctx: cairo.Context, wet: float, w: int, h: int, light: bool, snow: float = 0):
     # Raining at home: left of the compass, the same disc, a drop filled as hard as it rains, in the map's rain colours.
+    # Snowing: a flake, as big as it snows.
     r = min(max(min(w, h) * 0.06, 6), 13)
     cx, cy = w - 3 * r - 7, h - r - 4
     levels = [l for l, _ in weather.rain_colors[light]]
@@ -259,6 +260,23 @@ def rain_badge(ctx: cairo.Context, wet: float, w: int, h: int, light: bool):
     ctx.set_source_rgba(1, 1, 1, 0.5)
     ctx.set_line_width(max(r / 12, 0.8))
     ctx.stroke()
+    if snow >= 0.5:
+        ctx.set_source_rgb(*(c * 0.4 + 0.6 for c in color))
+        ctx.set_line_width(max(r / 8, 0.9))
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        arm = r * (0.4 + 0.3 * wet)
+        for k in range(6):
+            a = k * math.pi / 3
+            ctx.move_to(0, 0)
+            ctx.line_to(arm * math.sin(a), -arm * math.cos(a))
+            for side in (-1, 1):
+                ctx.move_to(0.55 * arm * math.sin(a), -0.55 * arm * math.cos(a))
+                ctx.line_to(0.55 * arm * math.sin(a) + 0.3 * arm * math.sin(a + side * math.pi / 4), -0.55 * arm * math.cos(a) - 0.3 * arm * math.cos(a + side * math.pi / 4))
+        ctx.stroke()
+        ctx.pop_group_to_source()
+        ctx.paint_with_alpha(0.6)
+        ctx.restore()
+        return
     d = r * 0.42
     ctx.move_to(0, -r * 0.68)
     ctx.curve_to(d * 0.4, -d * 0.6, d, -d * 0.1, d, d * 0.45)
@@ -426,8 +444,9 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
 
     if info:
         compass(ctx, up, w, h)
-        if (wet := skylook.wetness(fs)[0]) > 0.05:
-            rain_badge(ctx, wet, w, h, is_light)
+        wet, _, snow = skylook.wetness(fs)
+        if wet > 0.05:
+            rain_badge(ctx, wet, w, h, is_light, snow)
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')

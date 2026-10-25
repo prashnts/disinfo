@@ -4,6 +4,7 @@ greyed and darkened by cloud, a haze band on the horizon, and the sunset's glow 
 At night the city's light comes back from the cloud: an orange-pink glow over the horizon, the lower the cloud, the higher.
 '''
 import math
+import time
 import numpy as np
 import cairocffi as cairo
 
@@ -24,17 +25,18 @@ palette = [
     (10, (48, 92, 164), (150, 182, 214)),
     (30, (36, 88, 176), (130, 176, 222)),
 ]
-# HA weather state -> (cloud 0..1, haze 0..1, darker, rain 0..1)
+# HA weather state -> (cloud 0..1, haze 0..1, darker, rain or snow 0..1, the snow's share 0..1)
 conditions = {
-    'sunny': (0, 0.1, 0, 0), 'clear-night': (0, 0.1, 0, 0), 'partlycloudy': (0.35, 0.2, 0, 0), 'cloudy': (0.8, 0.35, 0.1, 0),
-    'fog': (1, 0.9, 0.1, 0), 'rainy': (0.9, 0.5, 0.25, 0.4), 'pouring': (1, 0.55, 0.35, 0.85), 'snowy': (0.9, 0.6, 0.15, 0),
-    'snowy-rainy': (0.9, 0.55, 0.2, 0.3), 'hail': (1, 0.5, 0.35, 0.5), 'lightning': (0.9, 0.4, 0.35, 0),
-    'lightning-rainy': (1, 0.5, 0.4, 0.6), 'windy': (0.3, 0.15, 0, 0), 'windy-variant': (0.5, 0.2, 0.05, 0), 'exceptional': (0.5, 0.3, 0.1, 0),
+    'sunny': (0, 0.1, 0, 0, 0), 'clear-night': (0, 0.1, 0, 0, 0), 'partlycloudy': (0.35, 0.2, 0, 0, 0), 'cloudy': (0.8, 0.35, 0.1, 0, 0),
+    'fog': (1, 0.9, 0.1, 0, 0), 'rainy': (0.9, 0.5, 0.25, 0.4, 0), 'pouring': (1, 0.55, 0.35, 0.85, 0), 'snowy': (0.9, 0.6, 0.15, 0.4, 1),
+    'snowy-rainy': (0.9, 0.55, 0.2, 0.3, 0.5), 'hail': (1, 0.5, 0.35, 0.5, 0), 'lightning': (0.9, 0.4, 0.35, 0, 0),
+    'lightning-rainy': (1, 0.5, 0.4, 0.6, 0), 'windy': (0.3, 0.15, 0, 0, 0), 'windy-variant': (0.5, 0.2, 0.05, 0, 0), 'exceptional': (0.5, 0.3, 0.1, 0, 0),
 }
 glow_rgb = (255, 138, 66)
 city_rgb = (150, 82, 52)            # the streetlights on the underside of the cloud
 cloud_rgb = (0.72, 0.75, 0.82)      # a cloud in daylight
 rain_home_mm = 6        # mm/h at home that is a downpour
+snow_c = (0, 2)         # °C at home: snow under the first, rain over the second, sleet between
 lux_dark, lux_bright = 3, 400       # the room: the sky is 55% as bright when dark, full when bright
 
 
@@ -59,25 +61,34 @@ def light_gain(fs) -> float:
 def weather_state(fs) -> tuple[float, float, float] | None:
     '''None: no state from Home Assistant (a state it has no entry for counts as a little cloud).'''
     e = get_entity(fs.config.weather_entity)
-    return None if e is None else conditions.get(e.state, (0.3, 0.2, 0, 0))
+    return None if e is None else conditions.get(e.state, (0.3, 0.2, 0, 0, 0))
 
-def wetness(fs) -> tuple[float, tuple | None]:
-    '''How wet it is at home, 0..1 (the radar, the weather state, or the web page's rain), and the weather state:
-    rainy when the web page makes it rain.'''
+def temperature() -> float | None:
+    # °C at home this hour, from the weather card's forecast (AROME).
+    from disinfo.screens.weather.vigilance import forecast_doc
+    d = forecast_doc()
+    return min(d['hours'], key=lambda r: abs(r[0] - time.time()))[2] if d and d['hours'] else None
+
+def wetness(fs) -> tuple[float, tuple | None, float]:
+    '''How hard it rains or snows at home, 0..1 (the radar or the weather state; none with the rain layer off), the
+    weather state and the snow's share, 0..1: the state's, else the temperature's.'''
     state = weather_state(fs)
-    opened = OpenedStateManager().get_state(fs)
     prof = weather.sky_profile('rain')
-    wet = 0.0 if 'rain' in opened.off and not opened.rain else max(min((prof[1] if prof else 0) / rain_home_mm, 1), state[3] if state else 0, 0.45 if opened.rain else 0)
-    if opened.rain and (not state or state[3] < 0.4):
-        state = conditions['rainy']
-    return wet, state
+    wet = 0.0 if 'rain' in OpenedStateManager().get_state(fs).off else max(min((prof[1] if prof else 0) / rain_home_mm, 1), state[3] if state else 0)
+    # The state says what falls when it says something falls; the radar doesn't tell rain from snow.
+    if state and state[3] > 0:
+        snow = state[4]
+    else:
+        t = temperature()
+        snow = 0.0 if t is None else float(np.clip((snow_c[1] - t) / (snow_c[1] - snow_c[0]), 0, 1))
+    return wet, state, snow
 
 def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None) -> Look:
     '''cloud overrides the weather state's (the satellite's, when there is no state).'''
     at = [a for a, _, _ in palette]
     zen = np.array([np.interp(sun_alt, at, [z[i] for _, z, _ in palette]) for i in range(3)])
     hor = np.array([np.interp(sun_alt, at, [h[i] for _, _, h in palette]) for i in range(3)])
-    c, haze, dark, _ = cond
+    c, haze, dark, *_ = cond
     c = c if cloud is None else cloud
     grey = lambda v: np.full(3, v @ [0.3, 0.59, 0.11])
     # Cloud takes the colour out and the light down; the horizon keeps a little of the sunset through it.

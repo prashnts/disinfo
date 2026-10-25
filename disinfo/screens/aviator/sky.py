@@ -233,6 +233,14 @@ cloud_base_km = 4       # the rain hangs from here: higher in the view the neare
 col_step = 2            # px between the columns of a band
 # The drops at home, far then near: (per px of the view, length px, px/s falling, alpha).
 drop_layers = ((1 / 380, 3, 55, 0.22), (1 / 1100, 6, 120, 0.42))
+puff_alpha = 0.7
+puff_base_km = 1.5      # the cumulus' base
+puff_km = 1.6           # a cloud across
+# Far to near: (km away, the satellite's bin). The three nearest are over home, in the nearest bin.
+puff_layers = ((100, 3), (60, 2), (30, 1), (10, 0), (6, 0), (3.5, 0), (2, 0))
+snow_color = (0.93, 0.95, 1.0)
+# The flakes, the same: (per px of the view, size px, px/s falling, alpha).
+flake_layers = ((1 / 260, 1, 9, 0.35), (1 / 700, 2, 18, 0.6))
 
 def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, color: tuple, floor: float = 0, alpha: float = cloud_alpha):
     # A band of cloud over the horizon, as high as the cover is thick in each direction, going to nothing upwards.
@@ -242,7 +250,7 @@ def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, 
         return lambda b: 0.0
     xs = np.arange(0, w + col_step, col_step)
     weights = np.array(cloud_weights, np.float32)
-    cover_at = lambda bs: np.maximum(np.clip((weather.along(prof[0], bs) * weights).sum(axis=1) * 2.5, 0, 1) if prof else 0, floor)
+    cover_at = lambda bs: np.maximum(np.clip((weather.along(prof[0], bs) * weights).sum(axis=1) * 2.5, 0, 1) if prof else np.zeros(len(bs)), floor)
     top = hz - hz * 0.95 * cover_at(yaw + (xs - w / 2) / w * fov) ** 0.8
     if top.min() < hz - 1:
         g = cairo.LinearGradient(0, top.min(), 0, hz)
@@ -257,12 +265,49 @@ def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, 
         ctx.fill()
     return lambda b: float(cover_at(np.array([b]))[0])
 
-def rain_tint(lk) -> tuple:
-    # Rain is lit by what's behind it: at night the streetlights.
-    k = 0.6 * lk.city
-    return tuple(c * (1 - k) + v / 255 * k for c, v in zip(rain_color, skylook.city_rgb))
+def puffs(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tuple, floor: float = 0, alpha: float = puff_alpha):
+    # The clouds themselves where the satellite sees them, a puff a cloud wide as often as the cover is thick: the far
+    # ones low and small, the ones over home high up and big. Each has its place by bearing, the same every frame.
+    prof = weather.sky_profile('clouds')
+    if not prof and not floor:
+        return
+    for d, k in puff_layers:
+        size = math.degrees(puff_km / d)
+        step = size * 0.8
+        i0 = math.floor((yaw - fov / 2 - size) / step)
+        bs = np.arange(i0, i0 + math.ceil((fov + 2 * size) / step) + 1) * step
+        cover = np.maximum(np.clip(weather.along(prof[0], bs)[:, k] * 3, 0, 1) if prof else np.zeros(len(bs)), floor)
+        e = math.degrees(math.atan2(puff_base_km, d))
+        near = min(size / 20, 1)
+        a = alpha * (1 - 0.4 * near)    # the near ones thin: one sees through their edges
+        for i, b, c in zip(range(i0, i0 + len(bs)), bs, cover):
+            r = (math.sin(i * 12.9898 + d * 78.233) * 43758.5453) % 1
+            if r >= c:
+                continue
+            j = (r * 7.31) % 1
+            x, y = to_px(b + (j - 0.5) * step * 0.6, e * (0.85 + 0.3 * j))
+            rx = max(size / fov * w * (0.45 + 0.4 * j) * (1 - 0.4 * near), 0.6)
+            ry = max(rx * (0.3 + 0.35 * near), 0.6)
+            # Lit on top, grey under.
+            g = cairo.LinearGradient(0, y - ry, 0, y + ry)
+            g.add_color_stop_rgba(0, *(min(v * 1.15, 1) for v in color), a * (0.6 + 0.4 * c))
+            g.add_color_stop_rgba(1, *(v * 0.75 for v in color), a * (0.6 + 0.4 * c))
+            ctx.set_source(g)
+            ctx.save()
+            ctx.translate(x, y)
+            ctx.scale(rx, ry)
+            ctx.arc(0, 0, 1, 0, 2 * math.pi)
+            ctx.arc(-0.6, 0.25, 0.7, 0, 2 * math.pi)
+            ctx.arc(0.65, 0.3, 0.6, 0, 2 * math.pi)
+            ctx.restore()
+            ctx.fill()
 
-def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, tint: tuple):
+def fall_tint(lk, color: tuple, k: float = 0.6) -> tuple:
+    # Rain and snow are lit by what's around: at night the streetlights.
+    k *= lk.city
+    return tuple(c * (1 - k) + v / 255 * k for c, v in zip(color, skylook.city_rgb))
+
+def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, to_px, tint: tuple):
     # Curtains of rain hanging in the directions it rains in, nearer ones higher and stronger.
     if not (prof := weather.sky_profile('rain')):
         return
@@ -275,8 +320,7 @@ def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, ti
     for i, (x, k) in enumerate(zip(xs, best)):
         if power[i] < 0.05:
             continue
-        e = math.degrees(math.atan2(cloud_base_km, weather.rain_bins[k]))
-        top = hz - hz * (min(e, 90) / 90) ** elev_gamma
+        _, top = to_px(0, math.degrees(math.atan2(cloud_base_km, weather.rain_bins[k])))
         # Streaky: each column its own strength.
         streak = 0.5 + 0.5 * ((x * 37 + k * 11) % 7) / 6
         ctx.set_source_rgba(*tint, min(power[i] * 1.4, 0.6) * streak)
@@ -284,16 +328,29 @@ def rain(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, ti
         ctx.line_to(float(x) + 0.5, hz)
         ctx.stroke()
 
-def drops(ctx: cairo.Context, w: int, h: int, now: float, wet: float, slant: float, tint: tuple):
+def drops(ctx: cairo.Context, w: int, h: int, now: float, wet: float, slant: float, tint: tuple, share: float = 1):
     # The rain at home, across the whole view: the near drops longer, brighter and faster. They fall along the wind.
     for depth, (per_px, length, speed, alpha) in enumerate(drop_layers):
         ctx.set_source_rgba(*tint, alpha * (0.5 + 0.5 * wet))
-        for i in range(int(w * h * per_px * (0.3 + wet))):
+        for i in range(int(w * h * per_px * (0.3 + wet) * share)):
             y = ((i * 0.7548776662 + depth * 0.37) % 1 * h + now * speed) % (h + length) - length
             x = ((i * 0.6180339887 + depth * 0.5) % 1 * (w + 40) - 20 + slant * y) % (w + 40) - 20
             ctx.move_to(x, y)
             ctx.line_to(x + slant * length, y + length)
         ctx.stroke()
+
+def flakes(ctx: cairo.Context, w: int, h: int, now: float, wet: float, slant: float, tint: tuple, share: float = 1):
+    # The snow at home: slow, the near flakes bigger, each its own speed and sway, blown further than the rain.
+    ctx.set_antialias(cairo.ANTIALIAS_NONE)
+    for depth, (per_px, size, speed, alpha) in enumerate(flake_layers):
+        ctx.set_source_rgba(*tint, alpha * (0.5 + 0.5 * wet))
+        for i in range(int(w * h * per_px * (0.3 + wet) * share)):
+            v = speed * (0.7 + 0.6 * ((i * 0.381966) % 1))
+            y = ((i * 0.7548776662 + depth * 0.37) % 1 * h + now * v) % (h + size) - size
+            x = ((i * 0.6180339887 + depth * 0.5) % 1 * (w + 40) - 20 + 2 * slant * y + 1.5 * math.sin(now * 1.2 + i)) % (w + 40) - 20
+            ctx.rectangle(round(x), round(y), size, size)
+        ctx.fill()
+    ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
 
 def drop_slant(yaw: float) -> float:
     # The wind at home across the view (right is yaw + 90), in px sideways per px falling.
@@ -332,7 +389,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     off = OpenedStateManager().get_state(fs).off
-    wet, state = skylook.wetness(fs)
+    wet, state, snow = skylook.wetness(fs)
     # No weather state (HA down): the satellite's cover over home stands in.
     lk = skylook.look(se, state or skylook.conditions['partlycloudy'], skylook.light_gain(fs), None if state else overhead_cover())
     skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
@@ -342,9 +399,11 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.stroke()
 
     info, show_planes = 'info' not in off, 'planes' not in off
-    tint = rain_tint(lk)
+    tint, snow_tint = fall_tint(lk, rain_color), fall_tint(lk, snow_color, 0.5)
     if 'clouds' not in off or wet:
-        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, skylook.cloud_color(lk, wet), min(wet * 1.4, 0.8), cloud_alpha + 0.25 * wet)
+        cc = skylook.cloud_color(lk, wet * (1 - 0.7 * snow))
+        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, cc, min(wet * 1.4, 0.8), cloud_alpha + 0.25 * wet)
+        puffs(ctx, yaw, fov, w, to_px, cc, min(wet * 1.4, 0.8))
     else:
         cloud_dim = lambda b: 0.0
 
@@ -371,7 +430,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         astro.draw_moon(ctx, mx, my, 3, phase, (1 - 0.65 * min(max(se / 10, 0), 1)) * (1 - 0.8 * cloud_dim(mb)) * (1 - 0.5 * lk.cloud) * max(1 - 2 * wet, 0))
 
     if 'rain' not in off:
-        rain(ctx, yaw, fov, w, hz, h, tint)
+        rain(ctx, yaw, fov, w, hz, to_px, tint)
 
     targets, lit = [], []
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
@@ -417,11 +476,15 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             labels.append((app.pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
 
     # The roofs over all that: a low plane goes behind them. Its number and the ring stay on top.
-    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, (*tint, rim_color[3] + 0.2 * wet) if wet > 0.05 else rim_color)
-    # The rain at home falls in front of all that, at a few frames a second.
+    # Wet roofs shine with the rain's light, snowy ones are white along their tops.
+    rim = (*snow_tint, 0.3 + 0.3 * wet) if snow >= 0.5 else (*tint, rim_color[3] + 0.2 * wet)
+    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color)
+    # The rain or snow at home falls in front of all that, at a few frames a second.
     app._raining[fs.config.name] = wet > 0.05
     if wet > 0.05:
-        drops(ctx, w, h, now, wet, drop_slant(yaw), tint)
+        slant = drop_slant(yaw)
+        drops(ctx, w, h, now, wet, slant, tint, 1 - snow)
+        flakes(ctx, w, h, now, wet, slant, snow_tint, snow)
     for px, py in (lit if info else ()):
         ctx.set_source_rgba(1, 1, 1, 0.85)
         ctx.arc(px, py, 6.5, 0, 2 * math.pi)

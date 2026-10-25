@@ -325,7 +325,13 @@ def sat_doc() -> dict | None:
 
 sat_color = {False: (0.80, 0.86, 0.95), True: (1.0, 1.0, 1.0)}
 sat_alpha = 0.40        # the densest clouds
-sat_floor = 90          # the grey under which it's ground or sea: the contrast is stretched from here
+sat_floor = 90          # the grey under which it's ground or sea, at most: the contrast is stretched from here
+sat_margin = 6          # the ground's grey is the warmest tenth of the picture, this over it
+
+def floor_of(g) -> float:
+    # Low clouds are hardly colder than the ground (an autumn noon: ground 45, cumulus 60..95). All cloud: sat_floor.
+    import numpy as np
+    return min(float(np.percentile(g, 10)) + sat_margin, sat_floor)
 
 def sat_surface(doc: dict, light: bool) -> cairo.ImageSurface:
     key = doc['at'], light
@@ -334,7 +340,8 @@ def sat_surface(doc: dict, light: bool) -> cairo.ImageSurface:
         import numpy as np
         from PIL import Image
         g = np.asarray(Image.open(io.BytesIO(base64.b64decode(doc['png']))).convert('L'), dtype=np.float32)
-        a = np.clip((g - sat_floor) / (255 - sat_floor), 0, 1) ** 1.3 * sat_alpha
+        f = floor_of(g)
+        a = np.clip((g - f) / (255 - f), 0, 1) ** 1.3 * sat_alpha
         out = np.empty(g.shape + (4,), np.uint8)
         for i, c in enumerate((2, 1, 0)):
             out[..., i] = np.round(sat_color[light][c] * a * 255)
@@ -402,7 +409,8 @@ def sky_profile(kind: str):
         n = g.shape[0]
         home_mm = float(g[n // 2 - 1:n // 2 + 1, n // 2 - 1:n // 2 + 1].max()) / doc.get('scale', scale)
     else:
-        values = np.clip((polar(g, doc, cloud_bins) - sat_floor) / (255 - sat_floor), 0, 1) ** 1.3
+        f = floor_of(g)
+        values = np.clip((polar(g, doc, cloud_bins) - f) / (255 - f), 0, 1) ** 1.3
         home_mm = 0.0
     _profiles[kind] = doc['at'], (values.astype(np.float32), home_mm)
     return _profiles[kind][1]

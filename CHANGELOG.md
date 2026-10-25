@@ -36,7 +36,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ## [Unreleased]
 
 ### Added
-- Rain in the sky view: falling rain along the wind when it rains at home, the sky and clouds overcast with it, the city's light on the clouds at night; a drop by the map's compass. A switch on the web page makes it rain.
+- Rain and snow in the sky view: falling along the wind when it rains or snows at home (snow from the weather state or the temperature), the sky and clouds overcast with it, snow on the roofs, the city's light on the clouds at night; a drop or a flake by the map's compass. The rain layer switches it off.
+- Clouds in the sky view where the satellite sees them: puffs, far ones low and small, the ones over home high up. The satellite's low clouds show (the ground's grey measured per picture).
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 
