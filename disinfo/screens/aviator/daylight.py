@@ -194,11 +194,17 @@ def estimate(rows: list, envs: dict, sky: dict | None, now: float) -> dict:
     if lb < math.log10(shutter_b) and (model is None or (model['kt'] or 0) > 0.35):
         out['source'] = 'shutter'
         return out
-    out.update(source='light', b=round(10 ** lb, 3),
-               # Dimmed by the cloud: none at 0.7 of the brightest, all at a seventh.
-               cloud=round(float(np.clip((-lb - 0.15) / 0.75, 0, 1)), 3),
-               dark=round(float(np.clip((-lb - 0.6) / 0.8, 0, 1)), 3),
-               sun=round(float(np.clip((lb + 0.4) / 0.3, 0, 1)), 3),
+    # Dimmed by the cloud: none at 0.7 of the brightest, all at a seventh. The sun's out near the brightest.
+    cloud = float(np.clip((-lb - 0.15) / 0.75, 0, 1))
+    dark = float(np.clip((-lb - 0.6) / 0.8, 0, 1))
+    sun = float(np.clip((lb + 0.4) / 0.3, 0, 1))
+    start, end = app_config.aviator_window
+    if (az - start) % 360 > ((end - start) % 360 or 360) and model and model['kt'] is not None:
+        # The sun behind the window: it sees only the sky across, as bright overcast as clear. The model says if the
+        # sun's out; the light still says when it's dark.
+        sun = float(np.clip((model['kt'] - 0.45) / 0.3, 0, 1)) * (1 - dark)
+        cloud = max(float(np.clip((0.8 - model['kt']) / 0.6, 0, 1)), cloud if lb < -0.8 else 0)
+    out.update(source='light', b=round(10 ** lb, 3), cloud=round(cloud, 3), dark=round(dark, 3), sun=round(sun, 3),
                broken=round(float(np.clip(np.std(logs) / 0.2, 0, 1)), 3) if len(logs) >= 8 else None)
     # The colour: redder or bluer than the desk's daylight usually is.
     if rb is not None and (d := desk_daylight(rows[0], coef)) is not None and d[0] > 0 and d[2] > 0:
@@ -211,9 +217,16 @@ def task():
     from disinfo.redis import db, publish
     from disinfo.utils.hass import get_entity
     now = time.time()
-    num = lambda name: float(e.state) if (e := get_entity(name)) and e.state not in ('unknown', 'unavailable') else None
+    def ha(fn, *args):
+        # Whatever's missing (an entity, a number, HA itself) is a None in the row: the rest goes on.
+        try:
+            return fn(*args)
+        except Exception:
+            return None
+    num = lambda name: float(get_entity(name).state)
     desk = _desk['rgbc'] if now - _desk['at'] < 120 else None
-    row = [round(now), num(app_config.daylight_lux), num(app_config.daylight_uv), *(desk or [None] * 4), *(lamps() or [None] * len(app_config.daylight_lamps))]
+    row = [round(now), ha(num, app_config.daylight_lux), ha(num, app_config.daylight_uv), *(desk or [None] * 4),
+           *(ha(lamps) or [None] * len(app_config.daylight_lamps))]
     db.lpush(LOG_KEY, json.dumps(row))
     db.ltrim(LOG_KEY, 0, log_days * 1440)
 
@@ -243,17 +256,27 @@ def task():
     return True
 
 
-_doc = {'read': 0.0, 'doc': None}
+_read = {}             # key -> (when, doc)
+
+def read(key: str) -> dict | None:
+    # Read from redis every 20 s at most: renderers call it each frame.
+    now = time.monotonic()
+    if now - _read.get(key, (-99, None))[0] > 20:
+        from disinfo.redis import db
+        try:
+            _read[key] = now, json.loads(db.get(key) or 'null')
+        except Exception:
+            _read[key] = now, None
+    return _read[key][1]
 
 def doc() -> dict | None:
-    '''The latest, read from redis every 20 s; None if it's older than 10 minutes.'''
-    now = time.monotonic()
-    if now - _doc['read'] > 20:
-        from disinfo.redis import db
-        _doc['read'] = now
-        try:
-            _doc['doc'] = json.loads(db.get(KEY) or 'null')
-        except ValueError:
-            _doc['doc'] = None
-    d = _doc['doc']
+    '''The latest estimate; None if it's older than 10 minutes (the data service down).'''
+    d = read(KEY)
     return d if d and time.time() - d['at'] < 600 else None
+
+def model() -> dict | None:
+    '''Open-Meteo's cover over home, 0..1 (cloud, low, mid, high), straight from its fetch: there without the light.'''
+    d = read(SKY_KEY)
+    if not d or time.time() - d['at'] > 3 * 3600:
+        return None
+    return {k: d[f'cloud_cover_{k}' if k != 'cloud' else 'cloud_cover'] / 100 for k in ('cloud', 'low', 'mid', 'high')}

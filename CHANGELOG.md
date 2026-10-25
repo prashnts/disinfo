@@ -38,7 +38,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ### Added
 - Rain and snow in the sky view: falling along the wind when it rains or snows at home (snow from the weather state or the temperature), the sky and clouds overcast with it, snow on the roofs, the city's light on the clouds at night; a drop or a flake by the map's compass. The rain layer switches it off.
 - Clouds in the sky view where the satellite sees them: puffs, far ones low and small, the ones over home high up. The satellite's low clouds show (the ground's grey measured per picture).
-- The sky view follows the light by the window: Sensei and the desk's colour sensor against the brightest seen with the sun there, the lamps taken off. Worked out once for all screens in the data service; greys and darkens the sky, hides the sun, low cloud the satellite misses, cirrus from the model. 🔧 The desk's colour sensor ranges itself (night to direct sun).
+- The sky view follows the light by the window: Sensei and the desk's colour sensor against the brightest seen with the sun there, the lamps taken off. Worked out once for all screens in the data service; greys and darkens the sky, hides the sun, low cloud the satellite misses, cirrus from the model, the sun on the facades by day. Each source can be missing: the sky falls back to the next. 🔧 The desk's colour sensor ranges itself (night to direct sun).
 
 ### Changed
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.

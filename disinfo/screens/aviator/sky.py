@@ -25,7 +25,7 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, weather
+from . import app, astro, skylook, weather, daylight
 
 
 horizon = 0.7           # of the height, from the top
@@ -46,6 +46,8 @@ sway_period = 200       # s
 far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
 rim_color = (1, 1, 1, 0.15)
+day_face = (1, 0.93, 0.8)       # the sun on the facades, by day
+day_face_alpha, day_rim_alpha = 0.07, 0.3
 label_style = TextStyle(font=fonts.microfont_35_reg, color='#8b8e94b0')
 
 # Seen over the roofs, where they stand: (name, lat, lon, height m, ground m over the sea, width m, shape).
@@ -100,12 +102,13 @@ def landmark_points(eye: float) -> list[tuple]:
         out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape))
     return out
 
-def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None, rim: tuple = rim_color):
+def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None, rim: tuple = rim_color,
+          daylit: tuple[float, float] | None = None):
     # Pixel-crisp: sharp on the LEDs, and nothing changes between frames when the view's still.
     ctx.set_antialias(cairo.ANTIALIAS_NONE)
     far, near = city()
     for blocks, color in ((far, far_color), (near, near_color)):
-        rims, lit = [], []
+        rims, lit, faces = [], [], []
         for b0, b1, cornice, top, chimneys in blocks:
             if not (in_view(b0, 5) or in_view(b1, 5)):
                 continue
@@ -124,6 +127,9 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
             rims.append(outline)
             if sunlight and (k := max(0, 1 - abs(wrap((b0 + b1) / 2 - sunlight[0])) / 70) * sunlight[1]) > 0.03:
                 lit.append((outline, k, x0, x1, yc, b0))
+            # By day: the facades turned to the sun (it's behind us when they face us), as much as it's out.
+            if daylit and (k := math.cos(math.radians(wrap((b0 + b1) / 2 + 180 - daylit[0]))) * daylit[1]) > 0.05:
+                faces.append((outline, k, x0, x1, yc, b0))
         ctx.set_source_rgb(*color)
         ctx.fill()
         ctx.set_source_rgba(*rim)     # wet: shining with the rain's light
@@ -132,6 +138,26 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
             for p in outline[1:]:
                 ctx.line_to(*p)
         ctx.stroke()
+        for outline, k, x0, x1, yc, b0 in faces:
+            ctx.move_to(x0, h)
+            for p in outline:
+                ctx.line_to(*p)
+            ctx.line_to(x1, h)
+            ctx.close_path()
+            ctx.set_source_rgba(*day_face, day_face_alpha * k)
+            ctx.fill()
+            ctx.set_source_rgba(*day_face, day_rim_alpha * k)
+            ctx.move_to(*outline[0])
+            for p in outline[1:]:
+                ctx.line_to(*p)
+            ctx.stroke()
+            # A window here and there sends the sun back: the same ones every frame.
+            rnd = random.Random(round(b0 * 1000) + 7)
+            for _ in range(max(1, round((x1 - x0) / 6))):
+                if rnd.random() < 0.5:
+                    ctx.set_source_rgba(1, 0.95, 0.8, min(0.8 * k, 0.8) * rnd.uniform(0.4, 1))
+                    ctx.rectangle(round(rnd.uniform(x0 + 1, x1 - 1)), round(yc + rnd.uniform(2, 12)), 1, 1)
+                    ctx.fill()
         # The sunset on the roofs facing it: a warm rim and a few windows catching it.
         for outline, k, x0, x1, yc, b0 in lit:
             ctx.set_source_rgba(*(c / 255 for c in skylook.glow_rgb), min(0.75 * k, 0.75))
@@ -431,7 +457,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     tint, snow_tint = fall_tint(lk, rain_color), fall_tint(lk, snow_color, 0.5)
     if 'clouds' not in off or wet:
         cc = skylook.cloud_color(lk, wet * (1 - 0.7 * snow))
-        if dl and (model := dl['model']) and model['high'] > 0.05:
+        if (model := daylight.model()) and model['high'] > 0.05:
             cirrus(ctx, yaw, fov, w, to_px, cc, lk, model['high'])
         # The cloud the light says is there, all around: the satellite (infrared) misses the low, warm ones.
         # A deck when it's steady, puffs when the sun goes in and out.
@@ -514,7 +540,10 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     # The roofs over all that: a low plane goes behind them. Its number and the ring stay on top.
     # Wet roofs shine with the rain's light, snowy ones are white along their tops.
     rim = (*snow_tint, 0.3 + 0.3 * wet) if snow >= 0.5 else (*tint, rim_color[3] + 0.2 * wet)
-    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color)
+    # The sun on the facades: the light says how much it's out, else the cloud does.
+    sun_out = (dl['sun'] if dl and dl['sun'] is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
+    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color,
+          (sb, sun_out) if sun_out > 0.05 else None)
     # The rain or snow at home falls in front of all that, at a few frames a second.
     app._raining[fs.config.name] = wet > 0.05
     if wet > 0.05:

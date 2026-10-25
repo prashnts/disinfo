@@ -256,7 +256,7 @@ def test_sky_look(monkeypatch):
     assert wet('pouring', 10)[0] == 0
 
 
-def test_daylight():
+def test_daylight(monkeypatch):
     import time
     import numpy as np
     from disinfo.screens.aviator import daylight as d
@@ -278,8 +278,14 @@ def test_daylight():
              'shortwave_radiation': 400, 'direct_radiation': 0}
     at = lambda k: d.estimate([[now - i * 60, None, 0, *(sky(now - i * 60, k) + 40 + lamp).tolist(), 255, 0, 0] for i in range(15)],
                               envs, model, now)
+    # The sun in the window's view: the light says it all.
+    monkeypatch.setattr(d.app_config, 'aviator_window', (0, 360))
     assert at(1)['cloud'] == 0 and at(1)['sun'] == 1
     assert at(0.05)['cloud'] == 1 and at(0.05)['dark'] > 0.8 and at(0.05)['sun'] == 0
+    # Behind it, the model says if the sun's out (a clear sky across is no brighter than overcast), unless it's dark.
+    monkeypatch.setattr(d.app_config, 'aviator_window', ((d.sun_at(now)[1] + 90) % 360, (d.sun_at(now)[1] + 270) % 360))
+    assert at(0.3)['sun'] == 1 and at(0.3)['cloud'] < 0.1
+    assert at(0.05)['sun'] < 0.2 and at(0.05)['cloud'] > 0.8
     assert at(0.001)['source'] == 'shutter' and at(0.001)['cloud'] is None
     assert d.estimate([], envs, model, now - 12 * 3600)['source'] == 'night'
 
