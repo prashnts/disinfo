@@ -6,8 +6,8 @@ follows the sun's bearing more than the hour. That ratio says how much the cloud
 a tenth a dark overcast, nothing with the shutter down. The desk's lamps are taken off its counts (learnt at night).
 Open-Meteo's model (cover by height, radiation) is there for what a window can't tell, and stands in when it's blind.
 
-di.daylight: {at, source ('light', 'shutter', 'night', 'none'), b (0..1+), cloud, dark, sun, broken (0..1 or None),
-warmth (None until a day of log), model {cloud, low, mid, high, kt}}.
+di.daylight: {at, source ('light', 'shutter', 'night', 'none'), window (the sun in its view), b (0..1+), cloud, dark, sun,
+broken (0..1 or None), warmth (None until a day of log), model {cloud, low, mid, high, kt}}.
 '''
 import json
 import math
@@ -45,13 +45,21 @@ def clear_ghi(alt: float) -> float:
     s = math.sin(math.radians(alt))
     return 1098 * s * math.exp(-0.057 / s) if s > 0 else 0.0
 
+sky_hourly = ('cloud_cover', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high', 'shortwave_radiation', 'direct_radiation',
+              'precipitation', 'temperature_2m', *(f'{k}_{p}hPa' for p in (850, 700, 500, 300, 250)
+                                                   for k in ('temperature', 'relative_humidity', 'wind_speed', 'wind_direction')))
+
 def fetch_sky() -> dict:
+    '''Now, and by the hour 3 h back to 6 h ahead (hours: {name: [values]}, time in s), with the pressure levels the
+    planes fly at (skystate.py, aloft.py).'''
     r = requests.get(SKY_URL, timeout=30, params={'latitude': home[0], 'longitude': home[1],
-        'current': 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,shortwave_radiation,direct_radiation'})
+        'current': 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,shortwave_radiation,direct_radiation',
+        'hourly': ','.join(sky_hourly), 'past_hours': 3, 'forecast_hours': 7, 'timeformat': 'unixtime', 'wind_speed_unit': 'ms'})
     r.raise_for_status()
-    c = r.json()['current']
+    j = r.json()
+    c = j['current']
     return {'at': time.time(), **{k: c[k] for k in ('cloud_cover', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high',
-                                                     'shortwave_radiation', 'direct_radiation')}}
+                                                     'shortwave_radiation', 'direct_radiation')}, 'hours': j['hourly']}
 
 def sky_task():
     from disinfo.redis import db
@@ -142,9 +150,10 @@ def lamp_model(rows: list) -> np.ndarray | None:
     coef[seen] = np.linalg.lstsq(x[:, seen], y, rcond=None)[0]
     return coef
 
-def signatures(rows: list) -> dict | None:
-    '''The colour of the lamps (at night) and of the daylight (by day, the lamps off), per count of the clear
-    channel: [r, g, b, 1]. None until both are seen, or if they look the same.'''
+def signatures(rows: list, coef=None) -> dict | None:
+    '''The colour of the lamps (at night) and of the daylight (by day, the lamps off or a twentieth of the counts
+    by the lamp model: a lamp left on all day), per count of the clear channel: [r, g, b, 1]. None until both are
+    seen, or if they look the same.'''
     n = len(app_config.daylight_lamps)
     lamp, day = [], []
     for r in rows:
@@ -153,8 +162,15 @@ def signatures(rows: list) -> dict | None:
         alt = sun_at(r[0])[0]
         if alt < night_alt:
             lamp.append(np.array(r[3:7]) / r[6])
-        elif alt > 10 and r[6] > 200 and len(r) == 7 + n and r[7:] == [0] * n:
-            day.append(np.array(r[3:7]) / r[6])
+        elif alt > 10 and r[6] > 200 and len(r) == 7 + n and None not in r[7:]:
+            y = np.array(r[3:7], float)
+            if coef is not None:
+                y = y - np.array([1, *(v / 255 for v in r[7:])]) @ coef
+                if y[3] < 0.95 * r[6]:
+                    continue
+            elif r[7:] != [0] * n:
+                continue
+            day.append(y / y[3])
     if len(lamp) < 30 or len(day) < 30:
         return None
     lamp, day = np.median(lamp, axis=0), np.median(day, axis=0)
@@ -179,10 +195,9 @@ def refresh(rows: list) -> dict:
     '''Once a day: Sensei's envelope from Home Assistant's history (more days than the log); from the log, the desk's
     lamps (by brightness and by colour), its envelope and its usual colour (log r/b).'''
     hist = ha_history(app_config.daylight_lux, log_days)
-    envs = {'at': time.time(), 'sensei': envelope([t for t, _ in hist], [v for _, v in hist]), 'coef': None, 'desk': None, 'rb': None,
-            'sig': signatures(rows)}
     coef = lamp_model(rows)
-    envs['coef'] = coef.tolist() if coef is not None else None
+    envs = {'at': time.time(), 'sensei': envelope([t for t, _ in hist], [v for _, v in hist]), 'desk': None, 'rb': None,
+            'coef': coef.tolist() if coef is not None else None, 'sig': signatures(rows, coef)}
     if coef is None and envs['sig'] is None:
         return envs
     day = [(r[0], d) for r in rows if (d := desk_daylight(r, coef, envs['sig'])) is not None]
@@ -232,12 +247,13 @@ def estimate(rows: list, envs: dict, sky: dict | None, now: float) -> dict:
     dark = float(np.clip((-lb - 0.6) / 0.8, 0, 1))
     sun = float(np.clip((lb + 0.4) / 0.3, 0, 1))
     start, end = app_config.aviator_window
-    if (az - start) % 360 > ((end - start) % 360 or 360) and model and model['kt'] is not None:
+    window = (az - start) % 360 <= ((end - start) % 360 or 360)
+    if not window and model and model['kt'] is not None:
         # The sun behind the window: it sees only the sky across, as bright overcast as clear. The model says if the
         # sun's out; the light still says when it's dark.
         sun = float(np.clip((model['kt'] - 0.45) / 0.3, 0, 1)) * (1 - dark)
         cloud = max(float(np.clip((0.8 - model['kt']) / 0.6, 0, 1)), cloud if lb < -0.8 else 0)
-    out.update(source='light', b=round(10 ** lb, 3), cloud=round(cloud, 3), dark=round(dark, 3), sun=round(sun, 3),
+    out.update(source='light', window=window, b=round(10 ** lb, 3), cloud=round(cloud, 3), dark=round(dark, 3), sun=round(sun, 3),
                broken=round(float(np.clip(np.std(logs) / 0.2, 0, 1)), 3) if len(logs) >= 8 else None)
     # The colour: redder or bluer than the desk's daylight usually is.
     if rb is not None and (d := desk_daylight(rows[0], coef, sig)) is not None and d[0] > 0 and d[2] > 0:

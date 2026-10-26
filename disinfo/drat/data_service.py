@@ -10,7 +10,7 @@ from . import idfm
 from ..screens.aviator.tasks import adsbx_task
 from ..screens.weather import vigilance
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
-from ..screens.aviator import daylight
+from ..screens.aviator import daylight, skystate
 
 
 class SafeScheduler(Scheduler):
@@ -77,6 +77,7 @@ scheduler.every(15).minutes.do(cached('vigil', 900, vigilance.task))
 scheduler.every(30).minutes.do(cached('forecast', 1800, vigilance.forecast_task))
 scheduler.every(15).minutes.do(cached('sky', 900, daylight.sky_task))
 scheduler.every(1).minutes.do(daylight.task)
+scheduler.every(1).minutes.do(skystate.task)        # after the others: they're its sources
 
 
 def main():

@@ -41,7 +41,7 @@ class State:
     duration: int = 0
     duration_checkpt: int = 0
     last_encoder: int = 0
-    last_encoder_at: float = 0
+    last_encoder_at: float | None = None     # the client's clock; None: not seen yet
     last_timer_at: float = 0
     active_pk: str = ''
     direction: bool = False
@@ -70,9 +70,13 @@ def timer_view(fs: FrameState):
     encoder = TelemetryStateManager(fs.config.name).get_state(fs).remote.encoder
     encoder_pos = encoder.position
 
-    if encoder.updated_at != state.last_encoder_at:
+    if state.last_encoder_at is None or encoder.updated_at < state.last_encoder_at:
+        # First seen, or the client restarted (its clock and the position start over): where it is now is no turn.
+        state.last_encoder = encoder.position
+        state.last_encoder_at = encoder.updated_at
+    elif encoder.updated_at != state.last_encoder_at:
         encoder_pos -= state.last_encoder
-        if (fs.tick - state.last_encoder_at) > 5:
+        if (encoder.updated_at - state.last_encoder_at) > 5:
             state.mode = 'idle'
         if encoder_pos == 0:
             state.duration = 0

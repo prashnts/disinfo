@@ -25,7 +25,7 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, weather, daylight
+from . import app, astro, skylook, weather
 
 
 horizon = 0.7           # of the height, from the top
@@ -314,19 +314,53 @@ def puffs(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tupl
             x, y = to_px(b + (j - 0.5) * step * 0.6, e * (0.85 + 0.3 * j))
             rx = max(size / fov * w * (0.45 + 0.4 * j) * (1 - 0.4 * near), 0.6)
             ry = max(rx * (0.3 + 0.35 * near), 0.6)
-            # Lit on top, grey under.
-            g = cairo.LinearGradient(0, y - ry, 0, y + ry)
-            g.add_color_stop_rgba(0, *(min(v * 1.15, 1) for v in color), a * (0.6 + 0.4 * c))
-            g.add_color_stop_rgba(1, *(v * 0.75 for v in color), a * (0.6 + 0.4 * c))
-            ctx.set_source(g)
-            ctx.save()
-            ctx.translate(x, y)
-            ctx.scale(rx, ry)
-            ctx.arc(0, 0, 1, 0, 2 * math.pi)
-            ctx.arc(-0.6, 0.25, 0.7, 0, 2 * math.pi)
-            ctx.arc(0.65, 0.3, 0.6, 0, 2 * math.pi)
-            ctx.restore()
-            ctx.fill()
+            puff(ctx, x, y, rx, ry, color, a * (0.6 + 0.4 * c), r)
+
+def lobes(rx: float, r: float) -> list[tuple[float, float, float]]:
+    '''A cumulus' heaps (x, y, radius in units of rx and ry), r its own number: a row along the base, then smaller
+    tiers piled up the middle, the more the bigger it shows (a few pixels: one row of three).'''
+    out = []
+    tiers = 1 if rx < 8 else 2 if rx < 30 else 3
+    for tier in range(tiers):
+        n = int(min(max(rx / 6, 3), 8)) - 2 * tier
+        width = 0.95 * (1 - 0.3 * tier)
+        for k in range(max(n, 1)):
+            t = 0.5 if n <= 1 else k / (n - 1)
+            j = (r * (31.7 + 17.3 * k + 7.1 * tier)) % 1
+            hump = math.sin(math.pi * t)
+            out.append((-width + 2 * width * t + (j - 0.5) * 0.2, 0.25 - 0.55 * tier - 0.3 * hump * (tier + 1) / tiers - 0.15 * j,
+                        (0.3 + 0.25 * hump + 0.12 * j) * (1 - 0.15 * tier)))
+    return out
+
+def puff(ctx: cairo.Context, x: float, y: float, rx: float, ry: float, color: tuple, a: float, r: float):
+    # Lit on top, grey under, a flat base; a big one gets a lit rim on its heaps.
+    heaps = lobes(rx, r)
+    g = cairo.LinearGradient(0, y - ry * 1.4, 0, y + ry * 0.45)
+    g.add_color_stop_rgba(0, *(min(v * 1.15, 1) for v in color), a)
+    g.add_color_stop_rgba(1, *(v * 0.75 for v in color), a)
+    ctx.save()
+    ctx.rectangle(x - rx * 2, y - ry * 3, rx * 4, ry * 3.45)        # the base, flat
+    ctx.clip()
+    ctx.set_source(g)
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(rx, ry)
+    for hx, hy, hr in heaps:
+        ctx.new_sub_path()
+        ctx.arc(hx, hy, hr, 0, 2 * math.pi)
+    ctx.restore()
+    ctx.fill()
+    if rx > 12:
+        ctx.set_source_rgba(*(min(v * 1.25, 1) for v in color), a * 0.35)
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.scale(rx, ry)
+        for hx, hy, hr in heaps:
+            ctx.new_sub_path()
+            ctx.arc(hx - 0.1 * hr, hy - 0.15 * hr, hr * 0.7, 0, 2 * math.pi)
+        ctx.restore()
+        ctx.fill()
+    ctx.restore()
 
 cirrus_alpha = 0.35
 # The streaks: (per degree of the view, elevation range, length in degrees).
@@ -354,6 +388,33 @@ def cirrus(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tup
         ctx.move_to(x0, y0)
         ctx.line_to(x1, y1)
         ctx.stroke()
+
+contrail_alpha = 0.5
+contrail_life = (25, 600)       # s a trail stays: in dry air, in air saturated over ice
+
+def contrails(ctx: cairo.Context, planes, now: float, in_view, to_px, color: tuple, trails: tuple):
+    # Behind the planes flying where it's cold enough (skystate.py: the planes' own temperatures, else the model's):
+    # short in dry air, long and spreading when the air is saturated over ice, drifting with the wind up there.
+    form, persist, u, v = trails
+    life = contrail_life[0] + (contrail_life[1] - contrail_life[0]) * persist
+    for p in planes:
+        if p['ground'] or p['alt'] < form:
+            continue
+        pts = [(t, *local_xy(la, lo), alt or p['alt']) for t, la, lo, alt in p['trail'] if now - t < life]
+        pts.append((now, *app.position(p, now), p['alt']))
+        prev = None
+        for t, x, y, alt in pts:
+            age = now - t
+            b, e = sky_point(x + u * age / 1000, y + v * age / 1000, alt)
+            if prev and in_view(b) and in_view(prev[0]):
+                k = 1 - age / life
+                ctx.set_line_width(1 + 2 * persist * (1 - k))
+                ctx.set_source_rgba(*color, contrail_alpha * k * (1 - 0.5 * persist * (1 - k)))
+                ctx.move_to(*to_px(*prev))
+                ctx.line_to(*to_px(b, e))
+                ctx.stroke()
+            prev = b, e
+    ctx.set_line_width(1)
 
 def fall_tint(lk, color: tuple, k: float = 0.6) -> tuple:
     # Rain and snow are lit by what's around: at night the streetlights.
@@ -414,12 +475,6 @@ def drop_slant(yaw: float) -> float:
     r = math.radians(yaw)
     return float(np.clip((u * math.cos(r) - v * math.sin(r)) / 8, -0.8, 0.8))
 
-def overhead_cover() -> float | None:
-    # The cloud cover over home from the satellite (the nearest bins, every bearing), 0..1; None without data.
-    if not (prof := weather.sky_profile('clouds')):
-        return None
-    return float(np.clip(prof[0][:, :2].mean() * 2.5, 0, 1))
-
 def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
@@ -442,11 +497,10 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     off = OpenedStateManager().get_state(fs).off
-    wet, state, snow = skylook.wetness(fs)
-    # No weather state (HA down): the satellite's cover over home stands in.
-    # The light by the window over both (daylight.py, the same for all screens).
-    cond, cloud, dl = skylook.measured(state, None if state else overhead_cover())
-    lk = skylook.look(se, cond, skylook.light_gain(fs), cloud, dl and dl['warmth'])
+    # The sky state: every source over home together (skystate.py, the same for all screens).
+    seen = skylook.seen(fs)
+    wet, snow = seen.wet, seen.snow
+    lk = skylook.look(se, seen.cond, skylook.light_gain(fs), None, seen.warmth)
     skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
     ctx.set_source_rgba(*horizon_color)
     ctx.move_to(0, hz)
@@ -457,13 +511,13 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     tint, snow_tint = fall_tint(lk, rain_color), fall_tint(lk, snow_color, 0.5)
     if 'clouds' not in off or wet:
         cc = skylook.cloud_color(lk, wet * (1 - 0.7 * snow))
-        if (model := daylight.model()) and model['high'] > 0.05:
-            cirrus(ctx, yaw, fov, w, to_px, cc, lk, model['high'])
-        # The cloud the light says is there, all around: the satellite (infrared) misses the low, warm ones.
+        if seen.high > 0.05:
+            cirrus(ctx, yaw, fov, w, to_px, cc, lk, seen.high)
+        # The low and mid cloud all around: the satellite (infrared) misses the low, warm ones.
         # A deck when it's steady, puffs when the sun goes in and out.
-        seen, broken = (dl['cloud'], dl['broken'] or 0.3) if dl else (0, 0)
-        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, cc, max(min(wet * 1.4, 0.8), 0.6 * seen * (1 - 0.5 * broken)), cloud_alpha + 0.25 * wet)
-        puffs(ctx, yaw, fov, w, to_px, cc, max(min(wet * 1.4, 0.8), seen * (0.2 + 0.5 * broken)))
+        deck, broken = seen.deck, 0.3 if seen.broken is None else seen.broken
+        cloud_dim = clouds(ctx, yaw, fov, w, hz, h, cc, max(min(wet * 1.4, 0.8), 0.6 * deck * (1 - 0.5 * broken)), cloud_alpha + 0.25 * wet)
+        puffs(ctx, yaw, fov, w, to_px, cc, max(min(wet * 1.4, 0.8), deck * (0.2 + 0.5 * broken)))
     else:
         cloud_dim = lambda b: 0.0
 
@@ -471,9 +525,9 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if se > -6 and in_view(sb, 20):
         sx, sy = to_px(sb, se)
         glow = cairo.RadialGradient(sx, sy, 0, sx, sy, 16)
-        dim = 1 - 0.8 * cloud_dim(sb)       # a cloud band in front of it, or the light says it's in
-        if dl and dl['sun'] is not None:
-            dim = min(dim, (0.15 + 0.85 * dl['sun']) * (1 - 0.9 * dl['dark']))
+        dim = 1 - 0.8 * cloud_dim(sb)       # a cloud band in front of it, or the sky state says it's in
+        if seen.sun is not None:
+            dim = min(dim, (0.15 + 0.85 * seen.sun) * (1 - 0.9 * seen.dark))
         glow.add_color_stop_rgba(0, *sun_color, (0.35 if se > 0 else 0.2) * dim)
         glow.add_color_stop_rgba(1, *sun_color, 0)
         ctx.set_source(glow)
@@ -493,6 +547,9 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
 
     if 'rain' not in off:
         rain(ctx, yaw, fov, w, hz, to_px, tint)
+
+    if show_planes and seen.trails and 'clouds' not in off:
+        contrails(ctx, st.planes.values(), now, in_view, to_px, skylook.cloud_color(lk), seen.trails)
 
     targets, lit = [], []
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
@@ -541,7 +598,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     # Wet roofs shine with the rain's light, snowy ones are white along their tops.
     rim = (*snow_tint, 0.3 + 0.3 * wet) if snow >= 0.5 else (*tint, rim_color[3] + 0.2 * wet)
     # The sun on the facades: the light says how much it's out, else the cloud does.
-    sun_out = (dl['sun'] if dl and dl['sun'] is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
+    sun_out = (seen.sun if seen.sun is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
     roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color,
           (sb, sun_out) if sun_out > 0.05 else None)
     # The rain or snow at home falls in front of all that, at a few frames a second.

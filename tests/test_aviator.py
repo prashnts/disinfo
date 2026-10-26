@@ -177,14 +177,15 @@ def test_layers_planes_and_info(monkeypatch):
     monkeypatch.setattr(app, 'following', lambda fs: None)
     monkeypatch.setattr(app, 'drift', lambda t: t)
     monkeypatch.setattr(app, '_cams', {})
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None, 0.0))
+    dry = app.skylook.Seen((0.3, 0.2, 0), 0, 0, None, 0, None, None, 0.0, 0.0)
+    monkeypatch.setattr(app.skylook, 'seen', lambda fs: dry)
     fs = NS(config=NS(name='layers', width=120, height=80, aviator_map_up=0, aviator_zoom=1))
     full = app.radar(fs)
     assert [t.payload['hex'] for t in full.targets] == ['a']
     # Raining at home: a badge by the compass.
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.5, None, 0.0))
+    monkeypatch.setattr(app.skylook, 'seen', lambda fs: dry._replace(wet=0.5))
     assert app.radar(fs).image.tobytes() != full.image.tobytes()
-    monkeypatch.setattr(app.skylook, 'wetness', lambda fs: (0.0, None, 0.0))
+    monkeypatch.setattr(app.skylook, 'seen', lambda fs: dry)
     opened.off = ['planes']
     no_planes = app.radar(fs)
     assert no_planes.targets == ()
@@ -243,22 +244,116 @@ def test_sky_look(monkeypatch):
         monkeypatch.setattr(skylook, 'get_entity', lambda i, s=state: NS(state=s))
         assert skylook.light_gain(fs) == pytest.approx(want, abs=0.01)
     monkeypatch.setattr(skylook, 'get_entity', lambda i: None)
-    assert skylook.light_gain(fs) == 1.0 and skylook.weather_state(NS(config=NS(weather_entity='w'))) is None
+    assert skylook.light_gain(fs) == 1.0
     # The screen's own sensor first: its counts, dark to bright.
     for counts, want in ((50, 0.55), (10000, 1.0)):
         monkeypatch.setattr(skylook, 'room_counts', lambda fs, c=counts: c)
         assert skylook.light_gain(fs) == pytest.approx(want, abs=0.01)
-    # Rain or snow: the state says when it says something falls, else the temperature; none with the layer off.
+
+
+def test_seen(monkeypatch):
+    # What the sky view draws from the sky state: cloud fades as it's less sure; rain off with its layer.
+    from types import SimpleNamespace as NS
+    from disinfo.screens.aviator import skylook
     opened = NS(off=[])
     monkeypatch.setattr(skylook, 'OpenedStateManager', lambda: NS(get_state=lambda fs: opened))
-    monkeypatch.setattr(skylook.weather, 'sky_profile', lambda kind: (None, 3.0))
-    wet = lambda state, t: (monkeypatch.setattr(skylook, 'weather_state', lambda fs: skylook.conditions.get(state)),
-                            monkeypatch.setattr(skylook, 'temperature', lambda: t), skylook.wetness(None))[-1]
-    assert wet('snowy', 10)[2] == 1 and wet('snowy-rainy', 10)[2] == 0.5 and wet('rainy', -5)[2] == 0
-    assert wet('cloudy', -1)[2] == 1 and wet('cloudy', 1)[2] == 0.5 and wet('cloudy', 5)[2] == 0 and wet(None, None)[2] == 0
-    assert wet('cloudy', 5)[0] == 0.5           # the radar's 3 mm/h
+    q = lambda v, conf=0.6: {'v': v, 'conf': conf, 'by': {}}
+    d = {'sky': {'cover': q(0.9), 'deck': q(0.8, 0.6), 'high': q(1.0, 0.1), 'sun': q(0.2), 'dark': q(0.5), 'haze': q(0.3),
+                 'broken': None, 'warmth': None}, 'precip': {'rate': q(3.0), 'snow': q(0.0)}}
+    monkeypatch.setattr(skylook.skystate, 'doc', lambda: d)
+    s = skylook.seen(NS(config=NS(weather_entity='w')))
+    assert s.cond == (0.9, 0.3, 0.3) and s.deck == pytest.approx(0.8) and s.high == pytest.approx(0.5)
+    assert s.sun == 0.2 and s.broken is None and s.wet == 0.5 and s.snow == 0
     opened.off = ['rain']
-    assert wet('pouring', 10)[0] == 0
+    assert skylook.seen(NS(config=NS(weather_entity='w'))).wet == 0
+    # No sky state (the data service down): Home Assistant's weather state alone.
+    opened.off = []
+    monkeypatch.setattr(skylook.skystate, 'doc', lambda: None)
+    monkeypatch.setattr(skylook, 'get_entity', lambda i: NS(state='snowy'))
+    s = skylook.seen(NS(config=NS(weather_entity='w')))
+    assert s.cond[0] == 0.9 and s.wet == 0.4 and s.snow == 1 and s.sun is None and s.deck == 0
+    monkeypatch.setattr(skylook, 'get_entity', lambda i: None)
+    assert skylook.seen(NS(config=NS(weather_entity='w'))).cond == skylook.conditions['partlycloudy'][:3]
+
+
+def test_fuse():
+    from disinfo.screens.aviator import skystate as ss
+    # Two sources that agree: between them, nearer the surer, and surer than either.
+    a = ss.fuse([('model', 0.8, 0.3, 0), ('light', 0.9, 0.15, 0)], 'unit', 0.2)
+    b = ss.fuse([('light', 0.9, 0.15, 0)], 'unit', 0.2)
+    assert 0.85 < a['v'] < 0.9 and a['conf'] > b['conf'] and a['by'] == {'model': 0.8, 'light': 0.9}
+    # Disagreeing: less sure than either alone.
+    c = ss.fuse([('model', 0.1, 0.3, 0), ('light', 0.9, 0.15, 0)], 'unit', 0.2)
+    assert c['conf'] < b['conf'] and c['v'] > 0.6
+    # Old observations count less, too old not at all.
+    d = ss.fuse([('model', 0.1, 0.3, 0), ('light', 0.9, 0.15, 1200)], 'unit', 0.2)
+    assert d['v'] < c['v'] and ss.fuse([('light', 0.9, 0.15, 3600)], 'unit', 0.2) is None
+    # Rain is fused as log(1 + mm/h): a drizzle and a downpour meet nearer the drizzle.
+    assert ss.fuse([('a', 0.0, 0.5, 0), ('b', 8.0, 0.5, 0)], 'mm', 0.3)['v'] == pytest.approx(2.0, abs=0.01)
+    assert ss.v({'sky': {'cover': {'v': 0.5, 'conf': 0.3}}}, 'sky.cover') == 0.5
+    assert ss.v({'sky': {'cover': {'v': 0.5, 'conf': 0.3}}}, 'sky.cover', 1, conf=0.5) == 1
+    assert ss.v({'sky': {'cover': None}}, 'sky.cover', 7) == 7 and ss.v(None, 'a.b') is None
+
+
+def test_sky_state(monkeypatch):
+    import time
+    from disinfo.screens.aviator import skystate as ss, daylight
+    now = time.time()
+    monkeypatch.setattr(ss, 'next_rain', lambda now: None)
+    alt = daylight.sun_at(now)[0]
+    hours = {'time': [now - now % 3600], 'precipitation': [0.0], 'temperature_2m': [1.0], **{
+        f'{k}_{p}hPa': [v] for p, t, rh in ((850, -3, 80), (700, -10, 70), (500, -25, 60), (300, -45, 95), (250, -52, 90))
+        for k, v in (('temperature', t), ('relative_humidity', rh), ('wind_speed', 20), ('wind_direction', 270))}}
+    sky = {'at': now, 'cloud_cover': 100, 'cloud_cover_low': 90, 'cloud_cover_mid': 0, 'cloud_cover_high': 50,
+           'shortwave_radiation': 50, 'direct_radiation': 0, 'hours': hours}
+    m = ss.model_obs(sky, now, alt)
+    sources = {'model': (m[0], m[1], {'levels': m[2]}),
+               'light': ss.light_obs({'at': now, 'source': 'light', 'window': True, 'b': 0.1, 'cloud': 1.0, 'dark': 0.4,
+                                      'sun': 0.0, 'broken': 0.1, 'warmth': None}),
+               'camera': (now - 60, {'cover': (1.0, 0.1)}, {})}
+    d = ss.state(now, sources)
+    assert d['sky']['cover']['v'] > 0.95 and set(d['sky']['cover']['by']) == {'model', 'light', 'camera'}
+    assert d['sky']['deck']['v'] > 0.9 and d['sky']['high']['v'] == 0.5
+    # 1 °C at home, freezing a little over the ground: snow, mostly.
+    assert d['air']['freezing_m'] is not None and d['air']['freezing_m']['v'] < 600 and d['precip']['snow']['v'] > 0.5
+    # -45 °C and 95 % at 300 hPa: trails, and they last (over ice it's well over 100 %).
+    assert d['air']['contrails']['form_m'] == round(ss.aloft.pressure_m(300)) and d['air']['contrails']['persist'] == 1
+    assert d['air']['wind_high'] == {'dir': 270, 'ms': 20, 'by': 'model'}
+    assert d['sources']['camera'] == 60 and d['sources']['sat'] is None
+    assert ss.light_obs({'at': now, 'source': 'shutter'})[2]['shutter'] and ss.light_obs({'source': 'night'}) is None
+    # Behind the window: the light says only how dark it is (and the deck when it's very dark).
+    q = ss.light_obs({'at': now, 'source': 'light', 'window': False, 'b': 0.5, 'cloud': 0, 'dark': 0, 'sun': 1,
+                      'broken': None, 'warmth': None})[1]
+    assert 'sun' not in q and 'cover' not in q and 'deck' not in q and 'dark' in q
+
+
+def test_aloft(monkeypatch):
+    from disinfo.screens.aviator import aloft
+    from disinfo.screens.aviator.utils import home
+    monkeypatch.setattr(aloft, '_samples', aloft.deque())
+    monkeypatch.setattr(aloft, '_last', {})
+    # A standard atmosphere, 15 °C at the sea and 6.5 °C/km, a west wind of 10 m/s; one plane far off the rest.
+    planes = []
+    for i in range(40):
+        ft = 1500 + i * 1000
+        planes += [{'hex': f'{i}{k}', 'alt_baro': ft, 'alt_geom': ft + 300, 'lat': home[0], 'lon': home[1],
+                    'oat': 15 - 6.5 * ft * 0.3048 / 1000 + (k - 1), 'wd': 270, 'ws': 10 / aloft.kt} for k in range(3)]
+    planes[30]['oat'] += 80
+    planes += [{'hex': 'odd', 'alt_baro': 5500, 'oat': 60, 'lat': home[0], 'lon': home[1]}]
+    aloft.add(1000.0, planes)
+    # A plane once a minute only.
+    aloft.add(1030.0, [{**planes[0], 'oat': -50}])
+    prof = aloft.profile(1031.0)
+    assert prof['geom_m'] == round(300 * 0.3048) and len(prof['bins']) == 40
+    assert prof['bins'][0][1] == pytest.approx(15 - 6.5 * 0.457, abs=0.2)
+    der = aloft.derived(prof)
+    assert der['freezing_m'] == pytest.approx(15 / 6.5 * 1000 + 91, abs=60)
+    assert der['lapse'] == pytest.approx(6.5, abs=0.2) and der['inversion'] is None
+    assert aloft.wind_at(prof['bins'], 3000) == (270, 10.0)
+    assert 8000 < der['contrail_m'] < 9500        # about 8.5 km in a standard atmosphere
+    assert aloft.profile(1000.0 + aloft.window_s + 60) is None
+    assert aloft.pressure_hpa(aloft.pressure_m(300)) == pytest.approx(300)
+    assert aloft.contrail_c(300) == pytest.approx(-39.8, abs=0.3)
 
 
 def test_daylight(monkeypatch):
@@ -281,6 +376,11 @@ def test_daylight(monkeypatch):
     # A lamp Home Assistant doesn't know of: its colour gives it away.
     sig = d.signatures(rows)
     assert sig and sig['lamp'][0] > sig['day'][0]
+    # One left on all day: the day's colour from the hours it's a small share of the light.
+    on = [[*r[:3], *(np.array(r[3:7]) + 0.5 * lamp).tolist(), r[7], 0, 128] for r in rows]
+    assert d.signatures(on) is None
+    sig_on = d.signatures(on, d.lamp_model(on))
+    assert sig_on and sig_on['day'] == pytest.approx([0.3, 0.33, 0.37, 1], abs=0.01)
     row = [now, None, 0, *(sky(now, 1) + 40 + 0.7 * lamp).tolist(), 0, 0, 0]
     assert d.desk_daylight(row, coef)[3] > sky(now, 1)[3] + 400
     assert d.desk_daylight(row, coef, sig)[3] == pytest.approx(sky(now, 1)[3], rel=0.05)
@@ -331,3 +431,23 @@ def test_overhead_order_is_stable(monkeypatch):
     assert tasks.watched(now, 40, planes) == ['b', 'd', 'c']
     # Its pass over (30 s after), the plane is no longer overhead.
     assert not tasks.is_overhead({'overhead_at': now}, now + tasks.passed_for + 1)
+
+
+def test_contrails_and_puffs(monkeypatch):
+    import cairocffi as cairo
+    from disinfo.screens.aviator import sky
+    monkeypatch.setattr(sky.app, 'position', lambda p, now, ahead=0: (0.0, 20.0))
+    p = {'ground': False, 'alt': 11000, 'trail': [[90.0, 48.9, 2.3, 11000], [95.0, 48.95, 2.3, 11000]], 'lat': 48.95, 'lon': 2.3}
+    def drawn(planes, trails):
+        s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 100)
+        sky.contrails(cairo.Context(s), planes, 100.0, lambda b, m=10: True, lambda b, e: (100 + b / 3, 90 - e * 2), (1, 1, 1), trails)
+        return max(bytes(s.get_data())) > 0
+    # Above the height they form at: a trail; under it, or on the ground, none.
+    assert drawn([p], (10000, 0.0, 0, 0)) and not drawn([p], (12000, 1.0, 0, 0)) and not drawn([{**p, 'ground': True}], (10000, 1, 0, 0))
+    # Puffs: three heaps when small, tiers when big; drawn without a stray wedge (inside its box only).
+    assert len(sky.lobes(4, 0.3)) == 3 and len(sky.lobes(60, 0.3)) > 8
+    s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 100)
+    sky.puff(cairo.Context(s), 100, 70, 40, 20, (1, 1, 1), 1, 0.4)
+    import numpy as np
+    alpha = np.frombuffer(s.get_data(), np.uint8).reshape(100, 200, 4)[:, :, 3]
+    assert alpha[80:, :].max() == 0 and alpha[60, 100] > 0

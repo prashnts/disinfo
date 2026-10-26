@@ -249,7 +249,7 @@ def rain_badge(ctx: cairo.Context, wet: float, w: int, h: int, light: bool, snow
     r = min(max(min(w, h) * 0.06, 6), 13)
     cx, cy = w - 3 * r - 7, h - r - 4
     levels = [l for l, _ in weather.rain_colors[light]]
-    level = wet * weather.scale * skylook.rain_home_mm
+    level = wet * weather.scale * skylook.skystate.rain_home_mm
     color = [float(np.interp(level, levels, [c[i] for _, c in weather.rain_colors[light]])) for i in range(3)]
     ctx.save()
     ctx.translate(cx, cy)
@@ -444,9 +444,9 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
 
     if info:
         compass(ctx, up, w, h)
-        wet, _, snow = skylook.wetness(fs)
-        if wet > 0.05:
-            rain_badge(ctx, wet, w, h, is_light, snow)
+        seen = skylook.seen(fs)
+        if seen.wet > 0.05:
+            rain_badge(ctx, seen.wet, w, h, is_light, seen.snow)
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')

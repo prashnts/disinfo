@@ -6,6 +6,7 @@ import requests
 from disinfo.config import app_config
 from disinfo.redis import db, publish
 from .utils import Airport, airports, local_xy, closest_approach, elevation, bearing, in_window
+from . import aloft
 
 
 TABLE_KEY = 'di.aviator.table'
@@ -187,6 +188,7 @@ def adsbx_task():
     if not table:
         load_table()
     update(now, aircraft)
+    aloft.add(now, aircraft)
     state = {'now': now, **scene(now)}
     db.set(TABLE_KEY, json.dumps(state), ex=300)
     publish('di.pubsub.aviator', action='update', payload={'now': now})

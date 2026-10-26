@@ -119,4 +119,87 @@ Stars/moon/roof sunset/cloud fallback done (astro.py). cpt-city palettes: the si
 **2026-10-25: the light by the window (`aviator/daylight.py`).** Data service: `daylight.task` every minute (log row in `di.daylight.log`, 14 days; estimate in `di.daylight`), `sky_task` every 15 min (Open-Meteo cover low/mid/high + radiation, `di.weather.sky`), desk telemetry from `di.pubsub.telemetry` (node `daylight_node`). Once a day (thread, ~25 s): Sensei's envelope from HA's history (p90 over the floor by sun bearing, 5° bins), the desk's lamp model (night least squares on the lamps' brightness; HA doesn't record the lights, so only from the log), desk envelope after 2 days, usual colour (log r/b) after a few. Force: `redis-cli del di.daylight.env`. HA sensors `sensor.distudy_clear/daylight/sky_cloud` (not in devmode). Desk client: APDS auto range (64x/712 ms .. 1x/50 ms), counts as at 4x/712 ms, `rgbc` + `range` in telemetry; deployed on the desk 2026-10-25 (backup `~/di_remote.py.bak-2026-10-25`).
 Seen on 14 days of Sensei: log10(lux over the envelope) tracks the model's low cloud (>= -0.3 clear-ish, -1..-0.6 overcast, < -1 dark); 15-min variability didn't separate cloud types (Sensei updates too slowly?), `broken` is a guess; the shutter = under 4% of the envelope with a bright model sky (morning before ~9:20). East window: direct sun on the sensors in the morning (3400 lx, UV 1000). Not done: UV (weak through glass), lamp steps in daytime to learn the lamps faster, `light_gain` still reads `sensor.radar_salon_light`, which is `unknown` in HA (the room gain is 1.0 everywhere). Tune after a few days with the desk: `shutter_b`, the cloud/dark/sun ramps in `estimate`, `cirrus_*`.
 Later the same day: the east window can't see the sun in the afternoon, and a clear sky across is no brighter than a bright overcast (live: Sensei at 34% of its envelope under a clear sky, model kt 0.86). With the sun outside `aviator_window`, `sun` and `cloud` come from the model's kt; the light only says when it's dark (log b < -0.8). Facades lit by day (`roofs(daylit=)`: facing the sun, by `sun` or 1 - cloud). `daylight.model()` reads Open-Meteo's fetch directly (cirrus with no light estimate). The job writes Nones when HA or an entity is missing. The desk logger was stopped (it had died at 14:16 anyway): no lamp-only night recorded; the job's own log builds the lamp model.
-Then (user: the desk sensor is the most reliable, it can tell artificial light): `skylook.light_gain` uses the screen's own sensor first (telemetry `rgbc`, fresh within 60 s; `room_dark/room_bright` 100/10000 counts are a first guess: check at night with the lamps), then `ambient_light_sensor` (the `radar_*` ones need engineering mode: unreliable), then 1.0. The desk counts twice in the daylight ratio. `daylight.signatures`: the lamps' colour (night) and the daylight's (day, HA lamps off), per clear count; `desk_daylight` takes the known lamps off by brightness, then splits the rest by colour (a lamp HA doesn't know). Not seen on the real sensor yet: if the two colours are within 0.03 it stays off (`envs['sig']` None). Telemetry: the light sensor now updates on any change of the client's `updated_at` (it went stale after a client restart: monotonic clock starts over; the other parts still compare with `>`).
+Then (user: the desk sensor is the most reliable, it can tell artificial light): `skylook.light_gain` uses the screen's own sensor first (telemetry `rgbc`, fresh within 60 s; `room_dark/room_bright` 100/10000 counts are a first guess: check at night with the lamps), then `ambient_light_sensor` (the `radar_*` ones need engineering mode: unreliable), then 1.0. The desk counts twice in the daylight ratio. `daylight.signatures`: the lamps' colour (night) and the daylight's (day, HA lamps off), per clear count; `desk_daylight` takes the known lamps off by brightness, then splits the rest by colour (a lamp HA doesn't know). Not seen on the real sensor yet: if the two colours are within 0.03 it stays off (`envs['sig']` None). Telemetry: the light sensor now updates on any change of the client's `updated_at` (it went stale after a client restart: monotonic clock starts over); then all parts (remote, encoder, user, tof, ircam), and the timer: the encoder's position seen first or after a client restart is no turn, the 5 s pause on the client's clock (it compared it with the server's). Tests in `tests/test_telemetry.py`.
+**2026-10-26: first night of the production log** (dump in `~/limn-shot/daylight-*.json*`, 1206 rows, no gaps). The morning matches Open-Meteo (mid+high 100 %, direct ~0 until 10h): cloud ~1, dark 0.8-0.99 at 08:10-08:40, b 0.36 when the direct radiation came back at 10h. The desk lamps left+right toggle together ~12 times a night (+~1500 clear counts, warm r/c 0.47); `lamp_model` fits on this log (the server's env predates it: refresh ~14:14). **`light.ikea_e27_study_desklamp` is on at 232 in every row** → `signatures` never sees "all lamps off" by day → no colour split; with it ignored: 728 night / 48 day rows, lamp 0.51/0.32/0.26 vs day 0.41/0.34/0.34 (separable). Ask the user if that lamp is really on (night floor 135 counts, reddish: it, or the display's own glow). Room gain: lamps off 135 → 0.58, on ~1640 → 0.82, day 10-24k → 1.0.
+
+## Sky state: one fused picture of the sky, the weather and the time (proposal, 2026-10-26)
+
+The user: the window light worked well; next, outside sources for confidence (not to rely on them), one data structure with
+the whole state for visualisations, the planes' temperatures (ADS-B), and soon an indoor half-sky camera to plug in.
+
+**Shape: sources → observations → fusion → `SkyState`.**
+- Each source (a job, or another device) writes its observations to Redis `di.sky.obs.<source>`: `{at, quantities: {name:
+  [value, sigma]}, notes}`. A source says only what it can see (the window light: cloud by day; the satellite: cold tops;
+  the planes: the air aloft; the camera: cover in its view, the sun's disc, sky colour). New source = a new key, nothing else.
+- The fusion job (today's `daylight.task` grows into it, every minute) combines each quantity: the model is the prior,
+  observations weigh by 1/sigma², sigma grows with age, and disagreement between sources lowers the confidence instead of
+  being averaged away. Each quantity comes out as `{v, conf, by: {source: v}}`: a visualisation can show only what's sure
+  (cirrus only above 0.6, say) and debugging shows who said what.
+- `SkyState` in Redis `di.sky` (+ pubsub), read like `daylight.doc()`: 
+  - `time`: now, sun {alt, az, phase night/astronomical/nautical/civil/golden/day, next rise/set}, moon {alt, az, phase}.
+  - `sky`: cover total/low/mid/high, sun_visible (the direct beam), brightness, dark, broken, haze, warmth, sky colour
+    (zenith/horizon, from the camera when there is one: it could drive the palette directly).
+  - `precip`: rate, type (rain/snow/mix: from the freezing level, below), radar ring, next rain span.
+  - `air`: surface temp (AROME), the profile aloft [{alt, t, wind}], freezing level, lapse rate, inversion, jet (wind at
+    FL300), contrails {form, persist}.
+  - `alerts`: vigilance. `sources`: {name: {at, ok}} (a dead source shows as such, not as clear sky).
+  - `trend`: the last 3 h and the next 6 h of the main quantities (model forward, observations back): "clearing", "rain
+    in 40 min" for animations.
+  - The room (lamps, shutter, each screen's gain) stays out: it's per screen and indoor. The fusion uses it (lamps off the
+    desk counts, the shutter = the window blind), the visualisation applies the gain.
+
+**Planes as weather balloons (checked live 2026-10-26: readsb gives `oat`, `tat`, `wd`, `ws` for 41 of 107 aircraft,
+from BDS 5,0/6,0).** 0 °C at ~8750 ft, -40 °C at ~31000 ft, wind 280-320° 20 kt low → 100 kt at FL310. Noisy (derived
+from Mach and TAS, ±3-7 °C between planes at one level: DLV494 -37 vs GAF300 -30 at FL270): median per 1000 ft bin over
+20-30 min, drop outliers, the low bins come only from CDG/ORY approaches. Uses:
+- Freezing level → snow vs rain (better than skylook's surface-temperature ramp; melting layer ~300 m under it).
+- Contrails: Schmidt-Appleman (T under ~-40 °C) from the planes, persistence from AROME's humidity at 300/250 hPa (ice
+  supersaturation) → draw trails behind the high planes in the sky view, long-lived ones spreading into cirrus.
+- Cloud drift: low cloud moves with the 850 hPa wind, cirrus with the jet: direction and speed for the cloud layers.
+- Inversion (warmer above than below) → haze/smog at the horizon.
+- Confidence for the model: compare with Open-Meteo `temperature_850hPa/700/500/300hPa`; a big miss → the model's sigma up.
+
+**Half-sky camera (indoor, through the east window).** A source like the others, its processing on its own device:
+window mask once (sky vs frame/buildings), azimuth/elevation map fitted on the sun's track over a day, then per frame: cover
+by red/blue ratio (cloud ~1, blue sky lower), the sun's disc visible, sky colour at zenith and horizon, stars at night
+(clear vs cloud), drops on the glass. Indoor issues: the lamps reflect in the glass at night (the lamp state is known: mask
+or skip), the shutter (dark frame = shutter, not night). Reuse the limn camera lib's capture/ladder ideas.
+
+**Fix now, whatever the rest:** the E27 desk lamp is sometimes forgotten on → `signatures` never sees all lamps off by
+day. Take a day row when the lamps' share of its counts (from `lamp_model`) is under 5 %, not only when all are off.
+
+**Order proposed:** (1) the E27 fix; (2) `SkyState` + the fusion with today's sources (light, AROME cover, satellite,
+HA state, radar, vigilance), `sky.py`/`skylook` reading it instead of each source; (3) the planes' profile (freezing level,
+contrails); (4) the camera as a source when it exists.
+
+**2026-10-26, built (uncommitted; user deploys the data service + renderers):**
+- Lamp fix: `daylight.signatures(rows, coef)` takes a day row when the lamp model puts the lamps under 5 % of its counts,
+  and takes them off first (`refresh` fits the lamps before the signatures). On the production log: lamp
+  0.51/0.32/0.26 vs day 0.41/0.34/0.34. `estimate` now says `window` (the sun in its view).
+- `aviator/aloft.py`: `add(now, aircraft)` from `tasks.adsbx_task` (one sample per plane a minute, 150 km, 30 min),
+  `profile()` (1000 ft bins of pressure altitude, a plane once per bin, >= 3 planes, a bin 6 °C off the line through its
+  neighbours dropped), `derived()` (freezing level above the sea, lapse 1.5-9 km, inversion under 3 km, jet, `contrail_m`
+  by Schmidt-Appleman). Live 2026-10-26: freezing 3.1-3.3 km (model 2.96), jet 55 m/s 309° at FL355, model 1.4 °C warm.
+- `aviator/skystate.py`: `task()` every minute in the data service → Redis `di.sky` (15 min expiry) + `di.sky.log`
+  (row a minute, 14 days: [t, cover, deck, high, sun, dark, mm, conf]) + pubsub `weather`/`sky`. Sources: model
+  (`daylight.fetch_sky` now also hourly -3..+6 h with 850-250 hPa temperature/RH/wind), light, sat (reports high cloud
+  only when it sees cold tops: thin cirrus is warm in IR, it said 0.01 under 100 % cirrus), ha, radar, planes, and
+  `di.sky.obs.<source>` keys. Tunables at the top: sigmas in each `*_obs`, `stale` (sigma doubles at that age, dropped at
+  3x), `quantities` (the spread that halves the confidence). Shape in the module's docstring; read with `doc()` / `v()`.
+- Renderer: `skylook.seen(fs)` → `Seen` (cond, deck, high, sun, dark, broken, warmth, wet, snow, trails); replaces
+  `measured`/`wetness`/`weather_state`/`temperature` and `sky.overhead_cover`. Deck and cirrus are scaled by
+  `min(1, 0.4 + conf)`; the darkening uses 0.6 x dark. Without `di.sky` (data service down): HA's state alone, no deck.
+  Deck now comes from the model too (at night as well), not only from the light: watch the night look.
+- Sky view: `contrails()` behind planes above `form_m` (25 s in dry air → 10 min, wider, at ice saturation; old parts
+  drift with the FL300 wind). `puff()`/`lobes()`: tiers of heaps on a flat base (fixes the notch: arcs without
+  `new_sub_path`). 800x480 sky frame 6.4 → 8.1 ms (the heaps), 128x128 ~3 ms unchanged.
+- Tests: `test_seen`, `test_fuse`, `test_sky_state`, `test_aloft`, `test_contrails_and_puffs`, lamp-left-on in
+  `test_daylight`. Renders in `~/limn-shot/sky-state/`.
+
+**The half-sky camera as a source (contract, nothing to change in skystate):** write Redis `di.sky.obs.camera` =
+`{"at": epoch s, "q": {"cover": [v, sigma], "deck": [...], "high": [...], "sun": [...], "dark": [...], "haze": [...]},
+"notes": {...}}` with an expiry (`SET ... EX 600`), or `skystate.observe('camera', q, ttl)` from Python. Names outside
+`quantities` are ignored (add them there first: e.g. `zenith_rgb`, `stars`). Its staleness is `stale_other` (900 s)
+unless added to `stale`. A good camera deserves sigma ~0.1 for cover/sun by day.
+Not done: drawing cloud drift by the wind (`air.wind_low`/`wind_high` are there), the haze band from an inversion, a
+trend view (`trend.hours`/`seen`), alerts in the sky view.

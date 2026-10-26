@@ -13,7 +13,8 @@ from typing import NamedTuple
 from disinfo.utils.hass import get_entity
 
 from .state import OpenedStateManager
-from . import weather, daylight
+from .skystate import conditions
+from . import skystate
 
 # Sun altitude (degrees) -> zenith and horizon colours (0-255), a little darker than a day sky: it's an LED display.
 palette = [
@@ -25,18 +26,9 @@ palette = [
     (10, (48, 92, 164), (150, 182, 214)),
     (30, (36, 88, 176), (130, 176, 222)),
 ]
-# HA weather state -> (cloud 0..1, haze 0..1, darker, rain or snow 0..1, the snow's share 0..1)
-conditions = {
-    'sunny': (0, 0.1, 0, 0, 0), 'clear-night': (0, 0.1, 0, 0, 0), 'partlycloudy': (0.35, 0.2, 0, 0, 0), 'cloudy': (0.8, 0.35, 0.1, 0, 0),
-    'fog': (1, 0.9, 0.1, 0, 0), 'rainy': (0.9, 0.5, 0.25, 0.4, 0), 'pouring': (1, 0.55, 0.35, 0.85, 0), 'snowy': (0.9, 0.6, 0.15, 0.4, 1),
-    'snowy-rainy': (0.9, 0.55, 0.2, 0.3, 0.5), 'hail': (1, 0.5, 0.35, 0.5, 0), 'lightning': (0.9, 0.4, 0.35, 0, 0),
-    'lightning-rainy': (1, 0.5, 0.4, 0.6, 0), 'windy': (0.3, 0.15, 0, 0, 0), 'windy-variant': (0.5, 0.2, 0.05, 0, 0), 'exceptional': (0.5, 0.3, 0.1, 0, 0),
-}
 glow_rgb = (255, 138, 66)
 city_rgb = (150, 82, 52)            # the streetlights on the underside of the cloud
 cloud_rgb = (0.72, 0.75, 0.82)      # a cloud in daylight
-rain_home_mm = 6        # mm/h at home that is a downpour
-snow_c = (0, 2)         # °C at home: snow under the first, rain over the second, sleet between
 lux_dark, lux_bright = 3, 400       # the room: the sky is 55% as bright when dark, full when bright
 room_dark, room_bright = 100, 10000 # the same with the screen's own colour sensor, its clear counts
 
@@ -69,39 +61,38 @@ def light_gain(fs) -> float:
     k = np.clip((math.log10(max(v, 1)) - math.log10(lo)) / (math.log10(hi) - math.log10(lo)), 0, 1)
     return float(0.55 + 0.45 * k)
 
-def weather_state(fs) -> tuple[float, float, float] | None:
-    '''None: no state from Home Assistant (a state it has no entry for counts as a little cloud).'''
-    e = get_entity(fs.config.weather_entity)
-    return None if e is None else conditions.get(e.state, (0.3, 0.2, 0, 0, 0))
+class Seen(NamedTuple):
+    cond: tuple             # (cloud, haze, darker): what look() takes
+    deck: float             # the low and mid cloud all around, 0..1
+    high: float             # cirrus
+    sun: float | None       # the sun out, 0..1; None: nobody knows (night, no source)
+    dark: float
+    broken: float | None    # the light going up and down
+    warmth: float | None    # the light redder (over 0) or bluer than usual
+    wet: float              # how hard it rains or snows at home, 0..1 (none with the rain layer off)
+    snow: float             # the snow's share of it
+    trails: tuple | None = None     # (from what height planes leave trails m, how long they last 0..1, the wind up there u, v m/s)
 
-def temperature() -> float | None:
-    # °C at home this hour, from the weather card's forecast (AROME).
-    from disinfo.screens.weather.vigilance import forecast_doc
-    d = forecast_doc()
-    return min(d['hours'], key=lambda r: abs(r[0] - time.time()))[2] if d and d['hours'] else None
-
-def wetness(fs) -> tuple[float, tuple | None, float]:
-    '''How hard it rains or snows at home, 0..1 (the radar or the weather state; none with the rain layer off), the
-    weather state and the snow's share, 0..1: the state's, else the temperature's.'''
-    state = weather_state(fs)
-    prof = weather.sky_profile('rain')
-    wet = 0.0 if 'rain' in OpenedStateManager().get_state(fs).off else max(min((prof[1] if prof else 0) / rain_home_mm, 1), state[3] if state else 0)
-    # The state says what falls when it says something falls; the radar doesn't tell rain from snow.
-    if state and state[3] > 0:
-        snow = state[4]
-    else:
-        t = temperature()
-        snow = 0.0 if t is None else float(np.clip((snow_c[1] - t) / (snow_c[1] - snow_c[0]), 0, 1))
-    return wet, state, snow
-
-def measured(state: tuple | None, cloud: float | None) -> tuple[tuple, float | None, dict | None]:
-    '''The weather state and the cloud over home, with what the light by the window says (daylight.py) over them:
-    it dims the sky as much as the cloud dims the light. Its doc when it says something (not at night, shutter down).'''
-    cond = state or conditions['partlycloudy']
-    dl = daylight.doc()
-    if not dl or dl['source'] != 'light':
-        return cond, cloud, None
-    return (cond[0], cond[1], max(cond[2], 0.5 * dl['dark']), *cond[3:]), dl['cloud'], dl
+def seen(fs) -> Seen:
+    '''The sky state (skystate.py, made in the data service) for drawing: what's drawn as cloud fades as it's less
+    sure. Without it (the data service down), Home Assistant's weather state alone.'''
+    d = skystate.doc()
+    rain_off = 'rain' in OpenedStateManager().get_state(fs).off
+    if d is None:
+        e = get_entity(fs.config.weather_entity)
+        c = conditions.get(e.state, (0.3, 0.2, 0, 0, 0)) if e else conditions['partlycloudy']
+        return Seen(c[:3], 0.0, 0.0, None, c[2], None, None, 0.0 if rain_off else c[3], c[4])
+    g = lambda k, default=None: skystate.v(d, k, default)
+    sure = lambda k: g(k, 0.0) * min(1.0, 0.4 + ((d['sky'].get(k.split('.')[1]) or {}).get('conf') or 0))
+    dark = g('sky.dark', 0.0)
+    wet = 0.0 if rain_off else min(g('precip.rate', 0.0) / skystate.rain_home_mm, 1.0)
+    trails = None
+    if (form := g('air.contrails.form_m')) is not None:
+        wind = g('air.wind_high') or {'dir': 0, 'ms': 0}
+        r = math.radians(wind['dir'])
+        trails = form, g('air.contrails.persist', 0.0), -wind['ms'] * math.sin(r), -wind['ms'] * math.cos(r)
+    return Seen((g('sky.cover', 0.3), g('sky.haze', 0.2), 0.6 * dark), sure('sky.deck'), sure('sky.high'), g('sky.sun'),
+                dark, g('sky.broken'), g('sky.warmth'), wet, g('precip.snow', 0.0), trails)
 
 def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None, warmth: float | None = None) -> Look:
     '''cloud overrides the weather state's (the satellite's, when there is no state, or the light's). warmth: the light's

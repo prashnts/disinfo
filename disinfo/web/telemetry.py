@@ -112,25 +112,25 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
                 return
 
             next_state = DiTelemetryState(**data)
-            # Not 'later': the client's clock starts over when it restarts.
+            # Any change, not 'later': the client's clock (monotonic) starts over when it restarts.
             if next_state.light_sensor.updated_at != self.state.light_sensor.updated_at:
                 self.state.light_sensor = next_state.light_sensor
             self.state.light_sensor.received_at = time.time()
             
-            if next_state.remote.updated_at > self.state.remote.updated_at:
+            if next_state.remote.updated_at != self.state.remote.updated_at:
                 print("Updating remote telemetry,", next_state.remote)
                 self.state.remote = next_state.remote
             
-            if next_state.remote.encoder.updated_at > self.state.remote.encoder.updated_at:
+            if next_state.remote.encoder.updated_at != self.state.remote.encoder.updated_at:
                 self.state.remote.encoder = next_state.remote.encoder
 
-            if next_state.user.updated_at > self.state.user.updated_at:
+            if next_state.user.updated_at != self.state.user.updated_at:
                 self.state.user = next_state.user
             
-            if next_state.tof.updated_at > self.state.tof.updated_at:
+            if next_state.tof.updated_at != self.state.tof.updated_at:
                 self.state.tof = next_state.tof
             
-            if next_state.ircam.updated_at > self.state.ircam.updated_at:
+            if next_state.ircam.updated_at != self.state.ircam.updated_at:
                 self.state.ircam = next_state.ircam
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
