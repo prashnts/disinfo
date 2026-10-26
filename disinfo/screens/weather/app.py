@@ -15,7 +15,8 @@ from discore.data_structures import FrameState
 from discore.elements import Box
 from disinfo.screens.colors import light_gray
 
-from . import vigilance
+from . import vigilance, graphs
+from disinfo.screens.aviator import skystate
 from .state import get_weather_data
 from .assets import temperature_color
 
@@ -146,5 +147,21 @@ def composer(fs: FrameState):
         temp_range(s.temperature, s.t_high, s.t_low),
     ], gap=3, align='hstretch')
     if warn := vigil_lines(fs.now.timestamp(), fs.tick, card.width):
-        return vstack([card, warn], gap=3, align='hstretch')
-    return card
+        card = vstack([card, warn], gap=3, align='hstretch')
+    # The graphs under it while the metro has the bottom stack; a touch opens them (or shuts them).
+    on, where = graphs.shown(fs)
+    more = graphs.graphs(fs, skystate.doc(), card.width, on and where == 'side', 'side')
+    base = card.hash
+    if more:
+        card = vstack([card, more], gap=3, align='hstretch')
+    return Frame(card.image, hash=('weather.card', base), targets=(graphs.toggle(fs, on)(card.width, card.height),))
+
+def extended(fs: FrameState) -> Frame | None:
+    '''The graphs in a card of their own (the bottom stack's), the metro down. A touch shuts it.'''
+    on, where = graphs.shown(fs)
+    if not on or where != 'bottom':
+        return None
+    w = min(fs.config.width - 8, graphs.max_width)
+    if not (f := graphs.graphs(fs, skystate.doc(), w, True, 'bottom')):
+        return None
+    return Frame(f.image, hash=('weather.graphs', w), targets=(graphs.toggle(fs, on)(f.width, f.height),))

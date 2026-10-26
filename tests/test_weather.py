@@ -111,3 +111,28 @@ def test_card_from_sky():
     assert state.from_sky(d)['temperature'] == -2
     assert vigilance.forecast_lines(T0, sky=d) == ["Pluie jusqu'à 20h 2mm/h 60%", 'Min -2C à 20h', 'Ressenti -7C', 'Pression -4hPa/3h']
     assert state.from_sky({'air': {}}) is None
+
+def test_graphs(monkeypatch):
+    import time
+    from types import SimpleNamespace as NS
+    from disinfo.screens.weather import graphs as g
+    fs = NS(config=NS(name='s'), now=NS(timestamp=lambda: T0), tick=time.time())
+    # Open with the metro, under the weather card; a touch decides for a while, then the metro again.
+    monkeypatch.setattr(g, 'metro_up', lambda fs: True)
+    st = g.GraphsStateManager().get_state(fs)
+    st.tapped.clear()
+    assert g.shown(fs) == (True, 'side')
+    g.GraphsStateManager().process_message('', NS(action='weather.graphs', payload={'screen': 's', 'show': False}))
+    assert g.shown(fs) == (False, 'side')
+    st.tapped['s'][1] -= g.keep_open + 1
+    monkeypatch.setattr(g, 'metro_up', lambda fs: False)
+    assert g.shown(fs) == (False, 'bottom')
+    assert g.toggle(fs, False)(10, 5) == g.Target(0, 0, 10, 5, 'weather.graphs', {'screen': 's', 'show': True})
+    # The stations' 6 h, the forecast's 18: a line, the rain only when there's some.
+    seen = [[T0 - 3600 * i, 12.0 + i * 0.2, 0.0] for i in range(6, -1, -1)]
+    ahead = [[T0 + 3600 * i, 12.0 + i, 0.5, 2.0 if i == 3 else 0.0, 0.8] for i in range(1, 20)]
+    f = g.temp_graph(seen, ahead, T0, 96, 34, 6, 18)
+    assert f.size == (96, 34) and f.image.getbbox()
+    assert g.temp_graph([], [], T0, 96, 34, 6, 18) is None
+    assert g.rain_graph(seen, ahead, T0, 96, 5, 6, 18).image.getbbox()
+    assert g.rain_graph(seen, [r[:3] + [0.0, 0.0] for r in ahead], T0, 96, 5, 6, 18) is None

@@ -94,6 +94,7 @@ def bottom_cards(fs: FrameState) -> list:
     return [
         *aviator.widgets.planes(fs),
         *paris_metro.widgets(fs),
+        weather.widgets.graphs(fs),
         now_playing.widget(fs),
         *klipper.widget(fs),
         *debug_info.widgets(fs),

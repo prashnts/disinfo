@@ -179,3 +179,17 @@ def task():
 def doc() -> dict | None:
     from disinfo.screens.aviator import daylight
     return daylight.read(KEY)
+
+_log = {'read': 0.0, 'rows': []}
+
+def recent(hours: float = 12) -> list:
+    '''The log's rows of the last hours (24 at most), oldest first. Read again once a minute at most: renderers call it each frame.'''
+    now = time.monotonic()
+    if now - _log['read'] > 60:
+        from disinfo.redis import db
+        _log['read'] = now
+        try:
+            _log['rows'] = [json.loads(r) for r in db.lrange(LOG_KEY, 0, 24 * 10)][::-1]
+        except Exception:
+            _log['rows'] = []
+    return [r for r in _log['rows'] if r[0] > time.time() - hours * 3600]
