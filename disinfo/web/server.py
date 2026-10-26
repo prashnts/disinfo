@@ -234,6 +234,21 @@ async def aviator_settings():
         off = []
     return {'light': db.get('di.aviator.light') == b'1', 'off': off}
 
+@app.get('/weather/diag')
+async def weather_diag(hours: int = 36):
+    '''Everything behind the weather card, for web/weather.html: the sky state, the stations, the blend, the scores.'''
+    from disinfo.screens.weather import stations, forecast
+    from disinfo.screens.aviator import skystate
+    j = lambda k: json.loads(db.get(k) or 'null')
+    rows = lambda k, n: [json.loads(r) for r in db.lrange(k, 0, n)]
+    return {'now': time.time(), 'sky': j(skystate.KEY), 'obs': j(stations.KEY), 'baro': j(stations.BARO_KEY),
+            'blend': j(forecast.KEY), 'skill': j(forecast.SKILL_KEY), 'buckets': forecast.buckets,
+            'obs_log': rows(stations.LOG_KEY, hours * 10), 'verify': rows(forecast.VERIFY_KEY, 7 * 24)}
+
+@app.get('/weather')
+async def weather_page() -> RedirectResponse:
+    return RedirectResponse('/web/weather.html')
+
 @app.post('/remote')
 async def trigger_remote(rinput: RemoteInput):
     publish('di.pubsub.remote', action=rinput.action, payload=rinput.payload or {})

@@ -54,7 +54,8 @@ def parse_metar(m: dict) -> dict:
     vis = m.get('visib')
     vis = 10000 if vis in ('6+', '10+') else (round(float(vis) * 1609) if vis is not None else None)
     kt = lambda x: None if m.get(x) is None else round(m[x] * 0.5144, 1)
-    return {'at': m['obsTime'], 'clouds': clouds, 'gust': kt('wgst'), 'ms': kt('wspd'), 'wx': m.get('wxString') or '', 'vis': vis}
+    return {'at': m['obsTime'], 'clouds': clouds, 'gust': kt('wgst'), 'ms': kt('wspd'), 'wx': m.get('wxString') or '', 'vis': vis,
+            'raw': m.get('rawOb')}
 
 
 def mean(pts: list[tuple[float, float]]) -> tuple[float, float] | None:

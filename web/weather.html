@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>disinfo! weather</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --surface: #1e1e1d;
+            --surface-2: #262625;
+            --line: #3a3a38;
+            --text: #f0efec;
+            --text-2: #c3c2b7;
+            --muted: #8d8c85;
+            --s1: #3987e5;      /* the stations */
+            --s2: #d95926;      /* the forecast (the blend) */
+            --s3: #199e70;      /* met.no (what the card showed) */
+            --good: #3fae5a;
+            --warn: #e0b400;
+            --bad: #e66767;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--surface); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+        main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+        h1 { font: 600 20px/1.2 monospace; margin: 0 0 4px; }
+        h2 { font: 600 14px/1.2 monospace; color: var(--text-2); margin: 28px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+        .sub, .note { color: var(--muted); font-size: 12px; }
+        .num { font-variant-numeric: tabular-nums; }
+        .hero { display: flex; flex-wrap: wrap; gap: 24px; align-items: baseline; margin: 12px 0; }
+        .hero .big { font: 600 48px/1 monospace; }
+        .hero .kv { color: var(--text-2); }
+        .hero .kv b { color: var(--text); font-weight: 600; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 2px 10px; font-size: 12px; color: var(--text-2); }
+        .chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .scroll { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        th { color: var(--muted); font-weight: 500; }
+        td.r, th.r { text-align: right; }
+        tr.ours td { color: var(--text); font-weight: 600; }
+        .conf { display: inline-block; width: 60px; height: 6px; background: var(--line); border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+        .conf span { display: block; height: 100%; border-radius: 3px; background: var(--text-2); }
+        .by { color: var(--muted); }
+        .chart { position: relative; background: var(--surface-2); border-radius: 6px; padding: 8px 4px 4px; margin-bottom: 12px; }
+        .chart .title { font-size: 12px; color: var(--text-2); margin: 0 8px 4px; display: flex; flex-wrap: wrap; gap: 14px; }
+        .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 5px; }
+        .legend i.band { height: 8px; opacity: .3; }
+        svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+        svg text { fill: var(--muted); font: 10px system-ui, sans-serif; }
+        .tip { position: absolute; pointer-events: none; background: #000d; border: 1px solid var(--line); border-radius: 4px;
+               padding: 4px 8px; font-size: 12px; white-space: nowrap; display: none; z-index: 2; }
+        .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; }
+        pre { background: var(--surface-2); padding: 8px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: var(--text-2); margin: 0; }
+        .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Weather at home</h1>
+    <div class="sub" id="updated">loading…</div>
+    <div class="hero" id="hero"></div>
+    <div class="chips" id="sources"></div>
+
+    <h2>The last day and the next two</h2>
+    <div class="chart" id="c-temp"></div>
+    <div class="chart" id="c-rain"></div>
+    <div class="chart" id="c-pres"></div>
+    <div class="note">Hover (or touch) a chart for the values. The forecast is the blend pulled to the stations now; the band is how far the models spread around it.</div>
+
+    <h2>How good the forecasts are</h2>
+    <div class="note" style="margin-bottom:8px">Each model's error against the stations, by how far ahead it forecast. RMSE (lower is better), bias (+ = too high), n = hours checked.
+        <b>blend</b> is ours; <b>ha</b> is met.no as the card showed it. Until ~12 hours are checked, the prior decides.
+        Variable <select id="var"><option>temp</option><option>dew</option><option>wind</option><option>pressure</option></select></div>
+    <div class="scroll"><table id="skill"></table></div>
+    <h2>Recent error, °C</h2>
+    <div class="note" style="margin-bottom:8px">Mean absolute temperature error over the hours checked, forecasts made less than 3 h before and 12–24 h before.</div>
+    <div class="scroll"><table id="recent"></table></div>
+
+    <h2>Now: every value and who said it</h2>
+    <div class="scroll"><table id="fused"></table></div>
+
+    <div class="grid2">
+        <div><h2>Stations</h2><div class="scroll"><table id="stations"></table></div></div>
+        <div><h2>Airports (METAR)</h2><pre id="metar"></pre>
+             <h2>Barometers indoors</h2><div class="scroll"><table id="baro"></table></div></div>
+    </div>
+    <p class="note">Météo-France (observations, Licence Ouverte) · aviationweather.gov (METAR) · Open-Meteo (models, CC-BY 4.0)</p>
+</main>
+<script type="module">
+    const $ = id => document.getElementById(id)
+    const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim()
+    const fmt = (v, d = 1) => v == null || Number.isNaN(v) ? '–' : (+v).toFixed(d)
+    const hhmm = t => new Date(t * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    const day = t => new Date(t * 1000).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })
+    const ago = s => s == null ? 'off' : s < 90 ? `${Math.round(s)} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`
+    const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+    let D = null
+
+    // A chart over time: lines, a band, bars; one y axis; the now line; a crosshair with every series' value.
+    function chart(el, { title, unit, x0, x1, now, lines = [], band = null, bars = null, d = 1, zero = false }) {
+        const W = 1000, H = 220, L = 40, R = 10, T = 8, B = 22
+        const vals = [...lines.flatMap(s => s.pts.map(p => p[1])), ...(band ? band.pts.flatMap(p => [p[1], p[2]]) : []),
+                      ...(bars ? bars.pts.map(p => p[1]) : [])].filter(v => v != null)
+        if (!vals.length) { el.innerHTML = `<div class="title">${title}: no data yet</div>`; return }
+        let lo = Math.min(...vals), hi = Math.max(...vals)
+        if (zero) lo = 0
+        if (hi - lo < 1) { hi += .5; lo = zero ? 0 : lo - .5 }
+        const pad = (hi - lo) * .08; hi += pad; if (!zero) lo -= pad
+        const X = t => L + (t - x0) / (x1 - x0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B)
+        const step = (hi - lo) / 4, mag = 10 ** Math.floor(Math.log10(step)), nice = [1, 2, 2.5, 5, 10].map(m => m * mag).find(m => m >= step)
+        let g = ''
+        for (let v = Math.ceil(lo / nice) * nice; v <= hi; v += nice)
+            g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="1"/>` +
+                 `<text x="${L - 6}" y="${Y(v) + 3}" text-anchor="end">${+v.toFixed(2)}</text>`
+        for (let t = Math.ceil(x0 / 21600) * 21600; t <= x1; t += 21600) {
+            const h = new Date(t * 1000).getHours()
+            g += `<text x="${X(t)}" y="${H - 6}" text-anchor="middle">${h === 0 || h === 1 ? day(t) : hhmm(t).slice(0, 2) + 'h'}</text>`
+        }
+        let m = ''
+        if (band) {
+            const p = band.pts.filter(p => p[1] != null)
+            m += `<path d="M${p.map(q => `${X(q[0])},${Y(q[2])}`).join('L')}L${p.reverse().map(q => `${X(q[0])},${Y(q[1])}`).join('L')}Z" fill="${band.color}" opacity=".18"/>`
+        }
+        if (bars) {
+            const w = Math.max((W - L - R) * 3600 / (x1 - x0) - 2, 1)
+            for (const [t, v, extra] of bars.pts) if (v > 0) {
+                const x = X(t - 3600) + 1, y = Y(v), h = Y(0) - y
+                m += `<path d="M${x},${Y(0)}V${y + Math.min(2, h)}q0,-2 2,-2h${w - 4}q2,0 2,2V${Y(0)}Z" fill="${bars.color}" opacity="${.35 + .65 * (extra ?? 1)}"/>`
+            }
+        }
+        for (const s of lines) {
+            let path = '', on = false
+            for (const [t, v] of s.pts) { if (v == null) { on = false; continue } path += `${on ? 'L' : 'M'}${X(t).toFixed(1)},${Y(v).toFixed(1)}`; on = true }
+            m += `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`
+        }
+        m += `<line x1="${X(now)}" x2="${X(now)}" y1="${T}" y2="${H - B}" stroke="${css('--text-2')}" stroke-width="1" stroke-dasharray="2 3"/>` +
+             `<text x="${X(now) + 4}" y="${T + 10}">now</text>`
+        const legend = [...lines.map(s => `<span class="legend"><i style="background:${s.color}"></i>${s.name}</span>`),
+                        band ? `<span class="legend"><i class="band" style="background:${band.color}"></i>${band.name}</span>` : '',
+                        bars ? `<span class="legend"><i class="band" style="background:${bars.color};opacity:.8"></i>${bars.name}</span>` : ''].join('')
+        el.innerHTML = `<div class="title"><b>${title}</b>${legend}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${g}${m}
+            <line class="xh" y1="${T}" y2="${H - B}" stroke="${css('--text')}" stroke-width="1" visibility="hidden"/>
+            <rect x="${L}" y="0" width="${W - L - R}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`
+        const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), xh = el.querySelector('.xh')
+        const near = (pts, t, within) => { let b = null; for (const p of pts) if (p[1] != null && Math.abs(p[0] - t) <= within && (!b || Math.abs(p[0] - t) < Math.abs(b[0] - t))) b = p; return b }
+        const move = e => {
+            const r = svg.getBoundingClientRect(), px = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) / r.width * W
+            if (px < L || px > W - R) return hide()
+            const t = x0 + (px - L) / (W - L - R) * (x1 - x0)
+            const rows = lines.map(s => [s, near(s.pts, t, s.within ?? 1800)]).filter(r => r[1])
+                .map(([s, p]) => `<div><i style="background:${s.color}"></i>${s.name} <b class="num">${fmt(p[1], d)}</b> ${unit}</div>`)
+            if (band) { const p = near(band.pts, t, 1800); if (p) rows.push(`<div class="by">${band.name} ${fmt(p[1], d)}–${fmt(p[2], d)}</div>`) }
+            if (bars) { const p = near(bars.pts.map(q => [q[0] - 1800, q[1], q[2]]), t, 1800); if (p) rows.push(`<div><i style="background:${bars.color}"></i>${bars.name} <b class="num">${fmt(p[1], 2)}</b> mm${p[2] != null ? `, ${Math.round(p[2] * 100)}% of the models` : ''}</div>`) }
+            if (!rows.length) return hide()
+            xh.setAttribute('x1', px); xh.setAttribute('x2', px); xh.setAttribute('visibility', 'visible')
+            tip.innerHTML = `<div class="by">${day(t)} ${hhmm(t)}</div>${rows.join('')}`
+            tip.style.display = 'block'
+            const left = (px / W) * r.width
+            tip.style.left = `${Math.min(left + 12, r.width - tip.offsetWidth - 4)}px`; tip.style.top = '28px'
+        }
+        const hide = () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden') }
+        svg.addEventListener('mousemove', move); svg.addEventListener('touchmove', move, { passive: true })
+        svg.addEventListener('mouseleave', hide)
+    }
+
+    function charts() {
+        const now = D.now, x0 = now - 24 * 3600, x1 = now + 48 * 3600
+        const log = (D.obs_log || []).filter(r => r[0] >= x0).reverse()
+        const fc = D.sky?.forecast?.hours || []
+        chart($('c-temp'), { title: 'Temperature', unit: '°C', x0, x1, now,
+            lines: [{ name: 'stations', color: css('--s1'), pts: log.map(r => [r[0], r[1]]), within: 600 },
+                    { name: 'met.no (the old card)', color: css('--s3'), pts: log.map(r => [r[0], r[7]]), within: 600, dash: true },
+                    { name: 'forecast', color: css('--s2'), pts: fc.map(r => [r[0], r[1]]) }],
+            band: { name: 'models spread', color: css('--s2'), pts: fc.map(r => [r[0], r[1] == null || r[9] == null ? null : r[1] - r[9], r[1] + r[9]]) } })
+        chart($('c-rain'), { title: 'Rain', unit: 'mm/h', x0, x1, now, d: 2, zero: true,
+            lines: [{ name: 'stations', color: css('--s1'), pts: log.map(r => [r[0], r[5]]), within: 600 }],
+            bars: { name: 'forecast, mm in the hour (paler: fewer models agree)', color: css('--s2'), pts: fc.map(r => [r[0], r[6], r[7]]) } })
+        chart($('c-pres'), { title: 'Pressure at sea level', unit: 'hPa', x0, x1, now,
+            lines: [{ name: 'stations', color: css('--s1'), pts: log.map(r => [r[0], r[3]]), within: 600 },
+                    { name: 'forecast', color: css('--s2'), pts: fc.map(r => [r[0], r[5]]) }] })
+    }
+
+    function hero() {
+        const a = D.sky?.air || {}, v = q => q?.v, t = D.sky?.forecast?.today
+        const temp = a.temp ? `${fmt(v(a.temp))}°` : '–'
+        $('hero').innerHTML = `<div class="big num">${temp}</div>` + [
+            ['feels', a.feels != null ? `${fmt(a.feels)}°` : '–'], ['today', t ? `${fmt(t.low)}° – ${fmt(t.high)}°` : '–'],
+            ['humidity', a.rh != null ? `${a.rh}%` : '–'], ['dew point', a.dew ? `${fmt(v(a.dew))}°` : '–'],
+            ['wind', a.wind ? `${fmt(v(a.wind) * 3.6, 0)} km/h${a.dir != null ? ` from ${a.dir}°` : ''}` : '–'],
+            ['gusts', a.gust ? `${fmt(v(a.gust) * 3.6, 0)} km/h` : '–'],
+            ['pressure', a.pressure ? `${fmt(v(a.pressure))} hPa${a.tendency != null ? ` (${a.tendency > 0 ? '+' : ''}${a.tendency} in 3 h)` : ''}` : '–'],
+            ['visibility', a.vis != null ? `${fmt(a.vis / 1000)} km` : '–'], ['cloud base', a.ceiling != null ? `${a.ceiling} m` : '–'],
+            ['weather', (a.wx || []).join(' ') || '–'],
+        ].map(([k, x]) => `<div class="kv">${k} <b class="num">${esc(x)}</b></div>`).join('')
+        const stale = { model: 10800, light: 600, sat: 1800, ha: 1800, radar: 900, planes: 1800, stations: 1200, blend: 10800 }
+        $('sources').innerHTML = Object.entries(D.sky?.sources || {}).map(([k, s]) => {
+            const st = s == null ? ['--bad', 'off'] : s > (stale[k] ?? 900) ? ['--warn', ago(s) + ', stale'] : ['--good', ago(s)]
+            return `<span class="chip"><i style="background:${css(st[0])}"></i>${k} · ${st[1]}</span>`
+        }).join('')
+    }
+
+    function fused() {
+        const s = D.sky || {}, rows = []
+        const add = (group, name, q, unit = '') => q && rows.push([group, name, q, unit])
+        for (const k of ['temp', 'dew', 'pressure', 'wind', 'gust', 'freezing_m']) add('air', k, s.air?.[k])
+        for (const k of ['rate', 'snow']) add('precip', k, s.precip?.[k])
+        for (const k of ['cover', 'deck', 'high', 'sun', 'dark', 'brightness', 'broken', 'warmth', 'haze']) add('sky', k, s.sky?.[k])
+        $('fused').innerHTML = '<tr><th>what</th><th class="r">value</th><th>confidence</th><th>by source</th></tr>' + rows.map(([g, n, q]) =>
+            `<tr><td>${g}.${n}</td><td class="r num">${fmt(q.v, Math.abs(q.v) >= 100 ? 1 : 2)}</td>
+             <td><span class="conf"><span style="width:${q.conf * 100}%"></span></span><span class="num">${fmt(q.conf, 2)}</span></td>
+             <td class="by num">${Object.entries(q.by || {}).map(([k, x]) => `${k} ${fmt(x, Math.abs(x) >= 100 ? 1 : 2)}`).join(' · ')}</td></tr>`).join('')
+    }
+
+    function skill() {
+        const v = $('var').value, sk = D.skill || {}, B = D.buckets || []
+        const rows = Object.entries(sk).filter(([, x]) => x[v]).map(([name, x]) => {
+            const cells = B.map(b => x[v][b]), first = cells.find(c => c)
+            return [first ? Math.sqrt(first[1]) : 99, name, cells]
+        }).sort((a, b) => a[0] - b[0])
+        let prev = 0
+        $('skill').innerHTML = `<tr><th>model</th>${B.map(b => `<th class="r">&lt; ${b} h</th>`).join('')}</tr>` + (rows.length ? rows.map(([, name, cells]) =>
+            `<tr class="${name === 'blend' || name === 'ha' ? 'ours' : ''}"><td>${name}</td>${cells.map(c => c ?
+                `<td class="r num">${fmt(Math.sqrt(c[1]), 2)} <span class="by">${c[0] > 0 ? '+' : ''}${fmt(c[0], 2)} · ${c[2]}</span></td>` : '<td class="r by">–</td>').join('')}</tr>`).join('')
+            : `<tr><td colspan="${B.length + 1}" class="by">nothing checked yet: the first scores come an hour after the stations and the blend run</td></tr>`)
+    }
+
+    function recent() {
+        const ver = D.verify || [], spans = [['last 24 h', 86400], ['last 7 days', 7 * 86400]], acc = {}
+        for (const [h, , errs] of ver) for (const [model, vs] of Object.entries(errs)) for (const [lead, e] of vs.temp || []) {
+            const k = lead < 3 ? 'short' : lead >= 12 && lead < 24 ? 'day' : null
+            if (!k) continue
+            for (const [label, s] of spans) if (D.now - h <= s) {
+                const a = ((acc[model] ??= {})[label + k] ??= [0, 0]); a[0] += Math.abs(e); a[1]++
+            }
+        }
+        const cols = spans.flatMap(([l]) => [[l + 'short', `${l}, < 3 h`], [l + 'day', `${l}, 12–24 h`]])
+        const rows = Object.entries(acc).sort((a, b) => (a[1][cols[0][0]]?.[0] / a[1][cols[0][0]]?.[1] || 99) - (b[1][cols[0][0]]?.[0] / b[1][cols[0][0]]?.[1] || 99))
+        $('recent').innerHTML = `<tr><th>model</th>${cols.map(c => `<th class="r">${c[1]}</th>`).join('')}</tr>` + (rows.length ? rows.map(([m, a]) =>
+            `<tr class="${m === 'blend' || m === 'ha' ? 'ours' : ''}"><td>${m}</td>${cols.map(([k]) => a[k] ? `<td class="r num">${fmt(a[k][0] / a[k][1], 2)} <span class="by">n ${a[k][1]}</span></td>` : '<td class="r by">–</td>').join('')}</tr>`).join('')
+            : `<tr><td colspan="5" class="by">no hours checked yet</td></tr>`)
+    }
+
+    function stations() {
+        const o = D.obs || {}
+        $('stations').innerHTML = '<tr><th>station</th><th class="r">age</th><th class="r">°C</th><th class="r">dew</th><th class="r">%</th><th class="r">wind m/s</th><th class="r">mm/h</th><th class="r">vis km</th><th class="r">hPa</th></tr>' +
+            Object.values(o.stations || {}).map(s => `<tr><td>${esc(s.name)}</td><td class="r num">${ago(D.now - s.at)}</td><td class="r num">${fmt(s.t)}</td><td class="r num">${fmt(s.td)}</td>
+              <td class="r num">${s.rh ?? '–'}</td><td class="r num">${s.ms != null ? `${fmt(s.ms)}${s.dir != null ? ` <span class="by">${s.dir}°</span>` : ''}` : '–'}</td>
+              <td class="r num">${fmt(s.rr)}</td><td class="r num">${s.vis != null ? fmt(s.vis / 1000) : '–'}</td><td class="r num">${fmt(s.pmer)}</td></tr>`).join('')
+        $('metar').textContent = Object.entries(o.metar || {}).map(([k, m]) => `${m.raw || k}   (${ago(D.now - m.at)} ago)`).join('\n') || '–'
+        const b = D.baro || {}
+        $('baro').innerHTML = '<tr><th>sensor</th><th class="r">offset hPa</th><th class="r">n</th><th class="r">as sea level</th></tr>' +
+            (Object.keys(b).length ? Object.entries(b).map(([e, [off, n]]) => `<tr><td>${esc(e)}</td><td class="r num">${fmt(off, 2)}</td><td class="r num">${n}</td>
+              <td class="r num">${o.indoor?.[e] != null ? fmt(o.indoor[e], 2) : '<span class="by">calibrating</span>'}</td></tr>`).join('')
+             : '<tr><td colspan="4" class="by">none yet</td></tr>')
+    }
+
+    async function load() {
+        try {
+            D = await (await fetch('/weather/diag')).json()
+        } catch (e) { $('updated').textContent = `couldn't load: ${e}`; return }
+        $('updated').textContent = D.sky ? `sky state ${ago(D.now - D.sky.at)} old · page refreshes every minute` : 'no sky state (is the data service running?)'
+        for (const f of [hero, charts, skill, recent, fused, stations]) try { f() } catch (e) { console.error(f.name, e) }
+    }
+    $('var').addEventListener('change', skill)
+    load(); setInterval(load, 60000)
+</script>
+</body>
+</html>
