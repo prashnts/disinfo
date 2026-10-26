@@ -47,8 +47,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The sky view follows the light by the window: Sensei and the desk's colour sensor against the brightest seen with the sun there, the lamps taken off. Worked out once for all screens in the data service; greys and darkens the sky, hides the sun, low cloud the satellite misses, cirrus from the model, the sun on the facades by day. Each source can be missing: the sky falls back to the next. The sky's brightness follows the room's light from the screen's own colour sensor, which also tells the lamps from the daylight by their colour. 🔧 The desk's colour sensor ranges itself (night to direct sun).
 - Sky state: one doc for the sky, the weather and the time over home, fused once a minute from every source (the model, the light by the window, the satellite, Home Assistant, the radar, the planes; others can add theirs), each value with how sure it is and who said what. The sky view draws from it.
 - The planes as weather balloons: the temperature and wind they report make a profile over home (freezing level, jet, inversions); contrails behind the planes where it's cold enough, lasting and spreading when the air up there is moist.
+- **The real skyline in the sky view**: the roofs as seen from the window, from IGN's buildings and HeyWhatsThat's hills, near to far; the window nudged until the places seen from it (the waypoints) are over the roofs. Windows light up at night.
 
 ### Changed
+- The sky view looks at the waypoints' piece of the skyline, closer in, widening for the planes and now and then to the whole window; it pans up to a followed plane and drifts up and down otherwise.
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
 
 ### Fixed

@@ -184,3 +184,5 @@ emulator_config.json
 .debug*.png
 
 .fonts_cache/
+# The window's place (HeyWhatsThat's Stellarium export, aviator/skyline.py)
+config/landscape.zip

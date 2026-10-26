@@ -36,6 +36,8 @@ class UDPPanel(AppBaseModel):
     size: int
 
 screen_data_path = Path(os.environ.get('DI_SCREEN_DATA_PATH', Path(__file__).parent.parent / 'config' / 'screen_data.json'))
+# HeyWhatsThat's Stellarium export from the window: its place and height, the hills' horizon (aviator/skyline.py).
+landscape_path = Path(os.environ.get('DI_LANDSCAPE_PATH', Path(__file__).parent.parent / 'config' / 'landscape.zip'))
 
 class AviatorData(AppBaseModel):
     # (lat, lon) of what's visible from the window.

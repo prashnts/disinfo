@@ -456,3 +456,39 @@ def test_contrails_and_puffs(monkeypatch):
     sky.curls(cairo.Context(s), 200, 20, 70, 1000.0, 90, 8, 14, 270, (1, 1, 1))
     alpha = np.frombuffer(s.get_data(), np.uint8).reshape(100, 200, 4)[:, :, 3]
     assert alpha.max() > 0 and alpha[72:, :].max() == 0
+
+
+def test_skyline():
+    import numpy as np
+    from disinfo.screens.aviator import skyline
+    # A wall 100 m east, 20 m wide, 10 m over the eye: in the near band around 90 degrees, at its height.
+    w = np.array([[100, -10, 100, 10, 60]], np.float32)
+    p = skyline.profile(w, 50, 0, int(180 / skyline.res))
+    at = lambda b: p[:, int(b / skyline.res)]
+    assert at(90)[0] == pytest.approx(math.degrees(math.atan(0.1)), abs=0.01) and at(90)[1:].max() == -90
+    assert at(80).max() == -90 and at(95)[0] > 0
+    # The columns: each the highest of its bins; out of the profile, nothing.
+    sk = skyline.Skyline((0, 0, 50), 0, p, [])
+    c = sk.columns(80, 1, 20)
+    assert c[0, 10] == pytest.approx(at(90)[0], abs=0.1) and c[0, 0] == -90
+    assert (sk.columns(200, 1, 5) == -90).all()
+    # The window nudged sideways to see past a wall in front of a place.
+    wall = np.array([[0, 200, 30, 200, 90]], np.float32)
+    (dx, dy, dz), ms = skyline.fit(wall, 0, 0, 80, [(0, 1000, 85)])
+    assert ms[0] > -skyline.seen_tol and (dx != 0 or dz > 0)
+
+
+def test_sky_camera(monkeypatch):
+    from types import SimpleNamespace as NS
+    from disinfo.screens.aviator import sky
+    monkeypatch.setattr(sky.app_config, 'aviator_window', (0, 180))
+    monkeypatch.setattr(sky.app_config.screen_data.aviator, 'landmarks', [])
+    st = NS(planes={'a': {'bearing': 40}, 'b': {'bearing': 120}}, watched=['a', 'b'])
+    # Wide enough for the planes; narrow without them, pulled back to the window now and then.
+    assert sky.aim(st, sky.view_fov) == (80, 95)
+    monkeypatch.setattr(sky, 'wide_for', 0)
+    assert sky.aim(NS(planes={}, watched=[]), sky.view_fov) == (90, sky.view_fov)
+    monkeypatch.setattr(sky, 'wide_for', sky.wide_every)
+    assert sky.aim(NS(planes={}, watched=[]), sky.view_fov) == (90, 180)
+    # A higher plane: the horizon goes down to look up at it.
+    assert sky.tilt[0] <= sky.tilt_to(2, 50) < sky.tilt_to(30, 50) <= sky.tilt[1]

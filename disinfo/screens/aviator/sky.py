@@ -25,15 +25,18 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, weather
+from . import app, astro, skylook, skyline, weather
 
 
-horizon = 0.7           # of the height, from the top
-elev_gamma = 0.5        # y ~ (elevation / 90) ** gamma: the few degrees over the horizon get room
+horizon = 0.6           # of the height, from the top
+tilt = (0.45, 0.8)      # where the horizon may go: up to look down on the roofs, down to look up at a plane
+tilt_sway, tilt_period = 0.06, 340      # the horizon drifts up and down that much while nothing's followed
+elev_gamma = 0.5        # y ~ (elevation / top) ** gamma: the few degrees over the horizon get room
 dip_max = 30            # degrees under the horizon at the bottom of the frame, the same stretch
 earth_r = 6371
-view_fov = 90           # degrees across
-fov_min = 25            # zoomed on a plane
+view_fov = 50           # degrees across, most of the time: the waypoints' piece of the skyline
+fov_min = 20            # zoomed on a plane
+wide_every, wide_for = 900, 45          # s: pulled back to the whole window that long, every so often
 home_ground = 47        # m above the sea
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 horizon_color = (1, 1, 1, 0.25)
@@ -45,6 +48,7 @@ sway_period = 200       # s
 # The roofs, far to near: dark greys, the far ones lighter; a faint rim on their tops.
 far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
+hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hills, hazy
 rim_color = (1, 1, 1, 0.15)
 day_face = (1, 0.93, 0.8)       # the sun on the facades, by day
 day_face_alpha, day_rim_alpha = 0.07, 0.3
@@ -198,55 +202,149 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
         ctx.fill()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
 
-def camera(fs: FrameState, target: tuple[float, float]) -> tuple[float, float]:
+def runs(v: np.ndarray) -> list[tuple[int, int, int]]:
+    # (from, to, value) of the stretches where v stays the same.
+    cut = [0, *(np.flatnonzero(np.diff(v)) + 1), len(v)]
+    return [(a, b, int(v[a])) for a, b in zip(cut, cut[1:])]
+
+def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, h: int, to_y,
+               sunlight: tuple[float, float] | None = None, rim: tuple = rim_color, daylit: tuple[float, float] | None = None,
+               night: float = 0):
+    '''The roofline from the window (skyline.py), a pixel's column at a time: the hills, then the roofs far to near.
+    Lit the same as the drawn one: the sun on the facades, the sunset on the tops facing it, a window catching it.
+    At night the windows light up here and there, each in its place, on and off over the evening.'''
+    ctx.set_antialias(cairo.ANTIALIAS_NONE)
+    rows = sk.columns(yaw - fov / 2, fov / w, w)[::-1]
+    bs = yaw - fov / 2 + (np.arange(w) + 0.5) * fov / w
+    # The windows by bearing, a fifth of a degree each: they stay where they are when the view turns.
+    cell = np.floor(bs * 5)
+    r = (np.sin(cell * 12.9898) * 43758.5453) % 1
+    off = lambda b: np.abs((b + 180) % 360 - 180)
+    glow = np.clip(1 - off(bs - sunlight[0]) / 70, 0, None) * sunlight[1] if sunlight else np.zeros(w)
+    face = np.cos(np.radians(bs + 180 - daylit[0])) * daylit[1] if daylit else np.zeros(w)
+    for n, row in enumerate(rows):
+        k = n / (len(rows) - 1)
+        ys = np.minimum(np.round(to_y(row)), h).astype(int)
+        top = runs(ys)
+        ctx.move_to(0, h)
+        for a, b, y in top:
+            ctx.line_to(a, y)
+            ctx.line_to(b, y)
+        ctx.line_to(w, h)
+        ctx.close_path()
+        ctx.set_source_rgb(*(c0 + (c1 - c0) * k for c0, c1 in zip(hill_color, near_color)))
+        ctx.fill()
+        if n == 0:
+            continue
+        on = ys < h
+        # By day: the facades turned to the sun (it's behind us when they face us), as much as it's out.
+        for level in range(1, 5):
+            sel = on & (np.ceil(face * 4) == level) & (face > 0.05)
+            if sel.any():
+                for a, b, v in runs(np.where(sel, ys + 1, 0)):
+                    if v:
+                        ctx.rectangle(a, v - 1, b - a, h)
+                ctx.set_source_rgba(*day_face, day_face_alpha * level / 4)
+                ctx.fill()
+        for a, b, y in top:
+            if y < h:
+                ctx.rectangle(a, y, b - a, 1)
+        ctx.set_source_rgba(*rim)     # wet: shining with the rain's light
+        ctx.fill()
+        # The sunset on the tops facing it, a few windows catching it; by day a window sends the sun back.
+        for level in range(1, 5):
+            sel = on & (np.ceil(glow * 4) == level) & (glow > 0.03)
+            if sel.any():
+                for x in np.flatnonzero(sel):
+                    ctx.rectangle(int(x), int(ys[x]), 1, 1)
+                ctx.set_source_rgba(*(c / 255 for c in skylook.glow_rgb), 0.75 * level / 4)
+                ctx.fill()
+        lit = on & (r < 0.3 * np.maximum(glow, 0.15 * face))
+        for x in np.flatnonzero(lit):
+            ctx.rectangle(int(x), int(ys[x] + 2 + (r[x] * 97 % 1) * 8), 1, 1)
+        ctx.set_source_rgba(1, 0.85, 0.6, 0.7)
+        ctx.fill()
+        if night > 0.05:
+            # The nearer, the more of them and the deeper down the facade; a few have the TV's blue.
+            q = (np.sin(cell * 78.233 + n * 31.7 + np.floor(time.time() / 600 + r * 7)) * 43758.5453) % 1
+            on_ = on & (q < night * 0.12 * (0.4 + k))
+            for cool in (False, True):
+                for x in np.flatnonzero(on_ & ((q * 113 % 1 < 0.15) == cool)):
+                    ctx.rectangle(int(x), int(ys[x] + 2 + (q[x] * 37 % 1) * (4 + 24 * k)), 1, 1)
+                ctx.set_source_rgba(*((0.65, 0.75, 1) if cool else (1, 0.78, 0.45)), 0.35 + 0.35 * k)
+                ctx.fill()
+    ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
+
+def camera(fs: FrameState, target: tuple[float, float, float]) -> tuple[float, float, float]:
     now = time.monotonic()
     c = _cams.setdefault(fs.config.name, [*target, now])
-    k = 1 - math.exp(-(now - c[2]) / 0.8)
-    c[:] = c[0] + wrap(target[0] - c[0]) * k, c[1] + (target[1] - c[1]) * k, now
-    app._moving[fs.config.name] = abs(wrap(target[0] - c[0])) > 0.3 or abs(target[1] - c[1]) > 0.3
+    k = 1 - math.exp(-(now - c[3]) / 0.8)
+    c[:] = c[0] + wrap(target[0] - c[0]) * k, c[1] + (target[1] - c[1]) * k, c[2] + (target[2] - c[2]) * k, now
+    app._moving[fs.config.name] = abs(wrap(target[0] - c[0])) > 0.3 or abs(target[1] - c[1]) > 0.3 or abs(target[2] - c[2]) > 0.004
     if not app._moving[fs.config.name]:
-        c[:2] = target
-    return c[0], c[1]
+        c[:3] = target
+    return c[0], c[1], c[2]
 
-def aim(st, fov: float) -> float:
-    # Towards the planes seen from the window (their mean bearing), kept within the window.
+def top_of(fov: float) -> float:
+    # Degrees over the horizon at the top of the frame: zoomed in, the few over the roofs get the room.
+    return min(90, max(fov * 1.2, 30))
+
+def dip_of(fov: float) -> float:
+    return dip_max * min(max(fov, fov_min) / 90, 1)
+
+def tilt_to(e: float, fov: float) -> float:
+    # The horizon where a plane e degrees up sits a third down the frame.
+    s = (min(max(e, 0), 90) / top_of(fov)) ** elev_gamma
+    return min(max(0.33 / max(1 - s, 0.01), tilt[0]), tilt[1])
+
+def mean_bearing(bs: list[float]) -> float:
+    return math.degrees(math.atan2(sum(math.sin(math.radians(b)) for b in bs), sum(math.cos(math.radians(b)) for b in bs)))
+
+def aim(st, fov: float) -> tuple[float, float]:
+    '''(yaw, fov): towards the planes seen from the window, wide enough for them all; without any, on the waypoints
+    (the landmarks seen from here), now and then pulled back to the whole window. Kept within the window.'''
     start, end = app_config.aviator_window
     span = (end - start) % 360 or 360
     seen = [st.planes[h]['bearing'] for h in st.watched if h in st.planes]
+    marks = [bearing(*local_xy(*p)) for p in app_config.screen_data.aviator.landmarks]
     if seen:
-        yaw = math.degrees(math.atan2(sum(math.sin(math.radians(b)) for b in seen), sum(math.cos(math.radians(b)) for b in seen)))
+        yaw = mean_bearing(seen)
+        fov = min(max(fov, 2 * max(abs(wrap(b - yaw)) for b in seen) + 15), span)
+    elif time.time() % wide_every < wide_for:
+        yaw, fov = start + span / 2, span
     else:
-        yaw = start + span / 2
+        yaw = mean_bearing(marks) if marks else start + span / 2
     if fov < span:
         yaw = start + min(max(wrap(yaw - start) % 360, fov / 2), span - fov / 2)
-    return yaw
+    return yaw, fov
 
-def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float]:
+def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]:
     # Held still while what it looks at stays in view: zoomed on the plane of a card the first time it's on top,
     # then turned only when the followed plane leaves the clear box, or the planes seen move a quarter view away.
+    # The horizon goes down to look up at the followed plane; otherwise it drifts, now the roofs, now the sky.
     fov = view_fov
     yaw = _held.get(fs.config.name)
     followed = app.following(fs)
     middle = (clear[0] + clear[2]) / 2 - w / 2
     if followed:
         p = st.planes[followed]
-        b, _ = sky_point(*app.position(p, time.time()), p['alt'])
+        b, e = sky_point(*app.position(p, time.time()), p['alt'])
         swept_hex, swept_at = app._swept.get(fs.config.name, (None, 0))
         if swept_hex == followed and time.monotonic() - swept_at < app.sweep:
             zoom = max(fov_min, fov / app.sweep_zoom)
-            return b - middle / w * zoom, zoom
+            return b - middle / w * zoom, zoom, tilt_to(e, zoom)
         px = w / 2 + wrap(b - (yaw if yaw is not None else b)) / fov * w
         if yaw is None or not clear[0] + 6 <= px <= clear[2] - 6:
             yaw = b - middle / w * fov
-    else:
-        target = aim(st, fov)
-        if yaw is None or abs(wrap(target - yaw)) > fov / 4:
-            yaw = target
         _held[fs.config.name] = yaw
-        # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
-        return yaw + sway * math.sin(2 * math.pi * time.time() / sway_period), fov
+        return yaw, fov, tilt_to(e, fov)
+    target, fov = aim(st, fov)
+    if yaw is None or abs(wrap(target - yaw)) > fov / 4:
+        yaw = target
     _held[fs.config.name] = yaw
-    return yaw, fov
+    # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
+    t = time.time()
+    return yaw + sway * math.sin(2 * math.pi * t / sway_period), fov, horizon + tilt_sway * math.sin(2 * math.pi * t / tilt_period)
 
 def shade(hex: str, k: float) -> tuple[float, float, float]:
     return tuple(min(int(hex[i:i + 2], 16) / 255 * k, 1) for i in (1, 3, 5))
@@ -512,14 +610,17 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
     w, h = fs.config.width, fs.config.height
-    hz = round(h * horizon)
     now = time.time()
     followed = app.following(fs)
-    _eye['m'] = home_ground + fs.config.aviator_eye_m
-    yaw, fov = camera(fs, look(fs, st, clear or (0, 0, w, h), w))
+    sk = skyline.get(now)
+    _eye['m'] = sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m
+    yaw, fov, tl = camera(fs, look(fs, st, clear or (0, 0, w, h), w))
+    hz = round(h * tl)
+    top, dip = top_of(fov), dip_of(fov)
     in_view = lambda b, margin=10: abs(wrap(b - yaw)) < fov / 2 + margin
     to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
-    to_px = lambda b, e: (to_x(b), hz - hz * (min(e, 90) / 90) ** elev_gamma if e >= 0 else hz + (h - hz) * (min(-e, dip_max) / dip_max) ** elev_gamma)
+    to_px = lambda b, e: (to_x(b), hz - hz * (min(e, 90) / top) ** elev_gamma if e >= 0 else hz + (h - hz) * (min(-e, dip) / dip) ** elev_gamma)
+    to_y = lambda e: np.where(e >= 0, hz - hz * (np.minimum(np.abs(e), 90) / top) ** elev_gamma, hz + (h - hz) * (np.minimum(np.abs(e), dip) / dip) ** elev_gamma)
 
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     ctx = cairo.Context(surface)
@@ -632,8 +733,11 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     rim = (*snow_tint, 0.3 + 0.3 * wet) if snow >= 0.5 else (*tint, rim_color[3] + 0.2 * wet)
     # The sun on the facades: the light says how much it's out, else the cloud does.
     sun_out = (seen.sun if seen.sun is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
-    roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color,
-          (sb, sun_out) if sun_out > 0.05 else None)
+    lights = (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color, (sb, sun_out) if sun_out > 0.05 else None
+    if sk:
+        real_roofs(ctx, sk, yaw, fov, w, h, to_y, *lights, min(max((-se - 2) / 8, 0), 1))
+    else:
+        roofs(ctx, in_view, to_px, h, *lights)
     # The wind over the roofs, then the rain or snow at home in front of all that, at a few frames a second.
     windy = 'wind' not in off and (seen.wind or 0) >= curl_ms and seen.wind_dir is not None
     if windy:
