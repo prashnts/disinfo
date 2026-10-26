@@ -25,7 +25,7 @@ from disinfo.redis import db
 from .utils import home, km_lat, km_lon, local_xy, bearing
 
 
-version = 2
+version = 3
 reach_km = 7
 res = 0.05              # degrees a bin
 margin = 30             # degrees around the window
@@ -33,7 +33,7 @@ bands = (300, 1200, 3500)       # m: the near roofs, the street's, the district'
 canopy = 0.1            # degrees over the hills: the town on them
 nudge = (30, 5, (0, 1, 2, 3))   # m around the window, the step, m up
 seen_tol = 0.15         # degrees: a place this little under a roof still counts as seen
-beacon_m = 45           # m tall and up: a red light on top at night
+beacon_m = 45           # m tall and up: may have a red light on top at night (the sky view picks)
 earth_r = 6371000
 ttl = 180 * 24 * 3600
 retry = 600
@@ -47,7 +47,7 @@ class Skyline(NamedTuple):
     start: float            # the first bin's bearing
     p: np.ndarray           # (bands + hills, bins): degrees over the horizon, -90 where there's nothing
     seen: list              # per landmark: degrees over what's in front of it
-    beacons: list = []      # the tall ones' lights: (bearing, degrees up, m away)
+    beacons: list = []      # the tall ones' lights: (bearing, degrees up, m away, m tall)
 
     def at(self, b: float) -> np.ndarray:
         # Each band at that bearing.
@@ -224,7 +224,7 @@ def fit(w: np.ndarray, ex: float, ey: float, ez: float, targets: list) -> tuple[
     return best[1], best[2]
 
 def beacons(buildings: list, ex: float, ey: float, ez: float, start: float, n: int) -> list:
-    # The tall ones, a light on their top each (the tallest of a few close together): (bearing, degrees up, m away).
+    # The tall ones, a light on their top each (the tallest of a few close together): (bearing, degrees up, m away, m tall).
     out = []
     for ring, _, top, height in sorted(buildings, key=lambda b: -b[2]):
         if height < beacon_m:
@@ -233,7 +233,7 @@ def beacons(buildings: list, ex: float, ey: float, ez: float, start: float, n: i
         b, d = bearing(x, y), math.hypot(x, y)
         if (b - start) % 360 >= n * res or any(abs((b - o[0] + 180) % 360 - 180) < 0.3 and abs(d - o[2]) < 150 for o in out):
             continue
-        out.append((round(b, 3), round(float(angle(top + 1, ez, d)), 3), round(d)))
+        out.append((round(b, 3), round(float(angle(top + 1, ez, d)), 3), round(d), round(height)))
     return out
 
 def build(path=landscape_path, log=print) -> dict:

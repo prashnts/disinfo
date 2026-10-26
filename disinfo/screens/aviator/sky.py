@@ -52,6 +52,7 @@ hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hill
 window_m = 1.5          # a window across, lit at night
 beacon_color = (1, 0.2, 0.12)           # the lights on the tall ones' tops
 beacon_gap = 6          # px between them
+beacon_min_m = 80       # m tall and up: the ones lit (the skyline keeps them from 45 m)
 band_m = (5000, 2000, 600, 150)         # m: how far the roofs of each band are, far to near (skyline.bands)
 rim_color = (1, 1, 1, 0.15)
 day_face = (1, 0.93, 0.8)       # the sun on the facades, by day
@@ -292,9 +293,9 @@ def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: 
     # brighter the nearer: a glow around a bright pixel.
     # The highest first, a few pixels apart: on a small screen only the tallest of a cluster.
     now, taken = time.time(), []
-    for b, e, d in sorted(sk.beacons, key=lambda s: -s[1]):
+    for b, e, d, tall in sorted(sk.beacons, key=lambda s: -s[1]):
         x = w / 2 + wrap(b - yaw) / fov * w
-        if not 0 <= x < w or any(abs(x - t) < beacon_gap for t in taken):
+        if tall < beacon_min_m or not 0 <= x < w or any(abs(x - t) < beacon_gap for t in taken):
             continue
         nearer = rows[len(rows) - 1 - np.searchsorted(skyline.bands, d) + 1:, int(x)]
         if len(nearer) and nearer.max() > e:
