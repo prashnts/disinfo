@@ -127,6 +127,7 @@ class Config(AppBaseModel):
     adsbx_url: str = 'https://adsb.nb.malow.im'
     meteo_france_api_key__radar: SecretStr | None = None
     meteo_france_api_key__vigil: SecretStr | None = None
+    meteo_france_api_key__observations: SecretStr | None = None
     vigilance_domain: str = '75'      # the département on the weather card
     # Bearings seen from the window, clockwise from north. The planes in there get the cards.
     aviator_window: tuple[float, float] = (0, 180)
@@ -155,6 +156,10 @@ class Config(AppBaseModel):
     # Music Widget
     speaker_entity: str = 'media_player.sonos_beam'
     weather_entity: str = 'weather.reuilly'
+    # Indoors read the outside's pressure (weather/stations.py); the others are logged, to learn the window's later.
+    weather_barometers: list[str] = ['sensor.sensei_pressure', 'sensor.nusr_pressure']
+    weather_indoor_log: list[str] = ['sensor.sensei_temperature', 'sensor.sensei_humidity', 'sensor.sensei_bme680_temperature',
+                                     'sensor.temp_average', 'sensor.alpstuga_air_quality_monitor_carbon_dioxide']
 
 
     @field_validator('printer_streams', 'moonraker_urls')

@@ -299,7 +299,7 @@ def test_sky_state(monkeypatch):
     import time
     from disinfo.screens.aviator import skystate as ss, daylight
     now = time.time()
-    monkeypatch.setattr(ss, 'next_rain', lambda now: None)
+    monkeypatch.setattr(ss, 'next_rain', lambda now, fc=None: None)
     alt = daylight.sun_at(now)[0]
     hours = {'time': [now - now % 3600], 'precipitation': [0.0], 'temperature_2m': [1.0], **{
         f'{k}_{p}hPa': [v] for p, t, rh in ((850, -3, 80), (700, -10, 70), (500, -25, 60), (300, -45, 95), (250, -52, 90))

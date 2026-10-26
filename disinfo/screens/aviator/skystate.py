@@ -1,7 +1,8 @@
 '''The sky, the weather and the time over home in one doc for the visualisations (di.sky), made once a minute in the data
 service from every source there is.
 
-Each source says only what it sees, as observations [value, sigma]: the model (AROME through Open-Meteo) for everything,
+Each source says only what it sees, as observations [value, sigma]: the model (AROME through Open-Meteo) for the sky,
+the models blended (weather/forecast.py) for the air, the stations around (weather/stations.py) for what they measure,
 the light by the window (daylight.py) for the cloud and the sun by day, the satellite for cold cloud tops, Home
 Assistant's weather state, the radar for the rain at home, the planes for the air aloft (aloft.py), and anything else
 that writes di.sky.obs.<source> (the half-sky camera, later): {at, q: {name: [value, sigma]}}, with an expiry. The model
@@ -10,9 +11,11 @@ than meeting halfway. Each quantity is {v, conf (0..1), by {source: value}}.
 
 di.sky: {at, time {sun {alt, az, phase, rise, set}, moon {alt, az, phase}}, sky {cover, deck (low and mid: what hides
 the sky), high (cirrus), sun (the direct sun out), dark, brightness, broken, warmth, haze, shutter}, precip {rate mm/h,
-snow (its share), near mm/h (8-18 km), next {begin, end, mm}}, air {temp, freezing_m, profile, lapse, inversion, jet,
-wind_low, wind_high, contrails {form_m, persist}, model_bias}, alerts [{phenomenon, color, begin, end}], trend {hours
-[[t, cover, mm, temp, sun]], seen [[t, cover, deck, sun, dark, mm]]}, sources {name: age s or None}}.
+snow (its share), near mm/h (8-18 km), next {begin, end, mm, p}}, air {temp, dew, rh, feels, pressure, wind, gust, dir,
+tendency (hPa in 3 h), vis, ceiling, wx, freezing_m, profile, lapse, inversion, jet, wind_low, wind_high, contrails
+{form_m, persist}, model_bias}, alerts [{phenomenon, color, begin, end}], trend {hours [[t, cover, mm, temp, sun]], seen
+[[t, cover, deck, sun, dark, mm]]}, forecast {at, hours [[t, temp, dew, wind, gust, pressure, mm, rain_p, cloud,
+spread]], today {high, low}}, sources {name: age s or None}}.
 Read it with doc() and v().
 '''
 import json
@@ -35,6 +38,7 @@ home_ground = 47            # m above the sea
 rain_home_mm = 6            # mm/h that is a downpour (the HA state's rain, as a rate)
 snow_c = (0, 2)             # °C at home: snow under the first, rain over the second
 snow_m = (250, 900)         # the freezing level over the ground: snow under the first, rain over the second
+rain_p = 0.4                # the models' share that wets an hour for it to be a wet one
 
 # HA weather state -> (cloud 0..1, haze 0..1, darker, rain or snow 0..1, the snow's share 0..1)
 conditions = {
@@ -48,9 +52,11 @@ quantities = {
     'cover': ('unit', 0.2), 'deck': ('unit', 0.2), 'high': ('unit', 0.2), 'sun': ('unit', 0.2), 'dark': ('unit', 0.2),
     'brightness': ('unit', 0.2), 'broken': ('unit', 0.2), 'warmth': ('lin', 0.2), 'haze': ('unit', 0.2),
     'rate': ('mm', 0.3), 'snow': ('unit', 0.2), 'temp': ('lin', 1.5), 'freezing_m': ('lin', 250),
+    'dew': ('lin', 1.5), 'pressure': ('lin', 1.5), 'wind': ('lin', 1.5), 'gust': ('lin', 3),
 }
 # source -> s after which its sigma has doubled; past 3x it's dropped.
-stale = {'model': 3 * 3600, 'light': 600, 'sat': 1800, 'ha': 1800, 'radar': 900, 'planes': 1800, 'prior': 1e9}
+stale = {'model': 3 * 3600, 'light': 600, 'sat': 1800, 'ha': 1800, 'radar': 900, 'planes': 1800, 'stations': 1200,
+         'blend': 3 * 3600, 'prior': 1e9}
 stale_other = 900
 
 
@@ -120,8 +126,6 @@ def model_obs(sky: dict | None, now: float, alt: float):
         h = lambda k: hours.get(k, [None] * (i + 1))[i]
         if h('precipitation') is not None:
             q['rate'] = h('precipitation'), 0.5
-        if h('temperature_2m') is not None:
-            q['temp'] = h('temperature_2m'), 1.2
         lv = {p: {k: h(f'{k}_{p}hPa') for k in ('temperature', 'relative_humidity', 'wind_speed', 'wind_direction')} for p in levels}
         # The freezing level between the ground and the levels (their pressure altitudes: close enough).
         pts = [(home_ground, h('temperature_2m'))] + [(aloft.pressure_m(p), lv[p]['temperature']) for p in levels]
@@ -169,7 +173,7 @@ def ha_obs(now: float):
     if c[3] > 0:
         q['snow'] = c[4], 0.2
     try:
-        q['temp'] = float((e.attributes or {})['temperature']), 1.0
+        q['temp'] = float((e.attributes or {})['temperature']), 1.5      # met.no's model, not a measure
     except (KeyError, TypeError, ValueError):
         pass
     return now, q, {'state': e.state}
@@ -189,6 +193,37 @@ def planes_obs(now: float):
     if der['inversion']:
         q['haze'] = min(0.3 + der['inversion']['dt'] / 6, 0.9), 0.4
     return now, q, {'profile': prof, **der}
+
+def stations_obs(d: dict | None, now: float):
+    # What the stations measure (weather/stations.py): the air, the airports' cloud deck, fog, what falls.
+    if not d or now - d['at'] > 3600:
+        return None
+    h = d['home']
+    q = {name: tuple(h[k]) for name, k in (('temp', 't'), ('dew', 'td'), ('pressure', 'pmer'), ('wind', 'ms'),
+                                            ('gust', 'gust'), ('rate', 'rr'), ('deck', 'deck')) if h.get(k)}
+    wx = ' '.join(h.get('wx') or [])
+    if 'SN' in wx or 'SG' in wx:
+        q['snow'] = 1.0, 0.2
+    elif any(k in wx for k in ('RA', 'DZ')):
+        q['snow'] = 0.0, 0.3
+    vis = h['vis'][0] if h.get('vis') else None
+    if vis is not None and vis < 5000:
+        q['haze'] = float(np.clip(1.2 - vis / 5000, 0.3, 1)), 0.2
+    elif h.get('eiffel') is not None and h['eiffel'] > 0:       # warmer up the tower than down: an inversion
+        q['haze'] = min(0.3 + h['eiffel'] / 6, 0.9), 0.4
+    return d['at'], q, {k: h.get(k) for k in ('dir', 'tendency', 'ceiling', 'wx', 'eiffel')} | {'vis': vis}
+
+def blend_obs(d: dict | None, now: float):
+    # The models blended (weather/forecast.py) at now, as the prior for the air; sure as they've been here.
+    from disinfo.screens.weather import forecast
+    if not d:
+        return None
+    skill = forecast.skill()
+    q = {}
+    for name in ('temp', 'dew', 'pressure', 'wind', 'gust'):
+        if (x := forecast.at(d, name, now)) is not None:
+            q[name] = x, forecast.error(skill, 'blend', name if name in forecast.checked else 'temp', (now - d['at']) / 3600)[1]
+    return d['at'], q, {}
 
 def external_obs(db, now: float) -> dict:
     # Whatever else writes di.sky.obs.<source> (the camera): {at, q: {name: [value, sigma]}}.
@@ -270,17 +305,59 @@ def alerts(now: float) -> list:
                 out.append({'phenomenon': vigilance.PHENOMENA.get(ph, ph), 'color': color, 'begin': begin, 'end': end})
     return sorted(out, key=lambda a: (-a['color'], a['begin']))
 
-def next_rain(now: float) -> dict | None:
+def next_rain(now: float, fc: dict | None = None) -> dict | None:
+    # The first wet hours ahead: the blend's when there is one (with how many models agree), else AROME's.
     from disinfo.screens.weather import vigilance
-    d = vigilance.forecast_doc()
-    hours = [h for h in (d or {}).get('hours', []) if h[0] + 3600 > now]
-    wet = [i for i, h in enumerate(hours) if h[1] >= vigilance.rain_mm]
+    if fc:
+        hours = [[t, mm, p] for t, mm, p in zip(fc['time'], fc['rain'], fc['rain_p']) if mm is not None and t + 3600 > now]
+    else:
+        hours = [[h[0], h[1], None] for h in (vigilance.forecast_doc() or {}).get('hours', []) if h[0] + 3600 > now]
+    wet = [i for i, h in enumerate(hours) if h[1] >= vigilance.rain_mm and (h[2] is None or h[2] >= rain_p)]
     if not wet:
         return None
     a = b = wet[0]
-    while b + 1 < len(hours) and hours[b + 1][1] >= vigilance.rain_mm:
+    while b + 1 < len(hours) and hours[b + 1][1] >= vigilance.rain_mm and (hours[b + 1][2] is None or hours[b + 1][2] >= rain_p):
         b += 1
-    return {'begin': hours[a][0] - 3600, 'end': hours[b][0], 'mm': max(h[1] for h in hours[a:b + 1])}
+    p = [h[2] for h in hours[a:b + 1] if h[2] is not None]
+    return {'begin': hours[a][0] - 3600, 'end': hours[b][0], 'mm': max(h[1] for h in hours[a:b + 1]), 'p': max(p) if p else None}
+
+def magnus(t: float) -> float:
+    return 6.112 * math.exp(17.62 * t / (243.12 + t))
+
+def feels(t: float, rh: float | None, wind: float | None) -> float:
+    # Wind chill under 10 °C, the heat index over 27 °C (Steadman's, simple), else the air's.
+    kmh = (wind or 0) * 3.6
+    if t <= 10 and kmh > 4.8:
+        return 13.12 + 0.6215 * t - 11.37 * kmh ** 0.16 + 0.3965 * t * kmh ** 0.16
+    if t >= 27 and rh is not None:
+        return t + 0.33 * rh / 100 * magnus(t) - 4
+    return t
+
+def surface(f: dict, notes: dict) -> dict:
+    '''The air at home: the fused values, the humidity and the feel from them, and what only the stations know.'''
+    g = lambda k: f[k]['v'] if f.get(k) else None
+    t, td = g('temp'), g('dew')
+    rh = round(min(100 * magnus(td) / magnus(t), 100)) if t is not None and td is not None else None
+    return {'dew': f.get('dew'), 'rh': rh, 'feels': None if t is None else round(feels(t, rh, g('wind')), 1),
+            'pressure': f.get('pressure'), 'wind': f.get('wind'), 'gust': f.get('gust'),
+            **{k: notes.get(k) for k in ('dir', 'tendency', 'vis', 'ceiling', 'wx')}}
+
+def outlook(fc: dict | None, obs_log: list, now: float, tz: str = 'Europe/Paris') -> dict | None:
+    '''The blend pulled to the stations, by the hour ahead, and today's high and low: what the stations saw since
+    midnight with what's ahead until the next.'''
+    import pendulum
+    from disinfo.screens.weather import forecast, stations
+    if not fc:
+        return None
+    a = forecast.anchored(fc, (stations.doc() or {}).get('home'), now)
+    rows = [[t, *(a[k][i] for k in ('temp', 'dew', 'wind', 'gust', 'pressure', 'rain', 'rain_p', 'cloud', 'spread'))]
+            for i, t in enumerate(a['time']) if t + 3600 > now]
+    day = pendulum.from_timestamp(now, tz).start_of('day')
+    a0, a1 = day.int_timestamp, day.add(days=1).int_timestamp
+    temps = [r[1] for r in obs_log if a0 <= r[0] <= now and r[1] is not None]
+    temps += [r[1] for r in rows if now < r[0] <= a1 and r[1] is not None]
+    today = {'high': round(max(temps), 1), 'low': round(min(temps), 1)} if temps else None
+    return {'at': fc['at'], 'hours': rows, 'today': today}
 
 def trend(sky: dict | None, db, now: float) -> dict:
     hours = (sky or {}).get('hours') or {}
@@ -294,7 +371,7 @@ def trend(sky: dict | None, db, now: float) -> dict:
     return {'hours': rows, 'seen': [[r[0], r[1], r[2], r[4], r[5], r[6]] for r in seen]}
 
 
-def state(now: float, sources: dict, al: list = ()) -> dict:
+def state(now: float, sources: dict, al: list = (), fc: dict | None = None) -> dict:
     '''sources: name -> (at, {name: (value, sigma)}, notes). The doc (without the trend).'''
     alt, az = daylight.sun_at(now)
     obs = {}
@@ -311,8 +388,9 @@ def state(now: float, sources: dict, al: list = ()) -> dict:
         'time': {'sun': {'alt': round(alt, 1), 'az': round(az, 1), 'phase': sun_phase(alt), **sun_times(now)},
                  'moon': {'alt': round(me, 1), 'az': round(mb, 1), 'phase': round(phase, 3)}},
         'sky': {k: f.get(k) for k in ('cover', 'deck', 'high', 'sun', 'dark', 'brightness', 'broken', 'warmth', 'haze')},
-        'precip': {'rate': f.get('rate'), 'snow': f.get('snow'), 'near': notes('radar').get('near'), 'next': next_rain(now)},
-        'air': {'temp': f.get('temp'), 'freezing_m': f.get('freezing_m'), **air(notes('model').get('levels', {}), notes('planes') or None)},
+        'precip': {'rate': f.get('rate'), 'snow': f.get('snow'), 'near': notes('radar').get('near'), 'next': next_rain(now, fc)},
+        'air': {'temp': f.get('temp'), **surface(f, notes('stations')), 'freezing_m': f.get('freezing_m'),
+                **air(notes('model').get('levels', {}), notes('planes') or None)},
         'alerts': list(al),
         'sources': {name: (round(now - sources[name][0]) if name in sources else None)
                     for name in sorted({*stale, *sources} - {'prior'})},
@@ -334,8 +412,11 @@ def gather(db, now: float) -> tuple[dict, dict | None]:
     sources = {}
     if m := safe(model_obs, sky, now, alt):
         sources['model'] = m[0], m[1], {'levels': m[2]}
+    from disinfo.screens.weather import forecast, stations
     for name, r in (('light', safe(light_obs, json.loads(db.get(daylight.KEY) or 'null'))), ('sat', safe(sat_obs)),
-                    ('ha', safe(ha_obs, now)), ('radar', safe(radar_obs)), ('planes', safe(planes_obs, now))):
+                    ('ha', safe(ha_obs, now)), ('radar', safe(radar_obs)), ('planes', safe(planes_obs, now)),
+                    ('stations', safe(stations_obs, json.loads(db.get(stations.KEY) or 'null'), now)),
+                    ('blend', safe(blend_obs, json.loads(db.get(forecast.KEY) or 'null'), now))):
         if r:
             sources[name] = r
     sources.update(safe(external_obs, db, now) or {})
@@ -349,8 +430,15 @@ def task():
         al = alerts(now)
     except Exception:
         al = []
-    out = state(now, sources, al)
+    from disinfo.screens.weather import forecast, stations
+    fc = json.loads(db.get(forecast.KEY) or 'null')
+    out = state(now, sources, al, fc)
     out['trend'] = trend(sky, db, now)
+    try:
+        out['forecast'] = outlook(fc, [json.loads(r) for r in db.lrange(stations.LOG_KEY, 0, 300)], now)
+    except Exception as e:
+        print(f'sky outlook: {e!r}')
+        out['forecast'] = None
     g = lambda k: v(out, k)
     db.lpush(LOG_KEY, json.dumps([round(now), g('sky.cover'), g('sky.deck'), g('sky.high'), g('sky.sun'), g('sky.dark'),
                                   g('precip.rate'), (out['sky']['cover'] or {}).get('conf')]))

@@ -8,7 +8,7 @@ from ..redis import db
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm
 from ..screens.aviator.tasks import adsbx_task
-from ..screens.weather import vigilance
+from ..screens.weather import vigilance, stations, forecast
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
 from ..screens.aviator import daylight, skystate
 
@@ -76,6 +76,8 @@ scheduler.every(10).minutes.do(cached('sat', 600, sat_task))
 scheduler.every(15).minutes.do(cached('vigil', 900, vigilance.task))
 scheduler.every(30).minutes.do(cached('forecast', 1800, vigilance.forecast_task))
 scheduler.every(15).minutes.do(cached('sky', 900, daylight.sky_task))
+scheduler.every(6).minutes.do(cached('obs', 360, stations.task))
+scheduler.every(30).minutes.do(cached('blend', 1800, forecast.task))     # after the stations: it checks the runs on them
 scheduler.every(1).minutes.do(daylight.task)
 scheduler.every(1).minutes.do(skystate.task)        # after the others: they're its sources
 

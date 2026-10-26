@@ -66,6 +66,35 @@ class WeatherStateManager(StateManager[WeatherState]):
     model = WeatherState
 
 
+sure_decimal = 0.7         # the sky state's temperature this sure: shown to a tenth
+
+def icon_of(d: dict) -> str:
+    '''The sky state -> an icon: storm, what falls, fog, wind, then the cloud.'''
+    from disinfo.screens.aviator.skystate import v
+    night = v(d, 'time.sun.alt', 10) < -0.833
+    if any('TS' in w for w in v(d, 'air.wx') or []):
+        return 'thunderstorm'
+    if v(d, 'precip.rate', 0, conf=0.3) >= 0.1:
+        snow = v(d, 'precip.snow', 0)
+        return 'snow' if snow > 0.7 else 'sleet' if snow > 0.3 else 'rain'
+    if (v(d, 'air.vis') or 1e5) < 1000:
+        return 'fog'
+    if v(d, 'air.gust', 0, conf=0.3) > 15:
+        return 'wind'
+    cover = v(d, 'sky.cover', 0.5)
+    if cover < 0.25:
+        return 'clear-night' if night else 'clear-day'
+    return 'cloudy' if cover > 0.75 else 'partly-cloudy-night' if night else 'partly-cloudy-day'
+
+def from_sky(d: dict | None) -> dict | None:
+    # The card's values from the sky state (the stations, the models blended), None without its temperature.
+    t = (d or {}).get('air', {}).get('temp')
+    if not t:
+        return None
+    today = (d.get('forecast') or {}).get('today') or {}
+    return {'temperature': round(t['v'], 1) if t['conf'] >= sure_decimal else round(t['v']), 'icon_name': icon_of(d),
+            't_high': today.get('high'), 't_low': today.get('low'), 'outdated': d['sources'].get('stations') is None}
+
 def get_weather_data(fs: FrameState) -> WeatherState | None:
     weather_state = WeatherStateManager().get_state(fs)
     data = get_entity(fs.config.weather_entity)
@@ -86,13 +115,15 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
         if ok:
             weather_state.refreshed_at = fs.tick
     forecast = data.service_response.forecast[0] if data.service_response else None 
+    from disinfo.screens.aviator import skystate
+    sky = from_sky(skystate.doc())
 
     weather = WeatherData(
-        temperature=data.attributes.get('temperature', -42),
+        temperature=sky['temperature'] if sky else data.attributes.get('temperature', -42),
         condition=data.state,
-        icon_name=ICON_MAP[data.state],
-        t_high=forecast.temperature if forecast else -42,
-        t_low=forecast.templow if forecast else -42,
+        icon_name=sky['icon_name'] if sky else ICON_MAP[data.state],
+        t_high=sky['t_high'] if sky and sky['t_high'] is not None else forecast.temperature if forecast else -42,
+        t_low=sky['t_low'] if sky and sky['t_low'] is not None else forecast.templow if forecast else -42,
         sunset_time=sunset.state if sunset else None,
         sunrise_time=sunrise.state if sunrise else None,
         moon_phase=MOON_PHASE_MAP[moon.state] if moon else None,
@@ -102,5 +133,5 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
     weather_state.show_sunrise = fs.now < weather.sunset_time
     weather_state.show_sunset = weather.sunset_time < fs.now
     weather_state.show_moon_phase = True
-    weather_state.is_outdated = not data.service_response
+    weather_state.is_outdated = sky['outdated'] if sky else not data.service_response
     return weather_state

@@ -89,3 +89,22 @@ unless added to `stale`. A good camera deserves sigma ~0.1 for cover/sun by day.
 Not done: drawing cloud drift by the wind (`air.wind_low`/`wind_high` are there), the haze band from an inversion, a
 trend view (`trend.hours`/`seen`), alerts in the sky view.
 
+
+## The weather at home: measured, and a scored forecast (2026-10-26, built, uncommitted: the user deploys)
+
+**Built:** `weather/stations.py` (6 min: Météo-France DPObs 6-min obs, key `meteo_france_api_key__observations`,
+Montsouris/Lariboisière/St-Maur first, Orly/Le Bourget, Eiffel at 330 m for inversions; METAR LFPB/LFPO/LFPG for the
+deck, ceiling, gusts, wx; indoor barometers calibrated on them → `di.weather.obs`, log `di.weather.obs.log` 30 days with
+the indoor sensors in `weather_indoor_log` and HA's met.no temp). `weather/forecast.py` (30 min: 9 Open-Meteo models,
+bias + error per lead bucket learnt against the stations, blended, `anchored()` to the stations now; every run kept until
+checked → `di.weather.skill`, `di.weather.verify` 60 days; `blend` = ours and `ha` = the old card are scored too).
+skystate: sources `stations` + `blend` (the model's temp dropped), `air.{dew, rh, feels, pressure, wind, gust, dir,
+tendency, vis, ceiling, wx}`, `forecast {hours, today}`. The card reads `di.sky` (HA's weather only as a fallback); the
+scrolled line adds rain likelihood, feels, gusts, a falling barometer. The rain line was an hour late: fixed.
+Scores: `.venv/bin/python -m disinfo.screens.weather.forecast` (rmse, bias, n per lead). Tests `tests/test_weather.py`.
+
+Next, once there are a couple of weeks of scores: the bias by hour of day (urban nights) if the table says so; the
+Sensei window fit (Sensei ≈ a·room + b·outside, from the obs log) and window-open detection (temp + CO2 drop); rain
+in the next hour from the radar frames' motion. The outdoor sensor (ESP + battery, hidden box) = a station: write
+`di.sky.obs.outdoor` (`skystate.observe`), add it to `stale`, sigma from its own score against Montsouris; SHT45 over
+the BME680 (self-heating), shade it from the morning sun.

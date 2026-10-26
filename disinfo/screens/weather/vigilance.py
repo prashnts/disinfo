@@ -125,12 +125,44 @@ def forecast_doc() -> dict | None:
             _fcache['doc'] = None
     return _fcache['doc']
 
-def forecast_lines(now: float, d: dict | None = None) -> list[str]:
-    '''The first rain still to come (from when to when, the most in an hour) and the lowest temperature, if cold.'''
-    d = d or forecast_doc()
-    if not d:
-        return []
-    hours = [h for h in d['hours'] if h[0] + 3600 > now]       # an hour's value is the hour that ends at its time
+feels_c = 3            # the feel is worth a line this far from the air's
+gust_ms = 14            # 50 km/h
+falling_hpa = -3        # in 3 h: something's coming
+
+def sky_hours(sky: dict | None) -> list | None:
+    # The sky state's hours ahead (the models blended, pulled to the stations) as [t, mm, °C, the models wetting it].
+    from disinfo.screens.aviator.skystate import rain_p
+    rows = ((sky or {}).get('forecast') or {}).get('hours')
+    if not rows:
+        return None
+    return [[r[0], r[6] if (r[7] or 0) >= rain_p else 0, r[1], r[7]] for r in rows if r[6] is not None and r[1] is not None][:horizon_h + 1]
+
+def air_lines(sky: dict | None) -> list[str]:
+    '''What the stations say that the card doesn't show: the feel when far off, strong gusts, a falling barometer.'''
+    from disinfo.screens.aviator.skystate import v
+    out = []
+    t, f = v(sky, 'air.temp'), v(sky, 'air.feels')
+    if t is not None and f is not None and abs(f - t) >= feels_c:
+        out.append(f'Ressenti {f:.0f}C')
+    if (g := v(sky, 'air.gust', conf=0.3)) and g >= gust_ms:
+        out.append(f'Rafales {g * 3.6:.0f}km/h')
+    if (p := v(sky, 'air.tendency')) is not None and p <= falling_hpa:
+        out.append(f'Pression {p:+.0f}hPa/3h')
+    return out
+
+def forecast_lines(now: float, d: dict | None = None, sky: dict | None = None) -> list[str]:
+    '''The first rain still to come (from when to when, the most in an hour, how likely), the lowest temperature, if
+    cold, then the air's lines. From the sky state when there is one, else AROME's.'''
+    if sky is None and d is None:
+        from disinfo.screens.aviator import skystate
+        sky = skystate.doc()
+    hours = sky_hours(sky)
+    if hours is None:
+        d = d or forecast_doc()
+        if not d:
+            return air_lines(sky)
+        hours = d['hours']
+    hours = [h for h in hours if h[0] > now]       # an hour's rain is the hour that ends at its time
     t = lambda s: pendulum.from_timestamp(s, 'Europe/Paris').format('H')
     out = []
     wet = [i for i, h in enumerate(hours) if h[1] >= rain_mm]
@@ -140,10 +172,12 @@ def forecast_lines(now: float, d: dict | None = None) -> list[str]:
         while last + 1 < len(hours) and hours[last + 1][1] >= rain_mm:
             last += 1
         most = max(h[1] for h in hours[first:last + 1])
-        span = f'jusqu\'à {t(hours[last][0] + 3600)}h' if hours[first][0] <= now else f'{t(hours[first][0])}h-{t(hours[last][0] + 3600)}h'
-        out.append(f'Pluie {span} {most:.0f}mm/h' if most >= 1 else f'Pluie {span}')
+        span = f'jusqu\'à {t(hours[last][0])}h' if hours[first][0] - 3600 <= now else f'{t(hours[first][0] - 3600)}h-{t(hours[last][0])}h'
+        p = max((h[3] for h in hours[first:last + 1] if len(h) > 3 and h[3] is not None), default=None)
+        sure = f' {p * 100:.0f}%' if p is not None and p < 0.9 else ''
+        out.append(f'Pluie {span} {most:.0f}mm/h{sure}' if most >= 1 else f'Pluie {span}{sure}')
     if hours:
         low = min(hours, key=lambda h: h[2])
         if low[2] <= cold_c:
             out.append(f'Min {low[2]:.0f}C à {t(low[0])}h')
-    return out
+    return out + air_lines(sky)
