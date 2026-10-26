@@ -45,6 +45,15 @@ def test_stack_survives_shrinking_list():
     assert stack.mut([w('a')]).draw(fs)
     assert Stack('t.empty', StackStyle(size=32)).mut([]).draw(fs) is None
 
+def test_attached_widgets_as_wide_under_it():
+    fs = FrameState.create()
+    small = Widget('att.small', solid((0, 0, 255, 255), (4, 4)))
+    w = Widget('att', solid((255, 255, 255, 255), (20, 10)), attached=(small, Widget('att.none')))
+    card = w.card(w.style)
+    own = div(w.frame, w.style)
+    assert card.width == own.width and card.height == own.height + 1 + div(small.frame, small.style).height
+    assert Widget('att.alone', w.frame, attached=(Widget('att.none'),)).card(w.style).size == own.size
+
 def test_animated_widget_keeps_animating(tmp_path):
     sprite = Image.new('RGBA', (4, 16))
     for i in range(4):

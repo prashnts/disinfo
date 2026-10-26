@@ -267,6 +267,11 @@ puff_layers = ((100, 3), (60, 2), (30, 1), (10, 0), (6, 0), (3.5, 0), (2, 0))
 snow_color = (0.93, 0.95, 1.0)
 # The flakes, the same: (per px of the view, size px, px/s falling, alpha).
 flake_layers = ((1 / 260, 1, 9, 0.35), (1 / 700, 2, 18, 0.6))
+# The wind at home: streaks over the roofs going with it, some curling on the way.
+curl_ms = 3             # from this wind on
+curl_life = 5           # s a streak lives
+curl_trail = 16         # points along its tail, a 40th of its life apart
+curl_r = 1 / 150        # of the width, the loop's radius (more in the gusts)
 
 def clouds(ctx: cairo.Context, yaw: float, fov: float, w: int, hz: int, h: int, color: tuple, floor: float = 0, alpha: float = cloud_alpha):
     # A band of cloud over the horizon, as high as the cover is thick in each direction, going to nothing upwards.
@@ -466,6 +471,34 @@ def flakes(ctx: cairo.Context, w: int, h: int, now: float, wet: float, slant: fl
         ctx.fill()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
 
+def curls(ctx: cairo.Context, w: int, top: float, hz: int, now: float, yaw: float, wind: float, gust: float, dir: float, color: tuple):
+    # Each streak is born at its own place and time, drifts across with the wind (its part across the view), every
+    # other one loops once half way: a trochoid. Fading in and out, the tail fainter.
+    r = math.radians(yaw)
+    e, n = -wind * math.sin(math.radians(dir)), -wind * math.cos(math.radians(dir))   # where it blows to
+    across = e * math.cos(r) - n * math.sin(r)
+    side = 1 if across >= 0 else -1
+    run = (abs(across) + 1) * w * 0.03                      # px over its life; a wind at us still stirs
+    loop = max(curl_r * w, 3) * min(gust / max(wind, 1), 2)
+    alpha = min(0.3 + 0.04 * wind, 0.65)
+    color = tuple(min(c * 1.6 + 0.15, 1) for c in color)     # a little brighter than the clouds behind
+    count = round(min(wind * 1.5, 18) * max(w / 400, 0.4))
+    frac = lambda x: x % 1
+    def at(i: int, born: int, u: float) -> tuple[float, float]:
+        x0, y0 = frac(i * 0.6180339887 + born * 0.381966) * w, top + frac(i * 0.7548776662 + born * 0.2763932) * (hz - top - 6)
+        th = 2 * math.pi * min(max((u - 0.35) / 0.3, 0), 1) if i % 2 else 0
+        return (x0 + side * (run * u + loop * math.sin(th)),
+                y0 - loop * (1 - math.cos(th)) + 1.5 * math.sin(2 * math.pi * (u * 1.5 + i * 0.3)))
+    for i in range(count):
+        life = now / curl_life + frac(i * 0.414213)
+        born, u = int(life), life % 1
+        points = [at(i, born, max(u - k * 0.025, 0)) for k in range(curl_trail)]
+        for k, (a, b) in enumerate(zip(points, points[1:])):
+            ctx.set_source_rgba(*color, alpha * math.sin(math.pi * u) * (1 - k / curl_trail) ** 0.5)
+            ctx.move_to(*a)
+            ctx.line_to(*b)
+            ctx.stroke()
+
 def drop_slant(yaw: float) -> float:
     # The wind at home across the view (right is yaw + 90), in px sideways per px falling.
     doc = weather.wind_doc()
@@ -601,8 +634,11 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     sun_out = (seen.sun if seen.sun is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
     roofs(ctx, in_view, to_px, h, (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color,
           (sb, sun_out) if sun_out > 0.05 else None)
-    # The rain or snow at home falls in front of all that, at a few frames a second.
-    app._raining[fs.config.name] = wet > 0.05
+    # The wind over the roofs, then the rain or snow at home in front of all that, at a few frames a second.
+    windy = 'wind' not in off and (seen.wind or 0) >= curl_ms and seen.wind_dir is not None
+    if windy:
+        curls(ctx, w, hz * 0.3, hz, now, yaw, seen.wind, seen.gust or seen.wind, seen.wind_dir, skylook.cloud_color(lk))
+    app._raining[fs.config.name] = wet > 0.05 or windy
     if wet > 0.05:
         slant = drop_slant(yaw)
         drops(ctx, w, h, now, wet, slant, tint, 1 - snow)

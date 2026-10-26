@@ -13,7 +13,7 @@ from discore import ease
 from discore.elements import Frame, Target
 from discore.text import TextStyle, text
 from discore.layouts import hstack, vstack
-from discore.transitions import NumberTransition
+from discore.transitions import NumberTransition, SlideIn
 from discore.data_structures import FrameState
 from disinfo.data_structures import AppBaseModel
 from disinfo.drat.app_states import PubSubStateManager, PubSubMessage
@@ -22,8 +22,11 @@ from disinfo.screens.colors import light_gray
 from . import stations
 from .assets import temperature_color
 
-max_width = 140         # the bottom card's graphs on the wide screens
-keep_open = 300         # s a touch holds the graphs open (or shut) before the metro decides again
+max_width = 112         # the bottom card's graphs on the wide screens
+keep_open = 60          # s a touch holds the graphs open (like the metro's button), then they go
+keep_shut = 900         # or shut, while the metro's up
+page_s = 4              # s each of the top row's pages shows (the air now, the feel, tomorrow)
+gust_ms = 14            # tomorrow's gusts worth a word (50 km/h)
 slide_s = 0.35
 slide_gap = 0.12        # s between two graphs sliding in
 rain_full = 4           # mm/h a rain bar is full at (by its square root: a drizzle shows)
@@ -54,7 +57,7 @@ def shown(fs: FrameState) -> tuple[bool, str]:
     '''Whether the graphs are open, and where: 'side' (under the weather card, the metro's up) or 'bottom'.'''
     metro = metro_up(fs)
     tap = GraphsStateManager().get_state(fs).tapped.get(fs.config.name)
-    on = tap[0] if tap and time.time() - tap[1] < keep_open else metro
+    on = tap[0] if tap and time.time() - tap[1] < (keep_open if tap[0] else keep_shut) else metro
     return on, 'side' if metro else 'bottom'
 
 def toggle(fs: FrameState, on: bool):
@@ -172,6 +175,59 @@ def arrow(up: bool) -> Frame:
     ImageDraw.Draw(img).polygon([(0, 2), (4, 2), (2, 0)] if up else [(0, 0), (4, 0), (2, 2)], fill=light_gray.darken(0.1).hex)
     return Frame(img, hash=('weather.arrow', up))
 
+def fit(parts: list, w: int, gap: int = 5) -> Frame | None:
+    # What fits in w, the first ones first.
+    parts = [p for p in parts if p]
+    while parts and hstack(parts, gap=gap).width > w:
+        parts = parts[:-1]
+    return hstack(parts, gap=gap, align='bottom') if parts else None
+
+@cache
+def degree() -> Frame:
+    # bitocra7's ° is a corner: a ring, at the top of the digits.
+    img = Image.new('RGBA', (3, 7), (0, 0, 0, 0))
+    ImageDraw.Draw(img).point([(1, 0), (0, 1), (2, 1), (1, 2)], fill=dim)
+    return Frame(img, hash=('weather.degree',))
+
+def value(v: str, unit: str = '', label: str = '') -> Frame:
+    unit = degree() if unit == '°' else text(unit, s_label) if unit else None
+    return hstack([text(label, s_label) if label else None, text(v, s_value), unit], gap=1, align='bottom')
+
+def feel_row(sky: dict | None, w: int) -> Frame | None:
+    '''The feel, the dew point, the cloud's base (or the sky clear under 4 km), the visibility when it's short.'''
+    from disinfo.screens.aviator.skystate import v
+    feels, dew, ceil, vis = v(sky, 'air.feels'), v(sky, 'air.dew'), v(sky, 'air.ceiling'), v(sky, 'air.vis')
+    return fit([value(f'{feels:.0f}', '°', 'ress.') if feels is not None else None,
+                value(f'{dew:.0f}', '°', 'rosée') if dew is not None else None,
+                value(f'{ceil}', 'm', 'base') if ceil is not None else None,
+                value(f'{vis / 1000:.0f}', 'km', 'vis.') if vis is not None and vis < 10000 else None], w)
+
+def tomorrow_row(sky: dict | None, now: float, w: int) -> Frame | None:
+    '''Tomorrow: its low and high, the rain's likelihood (and how much, if much), strong gusts.'''
+    rows = ((sky or {}).get('forecast') or {}).get('hours') or []
+    lt = time.localtime(now)
+    t0 = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday + 1, 0, 0, 0, 0, 0, -1))
+    day = [r for r in rows if t0 < r[0] <= t0 + 86400]
+    temps = [r[1] for r in day if r[1] is not None]
+    if len(temps) < 12:
+        return None
+    lo, hi = min(temps), max(temps)
+    t = lambda x: text(f'{round(x)}', TextStyle(font=fonts.bitocra7, color=temperature_color(x).hex))
+    rain_p = max((r[7] or 0 for r in day), default=0)
+    mm = sum(r[6] or 0 for r in day)
+    gust = max((r[4] or 0 for r in day), default=0)
+    return fit([hstack([text('demain', s_label), t(lo), text('-', s_label), t(hi), degree()], gap=1, align='bottom'),
+                value(f'{rain_p * 100:.0f}', '%' + (f' {mm:.0f}mm' if mm >= 1 else ''), 'pluie') if rain_p >= 0.2 else None,
+                value(f'{gust * 3.6:.0f}', 'km/h', 'raf.') if gust >= gust_ms else None], w)
+
+def pages(fs: FrameState, name: str, frames: list) -> Frame | None:
+    '''One row, its pages in turn, each sliding in from the top.'''
+    frames = [f for f in frames if f]
+    if len(frames) < 2:
+        return frames[0] if frames else None
+    f = frames[int(fs.tick // page_s) % len(frames)]
+    return SlideIn(f'weather.graphs.pages.{name}', 0.3, ease.cubic.cubic_out).mut(f, 'top').draw(fs)
+
 def air_row(sky: dict | None) -> Frame | None:
     '''The humidity, the wind (and its gusts), the pressure (an arrow when it moves): what the card has no room for.'''
     from disinfo.screens.aviator.skystate import v
@@ -189,25 +245,26 @@ def air_row(sky: dict | None) -> Frame | None:
     return hstack(parts, gap=5, align='bottom') if parts else None
 
 
-_drawn = {}         # (where, w, the minute, the sky state's time) -> the graphs: drawn once a minute
+_drawn = {}         # (where, w, h, the minute, the sky state's time) -> the graphs: drawn once a minute
+small_h = 150       # screens shorter than this get the bottom's temperature graph shorter: it'd hide half of them
 
-def drawn(sky: dict | None, w: int, where: str, now: float) -> list:
-    key = where, w, now // 60, (sky or {}).get('at')
+def drawn(sky: dict | None, w: int, screen_h: int, where: str, now: float) -> list:
+    key = where, w, screen_h, now // 60, (sky or {}).get('at')
     if key not in _drawn:
-        past_h, ahead_h, th = (3, 12, 18) if where == 'side' else (6, 18, 34)
+        past_h, ahead_h, th = (3, 12, 15) if where == 'side' else (6, 18, 28 if screen_h >= small_h else 23)
         now = now // 60 * 60
         seen, ahead = series(sky, past_h, ahead_h, now)
-        rows = [] if where == 'side' else [('air', air_row(sky))]
+        rows = [] if where == 'side' else [('air', [air_row(sky), feel_row(sky, w), tomorrow_row(sky, now, w)])]
         rows += [('temp', temp_graph(seen, ahead, now, w, th, past_h, ahead_h, labels=where != 'side')),
-                 ('rain', rain_graph(seen, ahead, now, w, 5, past_h, ahead_h))]
-        for k in [k for k in _drawn if k[:2] == key[:2]]:
+                 ('rain', rain_graph(seen, ahead, now, w, 4, past_h, ahead_h))]
+        for k in [k for k in _drawn if k[:3] == key[:3]]:
             del _drawn[k]
         _drawn[key] = rows
     return _drawn[key]
 
 def graphs(fs: FrameState, sky: dict | None, w: int, on: bool, where: str) -> Frame | None:
     '''The graphs, each sliding in (or out) in turn. The side's are smaller: under the weather card, its width.'''
-    rows = drawn(sky, w, where, fs.now.timestamp())
+    rows = [(name, pages(fs, where, f) if isinstance(f, list) else f) for name, f in drawn(sky, w, fs.config.height, where, fs.now.timestamp())]
     shown = [slide(fs, f'{where}.{name}', f, on, i) for i, (name, f) in enumerate(rows)]
     shown = [f for f in shown if f]
     return vstack(shown, gap=2, align='hstretch') if shown else None

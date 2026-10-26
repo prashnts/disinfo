@@ -263,7 +263,7 @@ def test_seen(monkeypatch):
     monkeypatch.setattr(skylook.skystate, 'doc', lambda: d)
     s = skylook.seen(NS(config=NS(weather_entity='w')))
     assert s.cond == (0.9, 0.3, 0.3) and s.deck == pytest.approx(0.8) and s.high == pytest.approx(0.5)
-    assert s.sun == 0.2 and s.broken is None and s.wet == 0.5 and s.snow == 0
+    assert s.sun == 0.2 and s.broken is None and s.wet == 0.5 and s.snow == 0 and s.wind is None
     opened.off = ['rain']
     assert skylook.seen(NS(config=NS(weather_entity='w'))).wet == 0
     # No sky state (the data service down): Home Assistant's weather state alone.
@@ -451,3 +451,8 @@ def test_contrails_and_puffs(monkeypatch):
     import numpy as np
     alpha = np.frombuffer(s.get_data(), np.uint8).reshape(100, 200, 4)[:, :, 3]
     assert alpha[80:, :].max() == 0 and alpha[60, 100] > 0
+    # The wind's curls: in the sky, over the roofs, never under the horizon.
+    s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 100)
+    sky.curls(cairo.Context(s), 200, 20, 70, 1000.0, 90, 8, 14, 270, (1, 1, 1))
+    alpha = np.frombuffer(s.get_data(), np.uint8).reshape(100, 200, 4)[:, :, 3]
+    assert alpha.max() > 0 and alpha[72:, :].max() == 0

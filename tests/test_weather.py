@@ -125,7 +125,14 @@ def test_graphs(monkeypatch):
     g.GraphsStateManager().process_message('', NS(action='weather.graphs', payload={'screen': 's', 'show': False}))
     assert g.shown(fs) == (False, 'side')
     st.tapped['s'][1] -= g.keep_open + 1
+    assert g.shown(fs) == (False, 'side')
+    st.tapped['s'][1] -= g.keep_shut
     monkeypatch.setattr(g, 'metro_up', lambda fs: False)
+    assert g.shown(fs) == (False, 'bottom')
+    # Opened by a touch: gone again after keep_open.
+    g.GraphsStateManager().process_message('', NS(action='weather.graphs', payload={'screen': 's', 'show': True}))
+    assert g.shown(fs) == (True, 'bottom')
+    st.tapped['s'][1] -= g.keep_open + 1
     assert g.shown(fs) == (False, 'bottom')
     assert g.toggle(fs, False)(10, 5) == g.Target(0, 0, 10, 5, 'weather.graphs', {'screen': 's', 'show': True})
     # The stations' 6 h, the forecast's 18: a line, the rain only when there's some.
@@ -136,3 +143,37 @@ def test_graphs(monkeypatch):
     assert g.temp_graph([], [], T0, 96, 34, 6, 18) is None
     assert g.rain_graph(seen, ahead, T0, 96, 5, 6, 18).image.getbbox()
     assert g.rain_graph(seen, [r[:3] + [0.0, 0.0] for r in ahead], T0, 96, 5, 6, 18) is None
+
+def test_graph_pages():
+    import time
+    from types import SimpleNamespace as NS
+    from disinfo.screens.weather import graphs as g
+    q = lambda v: {'v': v, 'conf': 0.9, 'by': {}}
+    lt = time.localtime(T0)
+    t0 = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday + 1, 0, 0, 0, 0, 0, -1))
+    hours = [[t0 + 3600 * i, 8 + i % 8, 0, 3, 16 if i == 14 else 5, 1015, 0.5, 0.6, 1, 0.5] for i in range(1, 25)]
+    sky = {'air': {'feels': 9.6, 'dew': q(7.2), 'ceiling': 300, 'vis': 4000}, 'forecast': {'hours': hours}}
+    assert g.feel_row(sky, 112).width <= 112 and g.feel_row(sky, 40).width <= 40
+    assert g.tomorrow_row(sky, T0, 112) and g.tomorrow_row({'forecast': {'hours': hours[:6]}}, T0, 112) is None
+    rows = [g.text(f'{i}', g.s_value) for i in range(3)]
+    fs = lambda tick: NS(tick=tick)
+    assert g.pages(fs(0), 't', rows[:1]) is rows[0] and g.pages(fs(0), 't', [None]) is None
+    assert g.pages(fs(g.page_s * 4 + 1), 't', rows).size == rows[1].size
+
+def test_close_the_windows():
+    from disinfo.screens.weather import window as wn
+    q = lambda v: {'v': v, 'conf': 0.9, 'by': {}}
+    sky = lambda dir, wind, gust=None, rate=0.0, nxt=None: {'air': {'dir': dir, 'wind': q(wind), 'gust': q(gust or wind)},
+                                                            'precip': {'rate': q(rate), 'next': nxt}}
+    # Facing east, 5° to the south: in from the east, not from the west or along the facade.
+    assert wn.into(95) == 1 and wn.into(275) == 0 and wn.into(10) == 0 and 0.5 < wn.into(140) < 0.75
+    assert wn.advice(sky(100, 7), T0) and not wn.advice(sky(280, 15), T0) and not wn.advice(sky(100, 3), T0)
+    assert wn.advice(sky(80, 4, 12), T0)['gust'] == 12
+    # Rain blowing in, now or soon: a lighter wind will do.
+    assert wn.advice(sky(90, 3, rate=1.0), T0)['rain'] and not wn.advice(sky(270, 3, rate=1.0), T0)
+    assert wn.advice(sky(90, 3, nxt={'begin': T0 + 600, 'end': T0 + 3600, 'p': 0.7}), T0)['rain']
+    assert not wn.advice(sky(90, 3, nxt={'begin': T0 + 7200, 'end': T0 + 9000, 'p': 0.7}), T0)
+    assert not wn.advice({'air': {}}, T0) and not wn.advice(None, T0)
+    # Held a while after: no blinking with the gusts.
+    wn._held.update(until=0, why=None)
+    assert wn.shown(sky(100, 7), T0) and wn.shown(sky(100, 1), T0 + 60) and not wn.shown(sky(100, 1), T0 + wn.hold_s + 1)

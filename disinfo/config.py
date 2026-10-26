@@ -131,6 +131,8 @@ class Config(AppBaseModel):
     vigilance_domain: str = '75'      # the département on the weather card
     # Bearings seen from the window, clockwise from north. The planes in there get the cards.
     aviator_window: tuple[float, float] = (0, 180)
+    # Where the windows face, clockwise from north (east, 5° to the south): the wind from there blows in (weather/window.py).
+    window_facing: float = 95
     # Solar only, local time.
     aviator_quiet: list[tuple[str, str]] = [('06:00', '07:30')]
     # The bearing up on this screen's map: where one faces looking at it (270: facing west).

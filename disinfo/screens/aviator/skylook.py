@@ -72,6 +72,9 @@ class Seen(NamedTuple):
     wet: float              # how hard it rains or snows at home, 0..1 (none with the rain layer off)
     snow: float             # the snow's share of it
     trails: tuple | None = None     # (from what height planes leave trails m, how long they last 0..1, the wind up there u, v m/s)
+    wind: float | None = None       # at home, m/s; its gusts; where it comes from (degrees)
+    gust: float | None = None
+    wind_dir: float | None = None
 
 def seen(fs) -> Seen:
     '''The sky state (skystate.py, made in the data service) for drawing: what's drawn as cloud fades as it's less
@@ -92,7 +95,8 @@ def seen(fs) -> Seen:
         r = math.radians(wind['dir'])
         trails = form, g('air.contrails.persist', 0.0), -wind['ms'] * math.sin(r), -wind['ms'] * math.cos(r)
     return Seen((g('sky.cover', 0.3), g('sky.haze', 0.2), 0.6 * dark), sure('sky.deck'), sure('sky.high'), g('sky.sun'),
-                dark, g('sky.broken'), g('sky.warmth'), wet, g('precip.snow', 0.0), trails)
+                dark, g('sky.broken'), g('sky.warmth'), wet, g('precip.snow', 0.0), trails,
+                skystate.v(d, 'air.wind', conf=0.3), skystate.v(d, 'air.gust', conf=0.3), g('air.dir'))
 
 def look(sun_alt: float, cond: tuple, gain: float = 1.0, cloud: float | None = None, warmth: float | None = None) -> Look:
     '''cloud overrides the weather state's (the satellite's, when there is no state, or the light's). warmth: the light's

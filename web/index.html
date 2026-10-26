@@ -32,6 +32,10 @@
             /* filter: url('#gamma'); */
         }
 
+        .screens {
+            display: flex;
+        }
+
         .screens canvas {
             width: calc(128px * 2);
         }
@@ -41,7 +45,7 @@
         }
 
         .screens #entry {
-            width: calc(400px * 2);
+            width: calc(200px * 2);
         }
 
         #status {
@@ -103,10 +107,14 @@
     <div class="main">
         <p id='status'>connecting…</p>
         <div class="screens">
-            <canvas id='study'></canvas>
-            <canvas id='salon'></canvas>
+            <div>
+                <canvas id='entry'></canvas>
+                <canvas id='study'></canvas>
+            </div>
+            <div>
+                <canvas id='salon'></canvas>
+            </div>
             <canvas id='pcstate'></canvas>
-            <canvas id='entry'></canvas>
         </div>
         <div id='controls'>
         </div>

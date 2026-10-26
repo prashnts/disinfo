@@ -161,7 +161,7 @@ def extended(fs: FrameState) -> Frame | None:
     on, where = graphs.shown(fs)
     if not on or where != 'bottom':
         return None
-    w = min(fs.config.width - 8, graphs.max_width)
+    w = min(fs.config.width - 16, graphs.max_width)
     if not (f := graphs.graphs(fs, skystate.doc(), w, True, 'bottom')):
         return None
     return Frame(f.image, hash=('weather.graphs', w), targets=(graphs.toggle(fs, on)(f.width, f.height),))
