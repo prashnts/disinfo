@@ -25,7 +25,7 @@ from disinfo.redis import db
 from .utils import home, km_lat, km_lon, local_xy, bearing
 
 
-version = 1
+version = 2
 reach_km = 7
 res = 0.05              # degrees a bin
 margin = 30             # degrees around the window
@@ -33,6 +33,7 @@ bands = (300, 1200, 3500)       # m: the near roofs, the street's, the district'
 canopy = 0.1            # degrees over the hills: the town on them
 nudge = (30, 5, (0, 1, 2, 3))   # m around the window, the step, m up
 seen_tol = 0.15         # degrees: a place this little under a roof still counts as seen
+beacon_m = 45           # m tall and up: a red light on top at night
 earth_r = 6371000
 ttl = 180 * 24 * 3600
 retry = 600
@@ -46,6 +47,7 @@ class Skyline(NamedTuple):
     start: float            # the first bin's bearing
     p: np.ndarray           # (bands + hills, bins): degrees over the horizon, -90 where there's nothing
     seen: list              # per landmark: degrees over what's in front of it
+    beacons: list = []      # the tall ones' lights: (bearing, degrees up, m away)
 
     def at(self, b: float) -> np.ndarray:
         # Each band at that bearing.
@@ -103,7 +105,7 @@ def tiles(ex: float, ey: float) -> list[tuple[int, int]]:
     return out
 
 def fetch(tile: tuple[int, int]) -> list:
-    # One km square's buildings: (ring as (lon, lat), roof, roof's top) over the sea.
+    # One km square's buildings: (ring as (lon, lat), roof, roof's top) over the sea, and how tall.
     i, j = tile
     s, w, n, e = home[0] + j / km_lat, home[1] + i / km_lon, home[0] + (j + 1) / km_lat, home[1] + (i + 1) / km_lon
     out, at = [], 0
@@ -120,7 +122,7 @@ def fetch(tile: tuple[int, int]) -> list:
             if roof is None:
                 continue
             for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]):
-                out.append(([q[:2] for q in poly[0]], roof, p['altitude_maximale_toit'] or roof))
+                out.append(([q[:2] for q in poly[0]], roof, p['altitude_maximale_toit'] or roof, p['hauteur'] or 0))
         if len(fs) < 5000:
             return out
         at += 5000
@@ -130,7 +132,7 @@ def walls(buildings: list, ex: float, ey: float, targets: list) -> tuple[np.ndar
     a pitched roof) gets its top inside, half the size. The window's own building is left out: one doesn't see it.
     Also the roofs at each target (x, y): the highest within 8 m, None if none.'''
     out, tops = [], [None] * len(targets)
-    for ring, roof, top in buildings:
+    for ring, roof, top, _ in buildings:
         pts = np.array([local_xy(la, lo) for lo, la in ring]) * 1000
         if len(pts) < 3:
             continue
@@ -221,6 +223,19 @@ def fit(w: np.ndarray, ex: float, ey: float, ez: float, targets: list) -> tuple[
                     best = score, (dx, dy, dz), ms
     return best[1], best[2]
 
+def beacons(buildings: list, ex: float, ey: float, ez: float, start: float, n: int) -> list:
+    # The tall ones, a light on their top each (the tallest of a few close together): (bearing, degrees up, m away).
+    out = []
+    for ring, _, top, height in sorted(buildings, key=lambda b: -b[2]):
+        if height < beacon_m:
+            continue
+        x, y = np.array([local_xy(la, lo) for lo, la in ring]).mean(0) * 1000 - (ex, ey)
+        b, d = bearing(x, y), math.hypot(x, y)
+        if (b - start) % 360 >= n * res or any(abs((b - o[0] + 180) % 360 - 180) < 0.3 and abs(d - o[2]) < 150 for o in out):
+            continue
+        out.append((round(b, 3), round(float(angle(top + 1, ez, d)), 3), round(d)))
+    return out
+
 def build(path=landscape_path, log=print) -> dict:
     (lat, lon, ez), hills = landscape(path)
     ex, ey = (v * 1000 for v in local_xy(lat, lon))
@@ -246,14 +261,14 @@ def build(path=landscape_path, log=print) -> dict:
         o = np.argsort(az)
         p[-1] = np.interp((start + (np.arange(n) + 0.5) * res) % 360, az[o], alt[o], period=360) + canopy
     return {'eye': [home[0] + ey / 1000 / km_lat, home[1] + ex / 1000 / km_lon, ez], 'start': start,
-            'p': np.round(p * 100).astype(int).tolist(), 'seen': [round(m, 2) for m in ms]}
+            'p': np.round(p * 100).astype(int).tolist(), 'seen': [round(m, 2) for m in ms], 'beacons': beacons(buildings, ex, ey, ez, start, n)}
 
 def key(path=landscape_path) -> str:
     h = hashlib.sha1(path.read_bytes() + json.dumps([app_config.aviator_window, app_config.screen_data.aviator.landmarks]).encode())
     return f'di.skyline.{version}.{h.hexdigest()[:12]}'
 
 def of(doc: dict) -> Skyline:
-    return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'])
+    return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'], doc.get('beacons', []))
 
 def ask(k: str):
     # One process builds it (the lock is in redis), the others find it there.

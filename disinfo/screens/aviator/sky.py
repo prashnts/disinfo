@@ -49,6 +49,10 @@ sway_period = 200       # s
 far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
 hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hills, hazy
+window_m = 1.5          # a window across, lit at night
+beacon_color = (1, 0.2, 0.12)           # the lights on the tall ones' tops
+beacon_gap = 6          # px between them
+band_m = (5000, 2000, 600, 150)         # m: how far the roofs of each band are, far to near (skyline.bands)
 rim_color = (1, 1, 1, 0.15)
 day_face = (1, 0.93, 0.8)       # the sun on the facades, by day
 day_face_alpha, day_rim_alpha = 0.07, 0.3
@@ -265,15 +269,51 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
         ctx.set_source_rgba(1, 0.85, 0.6, 0.7)
         ctx.fill()
         if night > 0.05:
-            # The nearer, the more of them and the deeper down the facade; a few have the TV's blue.
+            # The nearer, the more of them and the deeper down the facade; a few have the TV's blue. As big as a
+            # window there is (px), dimmer the farther; a soft halo once it's a pixel or more.
             q = (np.sin(cell * 78.233 + n * 31.7 + np.floor(time.time() / 600 + r * 7)) * 43758.5453) % 1
-            on_ = on & (q < night * 0.12 * (0.4 + k))
+            on_ = on & (q < night * 0.09 * (0.4 + k))
+            px = window_m / band_m[n - 1] * w / math.radians(fov)
+            size, alpha = min(max(round(px), 1), 3), 0.1 + 0.2 * min(px / 2, 1)
             for cool in (False, True):
-                for x in np.flatnonzero(on_ & ((q * 113 % 1 < 0.15) == cool)):
-                    ctx.rectangle(int(x), int(ys[x] + 2 + (q[x] * 37 % 1) * (4 + 24 * k)), 1, 1)
-                ctx.set_source_rgba(*((0.65, 0.75, 1) if cool else (1, 0.78, 0.45)), 0.35 + 0.35 * k)
-                ctx.fill()
+                spots = [(int(x), int(ys[x] + 2 + (q[x] * 37 % 1) * (4 + 24 * k))) for x in np.flatnonzero(on_ & ((q * 113 % 1 < 0.15) == cool))]
+                color = (0.65, 0.75, 1) if cool else (1, 0.78, 0.45)
+                for grow, a in ((1, alpha * 0.35), (0, alpha)) if px >= 0.9 else ((0, alpha),):
+                    for x, y in spots:
+                        ctx.rectangle(x - grow, y - grow, size + 2 * grow, size + 2 * grow)
+                    ctx.set_source_rgba(*color, a)
+                    ctx.fill()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
+    if night > 0.05:
+        beacons(ctx, sk, yaw, fov, w, to_y, rows, night)
+
+def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, to_y, rows: np.ndarray, night: float):
+    # The red lights on the tall ones' tops, each pulsing slowly at its own pace; hidden by nearer roofs. Bigger and
+    # brighter the nearer: a glow around a bright pixel.
+    # The highest first, a few pixels apart: on a small screen only the tallest of a cluster.
+    now, taken = time.time(), []
+    for b, e, d in sorted(sk.beacons, key=lambda s: -s[1]):
+        x = w / 2 + wrap(b - yaw) / fov * w
+        if not 0 <= x < w or any(abs(x - t) < beacon_gap for t in taken):
+            continue
+        nearer = rows[len(rows) - 1 - np.searchsorted(skyline.bands, d) + 1:, int(x)]
+        if len(nearer) and nearer.max() > e:
+            continue
+        taken.append(x)
+        y = float(to_y(np.array([e]))[0])
+        k = min((600 / d) ** 0.5, 1.5)
+        pulse = 0.55 + 0.45 * math.sin(2 * math.pi * (now / (2 + b % 1.5) + b))
+        a = night * pulse * (0.35 + 0.4 * min(k, 1))
+        r = 1.5 + 2.5 * k
+        g = cairo.RadialGradient(int(x) + 0.5, y, 0, int(x) + 0.5, y, r)
+        g.add_color_stop_rgba(0, *beacon_color, a * 0.6)
+        g.add_color_stop_rgba(1, *beacon_color, 0)
+        ctx.set_source(g)
+        ctx.arc(int(x) + 0.5, y, r, 0, 2 * math.pi)
+        ctx.fill()
+        ctx.set_source_rgba(*beacon_color, min(a * 1.6, 1))
+        ctx.rectangle(int(x), int(y), 1, 1)
+        ctx.fill()
 
 def camera(fs: FrameState, target: tuple[float, float, float]) -> tuple[float, float, float]:
     now = time.monotonic()
