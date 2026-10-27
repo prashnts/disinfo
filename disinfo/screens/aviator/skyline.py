@@ -26,7 +26,7 @@ from disinfo.redis import db
 from .utils import home, km_lat, km_lon, local_xy, bearing
 
 
-version = 4
+version = 5
 reach_km = 7
 res = 0.05              # degrees a bin
 bands = (300, 1200, 3500)       # m: the near roofs, the street's, the district's, the city's; then the hills
@@ -44,6 +44,7 @@ retry = 600
 wfs = 'https://data.geopf.fr/wfs/ows'
 _loaded = {}
 _checked = [0.0]
+_lifted = {}
 
 
 class Skyline(NamedTuple):
@@ -53,6 +54,18 @@ class Skyline(NamedTuple):
     seen: list              # per landmark: degrees over what's in front of it
     beacons: list = []      # the tall ones' lights: (bearing, degrees up, m away, m tall)
     t: np.ndarray | None = None     # (bands, bins): the trees' tops the same
+    pd: np.ndarray | None = None    # (bands, bins): how far the roofs' highest are, m; the trees' the same
+    td: np.ndarray | None = None
+
+    def lifted(self, dz: float) -> 'Skyline':
+        '''Seen from dz m higher (lower under 0): each bin's highest as much higher as it's near; the hills as they are.'''
+        if not dz or self.pd is None:
+            return self
+        if (k := (id(self), dz)) not in _lifted:
+            up = lambda a, d: np.where(a > -90, np.degrees(np.arctan(np.tan(np.radians(a)) - dz / np.maximum(d, 1))), -90).astype(np.float32)
+            _lifted.clear()
+            _lifted[k] = self._replace(p=np.vstack([up(self.p[:-1], self.pd), self.p[-1:]]), t=up(self.t, self.td) if self.t is not None else None)
+        return _lifted[k]
 
     def at(self, b: float) -> np.ndarray:
         # Each band at that bearing.
@@ -193,11 +206,12 @@ def walls(buildings: list, ex: float, ey: float, targets: list) -> tuple[np.ndar
 def angle(z, ez: float, t):
     return np.degrees(np.arctan2(z - ez, t) - t / (2 * earth_r))
 
-def profile(w: np.ndarray, ez: float, start: float, n: int, chunk: int = 200_000) -> np.ndarray:
-    '''(bands + 1, n): the highest wall top in each bin, by distance band. Each wall crosses the rays of the bins
-    between its ends' bearings: where it does, the height it stands.'''
+def profile(w: np.ndarray, ez: float, start: float, n: int, chunk: int = 200_000) -> tuple[np.ndarray, np.ndarray]:
+    '''(bands + 1, n): the highest wall top in each bin, by distance band, and how far it is (m). Each wall crosses
+    the rays of the bins between its ends' bearings: where it does, the height it stands.'''
     out = np.full((len(bands) + 2, n), -90.0, np.float32)
-    flat = out[:-1].ravel()
+    dist = np.zeros((len(bands) + 2, n), np.float32)
+    flat, dflat = out[:-1].ravel(), dist[:-1].ravel()
     for c in range(0, len(w), chunk):
         x0, y0, x1, y1, z = w[c:c + chunk].T.astype(np.float64)
         a0 = (np.degrees(np.arctan2(x0, y0)) - start) % 360
@@ -216,9 +230,15 @@ def profile(w: np.ndarray, ez: float, start: float, n: int, chunk: int = 200_000
         den = dx * wy - dy * wx
         t = (x0[e] * wy - y0[e] * wx) / np.where(np.abs(den) < 1e-9, 1e-9, den)
         ok = t > 1
-        band = np.searchsorted(bands, t[ok])
-        np.maximum.at(flat, band * n + bins[ok], angle(z[e][ok], ez, t[ok]).astype(np.float32))
-    return out
+        idx, a, t = np.searchsorted(bands, t[ok]) * n + bins[ok], angle(z[e][ok], ez, t[ok]).astype(np.float32), t[ok]
+        # Each bin's highest: the last of its own, sorted by height.
+        o = np.lexsort((a, idx))
+        idx, a, t = idx[o], a[o], t[o]
+        last = np.r_[idx[1:] != idx[:-1], True]
+        idx, a, t = idx[last], a[last], t[last]
+        up = a > flat[idx]
+        flat[idx[up]], dflat[idx[up]] = a[up], t[up]
+    return out, dist
 
 def blocked(w: np.ndarray, ex: float, ey: float, ez: float, tx: float, ty: float) -> float:
     # The highest wall top (degrees) on the way to (tx, ty), short of its own block.
@@ -293,14 +313,16 @@ def build(path=landscape_path, log=print) -> dict:
     start, n = 0, int(360 / res)
     w[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
     tw[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
-    p = profile(w, ez, start, n)
-    t = profile(tw, ez, start, n)[:-1]
+    p, pd = profile(w, ez, start, n)
+    t, td = profile(tw, ez, start, n)
+    t, td = t[:-1], td[:-1]
     if hills:
         az, alt = np.array(hills).T
         o = np.argsort(az)
         p[-1] = np.interp((start + (np.arange(n) + 0.5) * res) % 360, az[o], alt[o], period=360) + canopy
     return {'eye': [home[0] + ey / 1000 / km_lat, home[1] + ex / 1000 / km_lon, ez], 'start': start,
             'p': np.round(p * 100).astype(int).tolist(), 't': np.round(t * 100).astype(int).tolist(),
+            'pd': np.round(pd[:-1]).astype(int).tolist(), 'td': np.round(td).astype(int).tolist(),
             'seen': [round(m, 2) for m in ms], 'beacons': beacons(buildings, ex, ey, ez, start, n)}
 
 def key(path=landscape_path) -> str:
@@ -309,7 +331,8 @@ def key(path=landscape_path) -> str:
 
 def of(doc: dict) -> Skyline:
     return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'], doc.get('beacons', []),
-                   np.array(doc['t'], np.float32) / 100 if 't' in doc else None)
+                   np.array(doc['t'], np.float32) / 100 if 't' in doc else None,
+                   np.array(doc['pd'], np.float32) if 'pd' in doc else None, np.array(doc['td'], np.float32) if 'td' in doc else None)
 
 def last(k: str) -> str | None:
     # The newest one built before k: shown while k is built.

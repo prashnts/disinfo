@@ -232,7 +232,8 @@ async def aviator_settings():
         off = json.loads(db.get('di.aviator.layers') or '[]')
     except ValueError:
         off = []
-    return {'light': db.get('di.aviator.light') == b'1', 'off': off, 'horizon': float(db.get('di.aviator.horizon') or 0) or None}
+    return {'light': db.get('di.aviator.light') == b'1', 'off': off, 'horizon': float(db.get('di.aviator.horizon') or 0) or None,
+            'floors': float(db.get('di.aviator.eye') or 0)}
 
 @app.get('/weather/diag')
 async def weather_diag(hours: int = 36):

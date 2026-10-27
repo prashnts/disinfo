@@ -463,10 +463,14 @@ def test_skyline():
     from disinfo.screens.aviator import skyline
     # A wall 100 m east, 20 m wide, 10 m over the eye: in the near band around 90 degrees, at its height.
     w = np.array([[100, -10, 100, 10, 60]], np.float32)
-    p = skyline.profile(w, 50, 0, int(180 / skyline.res))
+    p, d = skyline.profile(w, 50, 0, int(180 / skyline.res))
     at = lambda b: p[:, int(b / skyline.res)]
     assert at(90)[0] == pytest.approx(math.degrees(math.atan(0.1)), abs=0.01) and at(90)[1:].max() == -90
     assert at(80).max() == -90 and at(95)[0] > 0
+    # How far: 100 m straight east. Seen from 10 m lower, that roof stands as much higher (the hills don't move).
+    assert d[0, int(90 / skyline.res)] == pytest.approx(100, abs=0.5)
+    up = skyline.Skyline((0, 0, 50), 0, p, [], [], None, d[:-1]).lifted(-10)
+    assert up.p[0, int(90 / skyline.res)] == pytest.approx(math.degrees(math.atan(0.2)), abs=0.01) and (up.p[-1] == p[-1]).all()
     # The columns: each the highest of its bins; out of the profile, nothing.
     sk = skyline.Skyline((0, 0, 50), 0, p, [])
     c = sk.columns(80, 1, 20)
@@ -564,3 +568,18 @@ def test_sky_held_from_the_web(monkeypatch):
     m.process_message('', NS(action='aviator.sky', payload={}))
     m.process_message('', NS(action='aviator.horizon', payload={'h': None}))
     assert m.state.sky == {} and m.state.horizon is None
+    m.process_message('', NS(action='aviator.eye', payload={'floors': '-30'}))
+    assert m.state.floors == -12
+
+
+def test_sky_crane():
+    import cairocffi as cairo
+    import numpy as np
+    from disinfo.screens.aviator import sky
+    # A crane 800 m north: its mast from the ground to over the horizon, its jib across, by day; lit at night.
+    s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 400, 200)
+    to_y = lambda e: np.where(e >= 0, 120 - 120 * (np.minimum(np.abs(e), 90) / 60) ** 0.5, 120 + 80 * (np.minimum(np.abs(e), 20) / 20) ** 0.5)
+    sky.cranes(cairo.Context(s), [(0, 800, 50, 55, 800)], 80, 0, 40, 400, to_y, (1, 0, 0), (1, 1, 1), 1, 1000.0)
+    alpha = np.frombuffer(s.get_data(), np.uint8).reshape(200, 400, 4)[:, :, 3]
+    cols = np.flatnonzero(alpha[:118].max(0))
+    assert alpha[135:145, 200].max() > 0 and cols.max() - cols.min() > 20

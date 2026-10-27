@@ -146,6 +146,9 @@ class Config(AppBaseModel):
     aviator_view: str = 'map'
     # The window's height over the street, m: the roofs around sit under the horizon or over it (11th floor).
     aviator_eye_m: float = 35
+    # The tower cranes seen from the window (the sky view; they come and go, OSM rarely has them): lat, lon, its mast's
+    # height and its jib's length, m.
+    aviator_cranes: list[tuple[float, float, float, float]] = []
     # The light by the window (aviator/daylight.py): Sensei's lux and UV, the desk's colour sensor (its telemetry
     # node) and the lamps around it, taken off its counts.
     daylight_lux: str = 'sensor.sensei_lux'

@@ -14,6 +14,7 @@ ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
 LAYERS_KEY = 'di.aviator.layers'  # the map's layers switched off: a JSON list
 HORIZON_KEY = 'di.aviator.horizon'  # where the sky view's horizon rests, of the height from the top
+EYE_KEY = 'di.aviator.eye'          # the sky view seen from floors under (or over) the window
 VIEWS = ['map', 'sky', 'solar']
 DEMO_S = 132                       # s: the sky view's demo, once around
 SKY_HOLD = 300                     # s the sky view stays where the web page turned it
@@ -58,6 +59,7 @@ class OpenedState(AppBaseModel):
     demo: float | None = None           # when the sky view's demo started, from the web page
     sky: dict = {}                      # the sky view turned or zoomed from the web page: yaw, fov, at
     horizon: float | None = None        # the sky view's horizon from the web page (None: its own); kept in redis
+    floors: float = 0                   # the sky view from that many floors up (under 0: down) from the window; the same
 
 def read_dict(key: str) -> dict[str, float]:
     try:
@@ -79,7 +81,7 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
 
     def initial_state(self) -> OpenedState:
         return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY),
-                           horizon=float(db.get(HORIZON_KEY) or 0) or None)
+                           horizon=float(db.get(HORIZON_KEY) or 0) or None, floors=float(db.get(EYE_KEY) or 0))
 
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
@@ -108,6 +110,9 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 h = (data.payload or {}).get('h')
                 self.state.horizon = min(max(float(h), 0.3), 0.85) if h is not None else None
                 db.set(HORIZON_KEY, self.state.horizon or '')
+            case 'aviator.eye':
+                self.state.floors = min(max(float((data.payload or {}).get('floors') or 0), -12), 3)
+                db.set(EYE_KEY, self.state.floors)
             case 'aviator.light':
                 # The one asked for, or the other.
                 self.state.light = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.light

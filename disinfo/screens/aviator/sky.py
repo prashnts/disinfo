@@ -62,6 +62,17 @@ leaves = ((0, (0.16, 0.15, 0.14), 0.5), (80, (0.16, 0.15, 0.14), 0.5), (125, (0.
 leaf_light = (1, 0.85, 0.45)    # the crowns lighter, their leaves catching the light
 tree_night = (0.02, 0.026, 0.021)
 crown_m = 8             # a tree across: the bumps of the canopy
+floor_m = 3             # the eye moved a floor at a time (the web page)
+# By day, the facades: some white (Paris has a lot), some lighter stone, the rest as is; the nearer, the more it shows.
+facade_white, facade_light = (0.6, 0.6, 0.58), (0.36, 0.35, 0.33)
+facade_share = (0.35, 0.65)
+tower_m = 70            # m tall and up: a little lighter, like the landmarks, standing out of the roofs
+tower_light = (0.75, 0.76, 0.76)
+crane_color, crane_streak, crane_night = (0.7, 0.16, 0.12), (0.86, 0.85, 0.82), (0.05, 0.05, 0.055)     # red, white bands
+crane_band_m = 6        # a band of the mast or the jib: every third white
+floor_dark = 0.35       # the frame darker to its bottom, the near roofs: depth
+crane_work = (210, 45, 35)      # s: a crane's round (turn, then the trolley, then the hook), turning, the trolley moving
+tree_m, tree_trunk_m, tree_jitter_m = 13, 0.5, 4      # m: a tree tall, its trunk across, the crowns' heights apart
 window_m = 1.5          # a window across, lit at night
 window_shape = (1, 1.9, 3.2, 3)       # m: a window wide, tall, a bay, a floor; drawn so once a window is that many px:
 window_px = 1.5
@@ -266,21 +277,43 @@ def mix(a: tuple, b: tuple, k: float) -> tuple:
 def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, h: int, to_y,
                sunlight: tuple[float, float] | None = None, rim: tuple = rim_color, daylit: tuple[float, float] | None = None,
                night: float = 0, day: float = 0, haze: tuple = hill_color, lean: float = 0, hazy: float = 0.2,
-               today: tuple | None = None):
+               today: tuple | None = None, dz: float = 0):
     '''The roofline from the window (skyline.py), a pixel's column at a time: the hills, then the roofs far to near,
     each band's trees in front of its roofs. Paris' stone by day, hazier the farther; the eye leaned lean m to the
     right, the nearer slide the more. Lit the same as the drawn one: the sun on the facades, the sunset on the tops
     facing it, a window sending back a low sun behind us. At night the windows light up here and there, each in its
-    place, on and off over the evening: window-shaped once they're big enough.'''
+    place, on and off over the evening: window-shaped once they're big enough. dz m: the eye moved up (down under 0),
+    each band as much higher as it's near (the same occlusion); the landmarks and the cranes stand out a little.'''
     ctx.set_antialias(cairo.ANTIALIAS_NONE)
     step, nb = fov / w, len(band_m)
+    eye_m, sk = sk.eye[2], sk.lifted(dz)
     # By band, the hills (they don't move) to the near: what its columns show.
     shifts = [0] + [math.degrees(lean / d) for d in band_m]
     bss = [yaw - fov / 2 + (np.arange(w) + 0.5) * step + s for s in shifts]
     rows = np.stack([sk.columns(yaw - fov / 2 + s, step, w, sk.p[nb - n:nb - n + 1])[0] for n, s in enumerate(shifts)])
-    rows[0] = np.maximum(rows[0], 0)       # the land reaches the horizon: none of the sky under it (down the valley)
     woods = [sk.columns(yaw - fov / 2 + s, step, w, sk.t[nb - n:nb - n + 1])[0] if sk.t is not None and n else None
              for n, s in enumerate(shifts)]
+    if sk.pd is None:
+        # An older skyline, without how far its roofs are: each band as far as it's said to be.
+        for n, d in enumerate((15000, *band_m)):
+            lift = math.degrees(math.atan(-dz / d))
+            rows[n] = np.where(rows[n] > -90, rows[n] + lift, -90)
+            if woods[n] is not None:
+                woods[n] = np.where(woods[n] > -90, woods[n] + lift, -90)
+    rows[0] = np.maximum(rows[0], 0)       # the land reaches the horizon: none of the sky under it (down the valley)
+    # What stands out, by band: the landmarks in reach and the towers, (bearing, degrees up, degrees wide, m tall);
+    # the cranes, (x, y m from the eye, mast, jib, m away).
+    ex, ey = (v * 1000 for v in local_xy(*sk.eye[:2]))
+    eye = eye_m + dz
+    marks = [(b, e, wd, lm[3], km * 1000) for (b, e, wd, _), lm, km in zip(landmark_points(eye), landmarks, landmark_km()) if km < skyline.reach_km]
+    marks += [(b, e + math.degrees(math.atan(-dz / d)), math.degrees(35 / d), tall, d) for b, e, d, tall in sk.beacons if tall >= tower_m]
+    standing = [[] for _ in rows]
+    for m in marks:
+        standing[nb - int(np.searchsorted(skyline.bands, m[4]))].append(m)
+    crane_at = [[] for _ in rows]
+    for lat, lon, mast, jib in app_config.aviator_cranes:
+        x, y = (v * 1000 - o for v, o in zip(local_xy(lat, lon), (ex, ey)))
+        crane_at[nb - int(np.searchsorted(skyline.bands, math.hypot(x, y)))].append((x, y, mast, jib, math.hypot(x, y)))
     t = time.localtime()
     today = today or (t.tm_yday, t.tm_hour, t.tm_min)
     leaf, dense = season(today[0])
@@ -306,8 +339,9 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
             # The landmarks out of the buildings' reach (the Eiffel tower) over the hills, in the far roofs' colour.
             ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(stone_color, (0.55 * c for c in haze), aer[1]), day))
             to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
-            far_ones = [p for p, d in zip(landmark_points(sk.eye[2]), landmark_km()) if d > skyline.reach_km]
+            far_ones = [p for p, d in zip(landmark_points(eye), landmark_km()) if d > skyline.reach_km]
             to_px = lambda b, e: (to_x(b), float(to_y(np.array([e]))[0]))
+            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(mix(stone_color, (0.42, 0.37, 0.31), 0.4), (0.55 * c for c in haze), aer[1]), day))
             shapes(ctx, far_ones, lambda b, m=0: abs(wrap(b - yaw)) < fov / 2 + m, to_px)
             eiffel(ctx, [p for p in far_ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now, today[1:])
             continue
@@ -318,6 +352,31 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
         glow = np.clip(1 - off(bs - sunlight[0]) / 70, 0, None) * sunlight[1] if sunlight else np.zeros(w)
         face = np.cos(np.radians(bs + 180 - daylit[0])) * daylit[1] if daylit else np.zeros(w)
         on = ys < h
+        px_m = w / math.radians(fov) / band_m[n - 1]
+        if day > 0.05:
+            # The facades' tones, each building its own (by its roof's height: the same as the view turns), the nearer
+            # the more; the landmarks and the towers a little lighter, their own tops' rim too.
+            # Only the facades wide enough to tell (the far bands' are a pixel each: stripes).
+            show = day * (1 - aer[n]) * (0.35 + 0.65 * k)
+            spans = [(a, b, y, (math.sin(round(float(row[a]) * 20) * 12.9898) * 43758.5453) % 1) for a, b, y in top if y < h and b - a >= 4]
+            for lo, hi, c in ((0, facade_share[0], facade_white), (facade_share[0], facade_share[1], facade_light)):
+                for a, b, y, tone in spans:
+                    if lo <= tone < hi:
+                        ctx.rectangle(a, y, b - a, h - y)
+                ctx.set_source_rgba(*mix(c, (0.55 * c_ for c_ in haze), aer[n]), 0.45 * show)
+                ctx.fill()
+            for b, e, wd, tall, d in standing[n]:
+                xc, half = w / 2 + wrap(b - shifts[n] - yaw) / step, max(wd / 2 / step, 1)
+                xs = np.arange(max(int(xc - half), 0), min(int(xc + half) + 1, w))
+                xs = xs[on[xs] & (row[xs] >= e - 0.6)] if len(xs) else xs
+                for x in xs:
+                    ctx.rectangle(int(x), int(ys[x]), 1, max(round(tall * w / math.radians(fov) / d), 1))
+                ctx.set_source_rgba(*tower_light, (0.1 + 0.12 * k) * day)
+                ctx.fill()
+                for x in xs:
+                    ctx.rectangle(int(x), int(ys[x]), 1, 1)
+                ctx.set_source_rgba(*tower_light, 0.35 * day)
+                ctx.fill()
         # By day: the facades turned to the sun (it's behind us when they face us), as much as it's out.
         for level in range(1, 5):
             sel = on & (np.ceil(face * 4) == level) & (face > 0.05)
@@ -344,7 +403,6 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
         # more of them and the deeper down the facade; a few have the TV's blue. Dimmer the farther; a soft halo once
         # a window is a pixel or more.
         catch = np.clip(np.cos(np.radians(bs + 180 - sb)), 0, None) * (sunlight[1] if sunlight else 0)
-        px_m = w / math.radians(fov) / band_m[n - 1]
         px = window_m * px_m
         alpha = 0.1 + 0.2 * min(px / 2, 1)
         if px >= window_px:
@@ -368,48 +426,191 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
                         ctx.set_source_rgba(*color, a)
                         ctx.fill()
         if woods[n] is not None and (woods[n] > -90).any():
-            # The canopy: a crown's bump every few m, each its own size; in front of the band's facades.
-            cw = math.degrees(crown_m / band_m[n - 1])
-            i, f = np.divmod(bs / cw, 1)
-            bump = np.sqrt(np.clip(1 - (2 * f - 1) ** 2, 0, None)) * (0.5 + 0.5 * ((np.sin(i * 12.9898) * 43758.5453) % 1))
-            t = np.where(woods[n] > -90, woods[n] + math.degrees(0.35 * crown_m / band_m[n - 1]) * (bump - 1), -90)
-            ty = np.minimum(np.round(to_y(t)), h).astype(int)
-            ctx.move_to(0, h)
-            for a, b, y in runs(ty):
-                ctx.line_to(a, y)
-                ctx.line_to(b, y)
-            ctx.line_to(w, h)
-            ctx.close_path()
-            color = mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aer[n]), day)
-            ctx.set_source_rgba(*color, dense)
-            ctx.fill()
-            # By day: each crown its shade, a crown deep (not down the trunks); the near ones' leaves catching the
-            # light here and there, the tops in it.
-            if day > 0.1:
-                depth = max(round(0.7 * crown_m * px_m), 2)
-                deep = np.maximum(np.round(depth * np.sqrt(np.clip(1 - (2 * f - 1) ** 2, 0, None))), 1).astype(int)    # round under
-                kind = (np.sin(i * 78.233) * 43758.5453) % 1
-                for sel, c in ((kind < 0.3, mix(color, leaf_light, 0.1)), (kind > 0.75, mix(color, (0, 0, 0), 0.18))):
-                    for a, b, v in runs(np.where(sel & (ty < h), ty * 4096 + deep, 0)):
-                        if v:
-                            ctx.rectangle(a, v // 4096, b - a, v % 4096)
-                    ctx.set_source_rgba(*c, dense * day)
-                    ctx.fill()
-                if crown_m * px_m >= 4:
-                    cell = np.round(bs / step)       # by bearing: they stay put when the view turns
-                    for dy in range(1, depth, 2):        # within the crown
-                        for x in np.flatnonzero((ty < h) & ((np.sin(cell * 12.9898 + dy * 78.233) * 43758.5453) % 1 < 0.07)):
-                            ctx.rectangle(int(x), int(ty[x]) + dy, 1, 1)
-                    ctx.set_source_rgba(*mix(color, leaf_light, 0.35), 0.6 * dense * day)
-                    ctx.fill()
-                for a, b, y in runs(ty):
-                    if y < h:
-                        ctx.rectangle(a, y, b - a, 1)
-                ctx.set_source_rgba(*mix(color, leaf_light, 0.3), 0.7 * dense * day)
-                ctx.fill()
+            trees(ctx, woods[n], bs, step, band_m[n - 1], px_m, to_y, h,
+                  mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aer[n]), day), dense, day)
+        if crane_at[n]:
+            cranes(ctx, crane_at[n], eye, yaw - shifts[n], fov, w, to_y,
+                   *(mix(crane_night, mix(c, (0.55 * c_ for c_ in haze), aer[n]), day) for c in (crane_color, crane_streak)), night, now)
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
     if night > 0.05:
-        beacons(ctx, sk, yaw, fov, w, to_y, rows, night, lean)
+        beacons(ctx, sk, yaw, fov, w, to_y, rows, night, lean, dz)
+
+def cranes(ctx: cairo.Context, items: list, eye: float, yaw: float, fov: float, w: int, to_y, color: tuple,
+           streak: tuple, night: float, now: float):
+    '''Tower cranes, (x, y m from the eye, mast, jib m, m away): a lattice mast and jib once they're wide enough, the
+    counter-jib and its weight, the ties from the top, the trolley and its hook; each jib turning slowly its own way.
+    At night dark, a red light on the top and the jib's end.'''
+    def to(x, y, z):
+        d = max(math.hypot(x, y), 1)
+        return w / 2 + wrap(math.degrees(math.atan2(x, y)) - yaw) / fov * w, float(to_y(np.array([math.degrees(math.atan2(z - eye, d))]))[0])
+    def line(*ps):
+        ctx.move_to(round(ps[0][0]) + 0.5, round(ps[0][1]) + 0.5)
+        for p in ps[1:]:
+            ctx.line_to(round(p[0]) + 0.5, round(p[1]) + 0.5)
+    for x, y, mast, jib, d in items:
+        bx, by = to(x, y, home_ground)
+        if not -jib / d * w / math.radians(fov) < bx < w * (1 + jib / d / math.radians(fov)):
+            continue
+        # At work, each its own round: turning to its next heading (mostly side on from here, the jib's length shows),
+        # then the trolley going out or in, then the hook down and up again; eased, slow.
+        phase = (x * 0.37 + y * 0.61) % 1
+        period, turn, roll = crane_work
+        k, into = divmod(now / period + phase, 1)
+        into *= period
+        pick = lambda j, s: (math.sin(j * s + phase * 91) * 43758.5453) % 1
+        ease = lambda v: (v := min(max(v, 0), 1)) * v * (3 - 2 * v)
+        side = math.degrees(math.atan2(x, y)) + 90
+        a0, a1 = side + 100 * (pick(k - 1, 12.9898) - 0.5), side + 100 * (pick(k, 12.9898) - 0.5)
+        heading = math.radians(a0 + wrap(a1 - a0) * ease(into / turn))
+        s0, s1 = 0.3 + 0.6 * pick(k - 1, 39.346), 0.3 + 0.6 * pick(k, 39.346)
+        trolley = jib * (s0 + (s1 - s0) * ease((into - turn) / roll))
+        dip = math.sin(math.pi * ease((into - turn - roll) / (period - turn - roll - 20)))
+        ux, uy = math.sin(heading), math.cos(heading)
+        top, head = home_ground + mast, home_ground + mast + 0.14 * jib
+        px = w / math.radians(fov) / d
+        tx, ty = to(x, y, top)
+        # Its head linear from the mast's top: the view's easing near the horizon would stretch a few m into many px.
+        def at(s, z):
+            px_, py_ = x + ux * s, y + uy * s
+            dp = max(math.hypot(px_, py_), 1)
+            return (to(px_, py_, top)[0], ty - ((z - eye) / dp - (top - eye) / d) * w / math.radians(fov))
+        half = max(px, 0.5)         # the mast 2 m across
+        ctx.set_source_rgb(*color)
+        if 2 * half >= 2:
+            # The lattice: its two sides, the bracing zigzag every 2 m.
+            line((tx - half, ty), (bx - half, by))
+            line((tx + half, ty), (bx + half, by))
+            k = max(int(mast / 2), 1) if 2 * half >= 4 else 0
+            for j in range(k):
+                y0, y1 = ty + (by - ty) * j / k, ty + (by - ty) * (j + 1) / k
+                line((tx - half if j % 2 else tx + half, y0), (tx + half if j % 2 else tx - half, y1))
+        else:
+            line((tx, ty), (bx, by))
+        hx, hy = at(0, head)
+        line((tx - half, ty), (hx, hy), (tx + half, ty))
+        # The jib: two chords, braced when they're apart; the counter-jib behind, its weight.
+        tip, tip_up = at(jib, top), at(jib, top + 1.6)
+        line((tx, ty), tip)
+        if abs(tip_up[1] - tip[1]) + abs(at(0, top + 1.6)[1] - ty) >= 4:
+            line(at(0, top + 1.6), tip_up)
+            k = max(int(jib / 3), 1)
+            for j in range(k):
+                line(at(jib * j / k, top + (1.6 if j % 2 else 0)), at(jib * (j + 1) / k, top + (0 if j % 2 else 1.6)))
+        back = at(-0.3 * jib, top)
+        line((tx, ty), back)
+        line(at(0.6 * jib, top + 1.6), (hx, hy), back)
+        ctx.stroke()
+        # The white bands: every third along the mast and the jib.
+        k = max(int(mast / crane_band_m), 1)
+        for j in range(1, k, 3):
+            y0, y1 = ty + (by - ty) * j / k, ty + (by - ty) * (j + 1) / k
+            ctx.rectangle(round(tx - half), round(y0), max(round(2 * half), 1) + 1, max(round(y1 - y0), 1))
+        ctx.set_source_rgb(*streak)
+        ctx.fill()
+        k = max(int(jib / crane_band_m), 1)
+        for j in range(1, k, 3):
+            line(at(jib * j / k, top), at(jib * (j + 1) / k, top))
+            line(at(jib * j / k, top + 1.6), at(jib * (j + 1) / k, top + 1.6))
+        ctx.stroke()
+        ctx.set_source_rgb(*color)
+        cw = [at(-0.3 * jib, top), at(-0.22 * jib, top), at(-0.22 * jib, top - 3), at(-0.3 * jib, top - 3)]
+        ctx.move_to(*cw[0])
+        for p in cw[1:]:
+            ctx.line_to(*p)
+        ctx.close_path()
+        ctx.fill()
+        # The trolley going in and out, its hook up and down.
+        s = trolley
+        drop = mast * (0.08 + 0.35 * dip)
+        (ax, ay), (cx, cy) = at(s, top), at(s, top - drop)
+        line((ax, ay), (ax, cy))
+        ctx.set_source_rgba(*color, 0.55)
+        ctx.stroke()
+        ctx.set_source_rgb(*color)
+        ctx.rectangle(round(ax) - (1 if px > 1 else 0), round(cy), 2 if px > 1 else 1, 2 if px > 1 else 1)
+        ctx.fill()
+        if night > 0.05:
+            for lx, ly in ((hx, hy), tip):
+                g = cairo.RadialGradient(round(lx) + 0.5, ly, 0, round(lx) + 0.5, ly, 3)
+                g.add_color_stop_rgba(0, *beacon_color, 0.45 * night)
+                g.add_color_stop_rgba(1, *beacon_color, 0)
+                ctx.set_source(g)
+                ctx.arc(round(lx) + 0.5, ly, 3, 0, 2 * math.pi)
+                ctx.fill()
+                ctx.set_source_rgba(*beacon_color, 0.9 * night)
+                ctx.rectangle(round(lx), round(ly), 1, 1)
+                ctx.fill()
+            ctx.set_source_rgb(*color)
+
+def trees(ctx: cairo.Context, top: np.ndarray, bs: np.ndarray, step: float, d: float, px_m: float, to_y, h: int,
+          color: tuple, dense: float, day: float):
+    '''A band's trees, d m away: crowns every few m in two rows, the back one between the front one's, each its own
+    size, height and a lobe, darker under; on trunks once they're a pixel. The band's facades show under and between
+    them. By day each crown its shade, the near ones' leaves catching the light here and there, the tops in it.
+    Where the wood's end is under a crown's middle it's left out. Placed by bearing: they stay as the view turns.'''
+    w = len(bs)
+    dense = 1 if dense > 0.8 else dense     # in leaf: solid; bare, the facades through the branches
+    cw = math.degrees(crown_m / d)
+    r_px = 0.5 * crown_m / d / math.radians(step)
+    fine = r_px >= 1.5      # crowns a few px across: the back row, the shades; under that a canopy's enough
+    for back, off in ((True, 0.5), (False, 0)) if fine else ((False, 0),):
+        i = np.arange(math.floor(bs[0] / cw + off) - 1, math.ceil(bs[-1] / cw + off) + 2)
+        x = ((i + 0.5 - off) * cw - bs[0]) / step + 0.5
+        xm = np.round(x).astype(int)
+        ok = (xm >= 0) & (xm < w)
+        i, x, xm = i[ok], x[ok], xm[ok]
+        ok = top[xm] > -90
+        i, x, xm = i[ok], x[ok], xm[ok]
+        if not len(i):
+            continue
+        r1, r2, r3, r4 = ((np.sin(i * s + off * 17) * 43758.5453) % 1 for s in (12.9898, 39.346, 78.233, 93.989))
+        r = r_px * ((0.8 + 0.25 * r1) if back else (0.85 + 0.2 * r1))
+        cy = to_y(top[xm] + np.degrees((r2 - 0.5) * tree_jitter_m / d)) + r + (0.25 * r if back else 0)
+        c = mix(color, (0, 0, 0), 0.12) if back else color
+        if not back and tree_trunk_m * px_m >= 1:
+            # The trunks, under the crowns' middles, down to the ground.
+            for xx, yy, rr in zip(x, cy, r):
+                ctx.rectangle(int(xx), int(yy), 1, max(int(rr + (tree_m - crown_m) * px_m), 0))
+            ctx.set_source_rgba(*mix(color, (0, 0, 0), 0.45), dense)
+            ctx.fill()
+        kinds = ((r4 < 0.3, mix(c, leaf_light, 0.1 * day)), (r4 > 0.75, mix(c, (0, 0, 0), 0.15)),
+                 ((r4 >= 0.3) & (r4 <= 0.75), c)) if fine else ((r4 >= 0, c),)
+        for sel, cc in kinds:
+            for xx, yy, rr, lo in zip(x[sel], cy[sel], r[sel], r3[sel]):
+                ctx.new_sub_path()
+                ctx.arc(xx, yy, max(rr, 0.6), 0, 2 * math.pi)
+                if fine:
+                    # A lobe, up on one side: not quite round.
+                    ctx.new_sub_path()
+                    ctx.arc(xx + (lo - 0.5) * rr, yy - 0.4 * rr, 0.65 * rr, 0, 2 * math.pi)
+            ctx.set_source_rgba(*cc, dense)
+            ctx.fill()
+        if not fine:
+            continue
+        # Under, in their own shade.
+        for xx, yy, rr in zip(x, cy, r):
+            ctx.new_sub_path()
+            ctx.arc(xx, yy, rr, 0.12 * math.pi, 0.88 * math.pi)
+            ctx.close_path()
+        ctx.set_source_rgba(0, 0, 0, 0.18 * dense)
+        ctx.fill()
+        if day < 0.1 or back:
+            continue
+        if crown_m * px_m >= 4:
+            for k, (xx, yy, rr) in enumerate(zip(x, cy, r)):
+                rnd = random.Random(int(i[k]))
+                for _ in range(min(int(0.12 * rr * rr), 40)):
+                    a, q = rnd.uniform(0, 2 * math.pi), rnd.random() ** 0.5 * 0.85 * rr
+                    if math.sin(a) < 0.3:
+                        ctx.rectangle(int(xx + q * math.cos(a)), int(yy + q * math.sin(a)), 1, 1)
+            ctx.set_source_rgba(*mix(color, leaf_light, 0.35), 0.6 * dense * day)
+            ctx.fill()
+        for xx, yy, rr in zip(x, cy, r):
+            ctx.new_sub_path()
+            ctx.arc(xx, yy, rr - 0.5, 1.15 * math.pi, 1.85 * math.pi)
+        ctx.set_line_width(1)
+        ctx.set_source_rgba(*mix(color, leaf_light, 0.3), 0.7 * dense * day)
+        ctx.stroke()
 
 def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float, clock: tuple):
     # Lit gold from dusk to 23:45, sparkling the first five minutes of each hour. clock: (hour, minute)
@@ -473,12 +674,13 @@ def panes(ctx: cairo.Context, bs: np.ndarray, ys: np.ndarray, on: np.ndarray, px
             ctx.fill()
 
 def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, to_y, rows: np.ndarray, night: float,
-            lean: float = 0):
+            lean: float = 0, dz: float = 0):
     # The red lights on the tall ones' tops, each pulsing slowly at its own pace; hidden by nearer roofs. Bigger and
     # brighter the nearer: a glow around a bright pixel.
     # The highest first, a few pixels apart: on a small screen only the tallest of a cluster.
     now, taken = time.time(), []
     for b, e, d, tall in sorted(sk.beacons, key=lambda s: -s[1]):
+        e += math.degrees(math.atan(-dz / d))
         x = w / 2 + wrap(b - math.degrees(lean / d) - yaw) / fov * w
         if tall < beacon_min_m or not 0 <= x < w or any(abs(x - t) < beacon_gap for t in taken):
             continue
@@ -879,7 +1081,8 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     now = time.time()
     followed = app.following(fs)
     sk = skyline.get(now)
-    _eye['m'] = sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m
+    dz = OpenedStateManager().get_state(fs).floors * floor_m
+    _eye['m'] = (sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m) + dz
     opened_ = OpenedStateManager().get_state(fs)
     started, held = opened_.demo, opened_.sky
     demo = started is not None and now - started < DEMO_S
@@ -1017,9 +1220,16 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if sk:
         real_roofs(ctx, sk, yaw, fov, w, h, to_y, *lights, min(max((-se - 2) / 8, 0), 1),
                    float(np.clip((se + 3) / 10, 0, 1)) * (1 - 0.3 * lk.cloud), lk.horizon, lean_m * math.sin(2 * math.pi * now / sway_period),
-                   lk.haze, tuple(today) if demo else None)
+                   lk.haze, tuple(today) if demo else None, dz)
     else:
         roofs(ctx, in_view, to_px, h, *lights)
+    # Darker to the bottom: the near roofs under, the far ones over them.
+    g = cairo.LinearGradient(0, hz, 0, h)
+    g.add_color_stop_rgba(0, 0, 0, 0, 0)
+    g.add_color_stop_rgba(1, 0, 0, 0, floor_dark)
+    ctx.set_source(g)
+    ctx.rectangle(0, hz, w, h - hz)
+    ctx.fill()
     # The wind over the roofs, then the rain or snow at home in front of all that, at a few frames a second.
     windy = 'wind' not in off and (seen.wind or 0) >= curl_ms and seen.wind_dir is not None
     if windy:

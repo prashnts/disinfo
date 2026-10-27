@@ -306,9 +306,10 @@
             const [h, setH] = useState(0.6)
             const [yaw, setYaw] = useState(90)
             const [fov, setFov] = useState(50)
+            const [floors, setFloors] = useState(0)
             const last = useRef(0)
             useEffect(() => {
-                fetch('/aviator/settings').then(r => r.json()).then(s => s.horizon && setH(s.horizon))
+                fetch('/aviator/settings').then(r => r.json()).then(s => { s.horizon && setH(s.horizon); setFloors(s.floors || 0) })
             }, [])
             const send = (action, payload) => fetch('/remote', {
                 method: 'POST',
@@ -335,6 +336,15 @@
                             onInput=${e => { setH(+e.currentTarget.value); live('aviator.horizon', {h: e.currentTarget.value}) }}
                             onChange=${e => live('aviator.horizon', {h: e.currentTarget.value}, true)}/> up
                         <button class='remote_button' onClick=${() => { setH(0.6); send('aviator.horizon', {}) }}>auto</button>
+                    </label>
+                </div>
+                <div class="in slider">
+                    <label>
+                        <strong>floor</strong>
+                        <input type="range" min="-12" max="3" step="1" value=${floors}
+                            onInput=${e => { setFloors(+e.currentTarget.value); live('aviator.eye', {floors: e.currentTarget.value}) }}
+                            onChange=${e => live('aviator.eye', {floors: e.currentTarget.value}, true)}/>
+                        <code>${floors == 0 ? 'the window' : (floors > 0 ? '+' : '') + floors}</code>
                     </label>
                 </div>
                 <div class="in slider">
