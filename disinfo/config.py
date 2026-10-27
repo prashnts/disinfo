@@ -42,6 +42,8 @@ landscape_path = Path(os.environ.get('DI_LANDSCAPE_PATH', Path(__file__).parent.
 class AviatorData(AppBaseModel):
     # (lat, lon) of what's visible from the window.
     landmarks: list[tuple[float, float]] = []
+    # The tower cranes seen from it (they come and go, OSM rarely has them): lat, lon, the mast's height, the jib's, m.
+    cranes: list[tuple[float, float, float, float]] = []
 
 class MetroStop(AppBaseModel):
     line: str               # as on the sign: '1', '3B'
@@ -146,9 +148,6 @@ class Config(AppBaseModel):
     aviator_view: str = 'map'
     # The window's height over the street, m: the roofs around sit under the horizon or over it (11th floor).
     aviator_eye_m: float = 35
-    # The tower cranes seen from the window (the sky view; they come and go, OSM rarely has them): lat, lon, its mast's
-    # height and its jib's length, m.
-    aviator_cranes: list[tuple[float, float, float, float]] = []
     # The light by the window (aviator/daylight.py): Sensei's lux and UV, the desk's colour sensor (its telemetry
     # node) and the lamps around it, taken off its counts.
     daylight_lux: str = 'sensor.sensei_lux'

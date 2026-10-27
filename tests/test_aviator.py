@@ -583,3 +583,16 @@ def test_sky_crane():
     alpha = np.frombuffer(s.get_data(), np.uint8).reshape(200, 400, 4)[:, :, 3]
     cols = np.flatnonzero(alpha[:118].max(0))
     assert alpha[135:145, 200].max() > 0 and cols.max() - cols.min() > 20
+
+
+def test_sky_masts():
+    import cairocffi as cairo
+    import numpy as np
+    from disinfo.screens.aviator import sky
+    # An antenna 3 km north, 120 m tall: from over the roofs in front of it up, banded; its light on at night.
+    s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 400, 200)
+    to_y = lambda e: np.where(e >= 0, 120 - 120 * (np.minimum(np.abs(e), 90) / 60) ** 0.5, 120 + 80 * (np.minimum(np.abs(e), 20) / 20) ** 0.5)
+    sky.masts(cairo.Context(s), [(0, 3000, 200, 120, 'antenna', 3000)], 80, 0, 40, 400, to_y, np.full(400, 118.0), 0.2, (0.5, 0.6, 0.8), 1, 1)
+    alpha = np.frombuffer(s.get_data(), np.uint8).reshape(200, 400, 4)[:, :, 3]
+    assert alpha[:118, 200].sum() > 0 and alpha[119:, 200].max() == 0
+
