@@ -56,9 +56,10 @@ stone_color = (0.27, 0.258, 0.24)
 aerial = (0.5, 0.38, 0.26, 0.13, 0.03)          # as hazy as usual; the sky state's haze takes it up to:
 aerial_max = 0.92
 # The trees by the day of the year: bare (see-through), the new leaves, summer, autumn. (day, rgb, how dense)
-leaves = ((0, (0.15, 0.145, 0.14), 0.5), (80, (0.15, 0.145, 0.14), 0.5), (125, (0.15, 0.175, 0.13), 0.95),
-          (265, (0.14, 0.16, 0.13), 1), (300, (0.19, 0.175, 0.14), 0.9), (335, (0.17, 0.16, 0.14), 0.65),
-          (350, (0.15, 0.145, 0.14), 0.5), (366, (0.15, 0.145, 0.14), 0.5))
+leaves = ((0, (0.16, 0.15, 0.14), 0.5), (80, (0.16, 0.15, 0.14), 0.5), (125, (0.16, 0.22, 0.11), 0.95),
+          (265, (0.13, 0.2, 0.11), 1), (300, (0.235, 0.2, 0.115), 0.9), (335, (0.22, 0.16, 0.1), 0.65),
+          (350, (0.16, 0.15, 0.14), 0.5), (366, (0.16, 0.15, 0.14), 0.5))
+leaf_light = (1, 0.85, 0.45)    # the crowns lighter, their leaves catching the light
 tree_night = (0.02, 0.026, 0.021)
 crown_m = 8             # a tree across: the bumps of the canopy
 window_m = 1.5          # a window across, lit at night
@@ -382,12 +383,29 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
             color = mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aer[n]), day)
             ctx.set_source_rgba(*color, dense)
             ctx.fill()
-            # By day the crowns' tops in the light.
+            # By day: each crown its shade, a crown deep (not down the trunks); the near ones' leaves catching the
+            # light here and there, the tops in it.
             if day > 0.1:
+                depth = max(round(0.7 * crown_m * px_m), 2)
+                deep = np.maximum(np.round(depth * np.sqrt(np.clip(1 - (2 * f - 1) ** 2, 0, None))), 1).astype(int)    # round under
+                kind = (np.sin(i * 78.233) * 43758.5453) % 1
+                for sel, c in ((kind < 0.3, mix(color, leaf_light, 0.1)), (kind > 0.75, mix(color, (0, 0, 0), 0.18))):
+                    for a, b, v in runs(np.where(sel & (ty < h), ty * 4096 + deep, 0)):
+                        if v:
+                            ctx.rectangle(a, v // 4096, b - a, v % 4096)
+                    ctx.set_source_rgba(*c, dense * day)
+                    ctx.fill()
+                if crown_m * px_m >= 4:
+                    cell = np.round(bs / step)       # by bearing: they stay put when the view turns
+                    for dy in range(1, depth, 2):        # within the crown
+                        for x in np.flatnonzero((ty < h) & ((np.sin(cell * 12.9898 + dy * 78.233) * 43758.5453) % 1 < 0.07)):
+                            ctx.rectangle(int(x), int(ty[x]) + dy, 1, 1)
+                    ctx.set_source_rgba(*mix(color, leaf_light, 0.35), 0.6 * dense * day)
+                    ctx.fill()
                 for a, b, y in runs(ty):
                     if y < h:
                         ctx.rectangle(a, y, b - a, 1)
-                ctx.set_source_rgba(*mix(color, (1, 0.95, 0.8), 0.25), 0.6 * dense * day)
+                ctx.set_source_rgba(*mix(color, leaf_light, 0.3), 0.7 * dense * day)
                 ctx.fill()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
     if night > 0.05:
