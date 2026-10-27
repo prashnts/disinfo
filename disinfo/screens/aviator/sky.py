@@ -40,6 +40,9 @@ follow_fov = 25         # on the followed plane
 fov_min = 20            # zoomed on a plane, the moment its card comes on top
 wide_every, wide_for = 900, 45          # s: pulled back to the whole window that long, every so often
 tour_dwell, tour_glide = 180, 90        # s: idle, on a sight (every other one the waypoints), then turning to the next
+show_lead, show_back = 60, 30           # s: turning to the Eiffel tower before it sparkles, back to the tour after
+show_fov = (12, 26)     # zoomed in and out on it while it sparkles, every show_breathe s
+show_breathe = 110
 home_ground = 47        # m above the sea
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 horizon_color = (1, 1, 1, 0.25)
@@ -747,9 +750,12 @@ def trees(ctx: cairo.Context, top: np.ndarray, far: np.ndarray, bs: np.ndarray, 
         ctx.set_source_rgba(*mix(color, leaf_light, 0.3), 0.7 * dense * day)
         ctx.stroke()
 
+def lit(night: float, clock: tuple) -> bool:
+    # The Eiffel tower: lit gold from dusk to 23:45, sparkling the first five minutes of each hour. clock: (hour, minute)
+    return night >= 0.05 and clock < (23, 45) and not 3 < clock[0] < 12
+
 def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float, clock: tuple):
-    # Lit gold from dusk to 23:45, sparkling the first five minutes of each hour. clock: (hour, minute)
-    if night < 0.05 or clock >= (23, 45) or 3 < clock[0] < 12:
+    if not lit(night, clock):
         return
     for b, e, width, _ in points:
         if abs(wrap(b - yaw)) > fov / 2 + 5:
@@ -902,6 +908,18 @@ def aim(st, fov: float, around: list = ()) -> tuple[float, float]:
         yaw = tour(mean_bearing(marks) if marks else start + span / 2, list(around), time.time())
     return yaw, fov
 
+def show(se: float, now: float) -> tuple[float, float] | None:
+    '''The Eiffel tower sparkling: (how much the camera's on it, 0..1, s since it started) from a minute before to
+    a bit after, None otherwise.'''
+    night = min(max((-se - 2) / 8, 0), 1)
+    for at in (now - now % 3600, now - now % 3600 + 3600):
+        t = time.localtime(at)
+        u = now - at
+        if -show_lead < u < 300 + show_back and lit(night, (t.tm_hour, 0)):
+            k = min((u + show_lead) / show_lead, 1, (300 + show_back - u) / show_back)
+            return k * k * (3 - 2 * k), u
+    return None
+
 def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]:
     # Held still while what it looks at stays in view: zoomed on the plane of a card the first time it's on top,
     # then turned only when the followed plane leaves the clear box, or the planes seen move a quarter view away.
@@ -926,6 +944,15 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sun = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     target, fov = aim(st, fov, sights(st, sun, astro.moon_at(time.time(), fs.config.latitude, fs.config.longitude)[:2]))
+    if on := show(sun[1], time.time()):
+        # Turned to the Eiffel tower while it sparkles, in the clear box; zooming in and out, drifting along it.
+        k, u = on
+        e = min(max(u, 0), 300)
+        zoom = show_fov[0] + (show_fov[1] - show_fov[0]) * (0.5 + 0.5 * math.cos(2 * math.pi * e / show_breathe))
+        b = bearing(*local_xy(*landmarks[-1][1:3])) - middle / w * zoom + 0.2 * zoom * math.sin(2 * math.pi * e / 80)
+        _held[fs.config.name] = yaw = (target + wrap(b - target) * k) % 360
+        rest = OpenedStateManager().get_state(fs).horizon or horizon
+        return yaw, fov + (zoom - fov) * k, rest
     # Idle it follows the tour; on planes, it turns only when they're a quarter view away.
     if yaw is None or abs(wrap(target - yaw)) > fov / 4 or not any(h in st.planes for h in st.watched):
         yaw = target
