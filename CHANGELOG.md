@@ -48,17 +48,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Sky state: one doc for the sky, the weather and the time over home, fused once a minute from every source (the model, the light by the window, the satellite, Home Assistant, the radar, the planes; others can add theirs), each value with how sure it is and who said what. The sky view draws from it.
 - The planes as weather balloons: the temperature and wind they report make a profile over home (freezing level, jet, inversions); contrails behind the planes where it's cold enough, lasting and spreading when the air up there is moist.
 - **The real skyline in the sky view**: the roofs all around the window, from IGN's buildings, woods and rows of trees, and HeyWhatsThat's hills, near to far; the window nudged until the places seen from it (the waypoints) are over the roofs. Paris' stone by day, many facades white, hazier the farther and with the haze outside; the trees as crowns standing on their ground, by the season; the landmarks and the towers a little lighter; the antennas, chimneys and pylons, TV antennas on the near roofs; tower cranes at work, red and white; the Eiffel tower lit and sparkling at night. At night windows light up (window-shaped up close), and the tall ones have their red lights. A new version is built on its own, the last one shown meanwhile. Drawn once while the view stays put (it moves a pixel at a time).
+- **Zen**, per screen (web page, or the entrance's button): only the time, the weather and the background, the planes without labels; a card asking for focus (a print starting, a tap) still comes through. It ends after an hour.
+- The bottom stacks hidden on every screen, from the web page or the entrance's button; cards asking for focus still show.
 
 ### Changed
+- What's shown, one way for every widget: its checkbox on the web page switches it off till checked again; its `show_` button shows it for a while (checking it again) or hides it till its schedule brings it back. Kept for all the screens by the data service.
+- The views (map, sky, solar) take turns over the day, the checked ones; one pressed shows for an hour. The solar view never brings the radar. The entrance has no sky view (`aviator_views`).
 - The sky view looks at the waypoints' piece of the skyline, closer in, widening for the planes and now and then to the whole window; idle, it turns slowly to the sights around (the landmarks, a low sun or moon, where the planes are) and back. It pans up to a followed plane and drifts up and down otherwise, the near roofs sliding over the far ones.
 - The sky view's controls on the web page: where it looks up or down and from which floor (kept), turning and zooming it for a while, and a demo: once around, slowly, through the skies one may see (morning to night, haze, rain, snow, fog, wind).
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
+- The side stack holds still when all its cards fit, the selected one picked as before; every five minutes it turns by one card against burn-in (`discore`: `StackStyle(still_if_fits=)`).
 
 ### Fixed
+- The stacks scrolled each card a pixel lower than the one before it; they all stop at the same place now.
 - The weather card's rain was an hour late.
 - The sky view's big clouds had a notch cut on their right; they're heaped cumulus now.
 - The desk's daylight colour was never learnt while a lamp stayed on.
 - Telemetry from a client that restarted was ignored until its clock caught up; the timer took the encoder's restart (or the renderer's) for a big turn.
+- The planes' cards were never shown: they're back for the planes passing overhead, and a tapped plane always gets its card.
+- The web page's show buttons toggled each renderer on its own, so screens could disagree.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 

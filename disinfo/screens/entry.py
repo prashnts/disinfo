@@ -19,12 +19,12 @@ from discore.stack import Stack, StackStyle
 from discore.text import text, TextStyle
 
 from disinfo import fonts
-from disinfo.drat import idfm
+from disinfo.drat import shown
 from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
 from disinfo.utils.mdi import icon
 from . import aviator
-from .paris_metro import MetroStateManager
+from . import paris_metro
 from .common import background, side_cards, bottom_cards, motion, focus, heat_store, across
 from .date_time import flip_digital_clock
 from .solar.app import AnalogClockStyle, sky_color
@@ -122,9 +122,11 @@ def controls(fs: FrameState, width: int, ncols: int = 3) -> Frame:
         service, on = action(e, last)
         buttons.append(control(fs, name, {'service': service, 'target': {'entity_id': e.entity_id}}, on, mdi, kind,
                                outline=service == 'homeassistant.toggle' and not on, hold=HOLD if service.endswith('.press') else 0))
-    # The metro card: shown or hidden for a while (drat.idfm.press), on while it's up.
-    buttons.append(control(fs, None, None, idfm.visible(fs.now, MetroStateManager().get_state(fs).press), 'subway-variant', 'pill',
-                           act='show_metro'))
+    # The metro card: shown or hidden for a while (drat.shown), on while it's up.
+    buttons.append(control(fs, None, None, paris_metro.up(fs), 'subway-variant', 'pill', act='show_metro'))
+    # The bottom stacks hidden on every screen, zen on this one: on while they are.
+    buttons.append(control(fs, None, None, not shown.bottom(fs), 'dock-bottom', 'pill', act='bottom'))
+    buttons.append(control(fs, None, {'screen': fs.config.name}, shown.zen(fs), 'meditation', 'pill', act='zen'))
     # Fewer columns till it fits: cut to width, the buttons lose their right edges. One column is cut anyway.
     for n in range(ncols, 0, -1):
         g = grid(buttons, ncols=n, gap=GAP//2, anchor='tm', masonry=True)

@@ -12,7 +12,7 @@ from discore.layers import div
 from discore.text import TextStyle, text
 from discore.spriteim import SpriteIcon
 from discore.data_structures import FrameState
-from ..drat.app_states import RuntimeStateManager
+from ..drat import shown
 
 
 nyan_gif = SpriteIcon('assets/raster/nyan-cat2.gif', step_time=0.1, resize=(42, 42))
@@ -58,7 +58,7 @@ def composer(fs: FrameState):
     twentytwo = t.hour == t.minute == 22
     all_equal = t.hour == t.minute == t.second
 
-    if RuntimeStateManager().get_state(fs).show_twentytwo:
+    if shown.up(fs, 'twentytwo'):
         equal_elements = True
 
     if not equal_elements:

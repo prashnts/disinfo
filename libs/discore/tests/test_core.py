@@ -45,6 +45,24 @@ def test_stack_survives_shrinking_list():
     assert stack.mut([w('a')]).draw(fs)
     assert Stack('t.empty', StackStyle(size=32)).mut([]).draw(fs) is None
 
+def test_stack_still_if_fits():
+    from dataclasses import replace
+    fs = FrameState.create()
+    colors = {'a': (255, 0, 0, 255), 'b': (0, 255, 0, 255), 'c': (0, 0, 255, 255)}
+    ws = [Widget(n, solid(c, (10, 10)), transition_duration=0.01) for n, c in colors.items()]
+    stack = Stack('t.still', StackStyle(size=80, still_if_fits=60)).mut(ws)
+    t0 = fs.tick + 1
+    draw = lambda t: stack.draw(replace(fs, tick=t0 + t))
+    which = lambda p: p.index(max(p[:3])) if max(p[:3]) > 200 else None
+    cards = lambda im: [which(im.getpixel((6, y))) for y in range(0, 80, 2)]
+    for t in range(30):
+        first = cards(draw(t / 10).image)
+    stack.next_widget()
+    assert stack.pos != 0 and cards(draw(3).image) == first     # selected, not scrolled
+    seen = {cards(draw(t / 10).image)[6] for t in range(40, 4000)}      # every card on top in turn
+    assert seen >= {0, 1, 2}
+    assert stack.top < 3
+
 def test_attached_widgets_as_wide_under_it():
     fs = FrameState.create()
     small = Widget('att.small', solid((0, 0, 255, 255), (4, 4)))
@@ -478,7 +496,7 @@ def test_screen_sees_frosted_items_overlap():
     assert s.spot('b').anchor == 'tr'
 
 def test_screen_waits_before_moving_in_between(monkeypatch):
-    now = [time.monotonic()]
+    now = [float(round(time.monotonic()))]     # whole: += 1 stays exact
     monkeypatch.setattr(scr.time, 'monotonic', lambda: now[0])
     s, under_card = sides(), Focus((64, 48)).disk(8, 24, 6)
     for _ in range(scr.anytime_s):
@@ -489,7 +507,7 @@ def test_screen_waits_before_moving_in_between(monkeypatch):
     assert s.spot('card').anchor == 'mr'     # it stays
 
 def test_screen_following_focus_only_on_relayout(monkeypatch):
-    now = [time.monotonic()]
+    now = [float(round(time.monotonic()))]
     monkeypatch.setattr(scr.time, 'monotonic', lambda: now[0])
     s, radar = sides(), Focus((64, 48), follows=True).disk(8, 24, 6)
     for _ in range(scr.anytime_s + 5):

@@ -33,7 +33,7 @@ def test_date_in_the_time_row_only_when_covered():
     layout = covered.arrange(fs, items(box(128, 100)), relayout=True)
     assert 'timedate' in covered.spots() and 'timedate' in layout.positions and 'date' not in layout.positions
 
-def test_design_demo_pages_draw_in_their_room():
+def test_design_demo_pages_draw_in_their_room(monkeypatch):
     import time
     import pendulum
     from discore.data_structures import FrameState
@@ -42,7 +42,8 @@ def test_design_demo_pages_draw_in_their_room():
     from disinfo.apps import design_demo as dd
     fs = FrameState(tick=time.time(), now=pendulum.now(), config=app_config)
     m = RuntimeStateManager()
-    m.state.show_design_demo, m.state.stream_url = True, None
+    m.state.stream_url = None
+    monkeypatch.setattr(dd, 'up', lambda fs, name, scheduled=False: True)
     m.state.design_demo = {}
     for tab, pages in dd.tabs.items():
         for i, (name, page) in enumerate(pages):

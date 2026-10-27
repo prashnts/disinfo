@@ -143,9 +143,10 @@ class Config(AppBaseModel):
     aviator_map_up: float = 0
     # The map's zoom on its view (the window's slice): under 1 it pulls out, centered on home at the end.
     aviator_zoom: float = 1
-    # 'map': the radar from above, when there's something to see. 'sky': out of the window, the sun and the planes, always.
-    # 'solar': the solar clock, no planes in the background.
-    aviator_view: str = 'map'
+    # The views this screen takes in turn (the web page's checked ones), or shows pressed. 'map': the radar from above,
+    # when there's something to see. 'sky': out of the window, the sun and the planes, always. 'solar': the solar clock,
+    # no planes in the background.
+    aviator_views: list[str] = ['map', 'sky', 'solar']
     # The window's height over the street, m: the roofs around sit under the horizon or over it (11th floor).
     aviator_eye_m: float = 35
     # The light by the window (aviator/daylight.py): Sensei's lux and UV, the desk's colour sensor (its telemetry

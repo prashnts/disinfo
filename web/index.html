@@ -287,7 +287,6 @@
                 })
             }
             return html`
-                <${RemoteButton} action="show_planes" />
                 <div class="in slider">
                     <label>
                         <strong>Map Radius</strong>
@@ -295,10 +294,45 @@
                         <code>${km}km</code>
                     </label>
                 </div>
-                <${RemoteButton} action="aviator.view" payload=${{view: 'map'}} title="map" />
-                <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
-                <${RemoteButton} action="aviator.view" payload=${{view: 'solar'}} title="solar" />
+                <${Views}/>
                 `
+        }
+
+        const send = (action, payload) => fetch('/remote', {
+            method: 'POST',
+            body: JSON.stringify({action, payload}),
+            headers: {'Content-Type': 'application/json'},
+        })
+
+        function Views(props) {
+            // Checked, they take turns over the day; pressed, one shows for an hour (checked again).
+            const [off, setOff] = useState([])
+            useEffect(() => { fetch('/aviator/settings').then(r => r.json()).then(s => setOff(s.views_off || [])) }, [])
+            const check = (v, on) => { setOff(on ? off.filter(n => n !== v) : [...off, v]); send('aviator.views', {view: v, on}) }
+            const press = v => { setOff(off.filter(n => n !== v)); send('aviator.view', {view: v}) }
+            return html`<div>${['map', 'sky', 'solar'].map(v => html`
+                <label><input type="checkbox" checked=${!off.includes(v)} onChange=${e => check(v, e.currentTarget.checked)}/></label>
+                <button class='remote_button' onClick=${() => press(v)}>${v}</button>`)}
+            </div>`
+        }
+
+        function Shown(props) {
+            // The widgets: checked, they come on their schedule; show_ shows one for a while (checked again) or hides it
+            // till its schedule. The bottom stacks on every screen, zen by screen.
+            const [s, setS] = useState({widgets: [], off: [], bottom: true, zen: []})
+            const load = () => fetch('/shown').then(r => r.json()).then(setS)
+            useEffect(() => { load() }, [])
+            const then = p => p.then(() => setTimeout(load, 300))
+            return html`<div>
+                <label><input type="checkbox" checked=${s.bottom} onChange=${e => then(send('bottom', {on: e.currentTarget.checked}))}/> <strong>bottom stacks</strong></label>
+                <div>zen ${['disalon', 'distudy', 'di_pcstate', 'dientry'].map(n => html`
+                    <label><input type="checkbox" checked=${s.zen.includes(n)} onChange=${e => then(send('zen', {screen: n, on: e.currentTarget.checked}))}/> ${n}</label>`)}
+                </div>
+                ${s.widgets.map(n => html`<div>
+                    <label><input type="checkbox" checked=${!s.off.includes(n)} onChange=${e => then(send('widget', {name: n, on: e.currentTarget.checked}))}/></label>
+                    <button class='remote_button' onClick=${() => then(send(`show_${n}`, {}))}>show_${n}</button>
+                </div>`)}
+            </div>`
         }
 
         function SkyView(props) {
@@ -483,17 +517,11 @@
         function App(props) {
             return html`
                 <div>
-                    <${RemoteButton} action="show_metro" />
-                    <${RemoteButton} action="show_twentytwo" />
-                    <${RemoteButton} action="screencap" />
+                    <${Shown}/>
                 </div>
                 <div>
-                    <${RemoteButton} action="show_sensors" />
-                    <${RemoteButton} action="show_news" />
+                    <${RemoteButton} action="screencap" />
                     <${RemoteButton} action="motion_toggle" />
-                    <${RemoteButton} action="show_fonts_credit" />
-                    <${RemoteButton} action="show_printers" />
-                    <${RemoteButton} action="show_design_demo" title="design demo" />
                     ${['flex', 'grid', 'stack', 'type', 'box', 'motion', 'scroll', 'media', 'touch'].map(tab => html`<${RemoteButton} action="design_demo" payload=${{tab, page: null}} title=${tab} />`)}
                 </div>
                 <div>
@@ -507,7 +535,6 @@
                     <${MapAngle}/>
                 </div>
                 <div>
-                    <${RemoteButton} action="show_stream" />
                     <${StreamURL}/>
                 </div>`;
         }

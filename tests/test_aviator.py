@@ -104,18 +104,40 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
     from disinfo.screens.aviator import widgets
     from disinfo.screens.aviator.state import AviatorState
     st = AviatorState(planes={h: plane(hex=h) for h in 'abc'}, overhead=['a'], watched=['a', 'b', 'c'])
-    runtime = NS(show_planes=True)
+    runtime = NS(up=True, pressed=False)
     monkeypatch.setattr(widgets, 'ADSBxStateManager', lambda: NS(get_state=lambda fs: st))
     monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={'b': 0}, light=False)))
-    monkeypatch.setattr(widgets, 'RuntimeStateManager', lambda: NS(get_state=lambda fs: runtime))
+    monkeypatch.setattr(widgets.shown, 'up', lambda fs, name, scheduled=False: runtime.up)
+    monkeypatch.setattr(widgets.shown, 'is_pressed', lambda fs, name: runtime.pressed)
     monkeypatch.setattr(widgets, 'on_top', lambda fs: None)
     monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'solar')
     tiled = []
     monkeypatch.setattr(widgets, 'card', lambda fs, p, active: Frame(Image.new('RGBA', (2, 2))))
     monkeypatch.setattr(widgets, 'tile', lambda fs, ps: tiled.append([p['hex'] for p in ps]) or Frame(Image.new('RGBA', (2, 2))))
     assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator.a']     # the solar view: cards only
-    runtime.show_planes = False
-    assert [w.name for w in widgets.planes(None)] == ['aviator-tile'] and tiled == [['b', 'a', 'c']]
+    runtime.up = False      # away: the tapped one's still a card
+    assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator-tile'] and tiled == [['a', 'c']]
+    runtime.up = runtime.pressed = True     # pressed: all the watched ones
+    assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator.a', 'aviator.c']
+
+def test_views_take_turns(monkeypatch):
+    from types import SimpleNamespace as NS
+    from disinfo.screens.aviator import state
+    m = NS(view=None, view_at=0, views_off=[])
+    monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: m))
+    fs = NS(config=NS(aviator_views=['map', 'sky', 'solar']))
+    seen = set()
+    for k in range(3):
+        monkeypatch.setattr(app.time, 'time', lambda: k * state.VIEW_TURN + 1)
+        seen.add(app.view_mode(fs))
+    assert seen == {'map', 'sky', 'solar'}
+    m.views_off = ['map', 'sky']
+    assert app.view_mode(fs) == 'solar'
+    # Pressed: that one for a while, if the screen has it (dientry has no sky).
+    m.view, m.view_at = 'sky', app.time.time() - 10
+    assert app.view_mode(fs) == 'sky'
+    fs.config.aviator_views = ['map', 'solar']
+    assert app.view_mode(fs) == 'solar'
 
 
 def test_overhead_is_reach_not_elevation(monkeypatch):
@@ -512,6 +534,9 @@ def test_sky_tour_and_roofs(monkeypatch):
     mid = sky.tour(90, [300], k * period + sky.tour_glide / 2)
     assert mid == pytest.approx(15) and sky.tour(90, [None], (k + 2) * period) == 90
     # The roofs all around, trees in front, by day and at night: nothing under the horizon left bare, the sky clear.
+    # The Eiffel tower 7.3 km away, west by north, whichever home the config has.
+    from disinfo.screens.aviator import utils
+    monkeypatch.setattr(sky, 'landmarks', [('eiffel', utils.home[0] + 1.8 / utils.km_lat, utils.home[1] - 7.07 / utils.km_lon, 330, 35, 125, 'eiffel')])
     n = int(360 / skyline.res)
     p = np.full((5, n), -90.0, np.float32)
     p[-1], p[0, :n // 2] = -0.2, -3

@@ -10,7 +10,7 @@ from functools import cache
 from typing import Optional
 
 from ..utils.drawer import draw_loop
-from ..drat.app_states import RuntimeStateManager
+from ..drat import shown
 from discore.text import Text, TextStyle, text
 from PIL import Image
 from discore.elements import StillImage, Frame
@@ -501,7 +501,7 @@ def watching(fs: FrameState, state: PrinterState) -> bool:
 
 def composer(fs: FrameState, state: PrinterState):
     # show_printers expands every online printer, otherwise only the ones printing or just done.
-    expanded = watching(fs, state) or state.phase in live_phases or (state.is_on and RuntimeStateManager().get_state(fs).show_printers)
+    expanded = watching(fs, state) or state.phase in live_phases or (state.is_on and shown.is_pressed(fs, 'printers'))
     if not (state.is_visible or expanded):
         return
     uname = lambda x: f'{x}_{state.printer_id}'

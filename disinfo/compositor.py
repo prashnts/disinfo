@@ -88,7 +88,7 @@ def compose_big_frame(fs: FrameState):
     # The stacks first: the background is the one their cards on top bring. Made on the designated side, turned
     # to the side they're on.
     designated = screen.choices[0][0].spots['side'].anchor[1]
-    stack_conf = StackStyle(size=config.height, align='right' if designated == 'r' else 'left', horizontal=False)
+    stack_conf = StackStyle(size=config.height, align='right' if designated == 'r' else 'left', horizontal=False, still_if_fits=300)
     stack = Stack('main_cards', style=stack_conf).mut(side_cards(fs))
     stack.style = dc_replace(stack_conf, align='right' if screen.spot('side').anchor[1] == 'r' else 'left')
     stack_hor_conf = StackStyle(align='bottom', horizontal=True, offset_top=0, size=config.width)
@@ -206,7 +206,7 @@ def compose_display_frame(fs: FrameState):
 
     on_top, moved, items = [], False, {}
     if awake:
-        stack_conf = StackStyle(size=config.height, align='left', horizontal=False)
+        stack_conf = StackStyle(size=config.height, align='left', horizontal=False, still_if_fits=300)
         stack = Stack('main_cards', style=stack_conf).mut([
             *side_cards(fs),
             screens.date_time.calendar_widget(fs),

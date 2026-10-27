@@ -9,12 +9,13 @@ from discore.text import text
 from discore.data_structures import FrameState
 from discore.widget import Widget
 from ..drat.app_states import RuntimeStateManager
+from ..drat import shown
 
 def draw_stream(fs: FrameState) -> Frame | None:
     state = RuntimeStateManager().get_state(fs)
     url = state.stream_url
     # The stream client stops by itself once we stop reading it.
-    if not url or not state.show_stream:
+    if not url or not shown.up(fs, 'stream'):
         return
     if not (frame := MJPEGStream(url).read(width=120)):
         return

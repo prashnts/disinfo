@@ -15,7 +15,7 @@ from discore.transitions import text_slide_in
 from discore.scroller import HScroller
 from discore.cairo import load_svg_string
 from disinfo import fonts
-from disinfo.drat.app_states import RuntimeStateManager
+from disinfo.drat import shown
 
 from .state import ADSBxStateManager, OpenedStateManager
 from .colors import marker_color
@@ -178,15 +178,17 @@ def planes(fs: FrameState) -> list[Widget]:
     k = looks(fs)
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
-    carded = [h for h in dict.fromkeys([*opened, *st.overhead]) if h in st.planes]
-    seen = [st.planes[h] for h in st.watched if h in st.planes and h not in carded]
-    # Cards hidden (the web page's show_planes): theirs first in the tile.
-    if not (show := RuntimeStateManager().get_state(fs).show_planes):
-        seen, carded = [st.planes[h] for h in carded] + seen, []
-    shown = on_top(fs)
+    overhead = [h for h in st.overhead if h in st.planes]
+    # The cards away (drat.shown 'planes'): theirs first in the tile, the tapped one's still a card. Pressed: all the
+    # watched planes get one.
+    show = shown.up(fs, 'planes', bool(overhead))
+    more = st.watched if shown.is_pressed(fs, 'planes') else overhead if show else []
+    carded = [h for h in dict.fromkeys([*opened, *more]) if h in st.planes]
+    seen = [st.planes[h] for h in dict.fromkeys([*overhead, *st.watched]) if h in st.planes and h not in carded]
+    top = on_top(fs)
     # After the other cards (the printer's, the music's): they take the stack only when tapped.
     # On top of the stack, they bring the radar behind (the map or the sky).
-    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == shown), background='aviator', style=k.widget, priority=0.4, focus=h in opened, wait_time=10)
+    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == top), background='aviator', style=k.widget, priority=0.4, focus=h in opened, wait_time=10)
              for h in carded]
     # Not 'aviator.<hex>': the radar follows the cards only.
     # The solar view keeps to the planes passing overhead.

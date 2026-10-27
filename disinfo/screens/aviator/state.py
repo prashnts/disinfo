@@ -8,7 +8,8 @@ from disinfo.redis import db
 
 from .tasks import TABLE_KEY, RADIUS_KEY, MAX_ALT_KEY, TRAIL_KEY, radius_km, trail_s
 
-VIEW_KEY = 'di.aviator.view'     # map, sky or solar on every screen, from the web page; their config's otherwise
+VIEW_KEY = 'di.aviator.view'     # map, sky or solar pressed on the web page: {view, at}, for VIEW_HOLD
+VIEWS_OFF_KEY = 'di.aviator.views_off'  # the views unchecked: out of the turns, a JSON list
 MAP_UP_KEY = 'di.aviator.map_up'  # screen -> bearing, a JSON dict
 ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
@@ -18,6 +19,8 @@ EYE_KEY = 'di.aviator.eye'          # the sky view seen from floors under (or ov
 VIEWS = ['map', 'sky', 'solar']
 DEMO_S = 132                       # s: the sky view's demo, once around
 SKY_HOLD = 300                     # s the sky view stays where the web page turned it
+VIEW_HOLD = 3600                   # s a view pressed stays, then the checked ones take turns again
+VIEW_TURN = 1200                   # s each checked view has, in turn, over the day
 
 
 class AviatorState(AppBaseModel):
@@ -51,7 +54,9 @@ class ADSBxStateManager(PubSubStateManager[AviatorState]):
 
 class OpenedState(AppBaseModel):
     opened: dict[str, float] = {}       # hex -> when it was tapped
-    view: str | None = None
+    view: str | None = None             # pressed on the web page, at view_at; kept in redis
+    view_at: float = 0
+    views_off: list[str] = []           # unchecked: out of the turns; kept in redis
     off: list[str] = []                 # the map's layers switched off, from the web page; kept in redis
     light: bool = False                 # the map's light mode, from the web page; kept in redis
     map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
@@ -80,7 +85,11 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     keep_open = 90
 
     def initial_state(self) -> OpenedState:
-        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY),
+        try:
+            pressed = json.loads(db.get(VIEW_KEY) or '{}')
+        except ValueError:
+            pressed = {}
+        return OpenedState(view=pressed.get('view'), view_at=pressed.get('at', 0), views_off=read_list(VIEWS_OFF_KEY), map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY),
                            horizon=float(db.get(HORIZON_KEY) or 0) or None, floors=float(db.get(EYE_KEY) or 0))
 
     def process_message(self, channel: str, data: PubSubMessage):
@@ -90,22 +99,28 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
             case 'aviator.close':
                 self.state.opened.pop(data.payload['hex'], None)
             case 'aviator.view':
-                # The one asked for, or the next (the displays' button).
+                # The one asked for (checked again), or the next (the displays' button), for VIEW_HOLD.
                 current = self.state.view or 'map'
-                self.state.view = (data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0]
-                db.set(VIEW_KEY, self.state.view)
+                self.pressed((data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0])
+            case 'aviator.views':
+                # A checkbox: in the turns or out. Out, its press goes too.
+                view, on = data.payload['view'], bool(data.payload['on'])
+                self.state.views_off = [v for v in self.state.views_off if v != view] + ([] if on else [view])
+                db.set(VIEWS_OFF_KEY, json.dumps(self.state.views_off))
+                if not on and self.state.view == view:
+                    self.pressed(None)
             case 'aviator.demo':
                 # On the sky view (not kept), or off again.
                 on = self.state.demo is None or time.time() - self.state.demo > DEMO_S
                 self.state.demo = time.time() if on else None
                 if on:
-                    self.state.view = 'sky'
+                    self.state.view, self.state.view_at = 'sky', time.time()
             case 'aviator.sky':
                 # Turned or zoomed for a while (on the sky view, not kept), or back to its own.
                 p = {k: float(v) for k, v in (data.payload or {}).items() if k in ('yaw', 'fov') and v is not None}
                 self.state.sky = {**self.state.sky, **p, 'at': time.time()} if p else {}
                 if p:
-                    self.state.view = 'sky'
+                    self.state.view, self.state.view_at = 'sky', time.time()
             case 'aviator.horizon':
                 h = (data.payload or {}).get('h')
                 self.state.horizon = min(max(float(h), 0.3), 0.85) if h is not None else None
@@ -132,6 +147,13 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 db.set(TRAIL_KEY, float(data.payload['s']))
             case 'aviator.max_alt':
                 db.set(MAX_ALT_KEY, float(data.payload['m']))
+
+    def pressed(self, view: str | None):
+        self.state.view, self.state.view_at = view, time.time()
+        if view:
+            self.state.views_off = [v for v in self.state.views_off if v != view]
+            db.set(VIEWS_OFF_KEY, json.dumps(self.state.views_off))
+        db.set(VIEW_KEY, json.dumps({'view': view, 'at': self.state.view_at}))
 
     @staticmethod
     def set_all(d: dict, key: str, screen: str, v: float):

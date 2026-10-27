@@ -26,6 +26,7 @@ from discore.transitions import FadeIn, SlideIn, ScaleIn, Resize, NumberTransiti
 from discore.widget import Widget
 from disinfo import fonts
 from disinfo.drat.app_states import RuntimeStateManager, TouchStateManager
+from disinfo.drat.shown import up
 from disinfo.utils import mdi
 from disinfo.utils.mjpeg import MJPEGStream
 from disinfo.utils.weather_icons import get_icon_for_condition
@@ -536,7 +537,7 @@ def packed(fs: FrameState, pages: list, first: int, w: int, h: int) -> tuple[lis
 
 def composer(fs: FrameState, w: int, h: int) -> Frame | None:
     state = RuntimeStateManager().get_state(fs)
-    if not state.show_design_demo:
+    if not up(fs, 'design_demo'):
         return None
     s = state.design_demo
     tab = s.get('tab') if s.get('tab') in tabs else 'flex'

@@ -6,7 +6,7 @@ from schedule import Scheduler
 
 from ..redis import db
 from .app_states import PubSubManager, PubSubMessage
-from . import idfm
+from . import idfm, shown
 from ..screens.aviator.tasks import adsbx_task
 from ..screens.weather import vigilance, stations, forecast
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
@@ -43,9 +43,11 @@ class SafeScheduler(Scheduler):
 
 
 def on_pubsub(channel_name: str, message: PubSubMessage):
-    # The metro button, here only: one press, one toggle, whatever the screens.
+    # The buttons and checkboxes, here only: one press, one toggle, whatever the screens.
     if message.action in ('show_metro', 'btn_metro'):
         idfm.press()
+    elif channel_name == 'di.pubsub.remote':
+        shown.act(message.action, message.payload)
 
 
 starting = True        # until the first run of all the jobs is done

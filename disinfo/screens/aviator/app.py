@@ -14,8 +14,9 @@ from discore.layers import div
 from discore.text import TextStyle, text
 from disinfo import fonts
 from disinfo.config import app_config
+from disinfo.drat import shown
 
-from .state import ADSBxStateManager, OpenedStateManager
+from .state import ADSBxStateManager, OpenedStateManager, VIEWS, VIEW_HOLD, VIEW_TURN
 from .colors import marker_color
 from . import basemap, skylook, weather
 from .utils import airports, local_xy
@@ -340,7 +341,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     opened_state = OpenedStateManager().get_state(fs)
     is_light = opened_state.light
     theme = light if is_light else dark
-    info, show_planes = 'info' not in opened_state.off, 'planes' not in opened_state.off
+    info, show_planes = 'info' not in opened_state.off and not shown.zen(fs), 'planes' not in opened_state.off
     rest = view(st.focus, st.radius, rot, w, h)
     target = zoomed_view(rest, zoom(fs))
     clear = clear or (0, 0, w, h)
@@ -491,4 +492,10 @@ def zoomed_view(target: tuple[float, float, float], z: float) -> tuple[float, fl
     return cx * k, cy * k, s * z
 
 def view_mode(fs: FrameState) -> str:
-    return OpenedStateManager().get_state(fs).view or fs.config.aviator_view
+    '''The view pressed on the web page for a while, else the checked ones in turn: of the screen's own views.'''
+    m, now = OpenedStateManager().get_state(fs), time.time()
+    views = [v for v in VIEWS if v in fs.config.aviator_views]
+    if m.view in views and now - m.view_at < VIEW_HOLD:
+        return m.view
+    turns = [v for v in views if v not in m.views_off] or ['solar']
+    return turns[int(now // VIEW_TURN) % len(turns)]

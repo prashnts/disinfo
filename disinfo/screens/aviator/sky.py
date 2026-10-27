@@ -20,6 +20,7 @@ from discore.layouts import place_at
 from discore.text import TextStyle, text
 from disinfo import fonts
 from disinfo.config import app_config
+from disinfo.drat import shown
 from disinfo.screens.solar.app import sky_color
 
 from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD
@@ -35,7 +36,8 @@ elev_gamma = 0.5        # y ~ (elevation / top) ** gamma: the few degrees over t
 dip_max = 30            # degrees under the horizon at the bottom of the frame, the same stretch
 earth_r = 6371
 view_fov = 50           # degrees across, most of the time: the waypoints' piece of the skyline
-fov_min = 20            # zoomed on a plane
+follow_fov = 25         # on the followed plane
+fov_min = 20            # zoomed on a plane, the moment its card comes on top
 wide_every, wide_for = 900, 45          # s: pulled back to the whole window that long, every so often
 tour_dwell, tour_glide = 180, 90        # s: idle, on a sight (every other one the waypoints), then turning to the next
 home_ground = 47        # m above the sea
@@ -909,6 +911,7 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     followed = app.following(fs)
     middle = (clear[0] + clear[2]) / 2 - w / 2
     if followed:
+        fov = follow_fov
         p = st.planes[followed]
         b, e = sky_point(*app.position(p, time.time()), p['alt'])
         swept_hex, swept_at = app._swept.get(fs.config.name, (None, 0))
@@ -1259,7 +1262,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     ctx.line_to(w, hz)
     ctx.stroke()
 
-    info, show_planes = 'info' not in off, 'planes' not in off
+    info, show_planes = 'info' not in off and not shown.zen(fs), 'planes' not in off
     tint, snow_tint = fall_tint(lk, rain_color), fall_tint(lk, snow_color, 0.5)
     if 'clouds' not in off or wet:
         cc = skylook.cloud_color(lk, wet * (1 - 0.7 * snow))

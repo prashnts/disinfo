@@ -13,7 +13,7 @@ from discore.widget import Widget
 from ..utils.palettes import metro_colors
 from ..data_structures import AppBaseModel
 from ..drat.app_states import PubSubStateManager, PubSubMessage
-from ..drat import idfm
+from ..drat import idfm, shown
 
 warning_tile = StillImage('assets/raster/warning-tile-3x3.png')
 metro_issue_icon = StillImage('assets/raster/metro-issues.png')
@@ -34,7 +34,6 @@ fresh_s = 600           # older data is not shown, the banner is
 class MetroState(AppBaseModel):
     doc: dict | None = None
     notes: dict = {}
-    press: dict | None = None
 
 class MetroStateManager(PubSubStateManager[MetroState]):
     '''What the data service fetched (drat.idfm), read again when it says so.'''
@@ -44,8 +43,7 @@ class MetroStateManager(PubSubStateManager[MetroState]):
     def initial_state(self) -> MetroState:
         return MetroState(
             doc=idfm.load(idfm.KEY),
-            notes=(idfm.load(idfm.NOTES_KEY) or {}).get('notes', {}),
-            press=idfm.load(idfm.PRESS_KEY))
+            notes=(idfm.load(idfm.NOTES_KEY) or {}).get('notes', {}))
 
     def process_message(self, channel: str, data: PubSubMessage):
         self.state = self.initial_state()
@@ -130,14 +128,17 @@ def card(fs: FrameState, s: MetroState) -> Frame:
     return hstack([left, box], gap=2, align='top')
 
 
+def up(fs: FrameState) -> bool:
+    return shown.up(fs, 'metro', idfm.scheduled(fs.now))
+
 def widgets(fs: FrameState) -> list[Widget]:
     '''In the bottom stack on schedule, on top for a minute when the button's pressed.'''
     s = MetroStateManager().get_state(fs)
-    if not idfm.visible(fs.now, s.press):
+    if not up(fs):
         # Kept, empty: it shrinks away (Resize), and grows back from nothing.
         return [Widget('di.metro.info', None, style=card_style)]
     fresh = s.doc and fs.now.timestamp() - s.doc['at'] < fresh_s
     frame = card(fs, s) if fresh else div(metro_paris_banner, padding=10)
-    pressed = bool(s.press and fs.now.timestamp() < s.press['until'])
+    pressed = shown.is_pressed(fs, 'metro')
     return [Widget('di.metro.info', frame.tag(('metro', fresh and s.doc['at'], len(s.notes))), focus=pressed, priority=2 if pressed else 1,
                    wait_time=14, style=card_style)]

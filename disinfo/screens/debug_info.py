@@ -12,7 +12,7 @@ from discore.scroller import VScroller
 from discore.layers import div, DivStyle
 from ..utils.func import throttle
 from discore.data_structures import FrameState
-from ..drat.app_states import RuntimeStateManager
+from ..drat import shown
 from discore.widget import Widget
 from disinfo import fonts
 from disinfo.web.telemetry import TelemetryStateManager, act
@@ -167,7 +167,7 @@ def di_rmt(fs: FrameState):
 
 def info_sensors(fs: FrameState):
     telem = TelemetryStateManager(fs.config.name).get_state(fs)
-    if not RuntimeStateManager().get_state(fs).show_sensors:
+    if not shown.up(fs, 'sensors'):
         if telem.ircam.enabled:
             act(fs, 'ircam', 'stop', str(fs.tick))
         return
@@ -186,7 +186,7 @@ def info_sensors(fs: FrameState):
     return info.tag(('debug_info', 1))
 
 def info_fonts(fs: FrameState):
-    if not RuntimeStateManager().get_state(fs).show_fonts_credit:
+    if not shown.up(fs, 'fonts_credit'):
         sample_vscroll().reset_position()
         return
 

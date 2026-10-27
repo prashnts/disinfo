@@ -14,6 +14,7 @@ from starlette.responses import RedirectResponse, StreamingResponse
 
 from disinfo.drat.app_states import PubSubManager, PubSubMessage
 from disinfo.drat.tools import trigger_motion
+from disinfo.drat import shown
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
 from disinfo.utils.hass import HaWS
@@ -232,8 +233,19 @@ async def aviator_settings():
         off = json.loads(db.get('di.aviator.layers') or '[]')
     except ValueError:
         off = []
+    try:
+        views_off = json.loads(db.get('di.aviator.views_off') or '[]')
+    except ValueError:
+        views_off = []
     return {'light': db.get('di.aviator.light') == b'1', 'off': off, 'horizon': float(db.get('di.aviator.horizon') or 0) or None,
-            'floors': float(db.get('di.aviator.eye') or 0)}
+            'floors': float(db.get('di.aviator.eye') or 0), 'views_off': views_off}
+
+@app.get('/shown')
+async def shown_settings():
+    # The widgets' checkboxes, the bottom stacks, zen by screen (drat/shown.py).
+    s, now = shown.load(), time.time()
+    return {'widgets': list(shown.WIDGETS), 'off': s.off, 'bottom': s.bottom,
+            'zen': [k for k in s.zen if shown.zen_since(s, k, now)]}
 
 @app.get('/weather/diag')
 async def weather_diag(hours: int = 36):

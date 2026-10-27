@@ -91,22 +91,12 @@ class RuntimeState(AppBaseModel):
 
     # Simulate Motion
     motion_override: bool = app_config.devmode
-    # Debug info
+    # Debug info. What's shown (show_<name>) is drat.shown's.
     show_debug: bool = False
-    show_fonts_credit: bool = False
-    show_sensors: bool = False
-    show_printers: bool = False
-    show_design_demo: bool = False
-    show_planes: bool = False      # the aviator's big cards; off, their planes go in the tile
     design_demo: dict = {}      # the design demo's tab, page and its touch tab's toys
     screen_capture: bool = False
 
-    # Extras
-    show_twentytwo: bool = False
-    show_news: bool = False
-
     # Streaming MJPEG
-    show_stream: bool = False
     stream_url: str | None = None
 
 class RuntimeStateManager(PubSubStateManager[RuntimeState]):
@@ -127,14 +117,10 @@ class RuntimeStateManager(PubSubStateManager[RuntimeState]):
                 self.state.motion_override = not self.state.motion_override
             case 'screencap':
                 self.state.screen_capture = not self.state.screen_capture
-            case 'show_twentytwo':
-                self.state.show_twentytwo = not self.state.show_twentytwo
             case 'design_demo':
                 self.state.design_demo = {**self.state.design_demo, **data.payload}
             case 'set_stream_url':
                 self.state.stream_url = data.payload['url']
-            case action if action.startswith('show_') and action in RuntimeState.model_fields:
-                setattr(self.state, action, not getattr(self.state, action))
 
 
 class TouchState(AppBaseModel):

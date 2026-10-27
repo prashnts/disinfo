@@ -12,6 +12,7 @@ from discore.transitions import FadeIn
 from . import aviator, debug_info, dishwasher, klipper, now_playing, paris_metro, solar, trash_pickup, washing_machine, weather
 from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
+from disinfo.drat import shown
 from disinfo.redis import db
 from disinfo.utils.hass import get_entity
 
@@ -29,9 +30,10 @@ def motion(fs: FrameState) -> bool:
 
 
 def radar_wanted(fs: FrameState, on_top: list) -> bool:
-    if aviator.app.quiet(fs):
+    # The sky view always, the map for a plane's card on top; the solar view never.
+    if aviator.app.quiet(fs) or (view := aviator.app.view_mode(fs)) == 'solar':
         return False
-    return aviator.app.view_mode(fs) == 'sky' or any(w and w.background == 'aviator' for w in on_top)
+    return view == 'sky' or any(w and w.background == 'aviator' for w in on_top)
 
 def background(fs: FrameState, style: AnalogClockStyle, clear: tuple, on_top: list) -> Frame:
     '''The background the widgets on top of the stacks bring (a plane's card: the radar), the solar clock otherwise.
@@ -80,7 +82,7 @@ def focus(fs: FrameState, on_top: list, solar_style):
     return clock
 
 def side_cards(fs: FrameState) -> list:
-    return [
+    return shown.kept(fs, [
         weather.widgets.weather(fs),
         *shazam_widgets(fs),
         now_playing.slideshow_widget(fs),
@@ -88,14 +90,14 @@ def side_cards(fs: FrameState) -> list:
         dishwasher.widget(fs),
         washing_machine.widget(fs),
         trash_pickup.widget(fs),
-    ]
+    ])
 
 def bottom_cards(fs: FrameState) -> list:
-    return [
+    return shown.kept(fs, [
         *aviator.widgets.planes(fs),
         *paris_metro.widgets(fs),
         weather.widgets.graphs(fs),
         now_playing.widget(fs),
         *klipper.widget(fs),
         *debug_info.widgets(fs),
-    ]
+    ], 'bottom')

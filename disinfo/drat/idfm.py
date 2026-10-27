@@ -19,15 +19,13 @@ from disinfo.config import app_config
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
 from disinfo.utils.llm import model
+from . import shown
 
 PRIM = 'https://prim.iledefrance-mobilites.fr/marketplace'
 KEY = 'di.metro.state'
 NOTES_KEY = 'di.metro.notes'
-PRESS_KEY = 'di.metro.press'
 trains_every = 60       # s between two looks at the stops (1M requests a day)
 reports_every = 600     # the lines' messages: all the metro in one request (30k a day)
-show_s = 60             # the button shows the card this long
-hide_s = 900            # or hides it, in its schedule
 regular_gap = 8         # min: trains further apart and the line is slow, whatever its messages say
 horizon = 30            # min of departures looked at for that
 ahead_days = 7          # messages for later than this are left out
@@ -101,12 +99,6 @@ def scheduled(at: datetime) -> bool:
     return any(at.isoweekday() in w.days and w.month_days[0] <= at.day <= w.month_days[1] and w.start <= hm < w.end
                for w in conf().schedule)
 
-def visible(at: datetime, press: dict | None) -> bool:
-    '''The button's last press while it holds, the schedule otherwise.'''
-    if press and at.timestamp() < press['until']:
-        return press['show']
-    return scheduled(at)
-
 def health(times: list[float], now: float) -> str:
     '''ok: trains within regular_gap of each other, slow: not, none: no trains coming.'''
     soon = [t for t in times if now <= t <= now + horizon * 60]
@@ -132,7 +124,7 @@ _lock = threading.Lock()
 def job(pressed: bool = False) -> bool:
     '''Fetches what's due, while the card is wanted. Pressed: a fresher look, but no more than 4 a minute.'''
     now = time.time()
-    if not (pressed or visible(datetime.now(tz), load(PRESS_KEY))):
+    if not (pressed or shown.wanted(shown.load(), 'metro', scheduled(datetime.now(tz)), now)):
         return False
     doc = load(KEY) or {}
     due = lambda key, every: now - doc.get(key, 0) >= (every / 4 if pressed else every)
@@ -165,13 +157,8 @@ def task(pressed: bool = False) -> bool:
         _lock.release()
 
 def press():
-    '''The button: shows the card for show_s, or hides it when it's up.'''
-    now = time.time()
-    shown = visible(datetime.now(tz), load(PRESS_KEY))
-    until = now + (hide_s if shown else show_s)
-    db.set(PRESS_KEY, json.dumps({'show': not shown, 'until': until}), ex=hide_s)
-    publish('di.pubsub.metro', 'update')
-    if not shown:
+    '''The button: shows the card for a while, or hides it when it's up (drat.shown).'''
+    if shown.press('metro'):
         threading.Thread(target=task, kwargs={'pressed': True}, daemon=True).start()
 
 

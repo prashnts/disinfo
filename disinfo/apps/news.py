@@ -25,7 +25,7 @@ from disinfo.utils.func import throttle
 from disinfo.utils.imops import image_from_url
 from discore.cairo import load_svg_string, load_svg
 from disinfo.utils.cairo import render_emoji
-from disinfo.drat.app_states import RuntimeStateManager
+from disinfo.drat import shown
 from disinfo.redis import om_db
 
 from .news_highlights import extract_highlights, is_extracting
@@ -186,7 +186,7 @@ kagi_news_icon = load_svg('assets/kagi_news_full.svg', 0.2).trim(upper=2, lower=
 
 
 def _news_deck(fs: FrameState):
-    if not RuntimeStateManager().get_state(fs).show_news:
+    if not shown.up(fs, 'news'):
         return None
 
     try:

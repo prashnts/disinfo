@@ -49,9 +49,8 @@ class GraphsStateManager(PubSubStateManager[GraphsState]):
             self.state.tapped[data.payload['screen']] = [bool(data.payload['show']), time.time()]
 
 def metro_up(fs: FrameState) -> bool:
-    from disinfo.screens.paris_metro import MetroStateManager
-    from disinfo.drat import idfm
-    return idfm.visible(fs.now, MetroStateManager().get_state(fs).press)
+    from disinfo.screens.paris_metro import up
+    return up(fs)
 
 def shown(fs: FrameState) -> tuple[bool, str]:
     '''Whether the graphs are open, and where: 'side' (under the weather card, the metro's up) or 'bottom'.'''

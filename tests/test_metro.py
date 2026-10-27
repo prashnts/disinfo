@@ -60,10 +60,27 @@ def test_schedule_and_press(conf):
     assert idfm.scheduled(at(2026, 10, 26, 7, 30))
     assert not idfm.scheduled(at(2026, 10, 25, 7, 30))      # sunday
     assert idfm.scheduled(at(2026, 10, 8, 15, 30)) and not idfm.scheduled(at(2026, 10, 22, 15, 30))     # thursdays, first two weeks
-    now = at(2026, 10, 26, 7, 30)
-    assert not idfm.visible(now, {'show': False, 'until': now.timestamp() + 1})
-    assert idfm.visible(now, {'show': False, 'until': now.timestamp() - 1})
-    assert idfm.visible(at(2026, 10, 26, 12), {'show': True, 'until': now.timestamp() + 5 * 3600})
+
+def test_shown_press_and_checkbox(monkeypatch):
+    from disinfo.drat import shown
+    db = FakeDB()
+    monkeypatch.setattr(shown, 'db', db)
+    monkeypatch.setattr(shown, 'publish', lambda *a: None)
+    s = lambda: shown.load()
+    up = lambda scheduled, t, screen=None: shown.wanted(s(), 'metro', scheduled, t, screen)
+    # Up on its schedule: a press hides it a while, then it's back.
+    db.hset(shown.SEEN_KEY, 'metro', T0)
+    assert not shown.press('metro', T0 + 1) and not up(True, T0 + 2) and up(True, T0 + 2000)
+    # Not up: a press shows it a while, again: away.
+    assert shown.press('metro', T0 + 3000) and up(False, T0 + 3001) and not up(False, T0 + 3100)
+    assert not shown.press('metro', T0 + 3010) and not up(False, T0 + 3011)
+    # Unchecked: never, even on its schedule; a press checks it again.
+    shown.act('widget', {'name': 'metro', 'on': False})
+    assert not up(True, T0 + 5000) and 'metro' in s().off
+    assert shown.press('metro', T0 + 5000) and up(False, T0 + 5001) and 'metro' not in s().off
+    # Zen: only what's pressed up since.
+    shown.act('zen', {'screen': 'a'})
+    assert not up(True, s().zen['a'][0] + 1, 'a') and up(True, s().zen['a'][0] + 1, 'b')
 
 def test_walk_and_health(conf):
     times = [T0 + m * 60 for m in (2, 6, 9, 13)]
@@ -76,10 +93,14 @@ def test_walk_and_health(conf):
 
 
 class FakeDB(dict):
-    def get(self, k):
-        return super().get(k)
+    def get(self, k, default=None):
+        return super().get(k, default)
     def set(self, k, v, ex=None):
         self[k] = v
+    def hset(self, k, f, v):
+        self.setdefault(k, {})[f] = v
+    def hget(self, k, f):
+        return self.get(k, {}).get(f)
 
 def test_no_overfetch(conf, monkeypatch):
     calls, clock = [], [T0]
@@ -107,7 +128,7 @@ def test_no_overfetch(conf, monkeypatch):
     # Out of the schedule: nothing, unless shown.
     clock[0] = T0 + 3 * 3600
     assert not idfm.task() and len(calls) == 4
-    idfm.db.set(idfm.PRESS_KEY, json.dumps({'show': True, 'until': clock[0] + 60}))
+    monkeypatch.setattr(idfm.shown, 'load', lambda: idfm.shown.Shown(press={'metro': {'show': True, 'until': clock[0] + 60}}))
     assert idfm.task() and len(calls) == 6
 
 def test_note_overlap():
