@@ -22,6 +22,7 @@ WIDGETS = {
     'moon': (('moon_phase',), 600, 900),
     'music': (('music', 'shazam.recognized'), 600, 900),
     'planes': ((), 600, 900),               # their cards (aviator.widgets): away, the planes go in the tile
+    'plane_tile': (('aviator-tile',), 600, 900),
     'metro': (('di.metro',), 60, 900),
     'printers': (('printer_',), 600, 900),
     'dishwasher': (('dishwasher',), 600, 900),

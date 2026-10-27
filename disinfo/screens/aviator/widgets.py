@@ -191,7 +191,7 @@ def planes(fs: FrameState) -> list[Widget]:
     cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == top), background='aviator', style=k.widget, priority=0.4, focus=h in opened, wait_time=10)
              for h in carded]
     # Not 'aviator.<hex>': the radar follows the cards only.
-    # The solar view keeps to the planes passing overhead.
-    if not seen or (view_mode(fs) == 'solar' and show):
+    # The solar view keeps to the planes passing overhead: no tile.
+    if not seen or view_mode(fs) == 'solar':
         return cards
     return cards + [Widget('aviator-tile', frame=tile(fs, seen), background='aviator', style=k.widget, priority=0.3, wait_time=10)]
