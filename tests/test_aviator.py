@@ -478,6 +478,50 @@ def test_skyline():
     assert ms[0] > -skyline.seen_tol and (dx != 0 or dz > 0)
 
 
+def test_skyline_last_meanwhile(monkeypatch):
+    import json
+    from disinfo.screens.aviator import skyline
+    # A new version not built yet: the newest older one is shown meanwhile, the new one built.
+    store = {b'di.skyline.2.aa': json.dumps({'eye': [0, 0, 50], 'start': 0, 'p': [[0]], 'seen': []}), b'di.skyline.3.bb': json.dumps(
+        {'eye': [0, 0, 60], 'start': 0, 'p': [[0]], 't': [[0]], 'seen': []}), b'di.skyline.3.bb.lock': '1'}
+    asked = []
+    monkeypatch.setattr(skyline, 'db', type('DB', (), {'get': lambda _, k: store.get(k.encode()), 'scan_iter': lambda _, p: list(store)})())
+    monkeypatch.setattr(skyline, 'key', lambda: 'di.skyline.4.cc')
+    monkeypatch.setattr(skyline, 'ask', asked.append)
+    monkeypatch.setattr(skyline, '_loaded', {})
+    monkeypatch.setattr(skyline, '_checked', [0.0])
+    sk = skyline.get(100)
+    assert sk.eye[2] == 60 and sk.t is not None and asked == ['di.skyline.4.cc']
+    store[b'di.skyline.4.cc'] = json.dumps({'eye': [0, 0, 70], 'start': 0, 'p': [[0]], 'seen': []})
+    assert skyline.get(110).eye[2] == 60 and skyline.get(130).eye[2] == 70
+
+
+def test_sky_tour_and_roofs(monkeypatch):
+    import cairocffi as cairo
+    import numpy as np
+    from disinfo.screens.aviator import sky, skyline
+    # Every other stop the waypoints; a slow turn between, the shorter way, then still.
+    monkeypatch.setattr(sky, '_stops', {})
+    period = sky.tour_dwell + sky.tour_glide
+    k = 1
+    assert sky.tour(90, [300], k * period - 1) == 90 and sky.tour(90, [300], k * period + sky.tour_glide) == 300
+    mid = sky.tour(90, [300], k * period + sky.tour_glide / 2)
+    assert mid == pytest.approx(15) and sky.tour(90, [None], (k + 2) * period) == 90
+    # The roofs all around, trees in front, by day and at night: nothing under the horizon left bare, the sky clear.
+    n = int(360 / skyline.res)
+    p = np.full((5, n), -90.0, np.float32)
+    p[-1], p[0, :n // 2] = -0.2, -3
+    t = np.full((4, n), -90.0, np.float32)
+    t[0, n // 2:] = -5
+    sk = skyline.Skyline((0, 0, 80), 0, p, [], [], t)
+    for day, night in ((1, 0), (0, 1)):
+        s = cairo.ImageSurface(cairo.FORMAT_ARGB32, 400, 200)
+        to_y = lambda e: np.where(e >= 0, 120 - 120 * np.minimum(e, 90) / 60, 120 + 80 * np.minimum(-e, 20) / 20)
+        sky.real_roofs(cairo.Context(s), sk, 270, 60, 400, 200, to_y, None, sky.rim_color, (90, 1), night, day, (0.5, 0.6, 0.8), 2)
+        alpha = np.frombuffer(s.get_data(), np.uint8).reshape(200, 400, 4)[:, :, 3]
+        assert alpha[120:].min() > 0 and alpha[:118, :250].max() == 0 and alpha[:118, 285:300].max() > 0     # the Eiffel tower, out of reach
+
+
 def test_sky_camera(monkeypatch):
     from types import SimpleNamespace as NS
     from disinfo.screens.aviator import sky

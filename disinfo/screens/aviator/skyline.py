@@ -1,8 +1,9 @@
 '''The roofline seen from the window, from the buildings themselves (IGN's BD TOPO: their roofs' heights over the sea)
-and the hills behind them (HeyWhatsThat's horizon, in its Stellarium export with the window's place and height).
+and the hills behind them (HeyWhatsThat's horizon, in its Stellarium export with the window's place and height), all
+around; the trees too (BD TOPO's woods and rows of trees, as tall as their kind).
 
 Built once in a thread and kept in redis for months: by bearing, how high the roofs stand (degrees over the horizon)
-at a few distances, near to far. The window is nudged, a few metres, until the places seen from it (the landmarks of
+at a few distances, near to far. A new version is built on its own; the last one is shown meanwhile. The window is nudged, a few metres, until the places seen from it (the landmarks of
 screen_data) are over the roofs in front of them: they're the planes' waypoints from here.
 
     python -m disinfo.screens.aviator.skyline       # builds it now, and says what it sees
@@ -25,14 +26,17 @@ from disinfo.redis import db
 from .utils import home, km_lat, km_lon, local_xy, bearing
 
 
-version = 3
+version = 4
 reach_km = 7
 res = 0.05              # degrees a bin
-margin = 30             # degrees around the window
 bands = (300, 1200, 3500)       # m: the near roofs, the street's, the district's, the city's; then the hills
 canopy = 0.1            # degrees over the hills: the town on them
 nudge = (30, 5, (0, 1, 2, 3))   # m around the window, the step, m up
 seen_tol = 0.15         # degrees: a place this little under a roof still counts as seen
+# m tall, by their kind (BD TOPO's nature); the others 12 m, the low ones (moors, vines) left out
+trees = {'Haie': 10, 'Bois': 16, 'Forêt fermée de feuillus': 22, 'Forêt fermée mixte': 20, 'Forêt fermée de conifères': 20,
+         'Forêt ouverte': 12, 'Peupleraie': 22, 'Verger': 5, 'Lande ligneuse': 0, 'Vigne': 0}
+ground_cell = 250       # m: the ground under the trees, from the buildings' around
 beacon_m = 45           # m tall and up: may have a red light on top at night (the sky view picks)
 earth_r = 6371000
 ttl = 180 * 24 * 3600
@@ -48,23 +52,25 @@ class Skyline(NamedTuple):
     p: np.ndarray           # (bands + hills, bins): degrees over the horizon, -90 where there's nothing
     seen: list              # per landmark: degrees over what's in front of it
     beacons: list = []      # the tall ones' lights: (bearing, degrees up, m away, m tall)
+    t: np.ndarray | None = None     # (bands, bins): the trees' tops the same
 
     def at(self, b: float) -> np.ndarray:
         # Each band at that bearing.
         i = int(((b - self.start) % 360) / res)
         return self.p[:, i] if i < self.p.shape[1] else np.full(len(self.p), -90.0)
 
-    def columns(self, b0: float, step: float, n: int) -> np.ndarray:
-        '''(bands, n): the highest in each column step degrees wide from b0, -90 out of it.'''
+    def columns(self, b0: float, step: float, n: int, p: np.ndarray | None = None) -> np.ndarray:
+        '''(bands, n): the highest in each column step degrees wide from b0, -90 out of it. Of p's rows, the roofs' by default.'''
+        p = self.p if p is None else p
         edges = ((b0 + np.arange(n + 1) * step - self.start) % 360) / res
         lo, hi = np.floor(edges[:-1]).astype(int), np.maximum(np.ceil(edges[1:]).astype(int), np.floor(edges[:-1]).astype(int) + 1)
-        out = np.full((len(self.p), n), -90.0, np.float32)
-        ok = (hi <= self.p.shape[1]) & (hi > lo)
+        out = np.full((len(p), n), -90.0, np.float32)
+        ok = (hi <= p.shape[1]) & (hi > lo)
         if ok.any():
             # The max over each column's bins: reduceat over their starts.
             idx = np.stack([lo[ok], hi[ok]], 1).ravel()
-            idx = np.minimum(idx, self.p.shape[1] - 1)
-            red = np.maximum.reduceat(self.p, idx, axis=1)[:, ::2]
+            idx = np.minimum(idx, p.shape[1] - 1)
+            red = np.maximum.reduceat(p, idx, axis=1)[:, ::2]
             out[:, ok] = red
         return out
 
@@ -85,47 +91,79 @@ def landscape(path=landscape_path) -> tuple[tuple, list]:
     return eye, hills
 
 def tiles(ex: float, ey: float) -> list[tuple[int, int]]:
-    # The km squares within reach, around the window's bearings.
-    start, end = app_config.aviator_window
-    span = (end - start) % 360 or 360
+    # The km squares within reach, all around.
     out = []
     n = math.ceil(reach_km)
     for i in range(-n - 1, n + 1):
         for j in range(-n - 1, n + 1):
             x0, y0 = i * 1000 - ex, j * 1000 - ey
             nx, ny = min(max(0, x0), x0 + 1000), min(max(0, y0), y0 + 1000)
-            if math.hypot(nx, ny) > reach_km * 1000:
-                continue
-            if x0 <= 0 <= x0 + 1000 and y0 <= 0 <= y0 + 1000:
-                out.append((i, j))
-                continue
-            corners = [bearing(x0 + dx, y0 + dy) for dx in (0, 500, 1000) for dy in (0, 500, 1000)]
-            if any((b - start + margin) % 360 <= span + 2 * margin for b in corners):
+            if math.hypot(nx, ny) <= reach_km * 1000:
                 out.append((i, j))
     return out
 
-def fetch(tile: tuple[int, int]) -> list:
-    # One km square's buildings: (ring as (lon, lat), roof, roof's top) over the sea, and how tall.
+def features(tile: tuple[int, int], kind: str) -> list:
+    # One km square's features of a BD TOPO layer, a page at a time.
     i, j = tile
     s, w, n, e = home[0] + j / km_lat, home[1] + i / km_lon, home[0] + (j + 1) / km_lat, home[1] + (i + 1) / km_lon
-    out, at = [], 0
+    out = []
     while True:
-        r = requests.get(wfs, timeout=120, params={
-            'SERVICE': 'WFS', 'VERSION': '2.0.0', 'REQUEST': 'GetFeature', 'TYPENAMES': 'BDTOPO_V3:batiment',
-            'outputFormat': 'application/json', 'SRSNAME': 'EPSG:4326', 'COUNT': 5000, 'STARTINDEX': at,
-            'BBOX': f'{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4326'})
+        for k in range(7):
+            r = requests.get(wfs, timeout=120, params={
+                'SERVICE': 'WFS', 'VERSION': '2.0.0', 'REQUEST': 'GetFeature', 'TYPENAMES': f'BDTOPO_V3:{kind}',
+                'outputFormat': 'application/json', 'SRSNAME': 'EPSG:4326', 'COUNT': 5000, 'STARTINDEX': len(out),
+                'BBOX': f'{s},{w},{n},{e},urn:ogc:def:crs:EPSG::4326'})
+            if r.status_code != 429:
+                break
+            time.sleep(2 ** k)      # too many at once: slower
         r.raise_for_status()
         fs = r.json()['features']
-        for f in fs:
-            p, g = f['properties'], f['geometry']
-            roof = p['altitude_minimale_toit'] or ((p['altitude_minimale_sol'] or 0) + p['hauteur'] if p['hauteur'] and p['altitude_minimale_sol'] else None)
-            if roof is None:
-                continue
-            for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]):
-                out.append(([q[:2] for q in poly[0]], roof, p['altitude_maximale_toit'] or roof, p['hauteur'] or 0))
+        out += fs
         if len(fs) < 5000:
             return out
-        at += 5000
+
+def rings(g: dict) -> list:
+    return [[q[:2] for q in poly[0]] for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']])]
+
+def fetch(tile: tuple[int, int]) -> list:
+    # One km square's buildings: (ring as (lon, lat), roof, roof's top) over the sea, and how tall.
+    out = []
+    for f in features(tile, 'batiment'):
+        p = f['properties']
+        roof = p['altitude_minimale_toit'] or ((p['altitude_minimale_sol'] or 0) + p['hauteur'] if p['hauteur'] and p['altitude_minimale_sol'] else None)
+        if roof is not None:
+            out += [(ring, roof, p['altitude_maximale_toit'] or roof, p['hauteur'] or 0) for ring in rings(f['geometry'])]
+    return out
+
+def fetch_trees(tile: tuple[int, int]) -> list:
+    # The woods and rows of trees: (ring as (lon, lat), m tall).
+    return [(ring, h) for f in features(tile, 'zone_de_vegetation') if (h := trees.get(f['properties']['nature'], 12)) >= 4
+            for ring in rings(f['geometry'])]
+
+def grounds(buildings: list):
+    '''The ground (m over the sea) at x, y m from home: the buildings' in that cell, else in the nearest one with some.'''
+    cells = {}
+    for ring, roof, _, height in buildings:
+        if height > 0:
+            lo, la = ring[0]
+            x, y = (v * 1000 for v in local_xy(la, lo))
+            cells.setdefault((int(x // ground_cell), int(y // ground_cell)), []).append(roof - height)
+    cells = {c: float(np.median(v)) for c, v in cells.items()}
+    keys = np.array(list(cells) or [(0, 0)])
+    vals = np.array(list(cells.values()) or [0.0])
+    def at(x: float, y: float) -> float:
+        c = int(x // ground_cell), int(y // ground_cell)
+        return cells[c] if c in cells else float(vals[np.argmin(((keys - c) ** 2).sum(1))])
+    return at
+
+def tree_walls(woods: list, at) -> np.ndarray:
+    # Their edges' tops as walls: (x0, y0, x1, y1, m over the sea), m from home.
+    out = []
+    for ring, height in woods:
+        pts = np.array([local_xy(la, lo) for lo, la in ring]) * 1000
+        if len(pts) >= 3:
+            out.append(np.column_stack([pts[:-1], pts[1:], np.full(len(pts) - 1, at(*pts.mean(0)) + height)]))
+    return np.concatenate(out).astype(np.float32) if out else np.zeros((0, 5), np.float32)
 
 def walls(buildings: list, ex: float, ey: float, targets: list) -> tuple[np.ndarray, list]:
     '''Every wall's top as (x0, y0, x1, y1, m over the sea), m from home. A roof higher than its walls (a mansard,
@@ -244,31 +282,40 @@ def build(path=landscape_path, log=print) -> dict:
     log(f'[skyline] {len(ts)} tiles')
     with ThreadPoolExecutor(4) as ex_:
         buildings = [b for t in ex_.map(fetch, ts) for b in t]
+        woods = [b for t in ex_.map(fetch_trees, ts) for b in t]
+    tw = tree_walls(woods, grounds(buildings))
     w, tops = walls(buildings, ex, ey, marks)
     targets = [(x, y, z) for (x, y), z in zip(marks, tops) if z]
     (dx, dy, dz), ms = fit(w, ex, ey, ez, targets) if targets else ((0, 0, 0), [])
     ex, ey, ez = ex + dx, ey + dy, ez + dz
     log(f'[skyline] {len(buildings)} buildings, {len(w)} walls; window moved {dx:+} m E {dy:+} m N {dz:+} m up: '
-        f'{sum(m > -seen_tol for m in ms)}/{len(ms)} places seen')
-    start, end = app_config.aviator_window
-    span = (end - start) % 360 or 360
-    start -= margin
-    n = int((span + 2 * margin) / res)
+        f'{sum(m > -seen_tol for m in ms)}/{len(ms)} places seen; {len(woods)} woods')
+    start, n = 0, int(360 / res)
     w[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
+    tw[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
     p = profile(w, ez, start, n)
+    t = profile(tw, ez, start, n)[:-1]
     if hills:
         az, alt = np.array(hills).T
         o = np.argsort(az)
         p[-1] = np.interp((start + (np.arange(n) + 0.5) * res) % 360, az[o], alt[o], period=360) + canopy
     return {'eye': [home[0] + ey / 1000 / km_lat, home[1] + ex / 1000 / km_lon, ez], 'start': start,
-            'p': np.round(p * 100).astype(int).tolist(), 'seen': [round(m, 2) for m in ms], 'beacons': beacons(buildings, ex, ey, ez, start, n)}
+            'p': np.round(p * 100).astype(int).tolist(), 't': np.round(t * 100).astype(int).tolist(),
+            'seen': [round(m, 2) for m in ms], 'beacons': beacons(buildings, ex, ey, ez, start, n)}
 
 def key(path=landscape_path) -> str:
-    h = hashlib.sha1(path.read_bytes() + json.dumps([app_config.aviator_window, app_config.screen_data.aviator.landmarks]).encode())
+    h = hashlib.sha1(path.read_bytes() + json.dumps(app_config.screen_data.aviator.landmarks).encode())
     return f'di.skyline.{version}.{h.hexdigest()[:12]}'
 
 def of(doc: dict) -> Skyline:
-    return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'], doc.get('beacons', []))
+    return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'], doc.get('beacons', []),
+                   np.array(doc['t'], np.float32) / 100 if 't' in doc else None)
+
+def last(k: str) -> str | None:
+    # The newest one built before k: shown while k is built.
+    ks = [o.decode() for o in db.scan_iter('di.skyline.*')]
+    ks = [o for o in ks if not o.endswith('.lock') and o != k and o.split('.')[2].isdigit()]
+    return max(ks, key=lambda o: int(o.split('.')[2]), default=None)
 
 def ask(k: str):
     # One process builds it (the lock is in redis), the others find it there.
@@ -282,18 +329,20 @@ def ask(k: str):
     threading.Thread(target=run, daemon=True).start()
 
 def get(now: float) -> Skyline | None:
-    '''The roofline, None until it's built (or without a landscape): looked for again every 20 s.'''
+    '''The roofline, the last one until it's built, None before any (or without a landscape): looked for every 20 s.'''
     if 'sky' in _loaded:
         return _loaded['sky']
     if now - _checked[0] < 20 or not landscape_path.exists():
-        return None
+        return _loaded.get('old')
     _checked[0] = now
     k = key()
     if v := db.get(k):
         _loaded['sky'] = of(json.loads(v))
         return _loaded['sky']
     ask(k)
-    return None
+    if 'old' not in _loaded and (o := last(k)) and (v := db.get(o)):
+        _loaded['old'] = of(json.loads(v))
+    return _loaded.get('old')
 
 
 if __name__ == '__main__':

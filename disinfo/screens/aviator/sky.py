@@ -37,6 +37,7 @@ earth_r = 6371
 view_fov = 50           # degrees across, most of the time: the waypoints' piece of the skyline
 fov_min = 20            # zoomed on a plane
 wide_every, wide_for = 900, 45          # s: pulled back to the whole window that long, every so often
+tour_dwell, tour_glide = 180, 90        # s: idle, on a sight (every other one the waypoints), then turning to the next
 home_ground = 47        # m above the sea
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 horizon_color = (1, 1, 1, 0.25)
@@ -45,11 +46,25 @@ trail_alpha = 0.3       # the numbered planes' trails; the others are dots
 dot_alpha = 0.45
 sway = 4                # degrees
 sway_period = 200       # s
+lean_m = 2              # m the eye leans sideways with the sway: the near roofs slide over the far ones
 # The roofs, far to near: dark greys, the far ones lighter; a faint rim on their tops.
 far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
 hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hills, hazy
+# By day: Paris' limestone in the shade, hazier the farther (towards the horizon's colour): hills, then far to near.
+stone_color = (0.3, 0.255, 0.19)
+aerial = (0.5, 0.38, 0.26, 0.13, 0)
+# The trees by the day of the year: bare (see-through), the new leaves, summer, autumn. (day, rgb, how dense)
+leaves = ((0, (0.13, 0.11, 0.095), 0.5), (80, (0.13, 0.11, 0.095), 0.5), (125, (0.14, 0.18, 0.09), 0.95),
+          (265, (0.12, 0.155, 0.085), 1), (300, (0.24, 0.17, 0.08), 0.9), (335, (0.19, 0.135, 0.09), 0.65),
+          (350, (0.13, 0.11, 0.095), 0.5), (366, (0.13, 0.11, 0.095), 0.5))
+tree_night = (0.02, 0.026, 0.021)
+crown_m = 8             # a tree across: the bumps of the canopy
 window_m = 1.5          # a window across, lit at night
+window_shape = (1, 1.9, 3.2, 3)       # m: a window wide, tall, a bay, a floor; drawn so once a window is that many px:
+window_px = 1.5
+floors = 7
+glint_rate = 0.03       # the windows sending back a low sun behind us, at most
 beacon_color = (1, 0.2, 0.12)           # the lights on the tall ones' tops
 beacon_gap = 6          # px between them
 beacon_min_m = 80       # m tall and up: the ones lit (the skyline keeps them from 45 m)
@@ -110,6 +125,9 @@ def landmark_points(eye: float) -> list[tuple]:
         d = math.hypot(x, y) * 1000
         out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape))
     return out
+
+def landmark_km() -> list[float]:
+    return [math.hypot(*local_xy(lat, lon)) for _, lat, lon, *_ in landmarks]
 
 def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None, rim: tuple = rim_color,
           daylit: tuple[float, float] | None = None):
@@ -180,7 +198,12 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
                 ctx.rectangle(round(rnd.uniform(x0, x1)), round(yc + rnd.uniform(2, 14)), 1, 1)
                 ctx.fill()
     ctx.set_source_rgb(*far_color)
-    for b, e, width, shape in landmark_points(_eye['m']):
+    shapes(ctx, landmark_points(_eye['m']), in_view, to_px)
+    ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
+
+def shapes(ctx: cairo.Context, points: list, in_view, to_px):
+    # The landmarks drawn, filled in the colour set.
+    for b, e, width, shape in points:
         if not in_view(b, 5):
             continue
         x, y = to_px(b, e)
@@ -205,30 +228,43 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
             case _:
                 ctx.rectangle(x - wpx // 2, y, wpx, base - y)
         ctx.fill()
-    ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
 
 def runs(v: np.ndarray) -> list[tuple[int, int, int]]:
     # (from, to, value) of the stretches where v stays the same.
     cut = [0, *(np.flatnonzero(np.diff(v)) + 1), len(v)]
     return [(a, b, int(v[a])) for a, b in zip(cut, cut[1:])]
 
+def season(doy: int) -> tuple[tuple, float]:
+    # The trees' colour and how dense they are, that day of the year.
+    days = [d for d, _, _ in leaves]
+    return tuple(float(np.interp(doy, days, [c[i] for _, c, _ in leaves])) for i in range(3)), float(np.interp(doy, days, [k for *_, k in leaves]))
+
+def mix(a: tuple, b: tuple, k: float) -> tuple:
+    return tuple(x + (y - x) * k for x, y in zip(a, b))
+
 def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, h: int, to_y,
                sunlight: tuple[float, float] | None = None, rim: tuple = rim_color, daylit: tuple[float, float] | None = None,
-               night: float = 0):
-    '''The roofline from the window (skyline.py), a pixel's column at a time: the hills, then the roofs far to near.
-    Lit the same as the drawn one: the sun on the facades, the sunset on the tops facing it, a window catching it.
-    At night the windows light up here and there, each in its place, on and off over the evening.'''
+               night: float = 0, day: float = 0, haze: tuple = hill_color, lean: float = 0):
+    '''The roofline from the window (skyline.py), a pixel's column at a time: the hills, then the roofs far to near,
+    each band's trees in front of its roofs. Paris' stone by day, hazier the farther; the eye leaned lean m to the
+    right, the nearer slide the more. Lit the same as the drawn one: the sun on the facades, the sunset on the tops
+    facing it, a window sending back a low sun behind us. At night the windows light up here and there, each in its
+    place, on and off over the evening: window-shaped once they're big enough.'''
     ctx.set_antialias(cairo.ANTIALIAS_NONE)
-    rows = sk.columns(yaw - fov / 2, fov / w, w)[::-1]
-    bs = yaw - fov / 2 + (np.arange(w) + 0.5) * fov / w
-    # The windows by bearing, a fifth of a degree each: they stay where they are when the view turns.
-    cell = np.floor(bs * 5)
-    r = (np.sin(cell * 12.9898) * 43758.5453) % 1
-    off = lambda b: np.abs((b + 180) % 360 - 180)
-    glow = np.clip(1 - off(bs - sunlight[0]) / 70, 0, None) * sunlight[1] if sunlight else np.zeros(w)
-    face = np.cos(np.radians(bs + 180 - daylit[0])) * daylit[1] if daylit else np.zeros(w)
+    step, nb = fov / w, len(band_m)
+    # By band, the hills (they don't move) to the near: what its columns show.
+    shifts = [0] + [math.degrees(lean / d) for d in band_m]
+    bss = [yaw - fov / 2 + (np.arange(w) + 0.5) * step + s for s in shifts]
+    rows = np.stack([sk.columns(yaw - fov / 2 + s, step, w, sk.p[nb - n:nb - n + 1])[0] for n, s in enumerate(shifts)])
+    rows[0] = np.maximum(rows[0], 0)       # the land reaches the horizon: none of the sky under it (down the valley)
+    woods = [sk.columns(yaw - fov / 2 + s, step, w, sk.t[nb - n:nb - n + 1])[0] if sk.t is not None and n else None
+             for n, s in enumerate(shifts)]
+    leaf, dense = season(time.localtime().tm_yday)
+    sb = sunlight[0] if sunlight else daylit[0] if daylit else 0
+    now = time.time()
     for n, row in enumerate(rows):
         k = n / (len(rows) - 1)
+        bs = bss[n]
         ys = np.minimum(np.round(to_y(row)), h).astype(int)
         top = runs(ys)
         ctx.move_to(0, h)
@@ -237,10 +273,24 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
             ctx.line_to(b, y)
         ctx.line_to(w, h)
         ctx.close_path()
-        ctx.set_source_rgb(*(c0 + (c1 - c0) * k for c0, c1 in zip(hill_color, near_color)))
+        far = mix(stone_color, (0.55 * c for c in haze), aerial[n])
+        ctx.set_source_rgb(*mix(mix(hill_color, near_color, k), far, day))
         ctx.fill()
         if n == 0:
+            # The landmarks out of the buildings' reach (the Eiffel tower) over the hills, in the far roofs' colour.
+            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(stone_color, (0.55 * c for c in haze), aerial[1]), day))
+            to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
+            far_ones = [p for p, d in zip(landmark_points(sk.eye[2]), landmark_km()) if d > skyline.reach_km]
+            to_px = lambda b, e: (to_x(b), float(to_y(np.array([e]))[0]))
+            shapes(ctx, far_ones, lambda b, m=0: abs(wrap(b - yaw)) < fov / 2 + m, to_px)
+            eiffel(ctx, [p for p in far_ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now)
             continue
+        # The windows by bearing, a fifth of a degree each: they stay where they are when the view turns.
+        cell = np.floor(bs * 5)
+        r = (np.sin(cell * 12.9898) * 43758.5453) % 1
+        off = lambda b: np.abs((b + 180) % 360 - 180)
+        glow = np.clip(1 - off(bs - sunlight[0]) / 70, 0, None) * sunlight[1] if sunlight else np.zeros(w)
+        face = np.cos(np.radians(bs + 180 - daylit[0])) * daylit[1] if daylit else np.zeros(w)
         on = ys < h
         # By day: the facades turned to the sun (it's behind us when they face us), as much as it's out.
         for level in range(1, 5):
@@ -256,7 +306,7 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
                 ctx.rectangle(a, y, b - a, 1)
         ctx.set_source_rgba(*rim)     # wet: shining with the rain's light
         ctx.fill()
-        # The sunset on the tops facing it, a few windows catching it; by day a window sends the sun back.
+        # The sunset on the tops facing it.
         for level in range(1, 5):
             sel = on & (np.ceil(glow * 4) == level) & (glow > 0.03)
             if sel.any():
@@ -264,37 +314,130 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
                     ctx.rectangle(int(x), int(ys[x]), 1, 1)
                 ctx.set_source_rgba(*(c / 255 for c in skylook.glow_rgb), 0.75 * level / 4)
                 ctx.fill()
-        lit = on & (r < 0.3 * np.maximum(glow, 0.15 * face))
-        for x in np.flatnonzero(lit):
-            ctx.rectangle(int(x), int(ys[x] + 2 + (r[x] * 97 % 1) * 8), 1, 1)
-        ctx.set_source_rgba(1, 0.85, 0.6, 0.7)
-        ctx.fill()
-        if night > 0.05:
-            # The nearer, the more of them and the deeper down the facade; a few have the TV's blue. As big as a
-            # window there is (px), dimmer the farther; a soft halo once it's a pixel or more.
-            q = (np.sin(cell * 78.233 + n * 31.7 + np.floor(time.time() / 600 + r * 7)) * 43758.5453) % 1
-            on_ = on & (q < night * 0.09 * (0.4 + k))
-            px = window_m / band_m[n - 1] * w / math.radians(fov)
-            size, alpha = min(max(round(px), 1), 3), 0.1 + 0.2 * min(px / 2, 1)
-            for cool in (False, True):
-                spots = [(int(x), int(ys[x] + 2 + (q[x] * 37 % 1) * (4 + 24 * k))) for x in np.flatnonzero(on_ & ((q * 113 % 1 < 0.15) == cool))]
-                color = (0.65, 0.75, 1) if cool else (1, 0.78, 0.45)
-                for grow, a in ((1, alpha * 0.35), (0, alpha)) if px >= 0.9 else ((0, alpha),):
-                    for x, y in spots:
-                        ctx.rectangle(x - grow, y - grow, size + 2 * grow, size + 2 * grow)
-                    ctx.set_source_rgba(*color, a)
-                    ctx.fill()
+        # A low sun behind us: a few of the windows facing it send it back. At night, the lit ones: the nearer, the
+        # more of them and the deeper down the facade; a few have the TV's blue. Dimmer the farther; a soft halo once
+        # a window is a pixel or more.
+        catch = np.clip(np.cos(np.radians(bs + 180 - sb)), 0, None) * (sunlight[1] if sunlight else 0)
+        px_m = w / math.radians(fov) / band_m[n - 1]
+        px = window_m * px_m
+        alpha = 0.1 + 0.2 * min(px / 2, 1)
+        if px >= window_px:
+            panes(ctx, bs, ys, on, px_m, n, now, catch, night, alpha, h)
+        else:
+            lit = on & (r < glint_rate * catch)
+            for x in np.flatnonzero(lit):
+                ctx.rectangle(int(x), int(ys[x] + 2 + (r[x] * 97 % 1) * 8), 1, 1)
+            ctx.set_source_rgba(1, 0.85, 0.6, 0.7)
+            ctx.fill()
+            if night > 0.05:
+                q = (np.sin(cell * 78.233 + n * 31.7 + np.floor(now / 600 + r * 7)) * 43758.5453) % 1
+                on_ = on & (q < night * 0.09 * (0.4 + k))
+                size = min(max(round(px), 1), 3)
+                for cool in (False, True):
+                    spots = [(int(x), int(ys[x] + 2 + (q[x] * 37 % 1) * (4 + 24 * k))) for x in np.flatnonzero(on_ & ((q * 113 % 1 < 0.15) == cool))]
+                    color = (0.65, 0.75, 1) if cool else (1, 0.78, 0.45)
+                    for grow, a in ((1, alpha * 0.35), (0, alpha)) if px >= 0.9 else ((0, alpha),):
+                        for x, y in spots:
+                            ctx.rectangle(x - grow, y - grow, size + 2 * grow, size + 2 * grow)
+                        ctx.set_source_rgba(*color, a)
+                        ctx.fill()
+        if woods[n] is not None and (woods[n] > -90).any():
+            # The canopy: a crown's bump every few m, each its own size; in front of the band's facades.
+            cw = math.degrees(crown_m / band_m[n - 1])
+            i, f = np.divmod(bs / cw, 1)
+            bump = np.sqrt(np.clip(1 - (2 * f - 1) ** 2, 0, None)) * (0.5 + 0.5 * ((np.sin(i * 12.9898) * 43758.5453) % 1))
+            t = np.where(woods[n] > -90, woods[n] + math.degrees(0.35 * crown_m / band_m[n - 1]) * (bump - 1), -90)
+            ty = np.minimum(np.round(to_y(t)), h).astype(int)
+            ctx.move_to(0, h)
+            for a, b, y in runs(ty):
+                ctx.line_to(a, y)
+                ctx.line_to(b, y)
+            ctx.line_to(w, h)
+            ctx.close_path()
+            color = mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aerial[n]), day)
+            ctx.set_source_rgba(*color, dense)
+            ctx.fill()
+            # By day the crowns' tops in the light.
+            if day > 0.1:
+                for a, b, y in runs(ty):
+                    if y < h:
+                        ctx.rectangle(a, y, b - a, 1)
+                ctx.set_source_rgba(*mix(color, (1, 0.95, 0.8), 0.25), 0.6 * dense * day)
+                ctx.fill()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
     if night > 0.05:
-        beacons(ctx, sk, yaw, fov, w, to_y, rows, night)
+        beacons(ctx, sk, yaw, fov, w, to_y, rows, night, lean)
 
-def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, to_y, rows: np.ndarray, night: float):
+def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float):
+    # Lit gold from dusk to 23:45, sparkling the first five minutes of each hour.
+    t = time.localtime(now)
+    if night < 0.05 or (t.tm_hour, t.tm_min) >= (23, 45) or 3 < t.tm_hour < 12:
+        return
+    for b, e, width, _ in points:
+        if abs(wrap(b - yaw)) > fov / 2 + 5:
+            continue
+        (x, y), (_, base) = to_px(b, e), to_px(b, -1)
+        wpx = max(1, to_px(b + width / 2, 0)[0] - to_px(b - width / 2, 0)[0])
+        ctx.move_to(x - wpx / 2, base)
+        ctx.line_to(x, y)
+        ctx.line_to(x + wpx / 2, base)
+        ctx.set_source_rgba(1, 0.72, 0.35, 0.35 * night)
+        ctx.fill()
+        if t.tm_min < 5:
+            rnd = random.Random(int(now * 4))
+            for _ in range(max(3, round(wpx * 2))):
+                v = rnd.random()
+                ctx.rectangle(round(x + (rnd.random() - 0.5) * wpx * v), round(y + (base - y) * v), 1, 1)
+            ctx.set_source_rgba(1, 1, 0.95, 0.9 * night)
+            ctx.fill()
+
+def panes(ctx: cairo.Context, bs: np.ndarray, ys: np.ndarray, on: np.ndarray, px_m: float, n: int, now: float,
+          catch: np.ndarray, night: float, alpha: float, h: int):
+    # The near windows as windows: a bay every few m along the band, a floor every 3 m down from its roofs.
+    ww, wh, bay, story = window_shape
+    w, step = len(bs), bs[1] - bs[0]
+    bay_px = bay * px_m
+    j0 = math.floor(bs[0] / step / bay_px) - 1
+    js = np.arange(j0, j0 + math.ceil(w / bay_px) + 3)
+    xs = np.round(js * bay_px - bs[0] / step + (bay_px - ww * px_m) / 2).astype(int)
+    pw, ph = max(round(ww * px_m), 1), max(round(wh * px_m), 2)
+    out = (xs >= 0) & (xs + pw <= w)
+    js, xs = js[out], xs[out]
+    if not len(xs):
+        return
+    # On one facade: each column under it covered, its roof the lowest of them.
+    span = np.stack([ys[np.clip(xs + d, 0, w - 1)] for d in range(pw)])
+    ok = on[xs] & on[np.minimum(xs + pw - 1, w - 1)] & (span.max(0) - span.min(0) <= max(story * px_m, 2))
+    js, xs, roof = js[ok], xs[ok], span.max(0)[ok]
+    fl = np.arange(floors)
+    y = roof[:, None] + np.round((fl[None, :] + 0.5) * story * px_m).astype(int)
+    r = (np.sin(js * 12.9898 + n * 31.7) * 43758.5453) % 1
+    q = (np.sin(js[:, None] * 78.233 + fl[None, :] * 39.425 + n * 31.7 + np.floor(now / 600 + r[:, None] * 7)) * 43758.5453) % 1
+    seen = y < h
+    xi = np.clip(xs, 0, w - 1)
+    groups = [((1, 0.85, 0.6), 0.6, seen & (q < glint_rate * catch[xi][:, None]))]
+    if night > 0.05:
+        lit = seen & (q < night * 0.09 * (0.4 + n / len(band_m)))
+        cool = (q * 113 % 1) < 0.15
+        groups += [((1, 0.78, 0.45), alpha, lit & ~cool), ((0.65, 0.75, 1), alpha, lit & cool)]
+    for color, a, sel in groups:
+        idx = np.argwhere(sel)
+        if not len(idx):
+            continue
+        for grow, k in ((1, 0.3), (0, 1)):
+            for i, f in idx:
+                ctx.rectangle(int(xs[i]) - grow, int(y[i, f]) - grow, pw + 2 * grow, ph + 2 * grow)
+            ctx.set_source_rgba(*color, a * k)
+            ctx.fill()
+
+def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, to_y, rows: np.ndarray, night: float,
+            lean: float = 0):
     # The red lights on the tall ones' tops, each pulsing slowly at its own pace; hidden by nearer roofs. Bigger and
     # brighter the nearer: a glow around a bright pixel.
     # The highest first, a few pixels apart: on a small screen only the tallest of a cluster.
     now, taken = time.time(), []
     for b, e, d, tall in sorted(sk.beacons, key=lambda s: -s[1]):
-        x = w / 2 + wrap(b - yaw) / fov * w
+        x = w / 2 + wrap(b - math.degrees(lean / d) - yaw) / fov * w
         if tall < beacon_min_m or not 0 <= x < w or any(abs(x - t) < beacon_gap for t in taken):
             continue
         nearer = rows[len(rows) - 1 - np.searchsorted(skyline.bands, d) + 1:, int(x)]
@@ -341,9 +484,32 @@ def tilt_to(e: float, fov: float) -> float:
 def mean_bearing(bs: list[float]) -> float:
     return math.degrees(math.atan2(sum(math.sin(math.radians(b)) for b in bs), sum(math.cos(math.radians(b)) for b in bs)))
 
-def aim(st, fov: float) -> tuple[float, float]:
+_stops = {}             # the tour's stops, kept once picked
+
+def sights(st, sun: tuple, moon: tuple) -> list:
+    '''The bearings worth a look all around, None where there's nothing now: the landmarks, the low sun, the moon
+    low enough, where most planes are.'''
+    bs = [p['bearing'] for p in st.planes.values() if 'bearing' in p]
+    return [*(bearing(*local_xy(lat, lon)) for _, lat, lon, *_ in landmarks), sun[0] if -4 < sun[1] < 12 else None,
+            moon[0] if 0 < moon[1] < 25 else None, int(np.bincount(np.array(bs, int) % 360 // 30).argmax()) * 30 + 15 if len(bs) >= 3 else None]
+
+def tour(home: float, sights: list, t: float) -> float:
+    # Every other stop the waypoints, the others a sight; turning slowly between them, the shorter way.
+    def stop(k):
+        if k not in _stops:
+            pick = sights[int(abs(math.sin(k * 12.9898)) * 43758.5453) % len(sights)] if sights and k % 2 else None
+            _stops[k] = home if pick is None else pick
+            for o in [o for o in _stops if o < k - 2]:
+                del _stops[o]
+        return _stops[k]
+    k, into = divmod(int(t), tour_dwell + tour_glide)
+    a, b = stop(k - 1), stop(k)
+    s = min(into / tour_glide, 1)
+    return (a + wrap(b - a) * s * s * (3 - 2 * s)) % 360
+
+def aim(st, fov: float, around: list = ()) -> tuple[float, float]:
     '''(yaw, fov): towards the planes seen from the window, wide enough for them all; without any, on the waypoints
-    (the landmarks seen from here), now and then pulled back to the whole window. Kept within the window.'''
+    (the landmarks seen from here), turning now and then to the sights around, or pulled back to the whole window.'''
     start, end = app_config.aviator_window
     span = (end - start) % 360 or 360
     seen = [st.planes[h]['bearing'] for h in st.watched if h in st.planes]
@@ -354,9 +520,7 @@ def aim(st, fov: float) -> tuple[float, float]:
     elif time.time() % wide_every < wide_for:
         yaw, fov = start + span / 2, span
     else:
-        yaw = mean_bearing(marks) if marks else start + span / 2
-    if fov < span:
-        yaw = start + min(max(wrap(yaw - start) % 360, fov / 2), span - fov / 2)
+        yaw = tour(mean_bearing(marks) if marks else start + span / 2, list(around), time.time())
     return yaw, fov
 
 def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]:
@@ -379,8 +543,11 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
             yaw = b - middle / w * fov
         _held[fs.config.name] = yaw
         return yaw, fov, tilt_to(e, fov)
-    target, fov = aim(st, fov)
-    if yaw is None or abs(wrap(target - yaw)) > fov / 4:
+    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sun = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
+    target, fov = aim(st, fov, sights(st, sun, astro.moon_at(time.time(), fs.config.latitude, fs.config.longitude)[:2]))
+    # Idle it follows the tour; on planes, it turns only when they're a quarter view away.
+    if yaw is None or abs(wrap(target - yaw)) > fov / 4 or not any(h in st.planes for h in st.watched):
         yaw = target
     _held[fs.config.name] = yaw
     # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
@@ -776,7 +943,8 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     sun_out = (seen.sun if seen.sun is not None else 1 - lk.cloud) * float(np.clip(se / 8, 0, 1)) * (1 - wet)
     lights = (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color, (sb, sun_out) if sun_out > 0.05 else None
     if sk:
-        real_roofs(ctx, sk, yaw, fov, w, h, to_y, *lights, min(max((-se - 2) / 8, 0), 1))
+        real_roofs(ctx, sk, yaw, fov, w, h, to_y, *lights, min(max((-se - 2) / 8, 0), 1),
+                   float(np.clip((se + 3) / 10, 0, 1)) * (1 - 0.3 * lk.cloud), lk.horizon, lean_m * math.sin(2 * math.pi * now / sway_period))
     else:
         roofs(ctx, in_view, to_px, h, *lights)
     # The wind over the roofs, then the rain or snow at home in front of all that, at a few frames a second.
