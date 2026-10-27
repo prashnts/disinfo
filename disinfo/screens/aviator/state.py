@@ -14,6 +14,7 @@ ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
 LAYERS_KEY = 'di.aviator.layers'  # the map's layers switched off: a JSON list
 VIEWS = ['map', 'sky', 'solar']
+DEMO_S = 132                       # s: the sky view's demo, once around
 
 
 class AviatorState(AppBaseModel):
@@ -52,6 +53,7 @@ class OpenedState(AppBaseModel):
     light: bool = False                 # the map's light mode, from the web page; kept in redis
     map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
     zoom: dict[str, float] = {}         # screen ('*': all) -> its map's zoom, the same
+    demo: float | None = None           # when the sky view's demo started, from the web page
 
 def read_dict(key: str) -> dict[str, float]:
     try:
@@ -85,6 +87,12 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 current = self.state.view or 'map'
                 self.state.view = (data.payload or {}).get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0]
                 db.set(VIEW_KEY, self.state.view)
+            case 'aviator.demo':
+                # On the sky view (not kept), or off again.
+                on = self.state.demo is None or time.time() - self.state.demo > DEMO_S
+                self.state.demo = time.time() if on else None
+                if on:
+                    self.state.view = 'sky'
             case 'aviator.light':
                 # The one asked for, or the other.
                 self.state.light = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.light

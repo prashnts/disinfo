@@ -22,7 +22,7 @@ from disinfo import fonts
 from disinfo.config import app_config
 from disinfo.screens.solar.app import sky_color
 
-from .state import ADSBxStateManager, OpenedStateManager
+from .state import ADSBxStateManager, OpenedStateManager, DEMO_S
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
 from . import app, astro, skylook, skyline, weather
@@ -52,12 +52,13 @@ far_color = (0.075, 0.08, 0.09)
 near_color = (0.03, 0.032, 0.036)
 hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hills, hazy
 # By day: Paris' limestone in the shade, hazier the farther (towards the horizon's colour): hills, then far to near.
-stone_color = (0.3, 0.255, 0.19)
-aerial = (0.5, 0.38, 0.26, 0.13, 0)
+stone_color = (0.27, 0.258, 0.24)
+aerial = (0.5, 0.38, 0.26, 0.13, 0.03)          # as hazy as usual; the sky state's haze takes it up to:
+aerial_max = 0.92
 # The trees by the day of the year: bare (see-through), the new leaves, summer, autumn. (day, rgb, how dense)
-leaves = ((0, (0.13, 0.11, 0.095), 0.5), (80, (0.13, 0.11, 0.095), 0.5), (125, (0.14, 0.18, 0.09), 0.95),
-          (265, (0.12, 0.155, 0.085), 1), (300, (0.24, 0.17, 0.08), 0.9), (335, (0.19, 0.135, 0.09), 0.65),
-          (350, (0.13, 0.11, 0.095), 0.5), (366, (0.13, 0.11, 0.095), 0.5))
+leaves = ((0, (0.15, 0.145, 0.14), 0.5), (80, (0.15, 0.145, 0.14), 0.5), (125, (0.15, 0.175, 0.13), 0.95),
+          (265, (0.14, 0.16, 0.13), 1), (300, (0.19, 0.175, 0.14), 0.9), (335, (0.17, 0.16, 0.14), 0.65),
+          (350, (0.15, 0.145, 0.14), 0.5), (366, (0.15, 0.145, 0.14), 0.5))
 tree_night = (0.02, 0.026, 0.021)
 crown_m = 8             # a tree across: the bumps of the canopy
 window_m = 1.5          # a window across, lit at night
@@ -84,6 +85,25 @@ landmarks = [
     ('montparnasse', 48.8421, 2.3220, 210, 60, 50, 'tower'),
     ('eiffel', 48.8584, 2.2945, 330, 35, 125, 'eiffel'),
 ]
+
+# The demo (the web page's button): once around, slowly, through the skies one may see. Each scene: the sun (degrees
+# up, its bearing), the day of the year, the clock; the cloud, the haze, the deck, the cirrus, the rain, its snow, the wind.
+demo_scenes = (
+    ('morning', (8, 100), 140, (8, 30), 0.1, 0.25, 0, 0.3, 0, 0, 2),
+    ('noon', (58, 180), 180, (13, 0), 0.05, 0.15, 0, 0, 0, 0, 2),
+    ('hazy autumn', (30, 200), 295, (14, 0), 0.25, 0.85, 0.1, 0.2, 0, 0, 1),
+    ('overcast', (25, 210), 320, (15, 0), 0.9, 0.35, 0.9, 0, 0, 0, 4),
+    ('rain', (20, 220), 320, (15, 30), 0.95, 0.5, 0.95, 0, 0.7, 0, 6),
+    ('snow', (12, 200), 20, (14, 0), 0.9, 0.5, 0.9, 0, 0.6, 1, 3),
+    ('fog', (6, 130), 330, (9, 0), 0.5, 1, 0.3, 0, 0, 0, 0),
+    ('wind', (40, 200), 120, (13, 0), 0.4, 0.2, 0.45, 0.4, 0, 0, 11),
+    ('sunset', (1, 250), 250, (19, 30), 0.15, 0.3, 0.1, 0.4, 0, 0, 2),
+    ('dusk', (-5, 265), 250, (20, 15), 0.1, 0.25, 0.05, 0.2, 0, 0, 1),
+    ('night', (-25, 330), 250, (22, 2), 0.05, 0.2, 0, 0, 0, 0, 1),
+    ('cloudy night', (-30, 350), 340, (23, 0), 0.85, 0.3, 0.85, 0, 0, 0, 3),
+)
+demo_blend = 2          # s from one to the next
+_demo = {}              # screen -> (the demo's start, the yaw it started at)
 
 _cams = {}              # screen -> [yaw, fov, at]: eases towards the view
 _held = {}              # screen -> the yaw: turned only when what it looks at has moved away
@@ -244,7 +264,8 @@ def mix(a: tuple, b: tuple, k: float) -> tuple:
 
 def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: int, h: int, to_y,
                sunlight: tuple[float, float] | None = None, rim: tuple = rim_color, daylit: tuple[float, float] | None = None,
-               night: float = 0, day: float = 0, haze: tuple = hill_color, lean: float = 0):
+               night: float = 0, day: float = 0, haze: tuple = hill_color, lean: float = 0, hazy: float = 0.2,
+               today: tuple | None = None):
     '''The roofline from the window (skyline.py), a pixel's column at a time: the hills, then the roofs far to near,
     each band's trees in front of its roofs. Paris' stone by day, hazier the farther; the eye leaned lean m to the
     right, the nearer slide the more. Lit the same as the drawn one: the sun on the facades, the sunset on the tops
@@ -259,7 +280,11 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
     rows[0] = np.maximum(rows[0], 0)       # the land reaches the horizon: none of the sky under it (down the valley)
     woods = [sk.columns(yaw - fov / 2 + s, step, w, sk.t[nb - n:nb - n + 1])[0] if sk.t is not None and n else None
              for n, s in enumerate(shifts)]
-    leaf, dense = season(time.localtime().tm_yday)
+    t = time.localtime()
+    today = today or (t.tm_yday, t.tm_hour, t.tm_min)
+    leaf, dense = season(today[0])
+    # The haze between: the sky state's (the visibility, the fog), the farther the more.
+    aer = [min(a * (0.7 + 1.5 * hazy), aerial_max) for a in aerial]
     sb = sunlight[0] if sunlight else daylit[0] if daylit else 0
     now = time.time()
     for n, row in enumerate(rows):
@@ -273,17 +298,17 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
             ctx.line_to(b, y)
         ctx.line_to(w, h)
         ctx.close_path()
-        far = mix(stone_color, (0.55 * c for c in haze), aerial[n])
+        far = mix(stone_color, (0.55 * c for c in haze), aer[n])
         ctx.set_source_rgb(*mix(mix(hill_color, near_color, k), far, day))
         ctx.fill()
         if n == 0:
             # The landmarks out of the buildings' reach (the Eiffel tower) over the hills, in the far roofs' colour.
-            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(stone_color, (0.55 * c for c in haze), aerial[1]), day))
+            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(stone_color, (0.55 * c for c in haze), aer[1]), day))
             to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
             far_ones = [p for p, d in zip(landmark_points(sk.eye[2]), landmark_km()) if d > skyline.reach_km]
             to_px = lambda b, e: (to_x(b), float(to_y(np.array([e]))[0]))
             shapes(ctx, far_ones, lambda b, m=0: abs(wrap(b - yaw)) < fov / 2 + m, to_px)
-            eiffel(ctx, [p for p in far_ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now)
+            eiffel(ctx, [p for p in far_ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now, today[1:])
             continue
         # The windows by bearing, a fifth of a degree each: they stay where they are when the view turns.
         cell = np.floor(bs * 5)
@@ -354,7 +379,7 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
                 ctx.line_to(b, y)
             ctx.line_to(w, h)
             ctx.close_path()
-            color = mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aerial[n]), day)
+            color = mix(mix(tree_night, near_color, 0.6 * (1 - k)), mix(leaf, (0.55 * c for c in haze), aer[n]), day)
             ctx.set_source_rgba(*color, dense)
             ctx.fill()
             # By day the crowns' tops in the light.
@@ -368,10 +393,9 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
     if night > 0.05:
         beacons(ctx, sk, yaw, fov, w, to_y, rows, night, lean)
 
-def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float):
-    # Lit gold from dusk to 23:45, sparkling the first five minutes of each hour.
-    t = time.localtime(now)
-    if night < 0.05 or (t.tm_hour, t.tm_min) >= (23, 45) or 3 < t.tm_hour < 12:
+def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float, clock: tuple):
+    # Lit gold from dusk to 23:45, sparkling the first five minutes of each hour. clock: (hour, minute)
+    if night < 0.05 or clock >= (23, 45) or 3 < clock[0] < 12:
         return
     for b, e, width, _ in points:
         if abs(wrap(b - yaw)) > fov / 2 + 5:
@@ -383,7 +407,7 @@ def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, nigh
         ctx.line_to(x + wpx / 2, base)
         ctx.set_source_rgba(1, 0.72, 0.35, 0.35 * night)
         ctx.fill()
-        if t.tm_min < 5:
+        if clock[1] < 5:
             rnd = random.Random(int(now * 4))
             for _ in range(max(3, round(wpx * 2))):
                 v = rnd.random()
@@ -553,6 +577,21 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
     t = time.time()
     return yaw + sway * math.sin(2 * math.pi * t / sway_period), fov, horizon + tilt_sway * math.sin(2 * math.pi * t / tilt_period)
+
+def demo_at(t: float) -> tuple:
+    '''The demo t s in: (sun (bearing, degrees up), the sky state as seen, (day of the year, hour, minute)), each
+    scene blending into the next.'''
+    each = DEMO_S / len(demo_scenes)
+    i, into = divmod(t, each)
+    a, b = demo_scenes[int(i) % len(demo_scenes)], demo_scenes[(int(i) + 1) % len(demo_scenes)]
+    k = min(max((into - each + demo_blend) / demo_blend, 0), 1)
+    k = k * k * (3 - 2 * k)
+    (ae, ab), (be, bb) = a[1], b[1]
+    cloud, haze, deck, high, wet, snow, wind = (x + (y - x) * k for x, y in zip(a[4:], b[4:]))
+    se = ae + (be - ae) * k
+    seen = skylook.Seen((cloud, haze, 0.6 * cloud * deck), deck, high, (1 - cloud) if se > 0 else None, 0.5 * cloud * deck,
+                        0.6 if wind > 8 else 0.2, None, wet, snow, None, wind, wind * 1.5, 250)
+    return ((ab + wrap(bb - ab) * k) % 360, se), seen, (b if k > 0.5 else a)[2], *(b if k > 0.5 else a)[3]
 
 def shade(hex: str, k: float) -> tuple[float, float, float]:
     return tuple(min(int(hex[i:i + 2], 16) / 255 * k, 1) for i in (1, 3, 5))
@@ -822,7 +861,15 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = app.following(fs)
     sk = skyline.get(now)
     _eye['m'] = sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m
-    yaw, fov, tl = camera(fs, look(fs, st, clear or (0, 0, w, h), w))
+    started = OpenedStateManager().get_state(fs).demo
+    demo = started is not None and now - started < DEMO_S
+    if demo:
+        # Once around from where it was, slowly; the scene's sky instead of the one outside.
+        if _demo.get(fs.config.name, (None,))[0] != started:
+            _demo[fs.config.name] = started, _cams.get(fs.config.name, [90])[0]
+        (dsb, dse), dseen, *today = demo_at(now - started)
+        view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, horizon
+    yaw, fov, tl = camera(fs, view if demo else look(fs, st, clear or (0, 0, w, h), w))
     hz = round(h * tl)
     top, dip = top_of(fov), dip_of(fov)
     in_view = lambda b, margin=10: abs(wrap(b - yaw)) < fov / 2 + margin
@@ -837,10 +884,10 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
 
     # The sky: the sun's height, the weather state and the room's light (skylook.py).
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
-    sb, se = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
+    sb, se = (dsb, dse) if demo else ((math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude']))
     off = OpenedStateManager().get_state(fs).off
     # The sky state: every source over home together (skystate.py, the same for all screens).
-    seen = skylook.seen(fs)
+    seen = dseen if demo else skylook.seen(fs)
     wet, snow = seen.wet, seen.snow
     lk = skylook.look(se, seen.cond, skylook.light_gain(fs), None, seen.warmth)
     skylook.paint(ctx, lk, w, hz, h, to_x(sb) if in_view(sb, 30) else None)
@@ -944,7 +991,8 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     lights = (sb, lk.glow) if lk.glow > 0.03 else None, rim if wet > 0.05 else rim_color, (sb, sun_out) if sun_out > 0.05 else None
     if sk:
         real_roofs(ctx, sk, yaw, fov, w, h, to_y, *lights, min(max((-se - 2) / 8, 0), 1),
-                   float(np.clip((se + 3) / 10, 0, 1)) * (1 - 0.3 * lk.cloud), lk.horizon, lean_m * math.sin(2 * math.pi * now / sway_period))
+                   float(np.clip((se + 3) / 10, 0, 1)) * (1 - 0.3 * lk.cloud), lk.horizon, lean_m * math.sin(2 * math.pi * now / sway_period),
+                   lk.haze, tuple(today) if demo else None)
     else:
         roofs(ctx, in_view, to_px, h, *lights)
     # The wind over the roofs, then the rain or snow at home in front of all that, at a few frames a second.

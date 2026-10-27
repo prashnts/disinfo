@@ -536,3 +536,14 @@ def test_sky_camera(monkeypatch):
     assert sky.aim(NS(planes={}, watched=[]), sky.view_fov) == (90, 180)
     # A higher plane: the horizon goes down to look up at it.
     assert sky.tilt[0] <= sky.tilt_to(2, 50) < sky.tilt_to(30, 50) <= sky.tilt[1]
+
+
+def test_sky_demo():
+    from disinfo.screens.aviator import sky
+    from disinfo.screens.aviator.state import DEMO_S
+    # Each scene's sky in its middle, blending into the next at its end; the clock and the season with it.
+    each = DEMO_S / len(sky.demo_scenes)
+    (b, e), seen, doy, *clock = sky.demo_at(each * 1.5)
+    assert (b, e) == (180, 58) and doy == 180 and clock == [13, 0] and seen.wet == 0
+    (_, e), seen, *_ = sky.demo_at(each * 5 - sky.demo_blend / 2)
+    assert 12 < e < 20 and 0.6 < seen.wet < 0.7 and 0 < seen.snow < 1
