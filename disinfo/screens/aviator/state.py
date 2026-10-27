@@ -13,8 +13,10 @@ MAP_UP_KEY = 'di.aviator.map_up'  # screen -> bearing, a JSON dict
 ZOOM_KEY = 'di.aviator.zoom'      # the same, the zoom
 LIGHT_KEY = 'di.aviator.light'    # the radar in light mode on every screen, '1' or '0'
 LAYERS_KEY = 'di.aviator.layers'  # the map's layers switched off: a JSON list
+HORIZON_KEY = 'di.aviator.horizon'  # where the sky view's horizon rests, of the height from the top
 VIEWS = ['map', 'sky', 'solar']
 DEMO_S = 132                       # s: the sky view's demo, once around
+SKY_HOLD = 300                     # s the sky view stays where the web page turned it
 
 
 class AviatorState(AppBaseModel):
@@ -54,6 +56,8 @@ class OpenedState(AppBaseModel):
     map_up: dict[str, float] = {}       # screen ('*': all) -> the bearing up on its map, from the web page; kept in redis
     zoom: dict[str, float] = {}         # screen ('*': all) -> its map's zoom, the same
     demo: float | None = None           # when the sky view's demo started, from the web page
+    sky: dict = {}                      # the sky view turned or zoomed from the web page: yaw, fov, at
+    horizon: float | None = None        # the sky view's horizon from the web page (None: its own); kept in redis
 
 def read_dict(key: str) -> dict[str, float]:
     try:
@@ -74,7 +78,8 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     keep_open = 90
 
     def initial_state(self) -> OpenedState:
-        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY))
+        return OpenedState(view=(db.get(VIEW_KEY) or b'').decode() or None, map_up=read_dict(MAP_UP_KEY), zoom=read_dict(ZOOM_KEY), light=db.get(LIGHT_KEY) == b'1', off=read_list(LAYERS_KEY),
+                           horizon=float(db.get(HORIZON_KEY) or 0) or None)
 
     def process_message(self, channel: str, data: PubSubMessage):
         match data.action:
@@ -93,6 +98,16 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 self.state.demo = time.time() if on else None
                 if on:
                     self.state.view = 'sky'
+            case 'aviator.sky':
+                # Turned or zoomed for a while (on the sky view, not kept), or back to its own.
+                p = {k: float(v) for k, v in (data.payload or {}).items() if k in ('yaw', 'fov') and v is not None}
+                self.state.sky = {**self.state.sky, **p, 'at': time.time()} if p else {}
+                if p:
+                    self.state.view = 'sky'
+            case 'aviator.horizon':
+                h = (data.payload or {}).get('h')
+                self.state.horizon = min(max(float(h), 0.3), 0.85) if h is not None else None
+                db.set(HORIZON_KEY, self.state.horizon or '')
             case 'aviator.light':
                 # The one asked for, or the other.
                 self.state.light = bool(data.payload['on']) if 'on' in (data.payload or {}) else not self.state.light

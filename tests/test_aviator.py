@@ -547,3 +547,20 @@ def test_sky_demo():
     assert (b, e) == (180, 58) and doy == 180 and clock == [13, 0] and seen.wet == 0
     (_, e), seen, *_ = sky.demo_at(each * 5 - sky.demo_blend / 2)
     assert 12 < e < 20 and 0.6 < seen.wet < 0.7 and 0 < seen.snow < 1
+
+
+def test_sky_held_from_the_web(monkeypatch):
+    from types import SimpleNamespace as NS
+    from disinfo.screens.aviator import state
+    monkeypatch.setattr(state, 'db', type('DB', (), {'set': lambda *a: None})())
+    m = state.OpenedStateManager.__new__(state.OpenedStateManager)
+    m.state = state.OpenedState()
+    # Turned, then zoomed: both kept, on the sky view; the horizon kept within reach; back to its own.
+    m.process_message('', NS(action='aviator.sky', payload={'yaw': 284}))
+    m.process_message('', NS(action='aviator.sky', payload={'fov': 30}))
+    assert (m.state.sky['yaw'], m.state.sky['fov'], m.state.view) == (284, 30, 'sky')
+    m.process_message('', NS(action='aviator.horizon', payload={'h': 0.1}))
+    assert m.state.horizon == 0.3
+    m.process_message('', NS(action='aviator.sky', payload={}))
+    m.process_message('', NS(action='aviator.horizon', payload={'h': None}))
+    assert m.state.sky == {} and m.state.horizon is None

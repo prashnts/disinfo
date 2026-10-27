@@ -235,7 +235,7 @@
     </script>
     <script type="module">
         import { h, Component, render } from 'https://esm.sh/preact@10';
-        import { useState, useEffect } from 'https://esm.sh/preact@10/hooks';
+        import { useState, useEffect, useRef } from 'https://esm.sh/preact@10/hooks';
         import htm from 'https://esm.sh/htm@3';
 
         // Initialize htm with Preact
@@ -298,8 +298,66 @@
                 <${RemoteButton} action="aviator.view" payload=${{view: 'map'}} title="map" />
                 <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
                 <${RemoteButton} action="aviator.view" payload=${{view: 'solar'}} title="solar" />
-                <${RemoteButton} action="aviator.demo" title="sky demo" />
                 `
+        }
+
+        function SkyView(props) {
+            // The sky view: where its horizon rests (kept), turned and zoomed for a while (5 min, then its own), the demo.
+            const [h, setH] = useState(0.6)
+            const [yaw, setYaw] = useState(90)
+            const [fov, setFov] = useState(50)
+            const last = useRef(0)
+            useEffect(() => {
+                fetch('/aviator/settings').then(r => r.json()).then(s => s.horizon && setH(s.horizon))
+            }, [])
+            const send = (action, payload) => fetch('/remote', {
+                method: 'POST',
+                body: JSON.stringify({action, payload}),
+                headers: {'Content-Type': 'application/json'},
+            })
+            // While dragging: a few a second, the last one always.
+            const live = (action, payload, end) => {
+                if (end || Date.now() - last.current > 150) {
+                    last.current = Date.now()
+                    send(action, payload)
+                }
+            }
+            const compass = d => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8]
+            const turn = (d, end) => { setYaw(d); live('aviator.sky', {yaw: String(d)}, end) }
+            return html`<div>
+                <strong>Sky view</strong>
+                <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
+                <${RemoteButton} action="aviator.demo" title="demo" />
+                <div class="in slider">
+                    <label>
+                        <strong>look</strong> down
+                        <input type="range" min="0.3" max="0.85" step="0.01" value=${h}
+                            onInput=${e => { setH(+e.currentTarget.value); live('aviator.horizon', {h: e.currentTarget.value}) }}
+                            onChange=${e => live('aviator.horizon', {h: e.currentTarget.value}, true)}/> up
+                        <button class='remote_button' onClick=${() => { setH(0.6); send('aviator.horizon', {}) }}>auto</button>
+                    </label>
+                </div>
+                <div class="in slider">
+                    <label>
+                        <strong>pan</strong>
+                        <input type="range" min="0" max="355" step="1" value=${yaw}
+                            onInput=${e => turn(+e.currentTarget.value)} onChange=${e => turn(+e.currentTarget.value, true)}/>
+                        <code>${yaw}° ${compass(yaw)}</code>
+                    </label>
+                    ${[['E', 60], ['S', 180], ['W', 284], ['N', 0]].map(([n, d]) => html`<button class='remote_button' onClick=${() => turn(d, true)}>${n}</button>`)}
+                    <button class='remote_button' onClick=${() => send('aviator.sky', {})}>auto</button>
+                </div>
+                <div class="in slider">
+                    <label>
+                        <strong>zoom</strong>
+                        <input type="range" min="20" max="180" step="5" value=${fov}
+                            onInput=${e => { setFov(+e.currentTarget.value); live('aviator.sky', {fov: e.currentTarget.value}) }}
+                            onChange=${e => live('aviator.sky', {fov: e.currentTarget.value}, true)}/>
+                        <code>${fov}°</code>
+                    </label>
+                </div>
+                <small>turned and zoomed for 5 min, then back to its own</small>
+            </div>`
         }
 
         function MapLayers(props) {
@@ -427,6 +485,9 @@
                     <${RemoteButton} action="show_printers" />
                     <${RemoteButton} action="show_design_demo" title="design demo" />
                     ${['flex', 'grid', 'stack', 'type', 'box', 'motion', 'scroll', 'media', 'touch'].map(tab => html`<${RemoteButton} action="design_demo" payload=${{tab, page: null}} title=${tab} />`)}
+                </div>
+                <div>
+                    <${SkyView}/>
                 </div>
                 <div>
                     <${RadarRadius}/>

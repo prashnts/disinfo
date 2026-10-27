@@ -22,7 +22,7 @@ from disinfo import fonts
 from disinfo.config import app_config
 from disinfo.screens.solar.app import sky_color
 
-from .state import ADSBxStateManager, OpenedStateManager, DEMO_S
+from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
 from . import app, astro, skylook, skyline, weather
@@ -594,7 +594,8 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     _held[fs.config.name] = yaw
     # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
     t = time.time()
-    return yaw + sway * math.sin(2 * math.pi * t / sway_period), fov, horizon + tilt_sway * math.sin(2 * math.pi * t / tilt_period)
+    rest = OpenedStateManager().get_state(fs).horizon or horizon
+    return yaw + sway * math.sin(2 * math.pi * t / sway_period), fov, rest + tilt_sway * math.sin(2 * math.pi * t / tilt_period)
 
 def demo_at(t: float) -> tuple:
     '''The demo t s in: (sun (bearing, degrees up), the sky state as seen, (day of the year, hour, minute)), each
@@ -879,15 +880,21 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     followed = app.following(fs)
     sk = skyline.get(now)
     _eye['m'] = sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m
-    started = OpenedStateManager().get_state(fs).demo
+    opened_ = OpenedStateManager().get_state(fs)
+    started, held = opened_.demo, opened_.sky
     demo = started is not None and now - started < DEMO_S
     if demo:
         # Once around from where it was, slowly; the scene's sky instead of the one outside.
         if _demo.get(fs.config.name, (None,))[0] != started:
             _demo[fs.config.name] = started, _cams.get(fs.config.name, [90])[0]
         (dsb, dse), dseen, *today = demo_at(now - started)
-        view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, horizon
-    yaw, fov, tl = camera(fs, view if demo else look(fs, st, clear or (0, 0, w, h), w))
+        view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, opened_.horizon or horizon
+    else:
+        view = look(fs, st, clear or (0, 0, w, h), w)
+        if held and now - held['at'] < SKY_HOLD:
+            # Where the web page turned it, a while.
+            view = held.get('yaw', view[0]), held.get('fov', view[1]), view[2]
+    yaw, fov, tl = camera(fs, view)
     hz = round(h * tl)
     top, dip = top_of(fov), dip_of(fov)
     in_view = lambda b, margin=10: abs(wrap(b - yaw)) < fov / 2 + margin

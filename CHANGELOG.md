@@ -51,7 +51,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 
 ### Changed
 - The sky view looks at the waypoints' piece of the skyline, closer in, widening for the planes and now and then to the whole window; idle, it turns slowly to the sights around (the landmarks, a low sun or moon, where the planes are) and back. It pans up to a followed plane and drifts up and down otherwise, the near roofs sliding over the far ones.
-- A sky demo on the web page: once around, slowly, through the skies one may see (morning to night, haze, rain, snow, fog, wind).
+- The sky view's controls on the web page: where it looks up or down (kept), turning and zooming it for a while, and a demo: once around, slowly, through the skies one may see (morning to night, haze, rain, snow, fog, wind).
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
 
 ### Fixed
