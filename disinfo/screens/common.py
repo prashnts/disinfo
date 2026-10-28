@@ -30,7 +30,9 @@ def motion(fs: FrameState) -> bool:
 
 
 def radar_wanted(fs: FrameState, on_top: list) -> bool:
-    # The sky view always, the map for a plane's card on top; the solar view never.
+    # The sky view always, the map for a plane's card on top; the solar view never. A hand near: the sky, any time.
+    if aviator.hand.update(fs) and 'sky' in fs.config.aviator_views:
+        return True
     if aviator.app.quiet(fs) or (view := aviator.app.view_mode(fs)) == 'solar':
         return False
     return view == 'sky' or any(w and w.background == 'aviator' for w in on_top)

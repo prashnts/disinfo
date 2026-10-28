@@ -295,7 +295,29 @@
                 <h2>zen</h2>
                 <${Check} label=${`zen on ${scope === 'all' ? 'every screen' : scope}`} checked=${zenOn} onChange=${setZen}/>
                 <div><small>time, weather, background, planes without labels; an hour</small></div>
+
+                <${NoteBox} scope=${scope}/>
             </div>`
+        }
+
+        function NoteBox({scope}) {
+            // A note at the bottom, for a while ('all': under each screen's own). Timed steps: POST /note or screens/note.py.
+            const [notes, reload] = useFetch('/note', 5000)
+            const [text, setText] = useState('')
+            const [min, setMin] = useState(10)
+            const post = (method, url, body) => fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body && JSON.stringify(body)}).then(reload)
+            const up = Object.entries(notes || {})
+            return html`
+                <h2>note <small>${scope === 'all' ? 'every screen' : scope}</small></h2>
+                <div class="row">
+                    <input type="text" placeholder="text, | breaks lines" value=${text} onInput=${e => setText(e.currentTarget.value)}/>
+                    <${Btn} onClick=${() => text && post('POST', '/note', {screen: scope, text, minutes: min})}>show</${Btn}>
+                </div>
+                <${Range} label="for" min="1" max="120" step="1" value=${min} show=${`${min} min`} onInput=${setMin}/>
+                ${up.map(([s, n]) => html`<div class="row">
+                    <span class="grow"><code>${s}</code> ${n.value.startsWith('{') ? 'steps' : n.value} <small>${Math.ceil(n.ttl / 60)} min</small></span>
+                    <${Btn} onClick=${() => post('DELETE', `/note/${s}`)}>clear</${Btn}>
+                </div>`)}`
         }
 
 

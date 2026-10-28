@@ -17,7 +17,7 @@ from disinfo.config import app_config
 from disinfo.drat import shown
 
 from .state import ADSBxStateManager, OpenedStateManager, VIEWS, VIEW_HOLD, VIEW_TURN, STORM, live
-from . import lightning
+from . import lightning, hand
 from .colors import marker_color
 from . import basemap, skylook, weather
 from .utils import airports, local_xy
@@ -502,7 +502,10 @@ def view_mode(fs: FrameState) -> str:
     views = [v for v in VIEWS if v in fs.config.aviator_views]
     pressed, at = m.of('view', fs)
     held = pressed in views and now - at < VIEW_HOLD
-    if 'sky' in views and STORM not in m.of('views_off', fs) and (since := lightning.storm(now)) and not (held and at > since):
+    if 'sky' in views and hand.active(fs):
+        # A hand near the screen turns the sky.
+        mode = 'sky'
+    elif 'sky' in views and STORM not in m.of('views_off', fs) and (since := lightning.storm(now)) and not (held and at > since):
         # A storm brings the sky (its checkbox on), unless a view was pressed since it began.
         mode = 'sky'
     elif held:

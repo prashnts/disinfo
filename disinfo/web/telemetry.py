@@ -71,12 +71,44 @@ class DiUserState(AppBaseModel):
     motion: bool = False
     updated_at: float = 0.0
 
-class DiTofState(AppBaseModel):
-    distance_mm: list[int] = []
-    masked_distance_mm: list[int] = []
-    render: list[list[int]] = []
-    grid: int = 7
+class DiTofPresence(AppBaseModel):
+    on: bool = False
+    since: float = 0.0
     updated_at: float = 0.0
+
+class DiTofNear(DitButtonState):
+    # A hand within near_mm: pressed while it's there. Where, while pressed (the last place after).
+    mm: int = 0
+    x: float = 0.0
+    y: float = 0.0
+
+class DiTofTarget(AppBaseModel):
+    mm: int = 0
+    x: float = 0.0      # zones, in the sensor's view (as a camera): x to its right, y down, 0..7
+    y: float = 0.0
+    cells: int = 0
+
+class DiTofDebug(AppBaseModel):
+    grid: list[int] = []    # 64 mm, 0 no reading, row by row in the sensor's view
+    bg: list[int] = []
+    fg: list[int] = []
+
+class DiTofState(AppBaseModel):
+    # Worked out on the client (clients/websocket-rpi-matrix tof.py); the grid only while asked (act tof debug).
+    present: DiTofPresence = DiTofPresence()
+    near: DiTofNear = DiTofNear()
+    target: DiTofTarget | None = None
+    blobs: list[tuple[int, float, float, int]] = []     # mm, x, y, zones: the biggest first
+    debug: DiTofDebug | None = None
+    hz: float = 0.0
+    updated_at: float = 0.0
+
+    @model_validator(mode='before')
+    @classmethod
+    def _no_target(cls, data):
+        if isinstance(data, dict) and data.get('target') == {}:
+            data = {**data, 'target': None}
+        return data
 
 class DiIRCamState(AppBaseModel):
     render: list[list[float]] = []

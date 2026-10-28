@@ -1,3 +1,4 @@
+import time
 from PIL import Image
 from typing import Callable
 import numpy as np
@@ -81,31 +82,43 @@ def get_palette(name):
     arr = arr[:, :, 0:3]
     return arr.tobytes()
 
+_tof_asked = [0.0]
+s_tof = TextStyle(font=fonts.tamzen__rs, color='#DFD9C9')
+
 def tof_info(fs: FrameState):
     telem = TelemetryStateManager(fs.config.name).get_state(fs)
+    tof = telem.tof
+    # The grid comes only while asked: again before the client's 30 s are up.
+    if time.time() - _tof_asked[0] > 10:
+        _tof_asked[0] = time.time()
+        act(fs, 'tof', 'debug', str(int(_tof_asked[0])))
 
-    dmm = np.flipud(np.array(telem.tof.distance_mm).reshape((8, 8))).astype('float64')
-    mind = dmm.min()
-    maxd = dmm.max()
-    dmm -= mind
-
-    dmm *= (255.0 / (maxd - mind))
-    dmm = np.clip(dmm, 0, 255).astype(np.uint8)
+    # In the sensor's view (as a camera): near bright, far dark, no reading black; the foreground's zones dotted.
+    dmm = np.array(tof.debug.grid if tof.debug and len(tof.debug.grid) == 64 else [0] * 64).reshape((8, 8)).astype('float64')
+    fg = np.array(tof.debug.fg if tof.debug and len(tof.debug.fg) == 64 else [0] * 64).reshape((8, 8))
+    valid = dmm > 0
+    level = np.clip((3000 - dmm) * (254.0 / 2700), 0, 254) + 1
+    dmm = np.where(valid, level, 0).astype(np.uint8)
 
     def _make_img(pallette, size, resample):
         img = Image.frombytes("P", (8, 8), dmm.tobytes())
         img.putpalette(pallette)
         img = img.convert('RGBA')
         img = img.resize((size, size), resample)
-        frame = Frame(img, hash=('tof_info', f'v1_{size}_{resample}')).rotate(180)
+        c = size // 8
+        for y, x in zip(*np.nonzero(fg)):
+            img.putpixel((int(x) * c + c // 2, int(y) * c + c // 2), (255, 255, 255, 255))
+        frame = Frame(img, hash=('tof_info', dmm.tobytes(), fg.tobytes()))
         return div(frame, style=DivStyle(border=1, border_color='#111111', radius=2))
 
-    img2 = _make_img(get_palette('viridis'), 32, Image.Resampling.LANCZOS)
+    img2 = _make_img([0, 0, 0] + list(get_palette('viridis'))[3:], 32, Image.Resampling.NEAREST)
 
+    t = tof.target
     info = vstack([
-        text(f'MIN: {mind:.1f}'),
-        text(f'MAX: {maxd:.1f}'),
-    ])
+        text(f'P {"on" if tof.present.on else "--"} {tof.hz:.0f}Hz', s_tof),
+        text(f'T {t.mm if t else "--"} {f"{t.x:.0f},{t.y:.0f}" if t else ""}', s_tof),
+        text(f'N {tof.near.mm if tof.near.pressed else "--"}', s_tof),
+    ], gap=1)
 
     imgs = vstack([
         text('ToF'),

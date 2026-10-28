@@ -26,17 +26,29 @@ sys.path.append(_here.as_posix())
 
 from ._vl53lxcx import (
     DATA_DISTANCE_MM,
+    DATA_NB_TARGET_DETECTED,
     DATA_TARGET_STATUS,
     RESOLUTION_8X8,
+    STATUS_NO_WRAP,
     STATUS_VALID,
+    STATUS_VALID_LARGE_PULSE,
     VL53L5CX,
 )
+
+from .tof import ToFTracker, ToFParams, ToFRecorder
+
+# ST: 5 is a valid range, 6 and 9 are mostly right.
+TOF_VALID = (STATUS_VALID, STATUS_NO_WRAP, STATUS_VALID_LARGE_PULSE)
 
 class Config(BaseModel):
     buzzer_enable: bool = True
     buzzer_address: str = '0x1e'
 
     tof_enable: bool = True
+    tof_params: dict = {}                   # tof.ToFParams: rotate (to the sensor's view), distances, timings
+    tof_background: str = '.tof_bg.json'    # the room's distances by zone, kept across restarts
+    tof_record: str = ''                    # raw frames for training, into this dir (a RAM disk), till:
+    tof_record_until: str = ''              # local time, '2026-10-29T23:59'
 
     apds_enable: bool = True
     apds_color_enable: bool = True
@@ -364,15 +376,14 @@ class AdafruitRemote:
         
 @dataclass
 class ToFSensor:
-    # Add: 0x29
+    # Add: 0x29. What's in front of it is worked out here (tof.py); the grid goes out only while debug is asked for.
     tof: VL53L5CX = None
-    distance_mm: list[int] = None
-    masked_distance_mm: list[int] = None
-    grid: int = 7
-    render: list[list[int]] = None
-    updated_at: float = 0.0
-    update_frequency: int = 10
+    tracker: ToFTracker = None
+    recorder: ToFRecorder = None
+    debug_s: float = 30         # the grid sent this long after a 'debug' act
+    update_frequency: int = 0      # data_ready is a 4-byte read: look every loop, the sensor paces it (15 Hz)
     _n_update: int = 0
+    _debug_until: float = 0.0
 
     def update(self):
         if self._n_update < self.update_frequency:
@@ -384,40 +395,22 @@ class ToFSensor:
             return
         if self.tof.check_data_ready():
             results = self.tof.get_ranging_data()
-            distance_mm = results.distance_mm
-            target_status = results.target_status
-            grid = 7
-
-            masked_distance_mm = [d if status == STATUS_VALID else 0 for d, status in zip(distance_mm, target_status)]
-
-            self.distance_mm = distance_mm
-            self.masked_distance_mm = masked_distance_mm
-            self.updated_at = time.monotonic()
-            if distance_mm != self.distance_mm:
-                self.distance_mm = distance_mm
-                self.masked_distance_mm = masked_distance_mm
-
-            d_max = max(masked_distance_mm)
-            render = []
-            row = []
-            for i, d in enumerate(masked_distance_mm):
-                scaled = int((d / d_max) * 255) if d_max > 0 else 0
-                row.append(scaled)
-                if (i & grid) == grid:
-                    render.append(row)
-                    row = []
-            self.render = render
+            # A zone without a target keeps its last distance: masked too.
+            self.tracker.update([d if n and status in TOF_VALID else 0
+                                 for d, status, n in zip(results.distance_mm, results.target_status, results.nb_target_detected)])
+            if self.recorder:
+                self.recorder.add(list(results.distance_mm), list(results.target_status), list(results.nb_target_detected), self.tracker)
 
     def serialize(self) -> dict:
         if not self.tof:
             return {}
-        return {
-            'distance_mm': self.distance_mm,
-            'masked_distance_mm': self.masked_distance_mm,
-            'updated_at': self.updated_at,
-            'render': self.render,
-            'grid': self.grid,
-        }
+        return self.tracker.serialize(debug=time.monotonic() < self._debug_until)
+
+    def act(self, params: str, hash_: str):
+        if params == 'debug':
+            self._debug_until = time.monotonic() + self.debug_s
+        elif params == 'save':
+            self.tracker.save()
 
     @classmethod
     def setup(cls, bus: board.I2C, conf: Config, **kwargs):
@@ -431,9 +424,14 @@ class ToFSensor:
 
             tof.init()
             tof.resolution = RESOLUTION_8X8
-            tof.ranging_freq = 10
-            tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS})
-            return cls(tof, **kwargs)
+            tof.ranging_freq = 15
+            tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS, DATA_NB_TARGET_DETECTED})
+            tracker = ToFTracker(ToFParams(**conf.tof_params), Path(conf.tof_background))
+            recorder = None
+            if conf.tof_record and conf.tof_record_until:
+                until = time.mktime(time.strptime(conf.tof_record_until, '%Y-%m-%dT%H:%M'))
+                recorder = ToFRecorder(Path(conf.tof_record), until)
+            return cls(tof, tracker, recorder, **kwargs)
         except Exception as e:
             print(f"[VL53L5CX] not found: {e}")
             return cls(**kwargs)

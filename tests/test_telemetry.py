@@ -21,12 +21,12 @@ def test_client_restart():
     # The client's clock starts over when it restarts: its readings still come through.
     m = manager()
     send(m, light_sensor={'rgbc': [1, 1, 1, 5000], 'updated_at': 900.0}, remote={'encoder': {'position': 7, 'updated_at': 900.0}, 'updated_at': 900.0},
-         tof={'distance_mm': [1], 'updated_at': 900.0})
+         tof={'present': {'on': True}, 'target': {'mm': 800}, 'updated_at': 900.0})
     send(m, light_sensor={'rgbc': [1, 1, 1, 20], 'updated_at': 3.0}, remote={'encoder': {'position': 0, 'updated_at': 3.0}, 'updated_at': 3.0},
-         tof={'distance_mm': [2], 'updated_at': 3.0})
+         tof={'near': {'pressed': True, 'mm': 90}, 'target': {}, 'updated_at': 3.0})
     s = m.state
     assert s.light_sensor.rgbc[3] == 20 and s.light_sensor.received_at > 0
-    assert s.remote.encoder.position == 0 and s.tof.distance_mm == [2]
+    assert s.remote.encoder.position == 0 and s.tof.near.pressed and s.tof.target is None
 
 
 def test_timer_encoder_restart(monkeypatch):

@@ -26,7 +26,7 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD, live
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, skyline, weather, lightning
+from . import app, astro, skylook, skyline, weather, lightning, hand
 
 
 horizon = 0.6           # of the height, from the top
@@ -129,6 +129,7 @@ _demo = {}              # screen -> (the demo's start, the yaw it started at)
 
 _cams = {}              # screen -> [yaw, fov, at]: eases towards the view
 _roofs = {}             # screen -> (what they're drawn for, the layer, its rows)
+roofline = {}           # screen -> (when, the roofs' top y per column): twenty_two's cat flies over them
 _held = {}              # screen -> the yaw: turned only when what it looks at has moved away
 _eye = {'m': home_ground + app_config.aviator_eye_m}
 
@@ -844,10 +845,10 @@ def beacons(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, w: 
         ctx.rectangle(int(x), int(y), 1, 1)
         ctx.fill()
 
-def camera(fs: FrameState, target: tuple[float, float, float]) -> tuple[float, float, float]:
+def camera(fs: FrameState, target: tuple[float, float, float], ease: float = 0.8) -> tuple[float, float, float]:
     now = time.monotonic()
     c = _cams.setdefault(fs.config.name, [*target, now])
-    k = 1 - math.exp(-(now - c[3]) / 0.8)
+    k = 1 - math.exp(-(now - c[3]) / ease)
     c[:] = c[0] + wrap(target[0] - c[0]) * k, c[1] + (target[1] - c[1]) * k, c[2] + (target[2] - c[2]) * k, now
     app._moving[fs.config.name] = abs(wrap(target[0] - c[0])) > 0.3 or abs(target[1] - c[1]) > 0.3 or abs(target[2] - c[2]) > 0.004
     if not app._moving[fs.config.name]:
@@ -1275,7 +1276,9 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         if held and now - held['at'] < SKY_HOLD:
             # Where the web page turned it, a while.
             view = held.get('yaw', view[0]), held.get('fov', view[1]), view[2]
-    yaw, fov, tl = camera(fs, view)
+    if (turned := hand.yaw(fs, _cams.get(fs.config.name, view)[0])) is not None:
+        view = turned, view[1], view[2]
+    yaw, fov, tl = camera(fs, view, 0.25 if hand.active(fs) else 0.8)
     live(fs, yaw=round(yaw % 360, 1), fov=round(fov, 1), tilt=round(tl, 3), held=bool(held) and now - held['at'] < SKY_HOLD,
          demo=(scene or 'around') if demo else None)
     # Whole pixels: between them the frame stays the same (the roofs from the cache, nothing new to send).
@@ -1423,6 +1426,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             hit = _roofs[fs.config.name] = key, layer, real_roofs(cairo.Context(layer), sk, *args)
         # The thunder shakes them.
         dy = lightning.rumble(now)
+        roofline[fs.config.name] = now, to_y(hit[2].max(axis=0)) + dy
         ctx.save()
         ctx.translate(0, dy)
         ctx.set_source_surface(hit[1])

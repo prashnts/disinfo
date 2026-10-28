@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from PIL import Image, ImageFile, ImageDraw, ImageFont
 
 from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
-from websocket_rpi_matrix.frames import FrameAssembler
+from websocket_rpi_matrix.frames import FrameAssembler, WS2_MAGIC
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
@@ -188,7 +188,8 @@ def main(conf: Config):
         nonlocal last_ping
         last_ping = time.monotonic()
         try:
-            if isinstance(msg, str):
+            # Without utf-8 validation, text frames come as bytes too: the frames start with the magic.
+            if isinstance(msg, str) or not msg.startswith(WS2_MAGIC):
                 _got_acts(ws, json.loads(msg))
             elif assembler.apply(msg):
                 _new_frame(assembler.frame, assembler.boxes)

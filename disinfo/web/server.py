@@ -272,6 +272,34 @@ async def smokes_count():
     from disinfo.screens import smokes
     return smokes.doc() or {}
 
+class NoteInput(AppBaseModel):
+    screen: str = 'all'
+    text: str | None = None             # '|' breaks lines
+    minutes: float = 10
+    steps: list[tuple[float, str]] | None = None    # timed: [[seconds, text], ...], after `start` s
+    start: float = 0
+
+@app.get('/note')
+async def note_list():
+    # The notes up, by screen ('all' under each screen's own): screens/note.py.
+    from disinfo.screens import note
+    return note.notes()
+
+@app.post('/note')
+async def note_put(n: NoteInput):
+    from disinfo.screens import note
+    if n.steps:
+        note.put(n.screen, *note.steps(n.steps, n.start))
+    else:
+        note.put(n.screen, n.text, n.minutes * 60)
+    return note.notes()
+
+@app.delete('/note/{screen}')
+async def note_clear(screen: str):
+    from disinfo.screens import note
+    note.put(screen, None)
+    return note.notes()
+
 @app.get('/weather/diag')
 async def weather_diag(hours: int = 36):
     '''Everything behind the weather card, for web/weather.html: the sky state, the stations, the blend, the scores.'''

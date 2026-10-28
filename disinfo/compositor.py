@@ -159,6 +159,8 @@ def compose_big_frame(fs: FrameState):
             image = composite_at(stream_widget(fs).draw(fs), image, 'bm')
     image = composite_at(screens.twenty_two.draw(fs), image, 'mm')
     image = composite_at(timer_app(fs).draw(fs), image, 'br' if screen.spot('side').anchor[1] == 'r' else 'bl', frost=2)
+    if (note := screens.note.draw(fs)):
+        image = composite_at(note, image, 'bm', dy=-2)
 
     if config.name == 'distudy':
         # dead pixel on border.
@@ -278,6 +280,8 @@ def big_screen(name: str, side: str, time_side: str | None = None, compose=None)
 def compose_entry(fs: FrameState) -> Frame:
     # Dim while nobody's there (the panel's off then, but a touch lights it): it fades up when someone comes.
     frame = screens.entry.compose(fs)
+    if (note := screens.note.draw(fs)):
+        frame = composite_at(note, frame, 'bm', dy=-2)
     return frame if should_turn_on_display(fs) else frame.brightness(0).tag('entry.asleep')
 
 SCREENS = {

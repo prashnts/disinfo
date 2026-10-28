@@ -116,3 +116,36 @@ strike), `sensor.sensei_sensei_distance_storm` (km, coarse steps to ~40 km, the 
 bearing from one antenna. Plan: Blitzortung's HA integration (HACS, the user installs it) for the strikes' positions →
 flashes at their bearing on the sky view's skyline; Sensei as the local, offline "it's here" (an intensity pulse,
 distance ≤ 5 km into the close-windows card). Both sources as available; a `lightning` quantity in skystate.
+
+## Desk ToF (2026-10-28, open: continue with the user)
+
+VL53L5CX 8x8 at the head of the desk, seated head height (red on `~/limn-shot/floorplan/Scaled Map v1 disinfo -
+desk.png`, 2 mm/px), turned ~22° toward the room (tack; printed base later). The user: processing on the client,
+telemetry carries the result, the grid is debug only; near → a mode (menu) or denser info, undecided; not a timer.
+
+- **Built + deployed:** client `tof.py` (`ToFTracker`): orient (`rotate` quarter turns, desk = 1: the sensor's view
+  as a camera, x right = toward the room, y down; checked by the user on the heatmap), background per zone (farther:
+  follows at once; nearer + still < 15 mm for 10 min: absorbed; `.tof_bg.json` in the client dir, seeded from the
+  empty room, saved every 15 min), foreground < `present_mm` 1500, blobs. Out: `present` (on/since), `target`
+  (biggest blob, mm/x/y smoothed), `near` (a hand < 500 mm: button state like the remote's), `blobs`; `debug` (grid,
+  bg, fg) for 30 s after act `tof debug` (the sensors card asks every 10 s). Server model `DiTofState` (telemetry.py).
+  Tests `tests/test_tof.py`. Desk config `sensor_conf.tof_params = {"rotate": 1}`.
+- **Replayed on the sitting test:** seated 0.82 m x≈5.4; lean 0.78 m **x≈3.8** (toward the screen); sit back 0.99 m
+  x≈6.4; hand toward disinfo: near pressed, down to 9 cm; hand toward the monitor: barely seen (~0.87 m, edge).
+  Lean = the target's x (distance barely moves: the sensor sees the user from the side).
+- Driver: byte fields were 4-byte-swapped (status at i^3): fixed. Old captures in `~/limn-shot/tof/data` need
+  `perm = arange(64) ^ 3` on status/nb_target. Empty room: `tof_empty_2042/2056.jsonl`.
+- **Hand → sky pan (built 2026-10-28, the user's pick over the menu):** `aviator/hand.py`: `near` pressed → sky view
+  (any time, quiet hours too), zen on (if not already), yaw = start + 14°/zone × hand x (to the user's right = look
+  right, `turn_sign`), camera eases 0.25 s; 4 s after the hand's gone: back, zen off if ours. Tests `test_hand.py`.
+  To tune with the user: direction, degrees per zone, linger.
+- **Hand vs body (2026-10-28 22:30, after the user's "gets stuck on my body"):** a hand = under `near_mm` AND 25 cm
+  nearer than the body (slow `_body_mm` while no hand) AND not a view-filling blob from 25 cm; held 0.3 s to press,
+  0.25 s gone to release; not moving 20 s → released + vetoed till it goes. Replays: one press (the hand) over all
+  captures. Tests in `test_tof.py`.
+- **Training recording (user OK till 2026-10-29 23:59):** client `ToFRecorder` → desk `/tmp/tof_rec/tof-*.npz` (a
+  minute each: t, raw d/s/n, present, near, target, body; ~80 KB/min), stops itself at `tof_record_until`; pulled to
+  `~/limn-shot/tof/rec/` every 30 min while my session runs. 29.10: the user alone in the room till the evening,
+  evening like 28.10 (two at the window table). After: take `tof_record*` out of the desk's config.
+- Next: train/tune on the recordings (body vs hand vs passers-by, the table as background); lean → denser/overview; maybe turn the sensor a bit more toward the chair (lean margin). Guided tests: the note widget
+  (`/note`, `note.steps`).

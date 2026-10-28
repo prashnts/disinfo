@@ -454,16 +454,21 @@ class VL53LxCX:
         return list(struct.unpack(fmt, raw))
 
     @staticmethod
+    def _unswap(raw):
+        # raw data buffers are 4-byte swapped: the byte-per-zone fields too
+        return bytes(b for i in range(0, len(raw), 4) for b in reversed(raw[i : i + 4]))
+
+    @staticmethod
     def _nb_target_detected(raw):
-        return raw
+        return VL53LxCX._unswap(raw)
 
     @staticmethod
     def _target_status(raw):
-        return raw
+        return VL53LxCX._unswap(raw)
 
     @staticmethod
     def _reflectance(raw):
-        return raw
+        return VL53LxCX._unswap(raw)
 
     @staticmethod
     def _motion_indicator(raw):
@@ -473,8 +478,9 @@ class VL53LxCX:
     def _range_sigma_mm(raw):
         data = []
         fmt = f">{len(raw) // 2}H"
-        for r in struct.unpack(fmt, raw):
-            data.append(r / 128)
+        swapped = struct.unpack(fmt, raw)
+        for i in range(0, len(swapped), 2):
+            data += [swapped[i + 1] / 128, swapped[i] / 128]
 
         return data
 

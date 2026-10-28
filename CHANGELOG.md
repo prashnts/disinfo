@@ -52,6 +52,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The bottom stacks hidden on every screen, from the web page or the entrance's button; cards asking for focus still show.
 
 - A robot by the clock's seconds while Claude works on disinfo.
+- A note at the bottom of a screen for a while (web page, `/note`, `screens/note.py`), on one or every screen; or timed steps with a countdown, to walk someone through a test.
+- 🔧 The desk's ToF works out what's in front of it on the client: someone there, where and how near (a lean shows as a move toward the screen), a hand near the screen like a button. The room's distances learnt (a chair left still for long becomes the room). The grid goes to the server only while the sensors card shows it, turned to the sensor's view.
+- A hand near the screen brings the sky view, in zen, and turns it as the hand moves; a few seconds after the hand's gone, back to what was there (zen off, unless it was on before). Any time, the quiet hours too.
+- The hand told from the body: nearer than it, held a moment (someone passing by is quicker), let go when it stops moving for long. 🔧 The desk's ToF can record its frames for a while (`tof_record`).
+- Nyan Cat redone: crisp pixels and a rainbow along its path, all on screen; a bigger show the rarer the time (22:22 most, 14:14 less), 12:34 climbs stairs, 13:31 a mirrored pair, palettes by the hour; over the roofs with fireworks in the sky view.
 
 ### Changed
 - What's shown, one way for every widget: its checkbox on the web page switches it off till checked again; its `show_` button shows it for a while (checking it again) or hides it till its schedule brings it back. Kept for all the screens by the data service.
@@ -66,6 +71,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The side stack scrolls no further than its end: the cards before the selected one stay in view, all of them, held still, when they fit (`discore`: `StackStyle(fill=)`).
 
 ### Fixed
+- The screens' clients took the server's messages (buzzer, haptics, display on/off) for frames since 2026-10-27 (text frames came as bytes): they act on them again.
+- 🔧 The desk's ToF sensor: its zones' status read from the wrong zones (the driver left their bytes swapped), stale distances kept; read at 15 Hz, not 3.
 - The stacks scrolled each card a pixel lower than the one before it; they all stop at the same place now.
 - The web page's design demo buttons did nothing (refused by the server).
 - The weather card's rain was an hour late.

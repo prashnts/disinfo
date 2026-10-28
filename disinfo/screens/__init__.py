@@ -12,6 +12,7 @@ from . import dishwasher
 from . import washing_machine
 from . import aviator
 from . import entry
+from . import note
 
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     'dishwasher',
     'washing_machine',
     'aviator',
+    'note',
     'entry',
 ]
