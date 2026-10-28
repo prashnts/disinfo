@@ -1,18 +1,21 @@
 import math
 import cairocffi as cairo
 
+from dataclasses import replace as dc_replace
 from functools import cache
 from typing import NamedTuple
+from PIL import Image
 
 from discore.cairo import to_pil
 from discore.elements import Frame, Target
 from discore.data_structures import FrameState
 from discore.widget import Widget
 from discore.layers import div, DivStyle
-from discore.layouts import hstack, vstack, Spacer, composite_at
+from discore.layouts import hstack, vstack, Spacer
 from discore.text import TextStyle, text
 from discore.transitions import text_slide_in
 from discore.scroller import HScroller
+from discore.slides import Slides, SlidesStyle
 from discore.cairo import load_svg_string
 from disinfo import fonts
 from disinfo.drat import shown
@@ -25,11 +28,12 @@ from . import lookup
 
 
 card_width = 75
-photo_size = (card_width, 38)
+photo_size = (card_width + 6, 60)     # fetched once, cropped to the card it covers
 # Fixed widths: longer text scrolls, slowly.
 callsign_width = card_width - 9 - 7 - 3 * 2    # the icon, the flag, the gaps
 airline_width = 34
 scroll_speed = 0.1         # s a pixel: slow, and fewer frames changed for the displays
+slide_s = 4                # each plane seen from the window, in turn under the card
 class Look(NamedTuple):
     callsign: TextStyle
     value: TextStyle
@@ -41,23 +45,24 @@ class Look(NamedTuple):
     arrow: TextStyle        # bitocra has no arrows.
     overhead: TextStyle
     widget: DivStyle
-    over: str               # the card's bottom over the photo
+    over: str               # the veil over the photo
+    dim: float              # the photo's brightness under it
 
-def look_of(c: dict, widget: DivStyle, over: str) -> Look:
+def look_of(c: dict, widget: DivStyle, over: str, dim: float) -> Look:
     return Look(
         TextStyle(font=fonts.px_op_mono_8, color=c['callsign']), TextStyle(font=fonts.bitocra7, color=c['value']),
         TextStyle(font=fonts.bitocra7, color=c['muted']), TextStyle(font=fonts.bitocra7, color=c['unit']),
         TextStyle(font=fonts.microfont_35_reg, color=c['muted']), TextStyle(font=fonts.microfont_35_reg, color=c['unit']),
         TextStyle(font=fonts.exsmall, color=c['unit']), TextStyle(font=fonts.scientifica__r, color=c['unit']),
-        TextStyle(font=fonts.bitocra7, color=c['overhead']), widget, over)
+        TextStyle(font=fonts.bitocra7, color=c['overhead']), widget, over, dim)
 
 dark = look_of(
     {'callsign': '#3fa05a', 'value': '#a6a6a6', 'muted': '#808080', 'unit': '#5b5e64', 'overhead': '#b7925e'},
-    DivStyle(padding=3, radius=3, background='#0a1a3a50', border=1, border_color='#00000088'), '#0a1a3a60')
+    DivStyle(padding=3, radius=3, background='#0a1a3a50', border=1, border_color='#00000088'), '#0a1a3a68', 0.5)
 # The light map (a medium grey behind): the texts darker, on a paler card.
 light = look_of(
     {'callsign': '#12612c', 'value': '#1c1e24', 'muted': '#33363e', 'unit': '#464a52', 'overhead': '#7a4f10'},
-    DivStyle(padding=3, radius=3, background='#e6eaf270', border=1, border_color='#00000066'), '#e6eaf2a0')._replace(credit=dark.credit)   # over the photo's dark strip
+    DivStyle(padding=3, radius=3, background='#e6eaf270', border=1, border_color='#00000066'), '#e6eaf2b0', 1)._replace(credit=dark.credit)   # on its dark strip
 
 def looks(fs: FrameState) -> Look:
     return light if OpenedStateManager().get_state(fs).of('light', fs) else dark
@@ -97,26 +102,30 @@ def where(k: Look, p: dict) -> Frame:
         return hstack([text('overhead', k.overhead), far], gap=2, align='bottom')
     return hstack([text(compass[round(p['bearing'] / 45) % 8], k.muted), text(f'{round(p["elev"])}', k.value), text('°', k.arrow), far], gap=1, align='bottom')
 
-def photo(k: Look, photo: dict) -> Frame | None:
-    # Cropped to photo_size, the photographer in its corner.
+def backdrop(k: Look, photo: dict, size: tuple[int, int]) -> Frame | None:
+    # The photo under the whole card, cropped to its shape, dim and veiled: the texts read over it.
     pic = lookup.photo_frame(photo['src'], photo_size) if photo.get('src') else None
     if not pic:
         return None
     w, h = pic.size
-    x, y = (w - photo_size[0]) // 2, (h - photo_size[1]) // 2
-    pic = Frame(pic.image.crop((x, y, x + photo_size[0], y + photo_size[1])), ('aviator.photo', photo['src'])).brightness(0.85)
-    credit = div(text(photo['by'] or '', k.credit, overflow='fit'), padding=(1, 1, 1, 2), background='#00000090')
-    return composite_at(credit, pic, 'tr')
+    r = min(w / size[0], h / size[1])
+    cw, ch = round(size[0] * r), round(size[1] * r)
+    x, y = (w - cw) // 2, (h - ch) // 2
+    img = pic.image.crop((x, y, x + cw, y + ch)).convert('RGBA')
+    img = Frame(img).brightness(k.dim).image
+    img.alpha_composite(Image.new('RGBA', img.size, k.over))
+    return Frame(img, ('aviator.backdrop', photo['src'], size, k is light))
 
 def scrolling(fs: FrameState, f: Frame, width: int, name: str) -> Frame:
     return HScroller(size=width, pause_at_loop=True, speed=scroll_speed, name=name).set_frame(f).draw(fs.tick)
 
 def card(fs: FrameState, p: dict, active: bool) -> Frame:
-    # Compact. The one on top of the stack has the photo, the callsign and route on frost over its bottom.
+    # Compact. The one on top of the stack has the photo under it (the widget's backdrop), its credit at the bottom.
     k = looks(fs)
     uname = lambda x: f'avi.{p["hex"]}.{x}'
     route = lookup.route(p) or {}
-    pic = photo(k, lookup.photo(p) or {}) if active else None
+    pic = (lookup.photo(p) or {}) if active else {}
+    pic = pic if pic.get('src') and lookup.photo_frame(pic['src'], photo_size) else None
     color = marker_color(p['alt']).hex
     trend = '↑' if p['vr'] > 120 else '↓' if p['vr'] < -120 else ''
 
@@ -146,32 +155,27 @@ def card(fs: FrameState, p: dict, active: bool) -> Frame:
         Spacer(),
         scrolling(fs, text(route.get('airline') or '', k.tiny_dim), airline_width, uname('airline')) if route.get('airline') else None,
     ], gap=3)
+    credit = hstack([Spacer(), div(text(pic['by'], k.credit, overflow='fit'), padding=(1, 1, 0, 2), radius=1, background='#00000090')]) if pic and pic.get('by') else None
 
-    if pic:
-        over = div(vstack([head, trip], gap=2), padding=(2, 2, 1, 2), background=k.over, width=card_width-3)
-        top = composite_at(over, pic, 'bl', frost=2)
-    else:
-        top = vstack([head, trip], gap=3)
-    f = div(vstack([top, stats, kind], gap=3), width=card_width)
+    f = div(vstack([head, trip, stats, kind, credit], gap=2), width=card_width)
     # The tag changes when the route comes in or the photo shows, so the widget animates the resize.
     return Frame(f.image, targets=(Target(0, 0, f.width, f.height, 'aviator.close', {'hex': p['hex']}),)).tag(('aviator.card', p['hex'], all(places), bool(pic), k is light))
 
 
 def tile(fs: FrameState, planes: list[dict]) -> Frame:
-    # One line for the planes seen from the window, scrolling: their number on the map, callsign, route, where to look.
+    # The planes seen from the window, one at a time, rolling up: their number on the map, callsign, route, where to look.
     k = looks(fs)
     st = ADSBxStateManager().get_state(fs)
     def item(p: dict) -> Frame:
         route = lookup.route(p) or {}
         places = route.get('from'), route.get('to')
-        return hstack([
-            pill(number(st, p['hex']) or 0, marker_color(p['alt']).hex),
-            text(route.get('number') or p['flight'] or p['r'] or p['hex'], k.value),
-            hstack([text(places[0]['iata'] or '?', k.tiny), text('→', k.arrow), text(places[1]['iata'] or '?', k.tiny)], gap=1, align='center') if all(places) and places[0] != places[1] else None,
-            where(k, p),
-        ], gap=2, align='center')
-    line = hstack([item(p) for p in planes], gap=8, align='center')
-    return scrolling(fs, line, card_width, 'avi.tile').tag(('aviator.tile', tuple(p['hex'] for p in planes), k is light))
+        trip = hstack([text(places[0]['iata'] or '?', k.tiny), text('→', k.arrow), text(places[1]['iata'] or '?', k.tiny)], gap=1, align='center') if all(places) and places[0] != places[1] else None
+        head = [pill(number(st, p['hex']) or 0, marker_color(p['alt']).hex), text(route.get('number') or p['flight'] or p['r'] or p['hex'], k.value)]
+        far = where(k, p)
+        # Too wide: without the route.
+        trip = trip if trip and hstack([*head, trip, far], gap=2).width <= card_width else None
+        return hstack([*head, trip, Spacer(), far], gap=2, align='center', width=card_width)
+    return Slides('avi.tile', SlidesStyle(width=card_width, edge='bottom')).mut([(lambda p=p: item(p), slide_s) for p in planes]).draw(fs)
 
 def planes(fs: FrameState) -> list[Widget]:
     # A card for the planes passing overhead and the one tapped, a tile for the others seen from the window.
@@ -186,12 +190,18 @@ def planes(fs: FrameState) -> list[Widget]:
     carded = [h for h in dict.fromkeys([*opened, *more]) if h in st.planes]
     seen = [st.planes[h] for h in dict.fromkeys([*overhead, *st.watched]) if h in st.planes and h not in carded]
     top = on_top(fs)
+    # The planes seen from the window, attached under the card (on its own without one). Not 'aviator.<hex>': the
+    # radar follows the cards only. The solar view keeps to the planes passing overhead: no tile.
+    seen = tile(fs, seen) if seen and view_mode(fs) != 'solar' else None
     # After the other cards (the printer's, the music's): they take the stack only when tapped.
     # On top of the stack, they bring the radar behind (the map or the sky).
-    cards = [Widget(f'aviator.{h}', frame=card(fs, st.planes[h], h == top), background='aviator', style=k.widget, priority=0.4, focus=h in opened, wait_time=10)
-             for h in carded]
-    # Not 'aviator.<hex>': the radar follows the cards only.
-    # The solar view keeps to the planes passing overhead: no tile.
-    if not seen or view_mode(fs) == 'solar':
+    def widget(h: str) -> Widget:
+        f = card(fs, st.planes[h], h == top)
+        pad = k.widget.padding * 2
+        bg = backdrop(k, lookup.photo(st.planes[h]) or {}, (f.width + pad, f.height + pad)) if h == top else None
+        return Widget(f'aviator.{h}', frame=f, background='aviator', style=dc_replace(k.widget, background_frame=bg), priority=0.4,
+                      focus=h in opened, wait_time=10, attached=(Widget('aviator-tile.attached', frame=seen, style=dc_replace(k.widget, padding=(2, 3, 2, 3))),))
+    cards = [widget(h) for h in carded]
+    if cards or not seen:
         return cards
-    return cards + [Widget('aviator-tile', frame=tile(fs, seen), background='aviator', style=k.widget, priority=0.3, wait_time=10)]
+    return [Widget('aviator-tile', frame=seen, background='aviator', style=k.widget, priority=0.3, wait_time=10)]

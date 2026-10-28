@@ -19,7 +19,8 @@ from .shapes import simplify, octilinear, area, length, chains
 from .utils import local_xy
 
 
-reach_km = 50           # around home
+reach_km = 80           # around home: past the planes' 60 km, the corners of a wide view too
+old_reach_km = 50       # shown until the bigger one is fetched
 ttl = 90 * 24 * 3600
 retry = 600             # s before asking again after a failure
 # km, the shapes stay that close to the real ones: the built-up areas are the loosest, they're only a tint.
@@ -41,6 +42,7 @@ min_size = {'builtup': 1.0, 'green': 0.2, 'water': 0.05, 'river': 1.0, 'coast': 
 _pending = set()
 _turn = threading.Lock()
 _loaded = {}            # group -> features
+_interim = {}           # group -> the old reach's features, meanwhile
 _checked = {}           # group -> when we last looked in redis
 
 
@@ -197,8 +199,8 @@ def query(group: str) -> str:
         sel = ''.join(f'way{s}{box};relation{s}[type=multipolygon]{box};' for s in groups[group])
     return f'[out:json][timeout:180];({sel});out geom;'
 
-def key(group: str) -> str:
-    return f'di.osm.{version}.{group}.{app_config.latitude:.3f},{app_config.longitude:.3f}.{reach_km}'
+def key(group: str, reach: float = reach_km) -> str:
+    return f'di.osm.{version}.{group}.{app_config.latitude:.3f},{app_config.longitude:.3f}.{reach}'
 
 def fetch(group: str) -> list[dict]:
     r = requests.post(app_config.overpass_url, data={'data': query(group)}, timeout=240,
@@ -232,7 +234,10 @@ def features(now: float) -> list[Feature]:
             _checked[group] = now
             if v := db.get(key(group)):
                 _loaded[group] = [x for f in json.loads(v) if (x := feature_of(f))]
+                _interim.pop(group, None)
             else:
                 ask(group)
-        out += _loaded.get(group, [])
+                if group not in _interim and (v := db.get(key(group, old_reach_km))):
+                    _interim[group] = [x for f in json.loads(v) if (x := feature_of(f))]
+        out += _loaded.get(group) or _interim.get(group, [])
     return out

@@ -119,7 +119,11 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
     runtime.up = False      # away: the tapped one's still a card, no tile in the solar view
     assert [w.name for w in widgets.planes(None)] == ['aviator.b'] and tiled == []
     monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'map')
-    assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator-tile'] and tiled == [['a', 'c']]
+    assert [w.name for w in widgets.planes(None)] == ['aviator.b'] and tiled == [['a', 'c']]     # under the card
+    assert widgets.planes(None)[0].attached[0].frame
+    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: OpenedState()))
+    assert [w.name for w in widgets.planes(None)] == ['aviator-tile']      # no card: on its own
+    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: OpenedState(opened={'b': 0})))
     monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'solar')
     runtime.up = runtime.pressed = True     # pressed: all the watched ones
     assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator.a', 'aviator.c']
