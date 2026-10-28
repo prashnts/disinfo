@@ -80,7 +80,7 @@ def seen(fs) -> Seen:
     '''The sky state (skystate.py, made in the data service) for drawing: what's drawn as cloud fades as it's less
     sure. Without it (the data service down), Home Assistant's weather state alone.'''
     d = skystate.doc()
-    rain_off = 'rain' in OpenedStateManager().get_state(fs).off
+    rain_off = 'rain' in OpenedStateManager().get_state(fs).of('off', fs)
     if d is None:
         e = get_entity(fs.config.weather_entity)
         c = conditions.get(e.state, (0.3, 0.2, 0, 0, 0)) if e else conditions['partlycloudy']

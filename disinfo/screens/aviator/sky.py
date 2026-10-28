@@ -23,10 +23,10 @@ from disinfo.config import app_config
 from disinfo.drat import shown
 from disinfo.screens.solar.app import sky_color
 
-from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD
+from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD, live
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, skyline, weather
+from . import app, astro, skylook, skyline, weather, lightning
 
 
 horizon = 0.6           # of the height, from the top
@@ -928,6 +928,9 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     yaw = _held.get(fs.config.name)
     followed = app.following(fs)
     middle = (clear[0] + clear[2]) / 2 - w / 2
+    storm = lightning.aim(time.time(), view_fov)
+    if storm and followed not in OpenedStateManager().get_state(fs).opened:
+        followed = None
     if followed:
         fov = follow_fov
         p = st.planes[followed]
@@ -941,6 +944,14 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
             yaw = b - middle / w * fov
         _held[fs.config.name] = yaw
         return yaw, fov, tilt_to(e, fov)
+    if storm:
+        # On the storm, held while it stays within a quarter view; a little sway.
+        target, fov = storm[0], round(storm[1] / 10) * 10
+        if yaw is None or abs(wrap(target - yaw)) > fov / 4:
+            yaw = target
+        _held[fs.config.name] = yaw
+        rest = OpenedStateManager().get_state(fs).of('horizon', fs) or horizon
+        return yaw + sway / 2 * math.sin(2 * math.pi * time.time() / sway_period), fov, rest
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sun = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     target, fov = aim(st, fov, sights(st, sun, astro.moon_at(time.time(), fs.config.latitude, fs.config.longitude)[:2]))
@@ -951,7 +962,7 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
         zoom = show_fov[0] + (show_fov[1] - show_fov[0]) * (0.5 + 0.5 * math.cos(2 * math.pi * e / show_breathe))
         b = bearing(*local_xy(*landmarks[-1][1:3])) - middle / w * zoom + 0.2 * zoom * math.sin(2 * math.pi * e / 80)
         _held[fs.config.name] = yaw = (target + wrap(b - target) * k) % 360
-        rest = OpenedStateManager().get_state(fs).horizon or horizon
+        rest = OpenedStateManager().get_state(fs).of('horizon', fs) or horizon
         return yaw, fov + (zoom - fov) * k, rest
     # Idle it follows the tour; on planes, it turns only when they're a quarter view away.
     if yaw is None or abs(wrap(target - yaw)) > fov / 4 or not any(h in st.planes for h in st.watched):
@@ -959,7 +970,7 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     _held[fs.config.name] = yaw
     # Slow motion while nothing's followed: the heading sways a few degrees, over a few minutes.
     t = time.time()
-    rest = OpenedStateManager().get_state(fs).horizon or horizon
+    rest = OpenedStateManager().get_state(fs).of('horizon', fs) or horizon
     return yaw + sway * math.sin(2 * math.pi * t / sway_period), fov, rest + tilt_sway * math.sin(2 * math.pi * t / tilt_period)
 
 def demo_at(t: float) -> tuple:
@@ -1244,23 +1255,29 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     now = time.time()
     followed = app.following(fs)
     sk = skyline.get(now)
-    dz = OpenedStateManager().get_state(fs).floors * floor_m
+    dz = OpenedStateManager().get_state(fs).of('floors', fs) * floor_m
     _eye['m'] = (sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m) + dz
     opened_ = OpenedStateManager().get_state(fs)
-    started, held = opened_.demo, opened_.sky
-    demo = started is not None and now - started < DEMO_S
-    if demo:
+    (started, scene), held = opened_.of('demo', fs), opened_.of('sky', fs)
+    names = [d[0] for d in demo_scenes]
+    demo = started is not None and now - started < (SKY_HOLD if scene in names else DEMO_S)
+    if demo and scene in names:
+        # One scene held, the view its own (or turned).
+        (dsb, dse), dseen, *today = demo_at((names.index(scene) + 0.5) * DEMO_S / len(demo_scenes))
+    if demo and scene not in names:
         # Once around from where it was, slowly; the scene's sky instead of the one outside.
         if _demo.get(fs.config.name, (None,))[0] != started:
             _demo[fs.config.name] = started, _cams.get(fs.config.name, [90])[0]
         (dsb, dse), dseen, *today = demo_at(now - started)
-        view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, opened_.horizon or horizon
+        view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, opened_.of('horizon', fs) or horizon
     else:
         view = look(fs, st, clear or (0, 0, w, h), w)
         if held and now - held['at'] < SKY_HOLD:
             # Where the web page turned it, a while.
             view = held.get('yaw', view[0]), held.get('fov', view[1]), view[2]
     yaw, fov, tl = camera(fs, view)
+    live(fs, yaw=round(yaw % 360, 1), fov=round(fov, 1), tilt=round(tl, 3), held=bool(held) and now - held['at'] < SKY_HOLD,
+         demo=(scene or 'around') if demo else None)
     # Whole pixels: between them the frame stays the same (the roofs from the cache, nothing new to send).
     yaw = round(yaw / (fov / w)) * fov / w
     hz = round(h * tl)
@@ -1278,7 +1295,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     # The sky: the sun's height, the weather state and the room's light (skylook.py).
     sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
     sb, se = (dsb, dse) if demo else ((math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude']))
-    off = OpenedStateManager().get_state(fs).off
+    off = OpenedStateManager().get_state(fs).of('off', fs)
     # The sky state: every source over home together (skystate.py, the same for all screens).
     seen = dseen if demo else skylook.seen(fs)
     wet, snow = seen.wet, seen.snow
@@ -1326,6 +1343,10 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if me > -1 and in_view(mb, 10):
         mx, my = to_px(mb, max(me, 0))
         astro.draw_moon(ctx, mx, my, 3, phase, (1 - 0.65 * min(max(se / 10, 0), 1)) * (1 - 0.8 * cloud_dim(mb)) * (1 - 0.5 * lk.cloud) * max(1 - 2 * wet, 0))
+
+    # The storms around: their towers, the strikes so far, the flashes and the sky they light (lightning.py).
+    night = min(max((-se - 2) / 8, 0), 1)
+    bolts = lightning.back(ctx, now, yaw, fov, sky_point, to_px, in_view, w, hz, skylook.cloud_color(lk), night, lk.cloud, info)
 
     if 'rain' not in off:
         rain(ctx, yaw, fov, w, hz, to_px, tint)
@@ -1400,10 +1421,15 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         if (hit := _roofs.get(fs.config.name)) is None or hit[0] != key:
             layer = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
             hit = _roofs[fs.config.name] = key, layer, real_roofs(cairo.Context(layer), sk, *args)
+        # The thunder shakes them.
+        dy = lightning.rumble(now)
+        ctx.save()
+        ctx.translate(0, dy)
         ctx.set_source_surface(hit[1])
         ctx.paint()
         if night > 0.05:
             beacons(ctx, sk.lifted(dz), yaw, fov, w, to_y, hit[2], night, lean, dz)
+        ctx.restore()
     else:
         roofs(ctx, in_view, to_px, h, *lights)
     # Darker to the bottom: the near roofs under, the far ones over them.
@@ -1418,6 +1444,8 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if windy:
         curls(ctx, w, hz * 0.3, hz, now, yaw, seen.wind, seen.gust or seen.wind, seen.wind_dir, skylook.cloud_color(lk))
     app._raining[fs.config.name] = wet > 0.05 or windy
+    lightning.front_light(ctx, now, w, h, night, bolts)
+    app._flashing[fs.config.name] = lightning.busy(now, bolts)
     if wet > 0.05:
         slant = drop_slant(yaw)
         drops(ctx, w, h, now, wet, slant, tint, 1 - snow)
@@ -1434,6 +1462,16 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         ab = bearing(a.x, a.y)
         if in_view(ab, 0) and (at := app.label_at(t := text(a.code, label_style), round(to_x(ab)), hz + 4, taken)):
             labels.append((t, *at))
+
+    for t, x, y, heard in (lightning.labels(now, bolts, to_px, in_view, sky_point) if info else ()):
+        # The cells' distances; the one Sensei hears, its receiver.
+        if at := app.label_at(t, x, y + 6, taken):
+            labels.append((t, *at))
+            if heard:
+                lightning.draw_glyph(ctx, at[0] + t.size[0] + 2, at[1], 0.9)
+    box = clear or (0, 0, w, h)
+    if info and (said := lightning.sensei(ctx, now, box[0] + 3, box[3] - 8)):
+        labels.append(said)
 
     img = to_pil(surface)
     for label, x, y in labels:

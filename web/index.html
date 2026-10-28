@@ -5,163 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
     <title>disinfo!</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #2c2c2c;
+        :root {
+            --bg: #2c2c2c;
+            --panel: #222;
+            --line: #444;
+            --text: #ddd;
+            --dim: #888;
+            --accent: #e8a25c;
+            font: 11px/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+            color: var(--text);
+            background: var(--bg);
+        }
+        body { margin: 0; display: flex; min-height: 100vh; }
+        main { flex: 1; min-width: 0; padding: 12px; }
+        aside {
+            width: 340px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line);
+            position: sticky; top: 0; height: 100vh; overflow-y: auto; box-sizing: border-box;
+        }
+        aside:empty, body.undocked aside { display: none; }
+        body.panel main { display: none; }
+        body.panel aside { width: 100%; border: 0; }
+        @media (max-width: 720px) {
+            body { flex-direction: column; }
+            aside { width: 100%; height: auto; position: static; border: 0; border-top: 1px solid var(--line); }
         }
 
-        h1 {
-            color: #fff;
-            text-align: center;
-            font-family: monospace;
-            font-size: 2em;
-            margin: 0;
-            padding: 1em;
-        }
+        h1 { font-size: 13px; margin: 0 0 8px; letter-spacing: 1px; }
+        h2 { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 6px; font-weight: normal; }
+        h2 small { float: right; text-transform: none; letter-spacing: 0; }
+        #status { color: var(--dim); }
+        #status:empty { display: none; }
 
+        /* The screens, as their renderers send them: a touch goes to the server. */
+        .screens { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+        figure { margin: 0; display: none; }
+        figure.live { display: block; }
+        figure button { margin-top: 4px; }
+        figure.picked canvas { border-color: var(--accent); }
         canvas {
-            /* padding: 2px; */
-            margin: 5px auto;
-            max-width: 100%;
-            image-rendering: pixelated;
-            filter: brightness(1.2) contrast(0.9);
-            display: block;
-            border-radius: 4px;
-            border: 3px solid #0C161C;
-            /* filter: url('#gamma'); */
+            display: block; max-width: 100%; image-rendering: pixelated; touch-action: none;
+            filter: brightness(1.2) contrast(0.9); border: 2px solid #0C161C; border-radius: 3px;
         }
+        #study, #salon { width: 256px; }
+        #pcstate, #entry { width: 400px; }
 
-        .screens {
-            display: flex;
+        /* The controls. */
+        button, select, input[type=text], input[type=number] {
+            font: inherit; color: var(--text); background: #333; border: 1px solid var(--line); border-radius: 2px;
+            padding: 3px 7px; touch-action: manipulation;
         }
+        button { text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
+        button:hover { border-color: var(--dim); }
+        button.on { border-color: var(--accent); color: var(--accent); }
+        input[type=checkbox] { accent-color: var(--accent); margin: 0 6px 0 0; vertical-align: -2px; }
+        input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+        input[type=number] { width: 4em; }
+        input[type=text] { width: 100%; box-sizing: border-box; }
+        label { cursor: pointer; }
+        code { color: var(--accent); }
+        small, .dim { color: var(--dim); }
 
-        .screens canvas {
-            width: calc(128px * 2);
-        }
+        .bar { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .top { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+        .top .bar + .bar { margin-top: 8px; }
+        .tabs { display: flex; border-bottom: 1px solid var(--line); }
+        .tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; background: none; border-radius: 0; padding: 8px 0; }
+        .tabs button.on { border-bottom-color: var(--accent); }
+        .tab { padding: 4px 12px 16px; }
+        .range { display: grid; grid-template-columns: 5.5em 1fr 6em; gap: 8px; align-items: center; margin: 4px 0; }
+        .range code { text-align: right; }
+        .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+        .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+        .row > :first-child { flex: 1; }
+        .grow { flex: 1; }
+        table { border-collapse: collapse; width: 100%; }
+        td { padding: 1px 0; }
+        td + td { text-align: right; }
 
-        .screens #pcstate {
-            width: calc(200px * 2);
-        }
+        .compass { display: block; width: 100%; max-width: 280px; margin: 6px auto; touch-action: none; cursor: crosshair; user-select: none; }
+        .compass text { font: 8px ui-monospace, monospace; fill: var(--dim); }
+        .compass .plane { cursor: pointer; }
 
-        .screens #entry {
-            width: calc(200px * 2);
-        }
-
-        #status {
-            color: #888;
-            font-family: monospace;
-            text-align: center;
-        }
-
-        #status:empty {
-            display: none;
-        }
-
-        canvas:not(.live) {
-            display: none;
-        }
-
-        canvas {
-            touch-action: none;
-        }
-
-        .remote_button {
-            font-size: 20px;
-            margin: 5px;
-            min-width: 60px;
-            min-height: 30px;
-            touch-action: manipulation;
-        }
-
-        #controls {
-            margin: auto;
-            max-width: 300px;
-            display: flex;
-            gap: 5px;
-        }
-
-        .main {
-            display: flex;
-            flex-direction: column;
-            justify-content: left;
-            padding: 0 10px;
-            max-width: 500px;
-            margin: auto;
-            align-items: center;
-        }
-
-        .in.slider label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .in.slider input {
-            width: 120px;
-        }
-
-        .smokes {
-            color: #ddd;
-            font-family: monospace;
-        }
-        .smokes strong {
-            font-size: 24px;
-            margin-left: 5px;
-        }
-        .smokes small {
-            display: block;
-            color: #999;
-            margin: 2px 5px;
-        }
-        .ember {
-            color: #e8a25c;
-        }
-
+        .smokes strong { font-size: 18px; }
+        .ember { color: var(--accent); }
     </style>
 </head>
 <body>
-    <h1>disinfo!</h1>
-    <div class="main">
+    <main>
+        <h1>disinfo!</h1>
         <p id='status'>connecting…</p>
         <div class="screens">
-            <div>
-                <canvas id='entry'></canvas>
-                <canvas id='study'></canvas>
-            </div>
-            <div>
-                <canvas id='salon'></canvas>
-            </div>
-            <canvas id='pcstate'></canvas>
+            <figure data-screen="distudy"><canvas id='study'></canvas><button>study</button></figure>
+            <figure data-screen="disalon"><canvas id='salon'></canvas><button>salon</button></figure>
+            <figure data-screen="dientry"><canvas id='entry'></canvas><button>entry</button></figure>
+            <figure data-screen="di_pcstate"><canvas id='pcstate'></canvas><button>pc</button></figure>
         </div>
-        <div id='controls'>
-        </div>
-    </div>
+    </main>
+    <aside id='controls'></aside>
 
-    <svg height="0">
-        <filter id="gamma">
-            <feComponentTransfer>
-                <feFuncR type="gamma" exponent="0.85" amplitude="1.5" offset="0" />
-                <feFuncG type="gamma" exponent="0.85" amplitude="1.5" offset="0" />
-                <feFuncB type="gamma" exponent="0.85" amplitude="1.5" offset="0" />
-            </feComponentTransfer>
-        </filter>
-    </svg>
     <script type="module">
-        function toggleFullScreen(el) {
-            if (!document.fullscreenElement) {
-                el.requestFullscreen();
-            } else {
-                document.exitFullscreen?.();
-            }
-        }
-        const screenEl = document.getElementById('screen');
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                toggleFullScreen(screenEl)
-            }
-        })
-
+        // The undocked panel: this page with ?panel, the controls alone.
+        if (new URLSearchParams(location.search).has('panel')) document.body.classList.add('panel')
     </script>
     <script type="module">
         const WS_RETRY_DELAY = 2000;
@@ -189,7 +133,7 @@
                     canvas.height = v.getUint16(18, true);
                     ctx.drawImage(frame, 0, 0);
                     seq = next, resyncing = false;
-                    canvas.classList.add('live');
+                    canvas.parentElement.classList.add('live');
                     seen = true;
                     status.textContent = '';
                     return;
@@ -244,333 +188,361 @@
                 ws.close();
             }
         }
-        connect('distudy', 'study');
-        connect('disalon', 'salon');
         // Each server shows the screens it renders, the others stay hidden.
-        connect('di_pcstate', 'pcstate');
-        connect('dientry', 'entry');
+        if (!document.body.classList.contains('panel')) {
+            connect('distudy', 'study');
+            connect('disalon', 'salon');
+            connect('di_pcstate', 'pcstate');
+            connect('dientry', 'entry');
+        }
     </script>
     <script type="module">
-        import { h, Component, render } from 'https://esm.sh/preact@10';
-        import { useState, useEffect, useRef } from 'https://esm.sh/preact@10/hooks';
-        import htm from 'https://esm.sh/htm@3';
-
-        // Initialize htm with Preact
+        import { h, render } from 'https://esm.sh/preact@10.24.3';
+        import { useState, useEffect, useRef } from 'https://esm.sh/preact@10.24.3/hooks';
+        import htm from 'https://esm.sh/htm@3.1.1';
         const html = htm.bind(h);
 
-        function RemoteButton(props) {
-            const didClick = () => {
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: props.action,
-                        payload: props.payload,
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                }).then(() => {
-                    console.log('Sent button press')
-                })
-            }
-            return html`<button onClick=${didClick} class='remote_button'>${props.title || props.action}</button>`;
-        }
+        const SCREENS = [['disalon', 'salon'], ['distudy', 'study'], ['dientry', 'entry'], ['di_pcstate', 'pc']];
+        const VIEWS = ['map', 'sky', 'solar'];
+        const LAYERS = ['builtup', 'green', 'water', 'roads', 'transit', 'clouds', 'rain', 'wind', 'planes', 'info'];
+        const VIEW_HOLD = 3600;
 
-        function StreamURL(props) {
-            const [url, setUrl] = useState('')
-            const didChange = e => setUrl(e.currentTarget.value)
-            return html`<div>
-                <div>
-                    <input onChange=${didChange} name="link" autocomplete="stream-url" type="text"/>
-                    <${RemoteButton} action="set_stream_url" payload=${{url}} />
-                </div>
-                <div>
-                    <${RemoteButton} action="set_stream_url" payload=${{url: "http://10.0.1.207:1984/api/stream.mjpeg?src=limn3"}} title="limn-a" />
-                    <${RemoteButton} action="set_stream_url" payload=${{url: "http://10.0.1.207:1984/api/stream.mjpeg?src=limn4"}} title="limn-b" />
-                    <${RemoteButton} action="set_stream_url" payload=${{url: "http://10.0.1.207:1984/api/stream.mjpeg?src=x2d"}} title="x2d" />
-                </div>
-            </div>`
-        }
-
-        function RadarRadius(props) {
-            // How far the radar shows, and the planes that get a card: km from home.
-            const [km, setKm] = useState(40)
-            const didChange = e => {
-                setKm(e.currentTarget.value)
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'aviator.radius', payload: {km: e.currentTarget.value}}),
-                    headers: {'Content-Type': 'application/json'},
-                })
-            }
-            return html`
-                <div class="in slider">
-                    <label>
-                        <strong>Map Radius</strong>
-                        <input type="range" min="5" max="60" step="5" value=${km} onChange=${didChange}/>
-                        <code>${km}km</code>
-                    </label>
-                </div>
-                <${Views}/>
-                `
-        }
-
-        const send = (action, payload) => fetch('/remote', {
+        // The remote: numbers go as text (the server takes str, bool or null).
+        const send = (action, payload = {}) => fetch('/remote', {
             method: 'POST',
-            body: JSON.stringify({action, payload}),
             headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action, payload: Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v]))}),
         })
+        const getJSON = url => fetch(url).then(r => r.json())
+        const kept = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v) } catch { return null } }
 
-        function Views(props) {
-            // Checked, they take turns over the day; pressed, one shows for an hour (checked again).
-            const [off, setOff] = useState([])
-            useEffect(() => { fetch('/aviator/settings').then(r => r.json()).then(s => setOff(s.views_off || [])) }, [])
-            const check = (v, on) => { setOff(on ? off.filter(n => n !== v) : [...off, v]); send('aviator.views', {view: v, on}) }
-            const press = v => { setOff(off.filter(n => n !== v)); send('aviator.view', {view: v}) }
-            return html`<div>${['map', 'sky', 'solar'].map(v => html`
-                <label><input type="checkbox" checked=${!off.includes(v)} onChange=${e => check(v, e.currentTarget.checked)}/></label>
-                <button class='remote_button' onClick=${() => press(v)}>${v}</button>`)}
-            </div>`
-        }
+        // A setting by screen: its own, else the one for all ('*').
+        const fresh = (sky, s) => sky?.live?.[s] && sky.now - sky.live[s].at < 30
+        const onSky = (sky, s) => fresh(sky, s) && sky.live[s].yaw != null && (sky.live[s].view ?? 'sky') === 'sky'
+        const pick = (d, screen, unset) => (screen !== 'all' && d?.[screen] !== undefined ? d[screen] : d?.['*']) ?? unset
+        const own = (d, screen) => screen !== 'all' && d?.[screen] !== undefined
 
-        function Shown(props) {
-            // The widgets: checked, they come on their schedule; show_ shows one for a while (checked again) or hides it
-            // till its schedule. The bottom stacks on every screen, zen by screen.
-            const [s, setS] = useState({widgets: [], off: [], bottom: true, zen: []})
-            const load = () => fetch('/shown').then(r => r.json()).then(setS)
-            useEffect(() => { load() }, [])
-            const then = p => p.then(() => setTimeout(load, 300))
-            return html`<div>
-                <label><input type="checkbox" checked=${s.bottom} onChange=${e => then(send('bottom', {on: e.currentTarget.checked}))}/> <strong>bottom stacks</strong></label>
-                <div>zen ${['disalon', 'distudy', 'di_pcstate', 'dientry'].map(n => html`
-                    <label><input type="checkbox" checked=${s.zen.includes(n)} onChange=${e => then(send('zen', {screen: n, on: e.currentTarget.checked}))}/> ${n}</label>`)}
-                </div>
-                ${s.widgets.map(n => html`<div>
-                    <label><input type="checkbox" checked=${!s.off.includes(n)} onChange=${e => then(send('widget', {name: n, on: e.currentTarget.checked}))}/></label>
-                    <button class='remote_button' onClick=${() => then(send(`show_${n}`, {}))}>show_${n}</button>
-                </div>`)}
-            </div>`
-        }
-
-        function Smokes(props) {
-            // The day's cigarettes, the actual estimate behind the desk's 8+ (screens/smokes.py): there when pressed.
+        function useFetch(url, every) {
             const [d, setD] = useState(null)
-            const toggle = () => d ? setD(null) : fetch('/smokes').then(r => r.json()).then(setD)
-            const hm = t => new Date(t * 1000).toTimeString().slice(0, 5)
-            return html`<div class='smokes'>
-                <button class='remote_button' onClick=${toggle}>✱</button>
-                ${d && html`<strong>${d.count ?? '–'}</strong><sup class='ember'>✱</sup>
-                    <small>${(d.sessions || []).map(([a, b]) => hm(a) + (b ? '' : '…')).join(' ')}</small>
-                    <small><span class='ember'>✱</span> an estimate from the study's PM2.5: the neighbour smokes too</small>`}
-            </div>`
+            const load = () => getJSON(url).then(setD).catch(() => {})
+            useEffect(() => {
+                load()
+                if (!every) return
+                const t = setInterval(load, every)
+                return () => clearInterval(t)
+            }, [url])
+            return [d, () => setTimeout(load, 300)]
         }
 
-        function SkyView(props) {
-            // The sky view: where its horizon rests (kept), turned and zoomed for a while (5 min, then its own), the demo.
-            const [h, setH] = useState(0.6)
-            const [yaw, setYaw] = useState(90)
-            const [fov, setFov] = useState(50)
-            const [floors, setFloors] = useState(0)
+        // While dragging: a few a second, the last one always.
+        function useLive() {
             const last = useRef(0)
-            useEffect(() => {
-                fetch('/aviator/settings').then(r => r.json()).then(s => { s.horizon && setH(s.horizon); setFloors(s.floors || 0) })
-            }, [])
-            const send = (action, payload) => fetch('/remote', {
-                method: 'POST',
-                body: JSON.stringify({action, payload}),
-                headers: {'Content-Type': 'application/json'},
-            })
-            // While dragging: a few a second, the last one always.
-            const live = (action, payload, end) => {
+            return (action, payload, end) => {
                 if (end || Date.now() - last.current > 150) {
                     last.current = Date.now()
                     send(action, payload)
                 }
             }
+        }
+
+        function Range({label, min, max, step, value, show, onInput, onChange}) {
+            return html`<label class="range">
+                <span>${label}</span>
+                <input type="range" min=${min} max=${max} step=${step} value=${value}
+                    onInput=${e => onInput?.(+e.currentTarget.value)} onChange=${e => onChange?.(+e.currentTarget.value)}/>
+                <code>${show ?? value}</code>
+            </label>`
+        }
+
+        const Check = ({label, checked, onChange}) => html`
+            <label><input type="checkbox" checked=${checked} onChange=${e => onChange(e.currentTarget.checked)}/>${label}</label>`
+
+        const Btn = ({on, onClick, children, title}) => html`<button class=${on ? 'on' : ''} onClick=${onClick} title=${title}>${children}</button>`
+
+        const Own = ({d, scope}) => own(d, scope) ? html`<small> · own</small>` : null
+        const All = () => html`<small>all screens</small>`
+
+
+        function ViewTab({scope, set, reload, sky}) {
+            // Checked, the views take turns over the day; pressed, one shows for an hour (checked again).
+            const views_off = pick(set.views_off, scope, [])
+            const [pressed, at] = pick(set.view, scope, [null, 0])
+            const held = pressed && Date.now() / 1000 - at < VIEW_HOLD
+            const go = (action, p) => send(action, {...p, screen: scope}).then(reload)
+            const [zen, loadZen] = useFetch('/shown')
+            const zens = scope === 'all' ? SCREENS.map(s => s[0]) : [scope]
+            const zenOn = zen && zens.every(s => zen.zen.includes(s))
+            const setZen = on => Promise.all(zens.map(s => send('zen', {screen: s, on}))).then(loadZen)
+            return html`<div class="tab">
+                <h2>showing now</h2>
+                <table>${SCREENS.map(([s, n]) => {
+                    const l = sky?.live?.[s], sk = onSky(sky, s)
+                    return html`<tr class=${fresh(sky, s) ? '' : 'dim'}><td>${n}</td>
+                        <td>${fresh(sky, s) ? html`<code>${sk ? 'sky' : l.view}</code>${sk && l.demo ? ` · ${l.demo}` : ''}${sk && l.held ? ' · held' : ''}` : '–'}</td></tr>`
+                })}</table>
+
+                <h2>views <${Own} d=${set.view} scope=${scope}/></h2>
+                ${VIEWS.map(v => html`<div class="row">
+                    <${Check} label=${`${v} in turns`} checked=${!views_off.includes(v)} onChange=${on => go('aviator.views', {view: v, on})}/>
+                    <${Btn} on=${held && pressed === v} onClick=${() => go('aviator.view', {view: v})}>${v}</${Btn}>
+                </div>`)}
+                <small>${held ? `${pressed} pressed, for ${Math.ceil((at + VIEW_HOLD - Date.now() / 1000) / 60)} min more` : 'taking turns'}</small>
+                <div class="row">
+                    <${Check} label="a storm brings the sky" checked=${!views_off.includes('storm')} onChange=${on => go('aviator.views', {view: 'storm', on})}/>
+                    <${Btn} onClick=${() => send('lightning.demo')} title="a storm passing, on every screen">storm demo</${Btn}>
+                </div>
+
+                <h2>zen</h2>
+                <${Check} label=${`zen on ${scope === 'all' ? 'every screen' : scope}`} checked=${zenOn} onChange=${setZen}/>
+                <div><small>time, weather, background, planes without labels; an hour</small></div>
+            </div>`
+        }
+
+
+        function Compass({sky, scope, yaw, fov, onTurn}) {
+            // Seen from the window, north up: the rim is the horizon, the middle overhead. Drag to turn.
+            const R = 100
+            const at = (b, r = R) => [r * Math.sin(b * Math.PI / 180), -r * Math.cos(b * Math.PI / 180)]
+            const up = e => R * (1 - Math.min(Math.max(e, 0), 90) / 90)
+            const wedge = (y, f, r = R) => {
+                const [x0, y0] = at(y - f / 2, r), [x1, y1] = at(y + f / 2, r)
+                return `M0,0 L${x0},${y0} A${r},${r} 0 ${f > 180 ? 1 : 0} 1 ${x1},${y1} Z`
+            }
+            const [w0, w1] = sky.window
+            const ws = ((w1 - w0) % 360) || 360
+            const svg = useRef(null)
+            const turn = (e, end) => {
+                if (!end && e.buttons !== 1) return
+                const r = svg.current.getBoundingClientRect()
+                const x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2
+                onTurn(Math.round((Math.atan2(x, -y) * 180 / Math.PI + 360) % 360), end)
+            }
+            const shown = SCREENS.filter(([s]) => (scope === 'all' || s === scope) && onSky(sky, s))
+            // Neighbours' names in turn nearer the middle.
+            const marks = [...sky.landmarks].sort((a, b) => a[1] - b[1]).map(([n, b], i, all) => [n, b, i && b - all[i - 1][1] < 20 && i % 2])
+            return html`<svg class="compass" viewBox="-120 -120 240 240" ref=${svg}
+                    onPointerDown=${e => { e.currentTarget.setPointerCapture(e.pointerId); turn(e) }}
+                    onPointerMove=${e => turn(e)} onPointerUp=${e => turn(e, true)}>
+                <path d=${wedge(w0 + ws / 2, ws, R)} fill="#fff" opacity="0.04"/>
+                <circle r=${R} fill="none" stroke="#555"/>
+                <circle r=${R / 2} fill="none" stroke="#333"/>
+                ${[0, 90, 180, 270].map((b, i) => { const [x, y] = at(b, R + 10); return html`<text x=${x} y=${y + 3} text-anchor="middle">${'NESW'[i]}</text>` })}
+                ${shown.map(([s, n]) => { const l = sky.live[s], [x, y] = at(l.yaw, R + 10); return html`
+                    <path d=${wedge(l.yaw, l.fov)} fill="#e8a25c" opacity="0.18"/>
+                    ${scope === 'all' && html`<text x=${x} y=${y + 3} text-anchor="middle" style="fill:#e8a25c">${n}</text>`}` })}
+                ${yaw != null && html`<path d=${wedge(yaw, fov)} fill="none" stroke="#e8a25c" stroke-dasharray="3 3"/>`}
+                ${sky.waypoints.map(b => { const [x, y] = at(b, R - 3); return html`<circle cx=${x} cy=${y} r="1.2" fill="#888"/>` })}
+                ${marks.map(([n, b, inner]) => { const [x, y] = at(b, R), [lx, ly] = at(b, inner ? R - 30 : R - 17); return html`
+                    <line x1=${x} y1=${y} x2=${x * 0.92} y2=${y * 0.92} stroke="#aaa"/>
+                    <text x=${lx} y=${ly + 3} text-anchor="middle">${n}</text>` })}
+                ${sky.planes.map(([hex, name, b, e, , watched]) => { const [x, y] = at(b, up(e ?? 0)); return html`
+                    <circle class="plane" cx=${x} cy=${y} r=${watched ? 3 : 1.8} fill=${watched ? '#9cf' : '#678'}
+                        onPointerDown=${ev => { ev.stopPropagation(); send('aviator.open', {hex}) }}><title>${name}</title></circle>` })}
+                ${[['sun', '#ffcc66', 5], ['moon', '#ccd', 4]].map(([k, c, r]) => {
+                    const [b, e] = sky[k]; const [x, y] = at(b, e > 0 ? up(e) : R + 4)
+                    return html`<circle cx=${x} cy=${y} r=${r} fill=${c} opacity=${e > 0 ? 1 : 0.3}><title>${k} ${e}°</title></circle>` })}
+            </svg>`
+        }
+
+        function SkyTab({scope, set, reload, sky}) {
+            // The sky view: turned and zoomed a while (then its own), where its horizon rests and how high one looks from (kept),
+            // a scene of the demo held, its layers.
+            const [yaw, setYaw] = useState(null)
+            const [fov, setFov] = useState(50)
+            const [h, setH] = useState(0.6)
+            const [floors, setFloors] = useState(0)
+            const [heldAt, setHeldAt] = useState(0)
+            const live = useLive()
+            const go = (action, p, end) => live(action, {...p, screen: scope}, end)
+            useEffect(() => { setH(pick(set.horizon, scope, 0.6) || 0.6); setFloors(pick(set.floors, scope, 0)) }, [scope, set])
+            if (!sky) return html`<div class="tab"><small>loading…</small></div>`
+
+            const cur = sky.live[onSky(sky, scope) ? scope : SCREENS.map(s => s[0]).find(s => scope === 'all' && onSky(sky, s))]
+            const left = Math.max(0, sky.hold_s - (Date.now() - heldAt) / 1000)
+            const turn = (d, end) => { setYaw(d); setHeldAt(Date.now()); go('aviator.sky', {yaw: d}, end) }
+            const zoom = (f, end) => { setFov(f); setHeldAt(Date.now()); go('aviator.sky', {fov: f}, end) }
+            const release = () => { setYaw(null); setHeldAt(0); send('aviator.sky', {screen: scope}) }
             const compass = d => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8]
-            const turn = (d, end) => { setYaw(d); live('aviator.sky', {yaw: String(d)}, end) }
-            return html`<div>
-                <strong>Sky view</strong>
-                <${RemoteButton} action="aviator.view" payload=${{view: 'sky'}} title="sky" />
-                <${RemoteButton} action="aviator.demo" title="demo" />
-                <div class="in slider">
-                    <label>
-                        <strong>look</strong> down
-                        <input type="range" min="0.3" max="0.85" step="0.01" value=${h}
-                            onInput=${e => { setH(+e.currentTarget.value); live('aviator.horizon', {h: e.currentTarget.value}) }}
-                            onChange=${e => live('aviator.horizon', {h: e.currentTarget.value}, true)}/> up
-                        <button class='remote_button' onClick=${() => { setH(0.6); send('aviator.horizon', {}) }}>auto</button>
-                    </label>
+            const mean = bs => (Math.atan2(bs.reduce((a, b) => a + Math.sin(b * Math.PI / 180), 0), bs.reduce((a, b) => a + Math.cos(b * Math.PI / 180), 0)) * 180 / Math.PI + 360) % 360
+            const off = pick(set.off, scope, [])
+            const s = sky.sky, pct = v => v == null ? '–' : Math.round(v * 100) + '%', n = (v, u, d = 0) => v == null ? '–' : v.toFixed(d) + u
+            const demo = cur?.demo
+            return html`<div class="tab">
+                <h2>look <small>${cur ? html`now <code>${Math.round(cur.yaw)}° ${compass(cur.yaw)}</code> · ${Math.round(cur.fov)}° wide` : 'not on the sky view'}</small></h2>
+                <${Compass} sky=${sky} scope=${scope} yaw=${heldAt && left ? yaw : null} fov=${fov} onTurn=${turn}/>
+                <div class="bar">
+                    ${sky.landmarks.map(([name, b]) => html`<${Btn} onClick=${() => turn(Math.round(b), true)}>${name}</${Btn}>`)}
+                    <${Btn} onClick=${() => turn(Math.round(mean(sky.waypoints)), true)}>waypoints</${Btn}>
+                    <${Btn} onClick=${() => turn(Math.round(sky.sun[0]), true)}>sun</${Btn}>
+                    <${Btn} onClick=${() => turn(Math.round(sky.moon[0]), true)}>moon</${Btn}>
                 </div>
-                <div class="in slider">
-                    <label>
-                        <strong>floor</strong>
-                        <input type="range" min="-12" max="3" step="1" value=${floors}
-                            onInput=${e => { setFloors(+e.currentTarget.value); live('aviator.eye', {floors: e.currentTarget.value}) }}
-                            onChange=${e => live('aviator.eye', {floors: e.currentTarget.value}, true)}/>
-                        <code>${floors == 0 ? 'the window' : (floors > 0 ? '+' : '') + floors}</code>
-                    </label>
+                <${Range} label="pan" min="0" max="359" step="1" value=${yaw ?? Math.round(cur?.yaw ?? 90)}
+                    show=${`${yaw ?? Math.round(cur?.yaw ?? 90)}° ${compass(yaw ?? cur?.yaw ?? 90)}`} onInput=${d => turn(d)} onChange=${d => turn(d, true)}/>
+                <${Range} label="zoom" min="12" max="360" step="5" value=${fov} show=${`${fov}°`} onInput=${zoom} onChange=${f => zoom(f, true)}/>
+                <div class="row">
+                    <small>${heldAt && left ? `held here, its own again in ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : 'on its own: planes, the tour, the Eiffel show'}</small>
+                    <${Btn} on=${!(heldAt && left)} onClick=${release}>auto</${Btn}>
                 </div>
-                <div class="in slider">
-                    <label>
-                        <strong>pan</strong>
-                        <input type="range" min="0" max="355" step="1" value=${yaw}
-                            onInput=${e => turn(+e.currentTarget.value)} onChange=${e => turn(+e.currentTarget.value, true)}/>
-                        <code>${yaw}° ${compass(yaw)}</code>
-                    </label>
-                    ${[['E', 60], ['S', 180], ['W', 284], ['N', 0]].map(([n, d]) => html`<button class='remote_button' onClick=${() => turn(d, true)}>${n}</button>`)}
-                    <button class='remote_button' onClick=${() => send('aviator.sky', {})}>auto</button>
+
+                <h2>horizon, eye <${Own} d=${set.horizon} scope=${scope}/></h2>
+                <${Range} label="horizon" min="0.3" max="0.85" step="0.01" value=${h} show=${h < 0.5 ? 'look down' : h > 0.7 ? 'look up' : 'level'}
+                    onInput=${v => { setH(v); go('aviator.horizon', {h: v}) }} onChange=${v => { go('aviator.horizon', {h: v}, true); reload() }}/>
+                <${Range} label="floor" min="-12" max="3" step="1" value=${floors} show=${floors == 0 ? 'window' : (floors > 0 ? '+' : '') + floors}
+                    onInput=${v => { setFloors(v); go('aviator.eye', {floors: v}) }} onChange=${v => { go('aviator.eye', {floors: v}, true); reload() }}/>
+                <div class="bar"><${Btn} onClick=${() => send('aviator.horizon', {h: null, screen: scope}).then(reload)}>auto horizon</${Btn}>
+                    <${Btn} onClick=${() => send('aviator.eye', {floors: 0, screen: scope}).then(reload)}>the window</${Btn}></div>
+
+                <h2>scenes <small>${demo ? (demo === 'around' ? 'once around' : `${demo}, ${sky.hold_s / 60} min`) : 'the sky outside'}</small></h2>
+                <div class="bar">
+                    <${Btn} on=${demo === 'around'} onClick=${() => send('aviator.demo', {screen: scope})}>once around</${Btn}>
+                    ${sky.scenes.map(sc => html`<${Btn} on=${demo === sc} onClick=${() => send('aviator.demo', {scene: sc, screen: scope})}>${sc}</${Btn}>`)}
                 </div>
-                <div class="in slider">
-                    <label>
-                        <strong>zoom</strong>
-                        <input type="range" min="20" max="180" step="5" value=${fov}
-                            onInput=${e => { setFov(+e.currentTarget.value); live('aviator.sky', {fov: e.currentTarget.value}) }}
-                            onChange=${e => live('aviator.sky', {fov: e.currentTarget.value}, true)}/>
-                        <code>${fov}°</code>
-                    </label>
+
+                <h2>layers <${Own} d=${set.off} scope=${scope}/></h2>
+                <div class="checks">${['clouds', 'rain', 'planes', 'info'].map(l => html`
+                    <${Check} label=${l} checked=${!off.includes(l)} onChange=${on => send('aviator.layer', {layer: l, on, screen: scope}).then(reload)}/>`)}
                 </div>
-                <small>turned and zoomed for 5 min, then back to its own</small>
+
+                <h2>outside</h2>
+                <table>
+                    <tr><td>sun</td><td>${Math.round(sky.sun[0])}° ${compass(sky.sun[0])} · ${sky.sun[1]}° up</td></tr>
+                    <tr><td>moon</td><td>${Math.round(sky.moon[0])}° ${compass(sky.moon[0])} · ${sky.moon[1]}° up</td></tr>
+                    <tr><td>cover · low · high</td><td>${pct(s.cover)} · ${pct(s.deck)} · ${pct(s.high)}</td></tr>
+                    <tr><td>haze · sun out</td><td>${pct(s.haze)} · ${pct(s.sun)}</td></tr>
+                    <tr><td>air</td><td>${n(s.temp, '°C', 1)} · ${n(s.wind, ' m/s', 1)}${s.dir != null ? ` from ${compass(s.dir)}` : ''}</td></tr>
+                    <tr><td>rain</td><td>${n(s.rate, ' mm/h', 1)}</td></tr>
+                    <tr><td>planes</td><td>${sky.planes.filter(p => p[5]).length} watched · ${sky.planes.length}</td></tr>
+                </table>
             </div>`
         }
 
-        function MapLayers(props) {
-            // The radar's map: light mode and the layers, on every screen. What's set is read back on load.
-            const names = ['builtup', 'green', 'water', 'roads', 'transit', 'clouds', 'rain', 'wind', 'planes', 'info']
-            const [light, setLight] = useState(false)
-            const [off, setOff] = useState([])
-            useEffect(() => {
-                fetch('/aviator/settings').then(r => r.json()).then(s => { setLight(s.light); setOff(s.off) })
-            }, [])
-            const send = (action, payload) => fetch('/remote', {
-                method: 'POST',
-                body: JSON.stringify({action, payload}),
-                headers: {'Content-Type': 'application/json'},
-            })
-            const setLayer = (name, on) => {
-                setOff(on ? off.filter(n => n !== name) : [...off, name])
-                send('aviator.layer', {layer: name, on})
-            }
-            return html`<div>
-                <label><input type="checkbox" checked=${light} onChange=${e => { setLight(e.currentTarget.checked); send('aviator.light', {on: e.currentTarget.checked}) }}/> Light Mode</label>
-                ${names.map(n => html`<div>
-                        <label> <input type="checkbox" checked=${!off.includes(n)} onChange=${e => setLayer(n, e.currentTarget.checked)}/> ${n}</label>
-                    </div>`)}
-            </div>`
-        }
 
-        function TrailLength(props) {
-            // How long the radar's trails are: minutes, the planes with a card show their whole approach.
-            const [min, setMin] = useState(3)
-            const didChange = e => {
-                setMin(e.currentTarget.value)
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'aviator.trail', payload: {s: e.currentTarget.value * 60}}),
-                    headers: {'Content-Type': 'application/json'},
-                })
-            }
-            return html`<div class="in slider">
-                <label>
-                    <strong>trails</strong>
-                    <input type="range" min="1" max="10" step="1" value=${min} onChange=${didChange}/>
-                    <code>${min} min</code>
-                </label>
-            </div>`
-        }
-
-        function MaxAltitude(props) {
-            // Planes above this are left out: m, the top is no filter.
-            const [m, setM] = useState(13000)
-            const didChange = e => {
-                setM(e.currentTarget.value)
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'aviator.max_alt', payload: {m: e.currentTarget.value}}),
-                    headers: {'Content-Type': 'application/json'},
-                })
-            }
-            return html`<div class="in slider">
-                <label>
-                    <strong>max alt</strong>
-                    <input type="range" min="500" max="13000" step="500" value=${m} onChange=${didChange}/>
-                    <code>${m >= 13000 ? 'all' : m + ' m'}</code>
-                </label>
-            </div>`
-        }
-
-        function MapAngle(props) {
-            // The bearing up on a screen's map: where one faces looking at it, and its zoom. Its config's after a restart.
-            const [screen, setScreen] = useState('all')
+        function RadarTab({scope, set, reload}) {
+            // The radar: how far, how high, the trails (for all, the poller's), the map up, its zoom, light and layers by screen.
+            const [km, setKm] = useState(set.radius)
+            const [alt, setAlt] = useState(set.max_alt)
+            const [trail, setTrail] = useState(set.trail / 60)
             const [deg, setDeg] = useState('')
             const [zoom, setZoom] = useState(1)
-            const sendZoom = e => {
-                setZoom(e.currentTarget.value)
-                fetch('/remote', {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'aviator.zoom', payload: {screen, zoom: e.currentTarget.value}}),
-                    headers: {'Content-Type': 'application/json'},
-                })
-            }
-            const send = () => fetch('/remote', {
-                method: 'POST',
-                body: JSON.stringify({action: 'aviator.map_up', payload: {screen, deg}}),
-                headers: {'Content-Type': 'application/json'},
-            })
-            return html`<label>map up
-                <select onChange=${e => setScreen(e.currentTarget.value)} value=${screen}>
-                    ${['all', 'disalon', 'distudy', 'di_pcstate', 'dientry'].map(s => html`<option value=${s}>${s}</option>`)}
-                </select>
-                <input type="number" min="0" max="359" step="15" size="4" placeholder="deg" value=${deg} onChange=${e => setDeg(e.currentTarget.value)}/>°
-                <button class='remote_button' onClick=${send}>set</button></label>
-                <label>zoom <input type="range" min="0.25" max="4" step="0.25" value=${zoom} onChange=${sendZoom}/> ${zoom}x</label>`
-        }
+            useEffect(() => { setDeg(pick(set.map_up, scope, '')); setZoom(pick(set.zoom, scope, 1)) }, [scope, set])
+            const go = (action, p) => send(action, {...p, screen: scope}).then(reload)
+            const off = pick(set.off, scope, [])
+            return html`<div class="tab">
+                <h2>planes <${All}/></h2>
+                <${Range} label="radius" min="5" max="60" step="5" value=${km} show=${`${km} km`} onInput=${setKm} onChange=${v => send('aviator.radius', {km: v})}/>
+                <${Range} label="max alt" min="500" max="13000" step="500" value=${alt} show=${alt >= 13000 ? 'all' : `${alt} m`} onInput=${setAlt} onChange=${v => send('aviator.max_alt', {m: v})}/>
+                <${Range} label="trails" min="1" max="10" step="1" value=${trail} show=${`${trail} min`} onInput=${setTrail} onChange=${v => send('aviator.trail', {s: v * 60})}/>
 
-        function TriggerButton(props) {
-            const didClick = () => {
-                fetch('/trigger', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        endpoint: props.endpoint,
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                }).then(() => {
-                    console.log('Sent trigger')
-                })
-            }
-            return html`<button onClick=${didClick} class='trigger_button'>${props.endpoint}</button>`;
+                <h2>map <${Own} d=${set.map_up} scope=${scope}/></h2>
+                <div class="row">
+                    <span>up</span>
+                    ${[['N', 0], ['E', 90], ['S', 180], ['W', 270]].map(([n, d]) => html`<${Btn} on=${+deg === d && deg !== ''} onClick=${() => { setDeg(d); go('aviator.map_up', {deg: d}) }}>${n}</${Btn}>`)}
+                    <input type="number" min="0" max="359" step="15" placeholder="deg" value=${deg} onChange=${e => { setDeg(e.currentTarget.value); go('aviator.map_up', {deg: e.currentTarget.value}) }}/>
+                </div>
+                <${Range} label="zoom" min="0.25" max="4" step="0.25" value=${zoom} show=${`${zoom}x`} onInput=${setZoom} onChange=${v => go('aviator.zoom', {zoom: v})}/>
+                <${Check} label="light mode" checked=${pick(set.light, scope, false)} onChange=${on => go('aviator.light', {on})}/>
+
+                <h2>layers <${Own} d=${set.off} scope=${scope}/></h2>
+                <div class="checks">${LAYERS.map(l => html`
+                    <${Check} label=${l} checked=${!off.includes(l)} onChange=${on => go('aviator.layer', {layer: l, on})}/>`)}
+                </div>
+            </div>`
         }
 
 
-        function App(props) {
+        function ShownTab() {
+            // The widgets: checked, they come on their schedule; SHOW shows one for a while (checked again) or hides it till its schedule.
+            const [s, reload] = useFetch('/shown')
+            const [smokes, setSmokes] = useState(null)
+            const hm = t => new Date(t * 1000).toTimeString().slice(0, 5)
+            if (!s) return html`<div class="tab"><small>loading…</small></div>`
+            return html`<div class="tab">
+                <h2>stacks <${All}/></h2>
+                <${Check} label="bottom stacks" checked=${s.bottom} onChange=${on => send('bottom', {on}).then(reload)}/>
+                <h2>widgets <${All}/></h2>
+                ${s.widgets.map(n => html`<div class="row">
+                    <${Check} label=${n.replace(/_/g, ' ')} checked=${!s.off.includes(n)} onChange=${on => send('widget', {name: n, on}).then(reload)}/>
+                    <${Btn} onClick=${() => send(`show_${n}`).then(reload)}>show</${Btn}>
+                </div>`)}
+                <h2>smokes</h2>
+                <div class="smokes row">
+                    <span>${smokes && html`<strong>${smokes.count ?? '–'}</strong><sup class="ember">✱</sup> ${(smokes.sessions || []).map(([a, b]) => hm(a) + (b ? '' : '…')).join(' ')}`}</span>
+                    <${Btn} on=${!!smokes} onClick=${() => smokes ? setSmokes(null) : getJSON('/smokes').then(setSmokes)}>today</${Btn}>
+                </div>
+                ${smokes && html`<small><span class="ember">✱</span> an estimate from the study's PM2.5: the neighbour smokes too</small>`}
+            </div>`
+        }
+
+
+        function DevTab() {
+            const [url, setUrl] = useState('')
+            const streams = [['limn-a', 'limn3'], ['limn-b', 'limn4'], ['x2d', 'x2d']]
+            return html`<div class="tab">
+                <h2>renderers <${All}/></h2>
+                <div class="bar">
+                    <${Btn} onClick=${() => send('screencap')}>screencap</${Btn}>
+                    <${Btn} onClick=${() => send('motion_toggle')} title="pretend someone's there">motion</${Btn}>
+                </div>
+                <h2>design demo <small>with show design demo</small></h2>
+                <div class="bar">
+                    <${Btn} onClick=${() => send('show_design_demo')}>show</${Btn}>
+                    ${['flex', 'grid', 'stack', 'type', 'box', 'motion', 'scroll', 'media', 'touch'].map(tab => html`
+                        <${Btn} onClick=${() => send('design_demo', {tab, page: null})}>${tab}</${Btn}>`)}
+                </div>
+                <h2>stream <small>with show stream</small></h2>
+                <div class="row">
+                    <input type="text" placeholder="mjpeg url" value=${url} onInput=${e => setUrl(e.currentTarget.value)}/>
+                    <${Btn} onClick=${() => send('set_stream_url', {url})}>set</${Btn}>
+                </div>
+                <div class="bar">${streams.map(([n, src]) => html`
+                    <${Btn} onClick=${() => send('set_stream_url', {url: `http://10.0.1.207:1984/api/stream.mjpeg?src=${src}`})}>${n}</${Btn}>`)}
+                </div>
+            </div>`
+        }
+
+
+        const TABS = {view: ViewTab, sky: SkyTab, radar: RadarTab, shown: ShownTab, dev: DevTab}
+
+        function Panel() {
+            // Scoped by the screen picked (here, or under its frame): 'all' sets every screen, the screens' own go.
+            const [scope, setScope] = useState(kept('di.scope') || 'all')
+            const [tab, setTab] = useState(TABS[kept('di.tab')] ? kept('di.tab') : 'view')
+            const [undocked, setUndocked] = useState(null)
+            const [set, reload] = useFetch('/aviator/settings')
+            const [sky] = useFetch('/aviator/sky', tab === 'sky' || tab === 'view' ? 2000 : 0)
+            const panel = document.body.classList.contains('panel')
+
+            useEffect(() => { kept('di.scope', scope); kept('di.tab', tab) }, [scope, tab])
+            useEffect(() => {
+                document.querySelectorAll('figure').forEach(f => {
+                    f.classList.toggle('picked', f.dataset.screen === scope)
+                    f.querySelector('button').onclick = () => setScope(s => s === f.dataset.screen ? 'all' : f.dataset.screen)
+                })
+            }, [scope])
+            useEffect(() => {
+                document.body.classList.toggle('undocked', !!undocked)
+                if (!undocked) return
+                const t = setInterval(() => undocked.closed && setUndocked(null), 1000)
+                return () => clearInterval(t)
+            }, [undocked])
+
+            const Tab = TABS[tab]
             return html`
-                <div>
-                    <${Shown}/>
-                    <${Smokes}/>
+                <div class="top">
+                    <div class="bar">
+                        <strong class="grow">controls</strong>
+                        ${!panel && html`<${Btn} onClick=${() => setUndocked(window.open('?panel', 'disinfo-panel', 'popup,width=380,height=860'))}>undock</${Btn}>`}
+                    </div>
+                    <div class="bar">
+                        <${Btn} on=${scope === 'all'} onClick=${() => setScope('all')}>all</${Btn}>
+                        ${SCREENS.map(([s, n]) => html`<${Btn} on=${scope === s} onClick=${() => setScope(s)}>${n}</${Btn}>`)}
+                    </div>
                 </div>
-                <div>
-                    <${RemoteButton} action="screencap" />
-                    <${RemoteButton} action="motion_toggle" />
-                    ${['flex', 'grid', 'stack', 'type', 'box', 'motion', 'scroll', 'media', 'touch'].map(tab => html`<${RemoteButton} action="design_demo" payload=${{tab, page: null}} title=${tab} />`)}
-                </div>
-                <div>
-                    <${SkyView}/>
-                </div>
-                <div>
-                    <${RadarRadius}/>
-                    <${MaxAltitude}/>
-                    <${TrailLength}/>
-                    <${MapLayers}/>
-                    <${MapAngle}/>
-                </div>
-                <div>
-                    <${StreamURL}/>
-                </div>`;
+                <nav class="tabs">${Object.keys(TABS).map(t => html`<${Btn} on=${tab === t} onClick=${() => setTab(t)}>${t}</${Btn}>`)}</nav>
+                ${set ? html`<${Tab} scope=${scope} set=${set} reload=${reload} sky=${sky}/>` : html`<div class="tab"><small>loading…</small></div>`}`
         }
 
-        render(html`<${App} name="World" />`, document.getElementById('controls'));
+        render(html`<${Panel}/>`, document.getElementById('controls'));
     </script>
 </body>
 </html>

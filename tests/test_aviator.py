@@ -6,6 +6,7 @@ import pytest
 os.environ.setdefault('DI_CONFIG_PATH', '.config.sample.json')
 
 from disinfo.screens.aviator import utils, app, tasks
+from disinfo.screens.aviator.state import OpenedState
 
 
 def plane(x=0, y=0, alt=3000, gs=360, track=0, vr=0, **kw):
@@ -106,7 +107,7 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
     st = AviatorState(planes={h: plane(hex=h) for h in 'abc'}, overhead=['a'], watched=['a', 'b', 'c'])
     runtime = NS(up=True, pressed=False)
     monkeypatch.setattr(widgets, 'ADSBxStateManager', lambda: NS(get_state=lambda fs: st))
-    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={'b': 0}, light=False)))
+    monkeypatch.setattr(widgets, 'OpenedStateManager', lambda: NS(get_state=lambda fs: OpenedState(opened={'b': 0})))
     monkeypatch.setattr(widgets.shown, 'up', lambda fs, name, scheduled=False: runtime.up)
     monkeypatch.setattr(widgets.shown, 'is_pressed', lambda fs, name: runtime.pressed)
     monkeypatch.setattr(widgets, 'on_top', lambda fs: None)
@@ -126,21 +127,26 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
 def test_views_take_turns(monkeypatch):
     from types import SimpleNamespace as NS
     from disinfo.screens.aviator import state
-    m = NS(view=None, view_at=0, views_off=[])
+    m = state.OpenedState()
     monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: m))
-    fs = NS(config=NS(aviator_views=['map', 'sky', 'solar']))
+    monkeypatch.setattr(app, 'live', lambda fs, **kw: None)
+    monkeypatch.setattr(app.lightning, 'storm', lambda now: None)
+    fs = NS(config=NS(name='distudy', aviator_views=['map', 'sky', 'solar']))
     seen = set()
     for k in range(3):
         monkeypatch.setattr(app.time, 'time', lambda: k * state.VIEW_TURN + 1)
         seen.add(app.view_mode(fs))
     assert seen == {'map', 'sky', 'solar'}
-    m.views_off = ['map', 'sky']
+    m.views_off = {'*': ['map', 'sky']}
     assert app.view_mode(fs) == 'solar'
     # Pressed: that one for a while, if the screen has it (dientry has no sky).
-    m.view, m.view_at = 'sky', app.time.time() - 10
+    m.view = {'*': ['sky', app.time.time() - 10]}
     assert app.view_mode(fs) == 'sky'
     fs.config.aviator_views = ['map', 'solar']
     assert app.view_mode(fs) == 'solar'
+    # By screen: the salon's own press, over all.
+    m.view['disalon'] = ['map', app.time.time()]
+    assert app.view_mode(fs) == 'solar' and app.view_mode(NS(config=NS(name='disalon', aviator_views=['map', 'sky']))) == 'map'
 
 
 def test_overhead_is_reach_not_elevation(monkeypatch):
@@ -195,7 +201,7 @@ def test_layers_planes_and_info(monkeypatch):
     from disinfo.screens.aviator.state import AviatorState
     p = plane(x=2, y=2, hex='a', at=0, lat=48.86, lon=2.41, trail=[[0, 48.85, 2.4, 3000], [1, 48.86, 2.41, 3000]], elev=30, slant=3, bearing=45, cpa={})
     st = AviatorState(planes={'a': p}, watched=['a'], radius=40, trail=180)
-    opened = NS(opened={}, off=[], light=False, map_up={}, zoom={}, view=None)
+    opened = OpenedState()
     monkeypatch.setattr(app, 'ADSBxStateManager', lambda: NS(get_state=lambda fs: st))
     monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: opened))
     monkeypatch.setattr(app.basemap, 'draw', lambda *a, **k: None)
@@ -211,15 +217,15 @@ def test_layers_planes_and_info(monkeypatch):
     monkeypatch.setattr(app.skylook, 'seen', lambda fs: dry._replace(wet=0.5))
     assert app.radar(fs).image.tobytes() != full.image.tobytes()
     monkeypatch.setattr(app.skylook, 'seen', lambda fs: dry)
-    opened.off = ['planes']
+    opened.off = {'*': ['planes']}
     no_planes = app.radar(fs)
     assert no_planes.targets == ()
-    opened.off = ['info']
+    opened.off = {'*': ['info']}
     no_info = app.radar(fs)
     assert [t.payload['hex'] for t in no_info.targets] == ['a']         # the plane and its trail stay, tappable
     assert no_info.image.tobytes() != full.image.tobytes()
     # Planes and info both off: only the background, the same with or without the plane.
-    opened.off = ['planes', 'info']
+    opened.off = {'*': ['planes', 'info']}
     bare = app.radar(fs)
     st.planes = {}
     assert bare.image.tobytes() == app.radar(fs).image.tobytes()
@@ -280,25 +286,25 @@ def test_seen(monkeypatch):
     # What the sky view draws from the sky state: cloud fades as it's less sure; rain off with its layer.
     from types import SimpleNamespace as NS
     from disinfo.screens.aviator import skylook
-    opened = NS(off=[])
+    opened = OpenedState()
     monkeypatch.setattr(skylook, 'OpenedStateManager', lambda: NS(get_state=lambda fs: opened))
     q = lambda v, conf=0.6: {'v': v, 'conf': conf, 'by': {}}
     d = {'sky': {'cover': q(0.9), 'deck': q(0.8, 0.6), 'high': q(1.0, 0.1), 'sun': q(0.2), 'dark': q(0.5), 'haze': q(0.3),
                  'broken': None, 'warmth': None}, 'precip': {'rate': q(3.0), 'snow': q(0.0)}}
     monkeypatch.setattr(skylook.skystate, 'doc', lambda: d)
-    s = skylook.seen(NS(config=NS(weather_entity='w')))
+    s = skylook.seen(NS(config=NS(name='x', weather_entity='w')))
     assert s.cond == (0.9, 0.3, 0.3) and s.deck == pytest.approx(0.8) and s.high == pytest.approx(0.5)
     assert s.sun == 0.2 and s.broken is None and s.wet == 0.5 and s.snow == 0 and s.wind is None
-    opened.off = ['rain']
-    assert skylook.seen(NS(config=NS(weather_entity='w'))).wet == 0
+    opened.off = {'*': ['rain']}
+    assert skylook.seen(NS(config=NS(name='x', weather_entity='w'))).wet == 0
     # No sky state (the data service down): Home Assistant's weather state alone.
-    opened.off = []
+    opened.off = {'*': []}
     monkeypatch.setattr(skylook.skystate, 'doc', lambda: None)
     monkeypatch.setattr(skylook, 'get_entity', lambda i: NS(state='snowy'))
-    s = skylook.seen(NS(config=NS(weather_entity='w')))
+    s = skylook.seen(NS(config=NS(name='x', weather_entity='w')))
     assert s.cond[0] == 0.9 and s.wet == 0.4 and s.snow == 1 and s.sun is None and s.deck == 0
     monkeypatch.setattr(skylook, 'get_entity', lambda i: None)
-    assert skylook.seen(NS(config=NS(weather_entity='w'))).cond == skylook.conditions['partlycloudy'][:3]
+    assert skylook.seen(NS(config=NS(name='x', weather_entity='w'))).cond == skylook.conditions['partlycloudy'][:3]
 
 
 def test_fuse():
@@ -590,14 +596,28 @@ def test_sky_held_from_the_web(monkeypatch):
     # Turned, then zoomed: both kept, on the sky view; the horizon kept within reach; back to its own.
     m.process_message('', NS(action='aviator.sky', payload={'yaw': 284}))
     m.process_message('', NS(action='aviator.sky', payload={'fov': 30}))
-    assert (m.state.sky['yaw'], m.state.sky['fov'], m.state.view) == (284, 30, 'sky')
+    sk = m.state.sky['*']
+    assert (sk['yaw'], sk['fov'], m.state.view['*'][0]) == (284, 30, 'sky')
     m.process_message('', NS(action='aviator.horizon', payload={'h': 0.1}))
-    assert m.state.horizon == 0.3
+    assert m.state.horizon == {'*': 0.3}
     m.process_message('', NS(action='aviator.sky', payload={}))
     m.process_message('', NS(action='aviator.horizon', payload={'h': None}))
-    assert m.state.sky == {} and m.state.horizon is None
+    assert m.state.sky == {'*': {}} and m.state.horizon == {'*': None}
     m.process_message('', NS(action='aviator.eye', payload={'floors': '-30'}))
-    assert m.state.floors == -12
+    assert m.state.floors == {'*': -12}
+    # By screen: the study's own over all; all again, the study's goes.
+    m.process_message('', NS(action='aviator.eye', payload={'floors': '2', 'screen': 'distudy'}))
+    study, salon = NS(config=NS(name='distudy')), NS(config=NS(name='disalon'))
+    assert (m.state.of('floors', study), m.state.of('floors', salon)) == (2, -12)
+    m.process_message('', NS(action='aviator.light', payload={'screen': 'disalon'}))
+    assert (m.state.of('light', study), m.state.of('light', salon)) == (False, True)
+    m.process_message('', NS(action='aviator.eye', payload={'floors': '0', 'screen': 'all'}))
+    assert m.state.floors == {'*': 0}
+    # A scene held, again: off.
+    m.process_message('', NS(action='aviator.demo', payload={'scene': 'rain', 'screen': 'disalon'}))
+    assert m.state.of('demo', salon)[1] == 'rain' and m.state.of('view', salon)[0] == 'sky'
+    m.process_message('', NS(action='aviator.demo', payload={'scene': 'rain', 'screen': 'disalon'}))
+    assert m.state.of('demo', salon) == [None, None]
 
 
 def test_sky_crane():

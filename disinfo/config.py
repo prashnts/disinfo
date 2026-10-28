@@ -154,6 +154,10 @@ class Config(AppBaseModel):
     daylight_lux: str = 'sensor.sensei_lux'
     daylight_uv: str = 'sensor.sensei_uv'
     daylight_node: str = 'distudy'
+    # Sensei's AS3935 (aviator/lightning.py): each strike it hears, its distance to the storm's front, the strike's energy.
+    lightning_alert: str = 'binary_sensor.sensei_sensei_storm_alert'
+    lightning_distance: str = 'sensor.sensei_sensei_distance_storm'
+    lightning_energy: str = 'sensor.sensei_sensei_lightning_energy'
     daylight_lamps: list[str] = ['light.ikea_driver_study_desk_left', 'light.ikea_driver_study_desk_right', 'light.ikea_e27_study_desklamp']
     # The day's cigarettes (screens/smokes.py): from the study's PM2.5, on these screens while smokes_home is home
     # and none of smokes_away is. Off till smokes_home is set (in the local config).

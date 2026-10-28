@@ -60,7 +60,7 @@ light = look_of(
     DivStyle(padding=3, radius=3, background='#e6eaf270', border=1, border_color='#00000066'), '#e6eaf2a0')._replace(credit=dark.credit)   # over the photo's dark strip
 
 def looks(fs: FrameState) -> Look:
-    return light if OpenedStateManager().get_state(fs).light else dark
+    return light if OpenedStateManager().get_state(fs).of('light', fs) else dark
 
 
 @cache

@@ -10,7 +10,7 @@ from . import idfm, shown
 from ..screens.aviator.tasks import adsbx_task
 from ..screens.weather import vigilance, stations, forecast
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
-from ..screens.aviator import daylight, skystate
+from ..screens.aviator import daylight, skystate, lightning
 from ..screens import smokes
 
 
@@ -47,6 +47,8 @@ def on_pubsub(channel_name: str, message: PubSubMessage):
     # The buttons and checkboxes, here only: one press, one toggle, whatever the screens.
     if message.action in ('show_metro', 'btn_metro'):
         idfm.press()
+    elif message.action == 'lightning.demo':
+        lightning.demo()
     elif channel_name == 'di.pubsub.remote':
         shown.act(message.action, message.payload)
 
@@ -83,6 +85,7 @@ scheduler.every(6).minutes.do(cached('obs', 360, stations.task))
 scheduler.every(30).minutes.do(cached('blend', 1800, forecast.task))     # after the stations: it checks the runs on them
 scheduler.every(1).minutes.do(daylight.task)
 scheduler.every(2).minutes.do(smokes.task)
+scheduler.every(5).seconds.do(lightning.task)     # HA's events file them at once: this sweeps
 scheduler.every(1).minutes.do(skystate.task)        # after the others: they're its sources
 
 

@@ -1,4 +1,5 @@
 import io
+import math
 import time
 import zlib
 import base64
@@ -224,21 +225,39 @@ async def index() -> RedirectResponse:
 
 class RemoteInput(AppBaseModel):
     action: str
-    payload: dict[str, str|bool] | None = None
+    payload: dict[str, str | bool | None] | None = None
 
 @app.get('/aviator/settings')
 async def aviator_settings():
-    # What the radar's controls show on load: kept in redis by the state manager (aviator/state.py).
-    try:
-        off = json.loads(db.get('di.aviator.layers') or '[]')
-    except ValueError:
-        off = []
-    try:
-        views_off = json.loads(db.get('di.aviator.views_off') or '[]')
-    except ValueError:
-        views_off = []
-    return {'light': db.get('di.aviator.light') == b'1', 'off': off, 'horizon': float(db.get('di.aviator.horizon') or 0) or None,
-            'floors': float(db.get('di.aviator.eye') or 0), 'views_off': views_off}
+    # What the radar's controls show on load, by screen ('*': all): kept in redis by the state manager (aviator/state.py).
+    from disinfo.screens.aviator import state, tasks
+    num = lambda k, d: float(db.get(k) or d)
+    return {**{k: state.read_scoped(key) for k, key in state.OpenedStateManager.kept.items()},
+            'radius': num(state.RADIUS_KEY, tasks.radius_km), 'trail': num(state.TRAIL_KEY, tasks.trail_s), 'max_alt': num(state.MAX_ALT_KEY, 13000)}
+
+@app.get('/aviator/sky')
+async def aviator_sky():
+    # For the sky view's controls: the bearings worth a look, the sun and moon, the planes, what each screen shows now.
+    from disinfo.config import app_config
+    from datetime import datetime, timezone
+    from suncalc import get_position
+    from disinfo.screens.aviator import astro, sky, state, skystate
+    from disinfo.screens.aviator.utils import bearing, local_xy
+    b = lambda lat, lon: round(bearing(*local_xy(lat, lon)), 1)
+    doc, st, now = skystate.doc() or {}, state.read_state(), time.time()
+    lat, lon = app_config.latitude, app_config.longitude
+    sun = get_position(datetime.now(timezone.utc), lon, lat)
+    q = ('sky.cover', 'sky.deck', 'sky.high', 'sky.haze', 'sky.sun', 'air.temp', 'air.wind', 'air.dir', 'precip.rate')
+    return {'landmarks': [[n, b(lat, lon)] for n, lat, lon, *_ in sky.landmarks],
+            'waypoints': [b(*w) for w in app_config.screen_data.aviator.landmarks],
+            'window': app_config.aviator_window,
+            'sun': [round((math.degrees(sun['azimuth']) + 180) % 360, 1), round(math.degrees(sun['altitude']), 1)],
+            'moon': [round(x, 1) for x in astro.moon_at(now, lat, lon)[:2]],
+            'sky': {k.split('.')[1]: skystate.v(doc, k) for k in q},
+            'planes': [[h, p.get('flight') or h, p['bearing'], p.get('elev'), p['alt'], h in st.watched]
+                       for h, p in st.planes.items() if 'bearing' in p],
+            'scenes': [d[0] for d in sky.demo_scenes], 'demo_s': state.DEMO_S, 'hold_s': state.SKY_HOLD,
+            'live': {k.decode(): json.loads(x) for k, x in db.hgetall(state.LIVE_KEY).items()}, 'now': now}
 
 @app.get('/shown')
 async def shown_settings():

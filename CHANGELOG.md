@@ -58,11 +58,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The views (map, sky, solar) take turns over the day, the checked ones; one pressed shows for an hour. The solar view never brings the radar. The entrance has no sky view (`aviator_views`).
 - The sky view looks at the waypoints' piece of the skyline, closer in, widening for the planes and now and then to the whole window; idle, it turns slowly to the sights around (the landmarks, a low sun or moon, where the planes are) and back. It pans up to a followed plane and drifts up and down otherwise, the near roofs sliding over the far ones.
 - The sky view's controls on the web page: where it looks up or down and from which floor (kept), turning and zooming it for a while, and a demo: once around, slowly, through the skies one may see (morning to night, haze, rain, snow, fog, wind).
+- **Lightning** in the sky view, from Blitzortung's strikes and Sensei's AS3935: storm towers where the cells are, each strike flashing where it fell (its return strokes, the sky lit behind the roofs), the thunder shaking the roofs as late as it would come. Sensei flashes the whole sky as it hears one and marks the strikes and the cell it heard. A storm brings the sky view (a checkbox), and a demo.
+- **The web page's controls** in a sidebar (or a window of their own), in tabs: views, sky, radar, shown, dev. A screen picked (above, or under its frame) gets its own views, sky, map and zen; "all" sets every screen. The sky tab: a compass of what the window sees (landmarks, waypoints, sun, moon, planes; drag to turn, tap a plane to follow), a scene of the demo held, the sky outside; what each screen shows now.
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
 - The side stack scrolls no further than its end: the cards before the selected one stay in view, all of them, held still, when they fit (`discore`: `StackStyle(fill=)`).
 
 ### Fixed
 - The stacks scrolled each card a pixel lower than the one before it; they all stop at the same place now.
+- The web page's design demo buttons did nothing (refused by the server).
 - The weather card's rain was an hour late.
 - The sky view's big clouds had a notch cut on their right; they're heaped cumulus now.
 - The desk's daylight colour was never learnt while a lamp stayed on.

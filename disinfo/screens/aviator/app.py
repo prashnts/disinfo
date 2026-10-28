@@ -16,7 +16,8 @@ from disinfo import fonts
 from disinfo.config import app_config
 from disinfo.drat import shown
 
-from .state import ADSBxStateManager, OpenedStateManager, VIEWS, VIEW_HOLD, VIEW_TURN
+from .state import ADSBxStateManager, OpenedStateManager, VIEWS, VIEW_HOLD, VIEW_TURN, STORM, live
+from . import lightning
 from .colors import marker_color
 from . import basemap, skylook, weather
 from .utils import airports, local_xy
@@ -79,6 +80,8 @@ drift_zoom = 0.05
 drift_period = 150      # s
 redraw_moving = 1 / 12  # while the camera moves: smooth enough, half the frames a 25 fps renderer makes
 redraw_raining = 1 / 8  # the sky's drops falling
+redraw_flash = 1 / 25   # a lightning flash flickering, the thunder shaking the roofs
+_flashing = {}          # screen -> its sky has one
 _raining = {}           # screen -> its sky has drops falling
 fade_step = 15
 _drawn = {}             # screen -> (when, frame)
@@ -339,9 +342,10 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     up = map_up(fs)
     rot = rotated(up)
     opened_state = OpenedStateManager().get_state(fs)
-    is_light = opened_state.light
+    is_light = opened_state.of('light', fs)
     theme = light if is_light else dark
-    info, show_planes = 'info' not in opened_state.off and not shown.zen(fs), 'planes' not in opened_state.off
+    off = opened_state.of('off', fs)
+    info, show_planes = 'info' not in off and not shown.zen(fs), 'planes' not in off
     rest = view(st.focus, st.radius, rot, w, h)
     target = zoomed_view(rest, zoom(fs))
     clear = clear or (0, 0, w, h)
@@ -362,7 +366,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     labels, taken = [], []
     hx, hy = to_px(0, 0)
     scope(ctx, hx, hy, s, st.radius, up, w, h, labels, theme, info)
-    basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light, frozenset(opened_state.off), fs.config.name)
+    basemap.draw(ctx, now, (cx, cy, s), up, w, h, is_light, frozenset(opened_state.of('off', fs)), fs.config.name)
 
     if info:
         for a in airports:
@@ -468,7 +472,8 @@ def plane_marks(fs: FrameState) -> list[tuple[float, float, float]]:
 def throttled(fs: FrameState, draw) -> Frame:
     at, f = _drawn.get(fs.config.name, (0, None))
     now = time.monotonic()
-    if f is None or now - at >= (redraw_moving if _moving.get(fs.config.name) else redraw_raining if _raining.get(fs.config.name) else redraw_every):
+    every = redraw_flash if _flashing.get(fs.config.name) else redraw_moving if _moving.get(fs.config.name) else redraw_raining if _raining.get(fs.config.name) else redraw_every
+    if f is None or now - at >= every or lightning.news() > at:
         f = draw()
         _drawn[fs.config.name] = (now, f)
     return f
@@ -495,7 +500,15 @@ def view_mode(fs: FrameState) -> str:
     '''The view pressed on the web page for a while, else the checked ones in turn: of the screen's own views.'''
     m, now = OpenedStateManager().get_state(fs), time.time()
     views = [v for v in VIEWS if v in fs.config.aviator_views]
-    if m.view in views and now - m.view_at < VIEW_HOLD:
-        return m.view
-    turns = [v for v in views if v not in m.views_off] or ['solar']
-    return turns[int(now // VIEW_TURN) % len(turns)]
+    pressed, at = m.of('view', fs)
+    held = pressed in views and now - at < VIEW_HOLD
+    if 'sky' in views and STORM not in m.of('views_off', fs) and (since := lightning.storm(now)) and not (held and at > since):
+        # A storm brings the sky (its checkbox on), unless a view was pressed since it began.
+        mode = 'sky'
+    elif held:
+        mode = pressed
+    else:
+        turns = [v for v in views if v not in m.of('views_off', fs)] or ['solar']
+        mode = turns[int(now // VIEW_TURN) % len(turns)]
+    live(fs, view=mode)
+    return mode

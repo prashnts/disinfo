@@ -78,6 +78,7 @@ class HaWSClient(metaclass=UniqInstance):
         self._mid = 42
         self.host = app_config.ha_websocket_url
         self.db: dict[str, Entity] = {}
+        self.listeners = []     # called with each state_changed event (HA's thread)
     
     def _counter(self) -> int:
         x = self._mid
@@ -99,6 +100,13 @@ class HaWSClient(metaclass=UniqInstance):
             case Msg(event=event) if event and event.event_type == "state_changed":
                 if new_state := event.data.new_state:
                     self.db[event.data.entity_id] = new_state
+                else:
+                    self.db.pop(event.data.entity_id, None)
+                for f in self.listeners:
+                    try:
+                        f(event)
+                    except Exception as e:
+                        print(f'HA listener failed: {e}')
             case Msg(result=ResponseResult(response=response)) if isinstance(response, dict):
                 for uid, data in response.items():
                     if uid in self.db:
