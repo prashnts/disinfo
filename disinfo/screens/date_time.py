@@ -1,9 +1,11 @@
 import random
+import time
 
 from PIL import Image, ImageDraw
 
 from discore import ease
 
+from ..utils import mdi
 from ..utils.drawer import draw_loop
 from .colors import gray, gray_lt, amber_red, black, light_gray, light_blue, orange_red, minute_green
 from discore.data_structures import FrameState
@@ -207,11 +209,24 @@ def flip_digital_clock(fs: FrameState, seconds=True, align='right'):
     ], gap=0)
     
     if seconds:
-        return vstack([
-            hhmm,
-            _flip_text(fs, t.strftime('%S'), styled_text(t.strftime('%S'), s_colon_2[0]), 'flip-top', together=True, background=bg),
-        ], gap=2, align=align)
+        ss = _flip_text(fs, t.strftime('%S'), styled_text(t.strftime('%S'), s_colon_2[0]), 'flip-top', together=True, background=bg)
+        if (bot := robot()):
+            ss = hstack([bot, ss] if align == 'right' else [ss, bot], gap=3)
+        return vstack([hhmm, ss], gap=2, align=align)
     return hhmm
+
+_robot = [-99, False]
+
+def robot() -> Frame | None:
+    # Claude at work on disinfo: di.robot is set, with a TTL, while it is. Looked at every 20 s.
+    now = time.monotonic()
+    if now - _robot[0] > 20:
+        try:
+            from disinfo.redis import db
+            _robot[:] = now, bool(db.exists('di.robot'))
+        except Exception:
+            _robot[:] = now, False
+    return mdi.icon('robot', 11, '#DFD9C9') if _robot[1] else None
 
 def world_clock(fs: FrameState):
     t = fs.now.in_tz('Asia/Kolkata')

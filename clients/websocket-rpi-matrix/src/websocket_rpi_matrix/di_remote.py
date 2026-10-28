@@ -350,6 +350,8 @@ class AdafruitRemote:
                 if ssaw:
                     break
                 time.sleep(1)
+            if not ssaw:
+                return cls(**kwargs)
 
             return cls(
                 buttons=Buttons(*(IOButton(digitalio.DigitalIO(ssaw, i)) for i in range(1, 6))),

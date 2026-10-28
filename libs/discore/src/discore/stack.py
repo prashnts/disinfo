@@ -25,8 +25,8 @@ class StackStyle:
     # Moving on, the widget shown least lately goes next: over time each gets about its share (Widget.share), whatever moved
     # the stack on (its wait, a motion, a press). Lately: the time on top fades by half over this many seconds.
     half_life: float = 600
-    # All in view: held still whatever's selected, the first one moved on every this many seconds (burn-in). 0: off.
-    still_if_fits: float = 0
+    # Scrolled no further than its end: the ones before the selected stay in view (all of them, held still, if they fit).
+    fill: bool = False
 
 class Stack(metaclass=ScopedInstance):
     def __init__(self, name: str, style: StackStyle):
@@ -39,8 +39,6 @@ class Stack(metaclass=ScopedInstance):
         self.pos = 0
         self.shown = {}             # widget name -> seconds on top, lately
         self._shown_at = None
-        self.top = 0                # still_if_fits: the first one in view
-        self._turned_at = None
 
         if self.style.horizontal:
             self.scroller = HScroller(
@@ -78,35 +76,20 @@ class Stack(metaclass=ScopedInstance):
         frames = [self._frames[w] for i, w in enumerate(self._widgets)]
         frames = [f for _, f in enumerate(frames) if (f.width + f.height) > 2]
         pos = _visible.index(curr_widget) if curr_widget in _visible else 0
-        snap = self._fits(frames)
-        if snap is not None:
-            # The ones before the first one again after it. The last one past, the same picture as the first: snap there.
-            frames, pos = frames + frames[:self.top], self.top
         # out_frames = frames[:pos]
         # frames += out_frames
         # frames[:pos] = [f.opacity(0) for f in out_frames]
         pos = self.style.size - self.style.offset_top + sum([f.width if self.style.horizontal else f.height for f in frames[0:pos]]) + pos * 2 - 2
         if self.style.horizontal:
             align = 'center' if self.style.align == 'left' else self.style.align
-            return div(hstack(frames, gap=2, align=align), DivStyle(padding=(0, 0, 2, 0))), pos, snap
-        return div(vstack(frames, gap=2, align=self.style.align), DivStyle(padding=(0, 0, 0, 2))), pos, snap
-
-    def _fits(self, frames) -> Optional[bool]:
-        # None: they don't fit (or off), scrolled to the selected one. Else whether to snap from the end to the start.
-        size = lambda f: f.width if self.style.horizontal else f.height
-        if not self.style.still_if_fits or not frames or sum(map(size, frames)) + 2 * len(frames) > self.style.size - self.style.offset_top:
-            self._turned_at = None
-            return None
-        self.top = min(self.top, len(frames))
-        if self._turned_at is None:
-            self._turned_at = self._step
-        if self.top == len(frames) and self.scroller.on_target:
-            self.top = 0
-            return True
-        if self._step - self._turned_at >= self.style.still_if_fits and self.scroller.on_target:
-            self.top += 1
-            self._turned_at = self._step
-        return False
+            surface = div(hstack(frames, gap=2, align=align), DivStyle(padding=(0, 0, 2, 0)))
+        else:
+            surface = div(vstack(frames, gap=2, align=self.style.align), DivStyle(padding=(0, 0, 0, 2)))
+        if self.style.fill:
+            # Its end at the far edge at most, its start where the first one's at least.
+            end = surface.width if self.style.horizontal else surface.height
+            pos = max(min(pos, end), self.style.size - self.style.offset_top - 2)
+        return surface, pos
     
     def next_widget(self):
         if self._widgets:
@@ -185,8 +168,7 @@ class Stack(metaclass=ScopedInstance):
         if not self._widgets:
             return
         self._frames = {w: w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)}
-        self._step = fs.tick
-        surface, pos, snap = self.surface(fs)
+        surface, pos = self.surface(fs)
         delta = self.style.scroll_delta
         if self.scroller.direction < 0:
             delta = self.style.reverse_delta
@@ -194,10 +176,7 @@ class Stack(metaclass=ScopedInstance):
         # pin to middle
         # pos = pos - (self.style.size // 3)
 
-        self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos)
-        if snap:
-            self.scroller.pos = pos
-        stack_im = self.scroller.draw(fs.tick)
+        stack_im = self.scroller.set_frame(surface, reset=False).set_delta(delta).set_target(pos).draw(fs.tick)
 
         self.tick(fs)
         return stack_im

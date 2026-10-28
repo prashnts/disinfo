@@ -28,6 +28,7 @@ WIDGETS = {
     'dishwasher': (('dishwasher',), 600, 900),
     'washing_machine': (('washing_machine',), 600, 900),
     'trash_pickup': (('trash_pickup',), 600, 900),
+    'smokes': (('smokes',), 600, 900),
     'sensors': (('info_sensors',), None, None),
     'news': ((), None, None),
     'twentytwo': ((), None, None),

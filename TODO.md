@@ -108,3 +108,11 @@ Sensei window fit (Sensei ≈ a·room + b·outside, from the obs log) and window
 in the next hour from the radar frames' motion. The outdoor sensor (ESP + battery, hidden box) = a station: write
 `di.sky.obs.outdoor` (`skystate.observe`), add it to `stale`, sigma from its own score against Montsouris; SHT45 over
 the BME680 (self-heating), shade it from the morning sun.
+
+## Lightning (2026-10-28, open: the user picks it up later)
+
+Sensei's AS3935 works now (OLED removed, disturbers masked): HA `binary_sensor.sensei_sensei_storm_alert` (10 ms per
+strike), `sensor.sensei_sensei_distance_storm` (km, coarse steps to ~40 km, the storm front), energy (no unit). No
+bearing from one antenna. Plan: Blitzortung's HA integration (HACS, the user installs it) for the strikes' positions →
+flashes at their bearing on the sky view's skyline; Sensei as the local, offline "it's here" (an intensity pulse,
+distance ≤ 5 km into the close-windows card). Both sources as available; a `lightning` quantity in skystate.

@@ -155,6 +155,12 @@ class Config(AppBaseModel):
     daylight_uv: str = 'sensor.sensei_uv'
     daylight_node: str = 'distudy'
     daylight_lamps: list[str] = ['light.ikea_driver_study_desk_left', 'light.ikea_driver_study_desk_right', 'light.ikea_e27_study_desklamp']
+    # The day's cigarettes (screens/smokes.py): from the study's PM2.5, on these screens while smokes_home is home
+    # and none of smokes_away is. Off till smokes_home is set (in the local config).
+    smokes_pm25: str = 'sensor.ikea_vindstyrka_0x01_pm25'
+    smokes_screens: list[str] = ['distudy']
+    smokes_home: str = ''
+    smokes_away: list[str] = []
 
     shazam: ShazamConfig = ShazamConfig()
 

@@ -9,7 +9,7 @@ from discore.elements import Frame
 from discore.screen import Focus
 from discore.transitions import FadeIn
 
-from . import aviator, debug_info, dishwasher, klipper, now_playing, paris_metro, solar, trash_pickup, washing_machine, weather
+from . import aviator, debug_info, dishwasher, klipper, now_playing, paris_metro, smokes, solar, trash_pickup, washing_machine, weather
 from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
 from disinfo.drat import shown
@@ -90,6 +90,7 @@ def side_cards(fs: FrameState) -> list:
         dishwasher.widget(fs),
         washing_machine.widget(fs),
         trash_pickup.widget(fs),
+        smokes.widget(fs),
     ])
 
 def bottom_cards(fs: FrameState) -> list:

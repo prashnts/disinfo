@@ -5,7 +5,7 @@ import bisect
 from datetime import datetime
 from dataclasses import dataclass
 from collections import namedtuple, defaultdict
-from redis_om import HashModel
+from redis_om import HashModel, NotFoundError
 
 from disinfo.data_structures import AppBaseModel
 from discore.data_structures import FrameState
@@ -48,6 +48,18 @@ class State:
     down: bool = False
 
 states = defaultdict(State)   # per screen
+_pks = [0.0, []]              # when, the timers' keys: all_pks scans all of redis, so once a second at most
+
+def timers(tick: float) -> list[TimerEntry]:
+    if tick - _pks[0] > 1:
+        _pks[:] = tick, list(TimerEntry.all_pks())
+    out = []
+    for pk in _pks[1]:
+        try:
+            out.append(TimerEntry.get(pk))
+        except NotFoundError:       # expired since
+            pass
+    return out
 
 IncrementMap = namedtuple('IncrementMap', ['step', 'delta'])
 DisplayFontMap = namedtuple('DisplayFontMap', ['step', 'font'])
@@ -101,6 +113,7 @@ def timer_view(fs: FrameState):
     if remote('select') and state.mode == 'create' and (fs.tick - state.last_timer_at) > 2:
         entry = TimerEntry(target=fs.now.add(seconds=state.duration), duration=state.duration).save()
         entry.expire(int(state.duration * 1.5))
+        _pks[0] = 0
         state.active_pk = entry.pk
         state.mode = 'idle'
         state.duration = 0
@@ -154,9 +167,8 @@ def timer_view(fs: FrameState):
         rows.append(display(max(state.duration, 0)))
 
 
-    timers = [TimerEntry.get(tid) for tid in TimerEntry.all_pks()]
-    timers.sort(key=lambda t: t.end)
-    for timer in timers:
+    shown = sorted(timers(fs.tick), key=lambda t: t.end)
+    for timer in shown:
         rows.append(timecard(timer))
         if not timer.triggerred and fs.now.diff(timer.end, False).in_seconds() <= 0:
             # Once: acts get there now (they used to be sent a few times over, hoping one would).
@@ -170,7 +182,7 @@ def timer_view(fs: FrameState):
     if not rows:
         return
 
-    return Frame(vstack(rows, gap=2).image, hash=('timer', 'main', state.mode, len(timers), state.duration > 0))
+    return Frame(vstack(rows, gap=2).image, hash=('timer', 'main', state.mode, len(shown), state.duration > 0))
 
 
 def timer_app(fs: FrameState):

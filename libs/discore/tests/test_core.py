@@ -45,23 +45,33 @@ def test_stack_survives_shrinking_list():
     assert stack.mut([w('a')]).draw(fs)
     assert Stack('t.empty', StackStyle(size=32)).mut([]).draw(fs) is None
 
-def test_stack_still_if_fits():
+def test_stack_fill():
     from dataclasses import replace
     fs = FrameState.create()
     colors = {'a': (255, 0, 0, 255), 'b': (0, 255, 0, 255), 'c': (0, 0, 255, 255)}
     ws = [Widget(n, solid(c, (10, 10)), transition_duration=0.01) for n, c in colors.items()]
-    stack = Stack('t.still', StackStyle(size=80, still_if_fits=60)).mut(ws)
     t0 = fs.tick + 1
-    draw = lambda t: stack.draw(replace(fs, tick=t0 + t))
     which = lambda p: p.index(max(p[:3])) if max(p[:3]) > 200 else None
-    cards = lambda im: [which(im.getpixel((6, y))) for y in range(0, 80, 2)]
+    cards = lambda im: [which(im.getpixel((6, y))) for y in range(im.height)]
+    runs = lambda c: [k for i, k in enumerate(c) if k is not None and (i == 0 or c[i - 1] != k)]
+    stack = Stack('t.fill', StackStyle(size=80, fill=True)).mut(ws)
+    draw = lambda t: stack.draw(replace(fs, tick=t0 + t))
     for t in range(30):
         first = cards(draw(t / 10).image)
-    stack.next_widget()
-    assert stack.pos != 0 and cards(draw(3).image) == first     # selected, not scrolled
-    seen = {cards(draw(t / 10).image)[6] for t in range(40, 4000)}      # every card on top in turn
-    assert seen >= {0, 1, 2}
-    assert stack.top < 3
+    assert runs(first) == [0, 1, 2]
+    for _ in range(3):
+        stack.next_widget()
+        assert stack.pos != 0 and cards(draw(3).image) == first     # selected, not scrolled, none again after the last
+    # Too long to fit, the last one selected: its end at the bottom, the ones before above it.
+    long = Stack('t.fill.long', StackStyle(size=30, fill=True)).mut(ws)
+    long.pos = 2
+    long.draw(fs)
+    surface, _ = long.surface(fs)
+    assert long.scroller.target == surface.height
+    plain = Stack('t.nofill.long', StackStyle(size=30)).mut(ws)
+    plain.pos = 2
+    plain.draw(fs)
+    assert plain.scroller.target > long.scroller.target                # without: the last one at the top
 
 def test_attached_widgets_as_wide_under_it():
     fs = FrameState.create()

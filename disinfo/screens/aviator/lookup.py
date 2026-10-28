@@ -4,6 +4,7 @@ Fetched in a thread: the card draws without them and fills in.
 '''
 import json
 import threading
+import time
 import requests
 
 from disinfo.redis import db
@@ -12,11 +13,19 @@ from disinfo.redis import db
 # planespotters asks for a contact in the user agent.
 headers = {'User-Agent': 'disinfo (+https://github.com/prashnts/disinfo)'}
 _pending = set()
+_read = {}          # key -> (when, value): redis once in a while, not each frame; a miss again in 2 s
 
 
 def cached(key: str, fetch, ttl: int) -> dict | None:
-    if (v := db.get(key)) is not None:
-        return json.loads(v)
+    now = time.monotonic()
+    if (r := _read.get(key)) and now - r[0] < (60 if r[1] is not None else 2):
+        return r[1]
+    if len(_read) > 256:
+        _read.clear()
+    v = db.get(key)
+    _read[key] = now, None if v is None else json.loads(v)
+    if v is not None:
+        return _read[key][1]
     if key in _pending:
         return None
     _pending.add(key)

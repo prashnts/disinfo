@@ -107,7 +107,8 @@ class WebsocketClient:
             on_close=self.on_close,
             on_error=self.on_error)
         
-        self.ws_thread = threading.Thread(target=self.ws.run_forever, daemon=True)
+        # The text frames (v1) are big: websocket-client's utf-8 check, in Python, was most of the desk's CPU.
+        self.ws_thread = threading.Thread(target=self.ws.run_forever, kwargs={'skip_utf8_validation': True}, daemon=True)
         self.ws_thread.start()
     
     def retry_connect(self):
@@ -154,19 +155,28 @@ def main(conf: Config):
         telemetry = values
         return [acts.popleft() for _ in range(len(acts))]
 
+    changes = deque(maxlen=8)       # (version, boxes) of the last frames, boxes None: all of it
+    latest = (0, None)              # (version, frame), set together: the loop reads them in one go
+
+    def _new_frame(im: Image.Image, boxes: list | None):
+        nonlocal frame, latest
+        v = latest[0] + 1
+        changes.append((v, boxes))
+        frame, latest = im, (v, im)
+
     def _got_acts(ws: WebsocketClient, msg: dict):
         acts.extend(msg.get('acts') or [])
         ws.acts_id = msg.get('acts_id', ws.acts_id)
 
     def _set_frame(ws: WebsocketClient, msg: str):
-        nonlocal frame, last_ping
+        nonlocal last_ping
         try:
             msg = json.loads(msg)
             _got_acts(ws, msg)
 
             bytes_ = base64.b64decode(msg['img'])
             with io.BytesIO(bytes_) as img_io:
-                frame = Image.open(img_io).convert('RGB')
+                _new_frame(Image.open(img_io).convert('RGB'), None)
         except Exception as e:
             print('[Error loading frame]', e)
         last_ping = time.monotonic()
@@ -175,13 +185,13 @@ def main(conf: Config):
     assembler = FrameAssembler()
 
     def _set_frame_v2(ws: WebsocketClient, msg):
-        nonlocal frame, last_ping
+        nonlocal last_ping
         last_ping = time.monotonic()
         try:
             if isinstance(msg, str):
                 _got_acts(ws, json.loads(msg))
             elif assembler.apply(msg):
-                frame = assembler.frame
+                _new_frame(assembler.frame, assembler.boxes)
             else:
                 ws.send(resync=1)
         except Exception as e:
@@ -199,16 +209,38 @@ def main(conf: Config):
 
     print('[Matrix Renderer started]')
     last_telemetry = 0
+    # SetImage is slow (each pixel through the mapper into every PWM bit plane): only what changed, into each of the
+    # two canvases (they take turns at each swap). Nothing changed, no swap.
+    drawn = [0, 0]      # the version each canvas holds, the back one first
+    def since(v: int) -> list | None:
+        hist = list(changes)
+        if not v or not hist or hist[0][0] > v + 1:
+            return None
+        boxes = []
+        for n, b in hist:
+            if n > v:
+                if b is None:
+                    return None
+                boxes += b
+        return boxes
 
 
     while True:
         t_start = time.monotonic()
-        if frame:
-            double_buffer.SetImage(frame)
-        else:
+        v, im = latest
+        if im and drawn[0] != v:
+            boxes = since(drawn[0])
+            if boxes is None:
+                double_buffer.SetImage(im)
+            for b in boxes or []:
+                double_buffer.SetImage(im.crop(b), b[0], b[1])
+            drawn[0] = v
+            double_buffer = matrix.SwapOnVSync(double_buffer)
+            drawn.reverse()
+        elif not im:
             dots = '.' * (int(t_start) % 4)
             double_buffer.SetImage(status_frame(('waiting' if ws.connected else 'connecting') + dots, (double_buffer.width, double_buffer.height)))
-        double_buffer = matrix.SwapOnVSync(double_buffer)
+            double_buffer = matrix.SwapOnVSync(double_buffer)
 
         if v2 and time.monotonic() - last_telemetry > 1 / conf.telemetry_hz:
             ws.send(telemetry=json.dumps(telemetry), _node=node_id)

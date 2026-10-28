@@ -10,6 +10,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from itertools import product
 from typing import Callable, Optional
 
@@ -96,6 +97,12 @@ def rolled(spot: Spot) -> tuple[int, int]:
 
 def largest_free(free: np.ndarray) -> tuple[int, int, int, int]:
     '''The largest box of True cells: x0, y0, x1, y1 in cells.'''
+    # Each frame, the same grid most of them.
+    return _largest_free(free.shape, np.packbits(free).tobytes())
+
+@lru_cache(64)
+def _largest_free(shape: tuple, bits: bytes) -> tuple[int, int, int, int]:
+    free = np.unpackbits(np.frombuffer(bits, np.uint8), count=shape[0] * shape[1]).reshape(shape).astype(bool)
     best, heights = (0, (0, 0, 0, 0)), np.zeros(free.shape[1], int)
     for y, row in enumerate(free):
         heights = np.where(row, heights + 1, 0)
@@ -109,6 +116,9 @@ def largest_free(free: np.ndarray) -> tuple[int, int, int, int]:
                     best = (sh * (x - start), (start, y - sh + 1, x, y + 1))
             stack.append((start, h))
     return best[1]
+
+
+_shown = [255 if v > 8 else 0 for v in range(256)]      # any alpha counts
 
 
 @dataclass
@@ -175,7 +185,7 @@ class Screen:
     def _mask(self, f: Frame) -> np.ndarray:
         # Where it shows on the grid, 0-1: any alpha counts, a frosted card is there all the same.
         c = self.cell
-        a = f.image.getchannel('A').point(lambda v: 255 if v > 8 else 0).resize((max(math.ceil(f.width / c), 1), max(math.ceil(f.height / c), 1)), Image.BOX)
+        a = f.image.getchannel('A').point(_shown).resize((max(math.ceil(f.width / c), 1), max(math.ceil(f.height / c), 1)), Image.BOX)
         return np.asarray(a, np.float32) / 255
 
     def _placed(self, mask: np.ndarray, x: int, y: int, shape: tuple) -> np.ndarray:

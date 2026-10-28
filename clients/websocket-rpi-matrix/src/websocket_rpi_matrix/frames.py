@@ -17,6 +17,7 @@ class FrameAssembler:
     def __init__(self):
         self.frame: Image.Image | None = None
         self.seq = 0
+        self.boxes: list[tuple[int, int, int, int]] | None = None     # what the last apply changed, None: all of it
 
     def apply(self, msg: bytes) -> bool:
         '''False when regions don't apply to the current frame: ask for a whole one.'''
@@ -25,7 +26,7 @@ class FrameAssembler:
             raise ValueError(f'not a /ws2 frame: {magic!r}')
         at = WS2_HEADER.size
         if not base_seq:
-            self.frame, self.seq = decode(msg[at:], (w, h), enc), seq
+            self.frame, self.seq, self.boxes = decode(msg[at:], (w, h), enc), seq, None
             return True
         if self.frame is None or base_seq != self.seq:
             return False
@@ -33,12 +34,14 @@ class FrameAssembler:
         frame = self.frame.copy()
         (count,) = struct.unpack_from('<H', msg, at)
         at += 2
+        boxes = []
         for _ in range(count):
             x, y, w, h, n = REGION.unpack_from(msg, at)
             at += REGION.size
             frame.paste(decode(msg[at:at + n], (w, h), enc), (x, y))
+            boxes.append((x, y, x + w, y + h))
             at += n
-        self.frame, self.seq = frame, seq
+        self.frame, self.seq, self.boxes = frame, seq, boxes
         return True
 
 

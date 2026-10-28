@@ -247,6 +247,12 @@ async def shown_settings():
     return {'widgets': list(shown.WIDGETS), 'off': s.off, 'bottom': s.bottom,
             'zen': [k for k in s.zen if shown.zen_since(s, k, now)]}
 
+@app.get('/smokes')
+async def smokes_count():
+    # The day's cigarettes, the actual estimate (the desk stops at 8+): screens/smokes.py.
+    from disinfo.screens import smokes
+    return smokes.doc() or {}
+
 @app.get('/weather/diag')
 async def weather_diag(hours: int = 36):
     '''Everything behind the weather card, for web/weather.html: the sky state, the stations, the blend, the scores.'''

@@ -51,13 +51,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - **Zen**, per screen (web page, or the entrance's button): only the time, the weather and the background, the planes without labels; a card asking for focus (a print starting, a tap) still comes through. It ends after an hour.
 - The bottom stacks hidden on every screen, from the web page or the entrance's button; cards asking for focus still show.
 
+- A robot by the clock's seconds while Claude works on disinfo.
+
 ### Changed
 - What's shown, one way for every widget: its checkbox on the web page switches it off till checked again; its `show_` button shows it for a while (checking it again) or hides it till its schedule brings it back. Kept for all the screens by the data service.
 - The views (map, sky, solar) take turns over the day, the checked ones; one pressed shows for an hour. The solar view never brings the radar. The entrance has no sky view (`aviator_views`).
 - The sky view looks at the waypoints' piece of the skyline, closer in, widening for the planes and now and then to the whole window; idle, it turns slowly to the sights around (the landmarks, a low sun or moon, where the planes are) and back. It pans up to a followed plane and drifts up and down otherwise, the near roofs sliding over the far ones.
 - The sky view's controls on the web page: where it looks up or down and from which floor (kept), turning and zooming it for a while, and a demo: once around, slowly, through the skies one may see (morning to night, haze, rain, snow, fog, wind).
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
-- The side stack holds still when all its cards fit, the selected one picked as before; every five minutes it turns by one card against burn-in (`discore`: `StackStyle(still_if_fits=)`).
+- The side stack scrolls no further than its end: the cards before the selected one stay in view, all of them, held still, when they fit (`discore`: `StackStyle(fill=)`).
 
 ### Fixed
 - The stacks scrolled each card a pixel lower than the one before it; they all stop at the same place now.
@@ -67,6 +69,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Telemetry from a client that restarted was ignored until its clock caught up; the timer took the encoder's restart (or the renderer's) for a big turn.
 - The planes' cards were never shown: they're back for the planes passing overhead, and a tapped plane always gets its card.
 - The web page's show buttons toggled each renderer on its own, so screens could disagree.
+- The salon's client logged a missing remote a thousand times a second (2.4 GB a day on its SD card).
+
+### Performance
+- Renderers on the server (Pi 5, awake): the timer no longer scans Redis each frame, nor the plane cards read it; frost reuses its blur while the pixels under it are the same. Compose salon 22 → 13 ms, desk 29 → 15 ms, entry 16 → 13 ms: within 48 and 42 fps now.
+- HUB75 clients draw only what changed, and nothing when nothing did, the salon's CPU 125 → 57%, the desk's 117 → 56% (on `/ws2` now). What's left is the panel's own refresh.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 

@@ -378,8 +378,17 @@ def blur_region(img: Image.Image, box: tuple[int, int, int, int], radius: float)
     '''Same as img.filter(GaussianBlur(radius)).crop(box), but only blurs around the box.'''
     m = math.ceil(3 * radius) + 1
     pad = (max(box[0] - m, 0), max(box[1] - m, 0), min(box[2] + m, img.width), min(box[3] + m, img.height))
-    blurred = img.crop(pad).filter(ImageFilter.GaussianBlur(radius))
-    return blurred.crop((box[0] - pad[0], box[1] - pad[1], box[2] - pad[0], box[3] - pad[1]))
+    under, inner = img.crop(pad), (box[0] - pad[0], box[1] - pad[1], box[2] - pad[0], box[3] - pad[1])
+    # The same pixels under it, the same blur: keyed on the pixels themselves, it can't go stale. A copy: cut_alpha
+    # changes it in place.
+    key = (radius, under.mode, under.size, inner, under.tobytes())
+    if (blurred := _blurred.get(key)) is None:
+        if len(_blurred) > 64:
+            _blurred.clear()
+        blurred = _blurred[key] = under.filter(ImageFilter.GaussianBlur(radius)).crop(inner)
+    return blurred.copy()
+
+_blurred = {}
 
 @lru_cache(maxsize=256)
 def apply_blur(frame: Frame, radius: float) -> Frame:
