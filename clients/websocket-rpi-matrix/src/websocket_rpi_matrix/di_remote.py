@@ -9,6 +9,7 @@ from collections import defaultdict, Counter, deque
 from typing import Optional
 
 import board
+import numpy as np
 
 from adafruit_seesaw import digitalio, rotaryio, seesaw
 from adafruit_apds9960.apds9960 import APDS9960
@@ -25,9 +26,11 @@ _here = Path(__file__).parent / 'tof_bin'
 sys.path.append(_here.as_posix())
 
 from ._vl53lxcx import (
+    DATA_AMBIENT_PER_SPAD,
     DATA_DISTANCE_MM,
     DATA_NB_TARGET_DETECTED,
     DATA_TARGET_STATUS,
+    RANGING_MODE_CONTINUOUS,
     RESOLUTION_8X8,
     STATUS_NO_WRAP,
     STATUS_VALID,
@@ -35,7 +38,7 @@ from ._vl53lxcx import (
     VL53L5CX,
 )
 
-from .tof import ToFTracker, ToFParams, ToFRecorder
+from .tof import ToFTracker, ToFParams, ToFRate, ToFRecorder
 
 # ST: 5 is a valid range, 6 and 9 are mostly right.
 TOF_VALID = (STATUS_VALID, STATUS_NO_WRAP, STATUS_VALID_LARGE_PULSE)
@@ -47,6 +50,7 @@ class Config(BaseModel):
     tof_enable: bool = True
     tof_params: dict = {}                   # tof.ToFParams: rotate (to the sensor's view), distances, timings
     tof_background: str = '.tof_bg.json'    # the room's distances by zone, kept across restarts
+    tof_rate: dict = {}                     # tof.ToFRate: steps ((ambient, Hz), ...) by the light
     tof_record: str = ''                    # raw frames for training, into this dir (a RAM disk), till:
     tof_record_until: str = ''              # local time, '2026-10-29T23:59'
 
@@ -380,8 +384,9 @@ class ToFSensor:
     tof: VL53L5CX = None
     tracker: ToFTracker = None
     recorder: ToFRecorder = None
+    rate: ToFRate = None
     debug_s: float = 30         # the grid sent this long after a 'debug' act
-    update_frequency: int = 0      # data_ready is a 4-byte read: look every loop, the sensor paces it (15 Hz)
+    update_frequency: int = 0      # data_ready is a 4-byte read: look every loop, the sensor paces it (5-15 Hz)
     _n_update: int = 0
     _debug_until: float = 0.0
 
@@ -398,8 +403,19 @@ class ToFSensor:
             # A zone without a target keeps its last distance: masked too.
             self.tracker.update([d if n and status in TOF_VALID else 0
                                  for d, status, n in zip(results.distance_mm, results.target_status, results.nb_target_detected)])
+            ambient = float(np.median(results.ambient_per_spad))
             if self.recorder:
-                self.recorder.add(list(results.distance_mm), list(results.target_status), list(results.nb_target_detected), self.tracker)
+                self.recorder.add(list(results.distance_mm), list(results.target_status), list(results.nb_target_detected), self.tracker,
+                                  ambient, self.rate.hz)
+            hz = self.rate.hz
+            if self.rate.update(ambient, self.tracker.near['pressed']) != hz:
+                self.tof.stop_ranging()
+                self.tof.ranging_freq = self.rate.hz
+                self._start(self.tof)
+
+    @staticmethod
+    def _start(tof: VL53L5CX):
+        tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS, DATA_NB_TARGET_DETECTED, DATA_AMBIENT_PER_SPAD})
 
     def serialize(self) -> dict:
         if not self.tof:
@@ -411,6 +427,8 @@ class ToFSensor:
             self._debug_until = time.monotonic() + self.debug_s
         elif params == 'save':
             self.tracker.save()
+        elif params == 'reset':
+            self.tracker.reset()
 
     @classmethod
     def setup(cls, bus: board.I2C, conf: Config, **kwargs):
@@ -424,14 +442,17 @@ class ToFSensor:
 
             tof.init()
             tof.resolution = RESOLUTION_8X8
-            tof.ranging_freq = 15
-            tof.start_ranging({DATA_DISTANCE_MM, DATA_TARGET_STATUS, DATA_NB_TARGET_DETECTED})
+            # Continuous: a frame integrates for its whole period (the default, autonomous, lit 10 ms of 66).
+            tof.ranging_mode = RANGING_MODE_CONTINUOUS
+            rate = ToFRate(**conf.tof_rate)
+            tof.ranging_freq = rate.hz
+            cls._start(tof)
             tracker = ToFTracker(ToFParams(**conf.tof_params), Path(conf.tof_background))
             recorder = None
             if conf.tof_record and conf.tof_record_until:
                 until = time.mktime(time.strptime(conf.tof_record_until, '%Y-%m-%dT%H:%M'))
                 recorder = ToFRecorder(Path(conf.tof_record), until)
-            return cls(tof, tracker, recorder, **kwargs)
+            return cls(tof, tracker, recorder, rate, **kwargs)
         except Exception as e:
             print(f"[VL53L5CX] not found: {e}")
             return cls(**kwargs)
@@ -506,6 +527,7 @@ class Buzzer:
 
     _buffer: list[tuple[str, tuple]] = field(default_factory=list)
     _wake: threading.Event = field(default_factory=threading.Event)
+    _stop: bool = False
 
 
     # RTTTL = {
@@ -634,12 +656,16 @@ class Buzzer:
             self._wake.clear()
             while self._buffer:
                 self.active = True
+                self._stop = False
                 for note, dur in self._buffer[0][1]:
+                    if self._stop:
+                        break
                     if note == 'REST':
                         time.sleep(dur / 1000)
                     else:
                         self.spk.tone(note if isinstance(note, int) else ModulinoBuzzer.NOTES[note], dur - 5, blocking=True)
-                self._buffer.pop(0)
+                if self._buffer:
+                    self._buffer.pop(0)
             self.active = False
 
     def serialize(self) -> dict:
@@ -649,8 +675,12 @@ class Buzzer:
         }
 
     def act(self, params: str | list[str], hash_: str):
-        '''params: a sound, or a list of them played as one (a melody, then a boop).'''
+        '''params: a sound, or a list of them played as one (a melody, then a boop). 'stop': quiet now (a timer muted).'''
         if not self.enabled or not params:
+            return
+        if params == 'stop':
+            self._buffer.clear()
+            self._stop = True
             return
         notes = sum((self._sound(p) for p in ([params] if isinstance(params, str) else params)), [])
         sig = (hash_, tuple(notes))

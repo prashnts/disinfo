@@ -300,6 +300,50 @@ async def note_clear(screen: str):
     note.put(screen, None)
     return note.notes()
 
+@app.get('/timers')
+async def timers_list():
+    # The timers (apps/timer.py), the known ones, the icons they can wear, the prefs.
+    from disinfo.apps import timer as T
+    ts = [{'pk': t.pk, 'label': t.label, 'icon': t.icon, 'duration': t.duration, 'end': t.target.timestamp(),
+           'muted': t.muted, 'repeat': t.repeat, 'origin': t.origin, 'tail': t.tail, 'ringing': t.ringing()}
+          for t in T.timers(time.time()) if t.left() > -t.tail]
+    return {'now': time.time(), 'timers': ts, 'known': T.known(), 'icons': T.ICONS, 'prefs': T.prefs()}
+
+class TimerInput(AppBaseModel):
+    do: str                     # start, cancel, mute, repeat, shift, remember, forget, prefs
+    pk: str = ''
+    duration: int = 0
+    secs: int = 0
+    label: str = ''
+    icon: str = ''
+    repeat: bool = False
+    from_front: bool | None = None
+
+@app.post('/timers')
+async def timers_do(i: TimerInput):
+    from disinfo.apps import timer as T
+    ts = T.timers(time.time())
+    t = next((t for t in ts if t.pk == i.pk), None)
+    match i.do:
+        case 'start' if i.duration > 0:
+            T.start(i.duration, i.label or 'T', i.icon or 'timer-outline', 'web', int(i.repeat))
+        case 'cancel' if t:
+            T.cancel(t.pk)
+        case 'mute':
+            T.mute(ts)
+        case 'repeat' if t:
+            t.repeat = int(i.repeat)
+            t.save()
+        case 'shift' if t:
+            T.shift(t, i.secs)
+        case 'remember' if i.icon and i.duration > 0:
+            T.remember(i.icon, i.duration, i.label)
+        case 'forget':
+            T.forget(i.icon)
+        case 'prefs' if i.from_front is not None:
+            T.set_prefs(from_front=i.from_front)
+    return await timers_list()
+
 @app.get('/weather/diag')
 async def weather_diag(hours: int = 36):
     '''Everything behind the weather card, for web/weather.html: the sky state, the stations, the blend, the scores.'''
@@ -483,3 +527,4 @@ async def display_press(screen: str, rinput: RemoteInput):
 
 
 app.mount('/web', StaticFiles(directory='web'), name='web')
+app.mount('/mdi', StaticFiles(directory='assets/mdi'), name='mdi')

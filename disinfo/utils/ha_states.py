@@ -46,8 +46,24 @@ KNOWN = {
 }
 
 
+_cards = {}     # node -> its NFC reader's updated_at last told
+
+def card(node: str, nfc: dict, headers: dict):
+    # A card on the reader (the M5Dial's): Home Assistant's tag_scanned event, what its tag triggers wait for,
+    # and sensor.<node>_nfc, the card there ('none' when taken away). Not again for what a reconnect resends.
+    if nfc.get('updated_at') == _cards.get(node):
+        return
+    told, _cards[node] = node in _cards, nfc.get('updated_at')
+    if nfc.get('uid') and told:
+        requests.post(f'{app_config.ha_base_url}/api/events/tag_scanned', headers=headers,
+                      json={'tag_id': nfc['uid'], 'device_id': node}, timeout=5)
+    requests.post(f'{app_config.ha_base_url}/api/states/sensor.{node}_nfc', headers=headers, timeout=5,
+                  json={'state': nfc.get('uid') or 'none', 'attributes': {'friendly_name': f'{node} NFC', 'icon': 'mdi:nfc', 'last': nfc.get('last', '')}})
+
 def publish(node: str, data: dict):
     headers = {'Authorization': f'Bearer {app_config.ha_token.get_secret_value()}'}
+    if isinstance(data.get('nfc'), dict):
+        card(node, data['nfc'], headers)
     for key, value in data.items():
         if key not in SENSORS or not isinstance(value, (int, float)):
             continue

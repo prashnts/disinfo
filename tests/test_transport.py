@@ -14,7 +14,7 @@ from PIL import Image
 os.environ.setdefault('DI_CONFIG_PATH', '.config.sample.json')
 
 from disinfo import transport
-from disinfo.transport import pack_raw, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds, REGION, RGBZ, PNG, RGB565Z
+from disinfo.transport import pack_raw, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds, REGION, RGBZ, PNG, RGB565Z, JPEG
 
 # The client's package imports the matrix hardware: load the module alone.
 _spec = importlib.util.spec_from_file_location(
@@ -56,6 +56,14 @@ def test_rgb565():
     v = np.frombuffer(transport.zlib.decompress(encode(img.tobytes(), img.size, RGB565Z)), '<u2')
     a = np.asarray(img).reshape(-1, 3)
     assert (v >> 11 == a[:, 0] >> 3).all() and ((v >> 5) & 63 == a[:, 1] >> 2).all() and (v & 31 == a[:, 2] >> 3).all()
+
+def test_jpeg():
+    # baseline (the ESP32's ROM decoder takes no other), close to the picture
+    img = Image.new('RGB', (40, 24), (200, 120, 40))
+    data = encode(img.tobytes(), img.size, JPEG)
+    back = Image.open(io.BytesIO(data))
+    assert back.size == img.size and not back.info.get('progressive')
+    assert np.abs(np.asarray(back, int) - np.asarray(img, int)).max() < 8
 
 def test_client_reads_the_server_format():
     assert frames.WS2_HEADER.format == transport.WS2_HEADER.format and frames.WS2_MAGIC == transport.WS2_MAGIC
@@ -194,13 +202,19 @@ def test_ws2_acts(server):
         msg = json.loads(ws.receive_text())
     assert msg == {'acts': [['buzzer', 'boop', 1]], 'acts_id': srv.last_act('t.acts')}
 
-def test_ws2_acts_before_frames(server):
+def test_ws2_acts_before_frames(server, monkeypatch):
     srv, client = server
     publish(srv, 't.first', picture(seed=1))
     with client.websocket_connect('/ws2/t.first') as ws:
         receive_frame(ws, frames.FrameAssembler())
+        # Both waiting when the sender looks: woken by the frame alone, a busy machine sent it first (flaky).
+        woken = []
+        monkeypatch.setattr(srv, 'notify', woken.append)
         publish(srv, 't.first', picture(seed=2))
         act(srv, 't.first', ['buzzer', 'ok', 1])
+        monkeypatch.undo()
+        for name in woken:
+            srv.notify(name)
         while 'text' not in (msg := ws.receive()) or 'alive' in msg['text']:
             assert 'bytes' not in msg
     assert json.loads(msg['text'])['acts'] == [['buzzer', 'ok', 1]]

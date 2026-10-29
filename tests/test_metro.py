@@ -108,6 +108,7 @@ def test_no_overfetch(conf, monkeypatch):
         calls.append(path)
         return stops_doc() if path == 'stop-monitoring' else {}
     monkeypatch.setattr(idfm, 'db', FakeDB())
+    monkeypatch.setattr(idfm.shown, 'load', lambda: idfm.shown.Shown())    # not the live presses (a server's has some)
     monkeypatch.setattr(idfm, 'get', get)
     monkeypatch.setattr(idfm, 'publish', lambda *a: None)
     monkeypatch.setattr(idfm, 'summarize', lambda doc: None)

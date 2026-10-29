@@ -22,8 +22,9 @@ WS2_MAGIC = b'DIF2'
 WS2_HEADER = struct.Struct('<4sIIHHHHB')
 REGION = struct.Struct('<HHHHI')
 TILE = 16
-RGBZ, PNG, RGB565Z = 1, 2, 3
-ENCODINGS = {'rgbz': RGBZ, 'png': PNG, 'rgb565z': RGB565Z}
+RGBZ, PNG, RGB565Z, JPEG = 1, 2, 3, 4
+ENCODINGS = {'rgbz': RGBZ, 'png': PNG, 'rgb565z': RGB565Z, 'jpeg': JPEG}
+JPEG_QUALITY = 85       # no chroma subsampling: the pixel fonts stay sharp
 
 
 def pack_raw(name: str, size: tuple[int, int], rgb: bytes) -> bytes:
@@ -78,6 +79,10 @@ def encode(rgb: bytes, size: tuple[int, int], encoding: int) -> bytes:
     if encoding == PNG:
         with io.BytesIO() as b:
             Image.frombytes('RGB', size, rgb).save(b, format='png', compress_level=1)
+            return b.getvalue()
+    if encoding == JPEG:
+        with io.BytesIO() as b:
+            Image.frombytes('RGB', size, rgb).save(b, format='jpeg', quality=JPEG_QUALITY, subsampling=0)
             return b.getvalue()
     if encoding == RGB565Z:
         a = np.frombuffer(rgb, np.uint8).reshape(-1, 3).astype(np.uint16)

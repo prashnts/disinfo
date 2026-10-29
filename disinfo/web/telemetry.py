@@ -110,6 +110,12 @@ class DiTofState(AppBaseModel):
             data = {**data, 'target': None}
         return data
 
+class DiNfcState(AppBaseModel):
+    # A card on the reader (the M5Dial's): its UID while it's there, the last one after.
+    uid: str = ''
+    last: str = ''
+    updated_at: float = 0.0
+
 class DiIRCamState(AppBaseModel):
     render: list[list[float]] = []
     updated_at: float = 0.0
@@ -122,6 +128,7 @@ class DiTelemetryState(AppBaseModel):
     user: DiUserState = DiUserState()
     tof: DiTofState = DiTofState()
     ircam: DiIRCamState = DiIRCamState()
+    nfc: DiNfcState = DiNfcState()
     _v: Literal['dit'] = 'dit'
     _readers: set = set()
 
@@ -164,6 +171,9 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
             
             if next_state.ircam.updated_at != self.state.ircam.updated_at:
                 self.state.ircam = next_state.ircam
+
+            if next_state.nfc.updated_at != self.state.nfc.updated_at:
+                self.state.nfc = next_state.nfc
         except (json.JSONDecodeError, ValidationError) as e:
             print(f'Error processing telemetry message: {e}')
             pass

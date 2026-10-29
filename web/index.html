@@ -86,6 +86,12 @@
         .compass text { font: 8px ui-monospace, monospace; fill: var(--dim); }
         .compass .plane { cursor: pointer; }
 
+        .icon { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; background: currentColor;
+                -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+        .icons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; margin: 4px 0; }
+        .icons button { padding: 3px 0; }
+        .ringing { color: var(--accent); }
+
         .smokes strong { font-size: 18px; }
         .ember { color: var(--accent); }
     </style>
@@ -523,7 +529,65 @@
         }
 
 
-        const TABS = {view: ViewTab, sky: SkyTab, radar: RadarTab, shown: ShownTab, dev: DevTab}
+        const Icon = ({name}) => html`<span class="icon" style=${`--i: url(/mdi/${name}.svg)`}></span>`
+        const mmss = s => { s = Math.abs(Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, '0')
+                            return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${String(m).padStart(2, '0')}:${x}` }
+
+        function TimersTab() {
+            // apps/timer.py: the running ones (newest first), a new one, the known ones (the screens' templates).
+            const [d, setD] = useState(null)
+            const [skew, setSkew] = useState(0)
+            const [, tick] = useState(0)
+            const [secs, setSecs] = useState(0)
+            const [label, setLabel] = useState('')
+            const [icon, setIcon] = useState('')
+            const [repeat, setRepeat] = useState(false)
+            const got = j => { setD(j); setSkew(j.now - Date.now() / 1000) }
+            const load = () => getJSON('/timers').then(got).catch(() => {})
+            const post = body => fetch('/timers', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}).then(r => r.json()).then(got)
+            useEffect(() => { load(); const a = setInterval(load, 5000), b = setInterval(() => tick(n => n + 1), 500); return () => { clearInterval(a); clearInterval(b) } }, [])
+            if (!d) return html`<div class="tab"><small>loading…</small></div>`
+            const now = Date.now() / 1000 + skew
+            const left = t => t.end - now
+            return html`<div class="tab">
+                <h2>timers <${All}/></h2>
+                ${d.timers.length ? d.timers.map(t => html`<div class=${'row' + (t.ringing ? ' ringing' : '')}>
+                    <span><${Icon} name=${t.icon}/> ${t.label !== 'T' ? t.label : ''} <code>${left(t) > 0 ? mmss(left(t)) : '+' + mmss(-left(t))}</code> <small>of ${mmss(t.duration)}</small></span>
+                    <${Btn} onClick=${() => post({do: 'shift', pk: t.pk, secs: -60})}>-1m</${Btn}>
+                    <${Btn} onClick=${() => post({do: 'shift', pk: t.pk, secs: 60})}>+1m</${Btn}>
+                    <${Btn} on=${t.repeat} onClick=${() => post({do: 'repeat', pk: t.pk, repeat: !t.repeat})} title="again when done">repeat</${Btn}>
+                    ${t.ringing && html`<${Btn} on onClick=${() => post({do: 'mute'})}>mute</${Btn}>`}
+                    <${Btn} onClick=${() => post({do: 'cancel', pk: t.pk})}>stop</${Btn}>
+                </div>`) : html`<small>none</small>`}
+                <h2>new</h2>
+                <div class="row">
+                    <code>${mmss(secs)}</code>
+                    ${[[30, '+30s'], [60, '+1m'], [300, '+5m'], [600, '+10m']].map(([s, n]) => html`<${Btn} onClick=${() => setSecs(secs + s)}>${n}</${Btn}>`)}
+                    <${Btn} onClick=${() => setSecs(0)}>clear</${Btn}>
+                </div>
+                <div class="row">
+                    <input type="text" placeholder="label" value=${label} onInput=${e => setLabel(e.currentTarget.value)}/>
+                    <${Check} label="repeat" checked=${repeat} onChange=${setRepeat}/>
+                </div>
+                <div class="icons">${d.icons.map(n => html`<${Btn} on=${icon === n} title=${n} onClick=${() => setIcon(icon === n ? '' : n)}><${Icon} name=${n}/></${Btn}>`)}</div>
+                <div class="bar">
+                    <${Btn} onClick=${() => secs && post({do: 'start', duration: secs, label, icon, repeat}).then(() => setSecs(0))}>start</${Btn}>
+                    <${Btn} onClick=${() => secs && icon && post({do: 'remember', duration: secs, label, icon})} title="needs an icon">save as known</${Btn}>
+                </div>
+                <h2>known <${All}/></h2>
+                ${d.known.length ? d.known.map(k => html`<div class="row">
+                    <span><${Icon} name=${k.icon}/> ${k.label} <small>${mmss(k.duration)}</small></span>
+                    <${Btn} onClick=${() => post({do: 'start', duration: k.duration, label: k.label, icon: k.icon})}>start</${Btn}>
+                    <${Btn} onClick=${() => { setSecs(k.duration); setLabel(k.label); setIcon(k.icon) }} title="to change it: save again">edit</${Btn}>
+                    <${Btn} onClick=${() => post({do: 'forget', icon: k.icon})}>forget</${Btn}>
+                </div>`) : html`<small>none: save one here or from the dial</small>`}
+                <h2>dial</h2>
+                <${Check} label="a turn starts from the timer in front" checked=${d.prefs.from_front} onChange=${on => post({do: 'prefs', from_front: on})}/>
+            </div>`
+        }
+
+
+        const TABS = {view: ViewTab, sky: SkyTab, radar: RadarTab, shown: ShownTab, timers: TimersTab, dev: DevTab}
 
         function Panel() {
             // Scoped by the screen picked (here, or under its frame): 'all' sets every screen, the screens' own go.

@@ -195,13 +195,18 @@ class ToFTracker:
             return False
         return not self._body_mm or b['mm'] < self._body_mm - p.hand_gap_mm
 
+    def reset(self):
+        '''The background again from the next frames (the sensor moved: the room must be empty).'''
+        self.bg = self._nearer_since = self._still = None
+        self._saved_at = 0.0        # saved on the next frame
+
     def save(self):
         self._saved_at = time.monotonic()
         try:
             self.path.write_text(json.dumps({'bg': np.nan_to_num(self.bg, nan=0).astype(int).ravel().tolist(),
                                              'rotate': self.params.rotate, 'at': time.time()}))
         except Exception as e:
-            print(f'[ToF] background not saved: {e}')
+            print(f'[ToF] background not saved: {e}', flush=True)
 
     def serialize(self, debug: bool = False) -> dict:
         out = {'updated_at': self.updated_at, 'hz': round(self.hz, 1), 'present': dict(self.present),
@@ -212,6 +217,33 @@ class ToFTracker:
                             'bg': np.nan_to_num(self.bg, nan=0).astype(int).ravel().tolist(),
                             'fg': self.fg.astype(int).ravel().tolist()}
         return out
+
+
+@dataclass
+class ToFRate:
+    '''The ranging frequency from the light: in continuous mode a frame integrates for its whole period, so slower
+    sees farther in daylight (sweep 2026-10-29, the sun on the window: valid zones 15 Hz 4.9 %, 10 Hz 6.9 %, 5 Hz
+    11.6 %). The ambient is the sensor's own, the median zone, kcps/spad (night ~1, that sun ~150). A hand that near
+    is seen at any rate: full speed while it's pressed.'''
+    steps: tuple = ((0, 15), (20, 10), (60, 5))     # (from this ambient, Hz)
+    down: float = 0.7           # back a step below its ambient times this
+    smooth_s: float = 5
+    hz: int = 15
+    ambient: float = 0.0
+    _at: float = 0.0
+
+    def update(self, ambient: float, pressed: bool, now: float | None = None) -> int:
+        '''The frequency to range at, with the frame's median ambient.'''
+        now = time.monotonic() if now is None else now
+        k = min(1.0, (now - self._at) / self.smooth_s) if self._at else 1.0
+        self.ambient += k * (ambient - self.ambient)
+        self._at = now
+        i = max(j for j, (a, _) in enumerate(self.steps) if self.ambient >= a)
+        cur = next((j for j, (_, hz) in enumerate(self.steps) if hz == self.hz), 0)
+        if i < cur and self.ambient >= self.steps[cur][0] * self.down:
+            i = cur
+        self.hz = self.steps[0][1] if pressed else self.steps[i][1]
+        return self.hz
 
 
 @dataclass
@@ -229,13 +261,13 @@ class ToFRecorder:
     def on(self) -> bool:
         return not self._full and time.time() < self.until
 
-    def add(self, distance_mm, status, targets, tracker: 'ToFTracker'):
+    def add(self, distance_mm, status, targets, tracker: 'ToFTracker', ambient: float = 0.0, hz: int = 0):
         if not self.on():
             return
         now = time.time()
         t, n = tracker.target, tracker.near
         self._rows.append((now, distance_mm, status, targets, tracker.present['on'], n['pressed'],
-                           t.get('mm', 0), t.get('x', -1), t.get('y', -1), tracker._body_mm))
+                           t.get('mm', 0), t.get('x', -1), t.get('y', -1), tracker._body_mm, ambient, hz))
         self._since = self._since or now
         if now - self._since >= self.every_s:
             self.flush()
@@ -254,6 +286,7 @@ class ToFRecorder:
             np.savez_compressed(self.path / time.strftime('tof-%Y%m%d-%H%M%S.npz', time.localtime(rows[0][0])),
                                 t=np.array(c[0]), d=np.array(c[1], np.int16), s=np.array(c[2], np.uint8),
                                 n=np.array(c[3], np.uint8), present=np.array(c[4], bool), near=np.array(c[5], bool),
-                                target=np.array(c[6:9], np.float32).T, body=np.array(c[9], np.float32))
+                                target=np.array(c[6:9], np.float32).T, body=np.array(c[9], np.float32),
+                                amb=np.array(c[10], np.float32), hz=np.array(c[11], np.uint8))
         except Exception as e:
             print(f'[ToF] recording: {e}')

@@ -303,6 +303,8 @@ def compose(fs: FrameState) -> Frame:
     with scope(fs.config.name):
         if fs.config.name == 'picowpanel':
             frame = compose_small_frame(fs)
+        elif fs.config.name == 'didial':
+            frame = screens.dial.compose(fs)
         else:
             frame = screen_for(fs.config.name).compose(fs)
         return FadeIn('compose', duration=0.8).mut(frame).draw(fs)

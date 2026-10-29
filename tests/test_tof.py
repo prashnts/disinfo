@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'clients/websocket-rpi-matrix/src/websocket_rpi_matrix'))
-from tof import ToFTracker, ToFParams     # the client's: plain numpy, no hardware
+from tof import ToFTracker, ToFParams, ToFRate     # the client's: plain numpy, no hardware
 
 
 def frames(tr, grid, s, t):
@@ -86,3 +86,30 @@ def test_passing_by_and_held_still():
     t = frames(tr, body, 1, t)
     t = frames(tr, swipe, 1, t)
     assert tr.near['pressed']
+
+
+def test_rate_by_ambient():
+    r, t = ToFRate(), 0.0
+    for amb, hz in ((1, 15), (150, 5), (50, 5), (35, 10), (15, 10), (10, 15)):
+        for _ in range(100):
+            r.update(amb, False, t)
+            t += 0.1
+        assert r.hz == hz, (amb, r.hz)
+    r.update(150, False, t)
+    assert r.update(150, True, t + 0.1) == 15         # a hand: full speed
+    for _ in range(100):
+        t += 0.1
+        r.update(150, False, t)
+    assert r.hz == 5
+
+
+def test_reset_relearns(tmp_path):
+    room = np.full((8, 8), 2500)
+    tr = ToFTracker(ToFParams(), tmp_path / 'bg.json')
+    t = frames(tr, room, 2, 0)
+    moved = np.full((8, 8), 1200)                   # the sensor moved: the room nearer, and still
+    t = frames(tr, moved, 2, t)
+    assert tr.present['on']
+    tr.reset()
+    t = frames(tr, moved, 7, t)
+    assert not tr.present['on'] and not tr.found

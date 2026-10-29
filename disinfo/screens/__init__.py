@@ -13,6 +13,7 @@ from . import washing_machine
 from . import aviator
 from . import entry
 from . import note
+from . import dial
 
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     'trash_pickup',
     'dishwasher',
     'washing_machine',
+    'dial',
     'aviator',
     'note',
     'entry',

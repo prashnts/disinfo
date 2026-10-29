@@ -147,5 +147,17 @@ telemetry carries the result, the grid is debug only; near → a mode (menu) or 
   minute each: t, raw d/s/n, present, near, target, body; ~80 KB/min), stops itself at `tof_record_until`; pulled to
   `~/limn-shot/tof/rec/` every 30 min while my session runs. 29.10: the user alone in the room till the evening,
   evening like 28.10 (two at the window table). After: take `tof_record*` out of the desk's config.
+- **Daylight (2026-10-29):** the sun on the east window (the whole wall is glass, the view's middle) blinds it: valid
+  zones 27 % → 3 % when the shutter goes up (same minute as the Sensei lux); the window area gives no target even at
+  night. Sweep (`~/limn-shot/tof/sweep/`): the default was autonomous 10 ms of 66 → now continuous, and `ToFRate`
+  picks 15/10/5 Hz from the sensor's ambient (median kcps/spad, night ~1, sun 90-160; 15 Hz while near is pressed):
+  15 % valid in the sun at 5 Hz. Recordings carry `amb`, `hz`. Act `tof reset`: background from the next frames.
+  The client runs as daemon after the matrix init: `.tof_bg.json` (pi's) wasn't saved since 28.10 → chmod 666 on
+  the desk. Plan with the user: the sensor 20-30 cm higher, tilted down ~15-20°, same yaw (both seats in the cone:
+  plan `Scaled Map v1 disinfo - desk - copie.png`, side view `Study Desk 2.svg`, drawn in `~/limn-shot/tof/angles/`),
+  then reset. 12:00: new module + longer cable, on top of disinfo, turned clockwise (facing it), tilted down, on tack:
+  config still `rotate: 1` (wrong now) till the printed base (~22° yaw, ~15° down). Then: hand at the top → `rotate`,
+  `tof reset` with the view empty, sit/lean/wave check. Open: the hand-pan's zen stayed on through the swap (client
+  dead 11:57-12:01 with near pressed); the user cleared it. Depth → zoom/pitch: the user to pick.
 - Next: train/tune on the recordings (body vs hand vs passers-by, the table as background); lean → denser/overview; maybe turn the sensor a bit more toward the chair (lean margin). Guided tests: the note widget
   (`/note`, `note.steps`).

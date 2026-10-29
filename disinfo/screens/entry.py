@@ -1,8 +1,11 @@
 '''dientry: the entrance's screen (the Guition, 800x480 at 2x).
 
-The time, the radar or the solar clock, the salon's cards; scenes and the mirror's light to touch.
+The time, the radar or the solar clock, the salon's cards; scenes and the mirror's light to touch. The timers too:
+the pill opens a sheet, a time made of chips or a known timer started with a tap; a touch anywhere mutes one ringing.
 '''
 import math
+import time
+from collections import defaultdict
 from dataclasses import replace as dc_replace
 from functools import lru_cache
 
@@ -11,14 +14,15 @@ from PIL import Image
 
 from discore.button import button, ButtonStyle
 from discore.data_structures import FrameState
-from discore.elements import Frame, UNBOUNDED, measure, render, scaled
-from discore.layers import DivStyle
+from discore.elements import Frame, Target, UNBOUNDED, measure, render, scaled
+from discore.layers import DivStyle, div
 from discore.layouts import composite_at, grid, hstack, vstack
 from discore.screen import Screen, Spot, Option
 from discore.stack import Stack, StackStyle
 from discore.text import text, TextStyle
 
 from disinfo import fonts
+from disinfo.apps import timer as T
 from disinfo.drat import shown
 from disinfo.drat.app_states import TouchStateManager
 from disinfo.utils.hass import get_entity
@@ -43,6 +47,7 @@ BUTTONS = [
     ('study', 'button.roborock_qrevo_master_clean_study', 'robot-vacuum', 'pill'),
 ]
 HOLD = 5            # s on a button entity to press it, a bar filling it meanwhile
+SHEET = 30          # s the timer sheet stays, untouched
 GAP = 6
 SIDE = 88           # the side stack's cards
 
@@ -122,6 +127,11 @@ def controls(fs: FrameState, width: int, ncols: int = 3) -> Frame:
         service, on = action(e, last)
         buttons.append(control(fs, name, {'service': service, 'target': {'entity_id': e.entity_id}}, on, mdi, kind,
                                outline=service == 'homeassistant.toggle' and not on, hold=HOLD if service.endswith('.press') else 0))
+    # The timers: the soonest one's time left (or since it was done), a tap for the sheet.
+    live = [t for t in T.timers(fs.tick) if t.left() > -t.tail]
+    soonest = min(live, key=lambda t: t.left()) if live else None
+    buttons.append(control(fs, soonest and T.over(soonest), {'screen': fs.config.name, 'open': 1},
+                           bool(soonest) or sheets[fs.config.name][0] > 0, 'timer-outline', 'pill', act='timer'))
     # The metro card: shown or hidden for a while (drat.shown), on while it's up.
     buttons.append(control(fs, None, None, paris_metro.up(fs), 'subway-variant', 'pill', act='show_metro'))
     # The bottom stacks hidden on every screen, zen on this one: on while they are.
@@ -133,6 +143,53 @@ def controls(fs: FrameState, width: int, ncols: int = 3) -> Frame:
         if g.width <= width:
             return g
     return grid(buttons, ncols=1, gap=GAP, anchor='tm', width=width)
+
+sheets = defaultdict(lambda: [0.0, 0])     # screen -> [opened at (0: closed), the time being set]
+
+def timer_sheet(fs: FrameState) -> Frame | None:
+    # Its taps first (the pill's too), then the sheet if open: the time and its chips, the known timers, the running
+    # ones (held: cancelled). Anything ringing: open, and a touch anywhere mutes it.
+    sh, now = sheets[fs.config.name], time.monotonic()
+    shown = T.timers(fs.tick)
+    for p in T.taps(fs):
+        sh[0] = now
+        if T.mute(shown) or p.get('mute'):
+            continue
+        if p.get('close'):
+            sh[:] = 0, 0
+        elif 'add' in p:
+            sh[1] = max(0, sh[1] + p['add'])
+        elif p.get('start') and sh[1]:
+            T.start(sh[1], origin=fs.config.name)
+            sh[:] = 0, 0
+        elif 'known' in p and p['known'] < len(ks := T.known()):
+            k = ks[p['known']]
+            T.start(k['duration'], k['label'], k['icon'], fs.config.name)
+            sh[:] = 0, 0
+        elif 'cancel' in p:
+            T.cancel(p['cancel'])
+    ringing = any(t.ringing() for t in shown)
+    if ringing:
+        sh[0] = now
+    if sh[0] and now - sh[0] > SHEET:
+        sh[:] = 0, 0
+    if not sh[0]:
+        return None
+    me = {'screen': fs.config.name}
+    tap = lambda label, payload, on=False, mdi=None, kind='pill', hold=0: control(fs, label, {**me, **payload}, on, mdi, kind, hold=hold, act='timer')
+    rows = [hstack([text(T.mmss(sh[1]), TextStyle(font=fonts.px_op__l, color='#f0f0f0' if sh[1] else '#808080')),
+                    tap('start', {'start': 1}, bool(sh[1]), 'play'), tap(None, {'close': 1}, False, 'close')], gap=4),
+            hstack([tap(s, {'add': a}) for s, a in (('-1m', -60), ('+30s', 30), ('+1m', 60), ('+5m', 300), ('+10m', 600))], gap=3)]
+    if (ks := T.known()):
+        n = max(1, (fs.config.width - 24) // (48 if compact(fs) else 56))
+        rows.append(grid([tap(T.mmss(k['duration']), {'known': i}, False, k['icon'], 'big') for i, k in enumerate(ks[:2 * n])],
+                         ncols=n, gap=3, anchor='tm'))
+    if (live := [t for t in shown if t.left() > -t.tail][:4]):
+        rows.append(hstack([tap(T.over(t), {'cancel': t.pk}, t.ringing(), t.icon, hold=1.5)
+                            for t in live[:3 if compact(fs) else 4]], gap=3))
+        rows.append(text('hold one to stop it' if not ringing else 'touch to mute', TextStyle(font=fonts.galmuri7, color='#a0a0a0')))
+    f = div(vstack(rows, gap=4, align='center'), DivStyle(background='#000000d0', padding=6, radius=4, border=1, border_color='#e0a04080'))
+    return f
 
 def holding(fs: FrameState) -> bool:
     # A button entity held down: its HOLD running.
@@ -184,6 +241,10 @@ def compose(fs: FrameState) -> Frame:
     canvas = layout.place('time', items['time'], canvas, frost=1.8)
     canvas = layout.place('buttons', buttons, canvas, frost=1.8)
     canvas = composite_at(twenty_two(fs), canvas, 'mm')
+    if (sheet := timer_sheet(fs)):
+        canvas = composite_at(sheet, canvas, 'mm')
+    if any(t.ringing() for t in T.timers(fs.tick)):
+        canvas = Frame(canvas.image, hash=canvas.hash, targets=(*canvas.targets, Target(0, 0, w, h, 'timer', {'screen': fs.config.name, 'mute': 1})))
     if holding(fs):
         # Its thickness pulses, k to 2k, once a second.
         k = 2 if compact(fs) else 3

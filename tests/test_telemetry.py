@@ -49,3 +49,17 @@ def test_timer_encoder_restart(monkeypatch):
     assert st.duration == d
     turn(1, 3.0)
     assert st.duration > d
+
+
+def test_nfc_card_to_home_assistant(monkeypatch):
+    from disinfo.utils import ha_states
+    posts = []
+    monkeypatch.setattr(ha_states.requests, 'post', lambda url, **kw: posts.append((url.split('/api/')[1], kw['json'])))
+    monkeypatch.setattr(ha_states, '_cards', {})
+    tell = lambda **nfc: ha_states.card('didial', nfc, {})
+    tell(uid='', last='', updated_at=0.0)                          # what a (re)connect says: no event
+    tell(uid='04A1B2C3', last='04A1B2C3', updated_at=12.5)
+    tell(uid='04A1B2C3', last='04A1B2C3', updated_at=12.5)         # the same again (a turn's telemetry)
+    tell(uid='', last='04A1B2C3', updated_at=14.0)
+    assert [p for p, _ in posts] == ['states/sensor.didial_nfc', 'events/tag_scanned', 'states/sensor.didial_nfc', 'states/sensor.didial_nfc']
+    assert posts[1][1] == {'tag_id': '04A1B2C3', 'device_id': 'didial'} and posts[3][1]['state'] == 'none'

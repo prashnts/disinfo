@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ## [Unreleased]
 
 ### Added
+- **Timers, everywhere**: known timers (an icon, a duration) in Redis (`di.timers.known`), saved from the dial or the entry; the newest timer first; a long one boops its last 7 s, then rings; done, it counts on (+02:13) a while, minutes for a cake; repeat; a turn starts from the timer in front (a pref). A timers tab on the web page (`/timers`). A touch or a turn while one rings mutes it on every screen (`buzzer` `stop`). The dial: turn and the time shows (steeper steps, a pause for the exact second), the known ones round the edge, a pill lending the dial to pick or +/-; its timers kept on the device, rung there. The entry: a pill and a sheet of chips and known timers.
 - **The weather at home, measured**: the card's temperature from the stations around (Météo-France's, the airports'), no longer a model's. The humidity, the wind and its gusts, the pressure and where it's going, the cloud deck and fog from them too; the barometers indoors stand in.
 - **A forecast from every model**: each one corrected by how it has done here and weighed by it, then pulled to what the stations see now. The card's high and low, the rain with how likely it is; the feel, strong gusts and a falling barometer when they matter. Every forecast is checked against the stations and scored, met.no's included.
 - Weather graphs: a touch on the weather card opens the temperature (seen and ahead), the rain and the air in a card of their own, sliding in, with the feel, the dew point, the cloud's base and tomorrow in turn; while the metro's up they open under the weather card.
@@ -50,6 +51,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - **The real skyline in the sky view**: the roofs all around the window, from IGN's buildings, woods and rows of trees, and HeyWhatsThat's hills, near to far; the window nudged until the places seen from it (the waypoints) are over the roofs. Paris' stone by day, many facades white, hazier the farther and with the haze outside; the trees as crowns standing on their ground, by the season; the landmarks and the towers a little lighter; the antennas, chimneys and pylons, TV antennas on the near roofs; tower cranes at work, red and white; the Eiffel tower lit and sparkling at night. At night windows light up (window-shaped up close), and the tall ones have their red lights. A new version is built on its own, the last one shown meanwhile. Drawn once while the view stays put (it moves a pixel at a time).
 - **Zen**, per screen (web page, or the entrance's button): only the time, the weather and the background, the planes without labels; a card asking for focus (a print starting, a tap) still comes through. It ends after an hour.
 - The bottom stacks hidden on every screen, from the web page or the entrance's button; cards asking for focus still show.
+
+- **The M5Dial on the fridge** (🔧 esp-displays' lite client): a round screen, the time over the solar clock; the dial sets a timer, a press opens a ring of apps as M5's launcher (timer, weather, music, lights, metro, printers). Touch too; the dial's clicks and the timer's tunes on its buzzer.
+- JPEG regions on `/ws2` (`fmt=jpeg`), for clients short of memory. NFC cards in the telemetry, and to Home Assistant: its tag triggers (`tag_scanned`) and the card there.
 
 - A robot by the clock's seconds while Claude works on disinfo.
 - A note at the bottom of a screen for a while (web page, `/note`, `screens/note.py`), on one or every screen; or timed steps with a countdown, to walk someone through a test.
@@ -71,6 +75,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The side stack scrolls no further than its end: the cards before the selected one stay in view, all of them, held still, when they fit (`discore`: `StackStyle(fill=)`).
 
 ### Fixed
+- Two tests that failed only on a busy machine or beside a live Redis: acts before frames, the metro's fetches.
 - The screens' clients took the server's messages (buzzer, haptics, display on/off) for frames since 2026-10-27 (text frames came as bytes): they act on them again.
 - 🔧 The desk's ToF sensor: its zones' status read from the wrong zones (the driver left their bytes swapped), stale distances kept; read at 15 Hz, not 3.
 - The stacks scrolled each card a pixel lower than the one before it; they all stop at the same place now.
