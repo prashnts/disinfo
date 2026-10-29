@@ -22,7 +22,7 @@ profiles: dict[str, dict[str, Any]] = {
     'lcd': dict(glare=False, ink2='#3b3e46', fg3='#6a6d74', fg2='#93969c', fg='#c3c5cb', ok='#3fb35f',
                 accent='#eaa53c'),
 }
-by_screen = {'di_pcstate': 'amoled', 'dientry': 'lcd', 'didial': 'lcd'}
+by_screen = {'di_pcstate': 'amoled', 'dientry': 'lcd', 'didial': 'lcd', 'disalon_dial': 'lcd'}
 # A section's tokens over the screen's: with section('aviator').
 sections: dict[str, dict[str, Any]] = {}
 # Runtime: screen name (or '*') -> {'scheme': name, token: value}.

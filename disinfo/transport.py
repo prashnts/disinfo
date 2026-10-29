@@ -24,7 +24,7 @@ REGION = struct.Struct('<HHHHI')
 TILE = 16
 RGBZ, PNG, RGB565Z, JPEG = 1, 2, 3, 4
 ENCODINGS = {'rgbz': RGBZ, 'png': PNG, 'rgb565z': RGB565Z, 'jpeg': JPEG}
-JPEG_QUALITY = 85       # no chroma subsampling: the pixel fonts stay sharp
+JPEG_QUALITY = 95       # no chroma subsampling: the pixel fonts stay sharp; 95: the dials (USB, small frames)
 
 
 def pack_raw(name: str, size: tuple[int, int], rgb: bytes) -> bytes:

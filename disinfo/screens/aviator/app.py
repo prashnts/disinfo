@@ -88,6 +88,14 @@ _drawn = {}             # screen -> (when, frame)
 
 
 @cache
+@cache
+def _alt_rgb(alt: int) -> tuple:
+    return marker_color(alt).rgb
+
+def alt_rgb(alt) -> tuple:
+    # A trail segment's color, by the altitude it was flown at; 100 ft steps keep the cache small.
+    return _alt_rgb(round(alt, -2) if isinstance(alt, (int, float)) else 0)
+
 def pill(n: int, color: str) -> Frame:
     return div(text(f'{n}', pill_style), padding=(1, 1, 0, 1), radius=1, background=color)
 
@@ -397,11 +405,11 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
         fade = watched_fade if watched else st.trail
         alpha = 2 * trail_alpha if watched else trail_alpha
         trail = p['trail']
-        for (_, la0, lo0, _), (t1, la1, lo1, _) in zip(trail, trail[1:]):
+        for (_, la0, lo0, _), (t1, la1, lo1, alt1) in zip(trail, trail[1:]):
             age = max(now // fade_step * fade_step - t1, 0)
             if age > fade:
                 continue
-            ctx.set_source_rgba(*color, alpha * (1 - age / fade))
+            ctx.set_source_rgba(*alt_rgb(alt1), alpha * (1 - age / fade))
             ctx.move_to(*to_px(*local_xy(la0, lo0)))
             ctx.line_to(*to_px(*local_xy(la1, lo1)))
             ctx.stroke()

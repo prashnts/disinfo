@@ -305,7 +305,7 @@ def compose(fs: FrameState) -> Frame:
     with scope(fs.config.name), using(palette_for(fs)):
         if fs.config.name == 'picowpanel':
             frame = compose_small_frame(fs)
-        elif fs.config.name == 'didial':
+        elif fs.config.name in ('didial', 'disalon_dial'):     # the fridge's, the salon's (on its Pi's USB)
             frame = screens.dial.compose(fs)
         else:
             frame = screen_for(fs.config.name).compose(fs)
