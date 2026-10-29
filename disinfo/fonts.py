@@ -1,5 +1,6 @@
 from discore import fonts
 from discore.fonts import TTFFont
+from discore.text import TextStyle
 
 # All font paths are from the repo root. Licenses: assets/fonts/LICENSES (README.md lists every font).
 
@@ -126,6 +127,7 @@ ttpixels = TTFFont('assets/fonts/TeenyTinyPixls-o2zo.ttf', 5, license='free', sp
 galmuri7 = TTFFont('assets/fonts/Galmuri7.ttf', 8, license='OFL', credit='https://github.com/quiple/galmuri')
 galmuri9 = TTFFont('assets/fonts/Galmuri9.ttf', 10, license='OFL', credit='https://github.com/quiple/galmuri')
 galmuri_mono9 = TTFFont('assets/fonts/GalmuriMono9.ttf', 10, license='OFL', credit='https://github.com/quiple/galmuri')
+galmuri11_c = TTFFont('assets/fonts/Galmuri11-Condensed.ttf', 12, license='OFL', credit='https://github.com/quiple/galmuri')
 
 # FUSION PIXEL
 # > License   OFL v1.1
@@ -143,5 +145,22 @@ unifont = TTFFont(
     license='GPLv2',
     credit='https://unifoundry.com/unifont.html',
     layout_engine='raqm')
+
+# What a font lacks comes from the next one that has it, on the same baseline.
+for f in (bitocra7, microfont_35_reg, tamzen__rs, px_op__r):
+    f.fallback = (fusion8, unifont)
+for f in (cozette, galmuri7, galmuri9, galmuri11_c, px_op__l, s16x8):
+    f.fallback = (unifont,)
+
+
+class roles:
+    '''The type roles: a font and its ink (a token, held to the glare cap of the font's stroke).'''
+    label = TextStyle(font=microfont_35_reg, color='@fg')
+    body = TextStyle(font=bitocra7, color='@fg')
+    title = TextStyle(font=cozette, color='@fg')
+    large = TextStyle(font=galmuri9, color='@fg2')
+    large_c = TextStyle(font=galmuri11_c, color='@fg2')
+    display = TextStyle(font=s16x8, color='@fg2')
+
 
 fonts.default = ttpixels

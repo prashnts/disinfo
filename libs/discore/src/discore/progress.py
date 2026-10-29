@@ -1,17 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dc_replace
 from functools import lru_cache
 
 from PIL import Image, ImageDraw
 
 from .elements import Frame
 from .layers import rounded_rectangle
+from .color import resolve
 
 
 @dataclass(frozen=True)
 class ProgressStyle:
     width: int = 32
     height: int = 2
-    color: str = '#42a459'
+    color: str = '@ok'
     track: str = '#ffffff1a'
     radius: int = 0
 
@@ -19,7 +20,7 @@ class ProgressStyle:
 def progress_bar(value: float, style: ProgressStyle = ProgressStyle()) -> Frame:
     '''A bar filled to `value`, from 0 to 1.'''
     filled = round(style.width * min(max(value, 0), 1))
-    return _bar(filled, style)
+    return _bar(filled, dc_replace(style, color=resolve(style.color), track=resolve(style.track)))
 
 @lru_cache(maxsize=256)
 def _bar(filled: int, style: ProgressStyle) -> Frame:

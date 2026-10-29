@@ -15,7 +15,7 @@ from PIL import Image
 from discore.button import button, ButtonStyle
 from discore.data_structures import FrameState
 from discore.elements import Frame, Target, UNBOUNDED, measure, render, scaled
-from discore.layers import DivStyle, div
+from discore.layers import DivStyle, div, shapes
 from discore.layouts import composite_at, grid, hstack, vstack
 from discore.screen import Screen, Spot, Option
 from discore.stack import Stack, StackStyle
@@ -84,7 +84,7 @@ def styles(kind: str, fs: FrameState) -> tuple[ButtonStyle, ButtonStyle]:
     p = pad(fs)
     cell = dict(padding=p, min_width=36 if compact(fs) else 48)
     cell |= dict(radius=3, border=1, anchor='mm')
-    return (ButtonStyle(normal=DivStyle(background='#00000080', border_color='#ffffff30', **cell),
+    return (ButtonStyle(normal=DivStyle(background='@card', border_color='@line', **cell),
                         pressed=DivStyle(background='#ffffff60', border_color='#ffffffb0', **cell), fill='#e0a04090'),
             ButtonStyle(normal=DivStyle(background='#40300c90', border_color='#e0a040b0', **cell),
                         pressed=DivStyle(background='#e0a04080', border_color='#ffd080', **cell), fill='#e0a04090'))
@@ -188,7 +188,7 @@ def timer_sheet(fs: FrameState) -> Frame | None:
         rows.append(hstack([tap(T.over(t), {'cancel': t.pk}, t.ringing(), t.icon, hold=1.5)
                             for t in live[:3 if compact(fs) else 4]], gap=3))
         rows.append(text('hold one to stop it' if not ringing else 'touch to mute', TextStyle(font=fonts.galmuri7, color='#a0a0a0')))
-    f = div(vstack(rows, gap=4, align='center'), DivStyle(background='#000000d0', padding=6, radius=4, border=1, border_color='#e0a04080'))
+    f = div(vstack(rows, gap=4, align='center'), dc_replace(shapes.card, background='@scrim', padding=6, border_color='@accent/a4'))
     return f
 
 def holding(fs: FrameState) -> bool:

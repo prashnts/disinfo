@@ -1,3 +1,4 @@
+from dataclasses import replace as dc_replace
 '''A note at the bottom of a screen, for a while: Redis di.note.<screen> (or di.note.all), with a TTL.
 
 Plain text, lines split on '|'. Or JSON {"t0": <epoch>, "steps": [[seconds, "text"], ...]}: the step due now, with its
@@ -13,7 +14,7 @@ from functools import lru_cache
 
 from discore.text import text, TextStyle
 from discore.layouts import vstack
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.data_structures import FrameState
 from disinfo import fonts
 
@@ -85,7 +86,7 @@ def _render(lines: tuple[str, ...], count: str | None):
     if count:
         rows.append(text(count, s_count))
     return div(vstack(rows, gap=1, align='center'),
-               style=DivStyle(background='#000000D0', border=1, border_color='#FFB000', radius=2, padding=2))
+               style=dc_replace(shapes.card, background='@scrim', border_color='@accent', radius=2, padding=2))
 
 
 def draw(fs: FrameState):

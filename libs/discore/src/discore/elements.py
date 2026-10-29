@@ -25,20 +25,48 @@ class Target(NamedTuple):
     payload: Any = None
     hold: float = 0     # s a touch stays on it before the action, 0: on release
 
-def shifted(targets: tuple, dx: int, dy: int) -> tuple:
-    return tuple(t._replace(x=t.x + dx, y=t.y + dy) for t in targets) if dx or dy else targets
+class Ink(NamedTuple):
+    '''Glyph pixels of a frame, in its px: the mask (L, w x h), the color meant and the stroke width.
+    Placed over a picture, the guard recolors them to stay readable.'''
+    x: int
+    y: int
+    w: int
+    h: int
+    mask: Image.Image
+    color: str
+    stroke: int = 1
 
-def scaled(targets: tuple, sx: float, sy: float) -> tuple:
-    return tuple(t._replace(x=round(t.x * sx), y=round(t.y * sy), w=round(t.w * sx), h=round(t.h * sy)) for t in targets)
+# Marks: the Targets and Inks a frame carries, moved along by the layouts.
+Mark = Union[Target, Ink]
+
+def shifted(marks: tuple, dx: int, dy: int) -> tuple:
+    return tuple(m._replace(x=m.x + dx, y=m.y + dy) for m in marks) if dx or dy else marks
+
+def scaled(marks: tuple, sx: float, sy: float) -> tuple:
+    # Inks don't scale: a resized glyph isn't one.
+    return tuple(t._replace(x=round(t.x * sx), y=round(t.y * sy), w=round(t.w * sx), h=round(t.h * sy))
+                 for t in marks if isinstance(t, Target))
+
+def clipped(marks: tuple, w: int, h: int) -> tuple:
+    '''The marks cut to (0, 0, w, h); what's left outside goes.'''
+    out = ()
+    for m in marks:
+        x0, y0, x1, y1 = max(m.x, 0), max(m.y, 0), min(m.x + m.w, w), min(m.y + m.h, h)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        if isinstance(m, Ink) and (x0, y0, x1, y1) != (m.x, m.y, m.x + m.w, m.y + m.h):
+            m = m._replace(mask=m.mask.crop((x0 - m.x, y0 - m.y, x1 - m.x, y1 - m.y)))
+        out += (m._replace(x=x0, y=y0, w=x1 - x0, h=y1 - y0),)
+    return out
 
 class Frame(UIElement):
     '''An image and its hash: equal hashes, same picture.
 
     Without a hash it gets a token, equal only to itself. Frame.of_pixels hashes the pixels.
     '''
-    __slots__ = ('image', 'width', 'height', 'hash', '_targets')
+    __slots__ = ('image', 'width', 'height', 'hash', '_targets', '_inks')
 
-    def __init__(self, image: Image.Image, hash: Any = None, targets: tuple = ()):
+    def __init__(self, image: Image.Image, hash: Any = None, targets: tuple[Mark, ...] = ()):
         self.image = image
         self.width = image.width
         self.height = image.height
@@ -50,9 +78,27 @@ class Frame(UIElement):
         return cls(image, ('pixels', image.size, _hash(image.tobytes())))
 
     @property
-    def targets(self) -> tuple:
-        '''Touchable boxes (Target), carried by the layouts. Subclasses drawing themselves have none.'''
+    def marks(self) -> tuple[Mark, ...]:
+        '''Its Targets and Inks, carried by the layouts (targets= takes both). Subclasses drawing themselves have none.'''
         return getattr(self, '_targets', ())
+
+    @property
+    def targets(self) -> tuple[Target, ...]:
+        '''Touchable boxes.'''
+        return tuple(m for m in self.marks if isinstance(m, Target))
+
+    @property
+    def inks(self) -> tuple[Ink, ...]:
+        # Once per marks: asked for at every place.
+        marks, known = self.marks, getattr(self, '_inks', None)
+        if known is None or known[0] is not marks:
+            known = self._inks = (marks, tuple(m for m in marks if isinstance(m, Ink)))
+        return known[1]
+
+    def inked(self, color: str = '#ffffff', stroke: int = 1) -> 'Frame':
+        '''Marks its opaque pixels as one ink (an icon), meant in color.'''
+        ink = Ink(0, 0, self.width, self.height, self.image.getchannel('A'), color, stroke)
+        return Frame(self.image, hash=self.hash, targets=self.marks + (ink,))
 
     def reposition(self, x: int = 0, y: int = 0) -> 'Frame':
         # TODO: support extending the frame
@@ -61,18 +107,22 @@ class Frame(UIElement):
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(self.image, (x, y))
-        return Frame(i, hash=('reposition', (x, y), self.hash), targets=shifted(self.targets, x, y))
+        return Frame(i, hash=('reposition', (x, y), self.hash), targets=clipped(shifted(self.marks, x, y), w, h))
 
     def rotate(self, angle: float) -> 'Frame':
         return Frame(self.image.rotate(angle, expand=True), hash=('rotate', angle, self))
 
     def trim(self, left: int = 0, upper: int = 0, right: int = 0, lower: int = 0) -> 'Frame':
-        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)), hash=('trim', (left, upper, right, lower), self.hash),
-                     targets=shifted(self.targets, -left, -upper))
+        w, h = self.width - right - left, self.height - lower - upper
+        return Frame(self.image.crop((left, upper, self.width - right, self.height - lower)),
+                     hash=('trim', (left, upper, right, lower), self.hash),
+                     targets=clipped(shifted(self.marks, -left, -upper), w, h))
     
     def crop_even(self, horizontal: int = 0, vertical: int = 0) -> 'Frame':
-        return Frame(self.image.crop((horizontal, vertical, self.width - horizontal, self.height - vertical)), hash=('crop_even', (horizontal, vertical), self.hash),
-                     targets=shifted(self.targets, -horizontal, -vertical))
+        w, h = self.width - 2 * horizontal, self.height - 2 * vertical
+        return Frame(self.image.crop((horizontal, vertical, self.width - horizontal, self.height - vertical)),
+                     hash=('crop_even', (horizontal, vertical), self.hash),
+                     targets=clipped(shifted(self.marks, -horizontal, -vertical), w, h))
 
     def rescale(self, ratio: Union[float, tuple[float, float]]) -> 'Frame':
         if not isinstance(ratio, tuple):
@@ -80,7 +130,7 @@ class Frame(UIElement):
         width = self.width * ratio[0]
         height = self.height * ratio[1]
         return Frame(self.image.resize((int(width), int(height))), hash=('rescale', ratio, self.hash),
-                     targets=scaled(self.targets, int(width) / self.width, int(height) / self.height))
+                     targets=scaled(self.marks, int(width) / self.width, int(height) / self.height))
 
     def resize(self, size: tuple[int, int], ratio_fn=None, pixel=False) -> 'Frame':
         res_x, res_y = size
@@ -92,29 +142,29 @@ class Frame(UIElement):
         img = (img
             .resize(size, resample=resample_mode)
             .convert('RGBA'))
-        return Frame(img, hash=('resize', size, self.hash), targets=scaled(self.targets, img.width / self.width, img.height / self.height))
+        return Frame(img, hash=('resize', size, self.hash), targets=scaled(self.marks, img.width / self.width, img.height / self.height))
 
     def opacity(self, opacity: float) -> 'Frame':
         img = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
-        return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self.hash), targets=self.targets)
+        return Frame(Image.blend(img, self.image, opacity), hash=('opacity', opacity, self.hash), targets=self.marks)
 
     def brightness(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Brightness(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('brightness', factor, self.hash), targets=self.targets)
+        return Frame(img, hash=('brightness', factor, self.hash), targets=self.marks)
 
     def contrast(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Contrast(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('contrast', factor, self.hash), targets=self.targets)
+        return Frame(img, hash=('contrast', factor, self.hash), targets=self.marks)
 
     def color_(self, factor: float = 1) -> 'Frame':
         img = self.image.copy()
         enhance = ImageEnhance.Color(img)
         img = enhance.enhance(factor)
-        return Frame(img, hash=('color', factor, self.hash), targets=self.targets)
+        return Frame(img, hash=('color', factor, self.hash), targets=self.marks)
 
     def __repr__(self) -> str:
         return f'{self.hash}'
@@ -182,7 +232,7 @@ class Box(Frame):
 
     # The Frame interface, at the natural size.
     image = property(lambda self: self.natural.image)
-    targets = property(lambda self: self.natural.targets)
+    _targets = property(lambda self: self.natural.marks)
     width = property(lambda self: self.natural.width)
     height = property(lambda self: self.natural.height)
 

@@ -10,7 +10,7 @@ from discore.cairo import to_pil
 from discore.elements import Frame, Target
 from discore.data_structures import FrameState
 from discore.widget import Widget
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.layouts import hstack, vstack, Spacer
 from discore.text import TextStyle, text
 from discore.transitions import text_slide_in
@@ -57,8 +57,8 @@ def look_of(c: dict, widget: DivStyle, over: str, dim: float) -> Look:
         TextStyle(font=fonts.bitocra7, color=c['overhead']), widget, over, dim)
 
 dark = look_of(
-    {'callsign': '#3fa05a', 'value': '#a6a6a6', 'muted': '#808080', 'unit': '#5b5e64', 'overhead': '#b7925e'},
-    DivStyle(padding=3, radius=3, background='#0a1a3a50', border=1, border_color='#00000088'), '#0a1a3a68', 0.5)
+    {'callsign': '#3fa05a', 'value': '@fg', 'muted': '@fg2', 'unit': '@fg3', 'overhead': '@warn'},
+    shapes.tinted('navy'), '#0a1a3a68', 0.5)
 # The light map (a medium grey behind): the texts darker, on a paler card.
 light = look_of(
     {'callsign': '#12612c', 'value': '#1c1e24', 'muted': '#33363e', 'unit': '#464a52', 'overhead': '#7a4f10'},
@@ -155,11 +155,12 @@ def card(fs: FrameState, p: dict, active: bool) -> Frame:
         Spacer(),
         scrolling(fs, text(route.get('airline') or '', k.tiny_dim), airline_width, uname('airline')) if route.get('airline') else None,
     ], gap=3)
-    credit = hstack([Spacer(), div(text(pic['by'], k.credit, overflow='fit'), padding=(1, 1, 0, 2), radius=1, background='#00000090')]) if pic and pic.get('by') else None
+    credit = hstack([Spacer(), div(text(pic['by'], k.credit, overflow='fit'), shapes.scrim, padding=(1, 1, 0, 2), radius=1)]) if pic and pic.get('by') else None
 
     f = div(vstack([head, trip, stats, kind, credit], gap=2), width=card_width)
     # The tag changes when the route comes in or the photo shows, so the widget animates the resize.
-    return Frame(f.image, targets=(Target(0, 0, f.width, f.height, 'aviator.close', {'hex': p['hex']}),)).tag(('aviator.card', p['hex'], all(places), bool(pic), k is light))
+    close = Target(0, 0, f.width, f.height, 'aviator.close', {'hex': p['hex']})
+    return Frame(f.image, targets=(close,) + f.marks).tag(('aviator.card', p['hex'], all(places), bool(pic), k is light))
 
 
 def tile(fs: FrameState, planes: list[dict]) -> Frame:

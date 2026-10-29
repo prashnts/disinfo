@@ -111,6 +111,9 @@ class Config(AppBaseModel):
     panel_host: Optional[str] = None
     brightness_divider: float = 400
     panel_gamma: float = 1.2
+    # Palette: scheme (dark, vibrant) and device profile (led, amoled, lcd; None: by the screen's name).
+    scheme: str = 'dark'
+    profile: Optional[str] = None
 
     udp_panel: list[UDPPanel] = []
 

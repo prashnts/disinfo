@@ -36,6 +36,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ## [Unreleased]
 
 ### Added
+- **Color & type system, v1** (`discore`): `Color` (a hex string with L*, luminance, mix), `Palette` tokens (`'@fg'`, `'@ok/a3'`) resolved when drawn, per screen (scheme `dark`/`vibrant`, profile `led`/`amoled`/`lcd`, runtime overrides in `disinfo.palette`); the glare cap on token inks by the font's stem; shapes (card, inset, pill, chip, scrim, tinted); type roles (`fonts.roles`); font fallback chains (bitocra7 → fusion8 → unifont), Galmuri11 Condensed.
+- **Text stays readable over pictures**: text carries its glyphs (`Ink` marks, moved along like targets); where it's placed the guard leaves it, lifts or darkens it (flat ground) or adds a dark 1 px shadow (busy: photos, the map). Frost panels dim as much as their text needs.
 - **Timers, everywhere**: known timers (an icon, a duration) in Redis (`di.timers.known`), saved from the dial or the entry; the newest timer first; a long one boops its last 7 s, then rings; done, it counts on (+02:13) a while, minutes for a cake; repeat; a turn starts from the timer in front (a pref). A timers tab on the web page (`/timers`). A touch or a turn while one rings mutes it on every screen (`buzzer` `stop`). The dial: turn and the time shows (steeper steps, a pause for the exact second), the known ones round the edge, a pill lending the dial to pick or +/-; its timers kept on the device, rung there. The entry: a pill and a sheet of chips and known timers.
 - **The weather at home, measured**: the card's temperature from the stations around (Météo-France's, the airports'), no longer a model's. The humidity, the wind and its gusts, the pressure and where it's going, the cloud deck and fog from them too; the barometers indoors stand in.
 - **A forecast from every model**: each one corrected by how it has done here and weighed by it, then pulled to what the stations see now. The card's high and low, the rain with how likely it is; the feel, strong gusts and a falling barometer when they matter. Every forecast is checked against the stations and scored, met.no's included.
@@ -63,6 +65,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Nyan Cat redone: crisp pixels and a rainbow along its path, all on screen; a bigger show the rarer the time (22:22 most, 14:14 less), 12:34 climbs stairs, 13:31 a mirrored pair, palettes by the hour; over the roofs with fireworks in the sky view.
 
 ### Changed
+- Widgets on the shapes and tokens: cards, pills and backdrops the same everywhere (klipper, metro, aviator, weather, date, news, timers, entry, notes); news text without outlines.
 - What's shown, one way for every widget: its checkbox on the web page switches it off till checked again; its `show_` button shows it for a while (checking it again) or hides it till its schedule brings it back. Kept for all the screens by the data service.
 - Plane card, smaller: its photo under the whole card, dimmed, instead of a band of its own. The planes seen from the window, one at a time rolling up, attached under it (on their own without a card), no longer a scrolling line.
 - The views (map, sky, solar) take turns over the day, the checked ones; one pressed shows for an hour. The solar view never brings the radar. The entrance has no sky view (`aviator_views`).
@@ -89,6 +92,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The salon's client logged a missing remote a thousand times a second (2.4 GB a day on its SD card).
 
 ### Performance
+- The guard costs ~1.3 ms a frame (cached on the frame and the pixels under it, per ink box).
 - Renderers on the server (Pi 5, awake): the timer no longer scans Redis each frame, nor the plane cards read it; frost reuses its blur while the pixels under it are the same. Compose salon 22 → 13 ms, desk 29 → 15 ms, entry 16 → 13 ms: within 48 and 42 fps now.
 - HUB75 clients draw only what changed, and nothing when nothing did, the salon's CPU 125 → 57%, the desk's 117 → 56% (on `/ws2` now). What's left is the panel's own refresh.
 

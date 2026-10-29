@@ -8,7 +8,7 @@ from .func import uname
 
 from .elements import Frame
 from .transitions import ScaleIn, ScaleOut, TimedTransition, Resize
-from .layers import DivStyle, div
+from .layers import DivStyle, div, shapes
 from .layouts import vstack
 
 
@@ -23,7 +23,7 @@ class Widget:
     # Its part of the stack's time on top against the others' (1 each): 3, three times a card's time.
     share: float = 1
     transition_duration: float = 0.25
-    style: DivStyle = DivStyle(padding=3, radius=2, background="#00000085", border=1, border_color="#00000088")
+    style: DivStyle = shapes.card
     transition_enter: TimedTransition[Frame] = Resize
     transition_exit: TimedTransition[Frame] = Resize
     ease_in: ease.EasingFn = ease.cubic.cubic_in
@@ -44,7 +44,7 @@ class Widget:
         return vstack([own, *[div(a.frame, a.style, width=width(a.style)) for a in attached]], gap=1)
 
     def draw(self, fs: FrameState, active: bool = False) -> Optional[Frame]:
-        style = dc_replace(self.style, border_color='#15559869' if active else '#00000098')
+        style = dc_replace(self.style, border_color='@active/a5') if active else self.style
         transition = self.transition_enter(f'{self.name}.resize', self.transition_duration, self.ease_in)
         hash_ = self.frame.hash if self.frame else ('widgetframe', self.name)
         if self.frame and (more := tuple(a.frame.hash for a in self.attached if a.frame)):

@@ -25,7 +25,7 @@ s_time_tick = [
     TextStyle(font=fonts.ttpixels, color=SkyHues.label),
     TextStyle(font=fonts.ttpixels, color=SkyHues.tick_dark),
 ]
-s_time_tick_div = DivStyle(radius=2, background=SkyHues.black.hex, padding=[1, 1, 1, 1])
+s_time_tick_div = DivStyle(radius=2, background='@bg', padding=1)
 
 altitude_alpha = [
     # ALT   ALPHA

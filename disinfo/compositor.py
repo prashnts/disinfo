@@ -11,6 +11,8 @@ from discore.transitions import FadeIn, Resize
 from discore.elements import Frame
 from discore.stack import Stack, StackStyle
 from discore.data_structures import FrameState, scope
+from discore.color import using
+from .palette import palette_for
 from discore.screen import Screen, Spot, Option
 from .drat.app_states import RuntimeStateManager
 
@@ -300,7 +302,7 @@ def screen_for(name: str) -> Screen:
 
 def compose(fs: FrameState) -> Frame:
     '''The screen, with its touch targets.'''
-    with scope(fs.config.name):
+    with scope(fs.config.name), using(palette_for(fs)):
         if fs.config.name == 'picowpanel':
             frame = compose_small_frame(fs)
         elif fs.config.name == 'didial':

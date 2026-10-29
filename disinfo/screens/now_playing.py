@@ -12,7 +12,7 @@ from disinfo import fonts
 from discore.elements import Frame, StillImage
 from discore.text import Text, TextStyle, text
 from discore.layouts import hstack, vstack, composite_at
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.transitions import SlideIn, Resize
 from discore.widget import Widget
 from discore.slides import Slides, SlidesStyle
@@ -147,11 +147,7 @@ def composer(fs: FrameState):
                 .set_frame(hstack([text(s['media_album']), text(s['media_artist'])]))
                 .draw(fs.tick)),
         ], gap=2),
-        style=DivStyle(
-            padding=2,
-            radius=3,
-            background="#2c2c2c50",
-        )
+        style=shapes.inset
     )
 
     art = s['album_art']

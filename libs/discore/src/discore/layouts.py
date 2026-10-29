@@ -11,7 +11,8 @@ from typing import Literal, Optional, Type, Union, Sequence
 from itertools import product
 from functools import lru_cache
 
-from .elements import Frame, Box, UNBOUNDED, measure, render, shifted
+from .elements import Frame, Box, UNBOUNDED, measure, render, shifted, clipped
+from .guard import guarded, dimmed
 
 # *stretch: items get the row's height (column's width).
 VerticalAlignment = Literal['center', 'top', 'bottom', 'vstretch']
@@ -119,7 +120,7 @@ class Flex(Box):
             cut = self._join(min(fm, a), min(fc, cross - off))
             if pos < main and min(cut) > 0:
                 img.alpha_composite(f.image.crop((0, 0) + cut), self._join(pos, off))
-                targets += shifted(f.targets, *self._join(pos, off))
+                targets += shifted(f.marks, *self._join(pos, off))
             pos += a
         return Frame(img, hash=('flex', (w, h), self.hash), targets=targets)
 
@@ -158,7 +159,8 @@ class Grow(Box):
         f = render(self.frame, w, h)
         if f.size == (w, h):
             return f
-        return composite_at(f, Frame.fallback(size=(max(w, 1), max(h, 1))), self.anchor).tag(('Grow', (w, h), self.hash))
+        box = Frame.fallback(size=(max(w, 1), max(h, 1)))
+        return composite_at(f, box, self.anchor, guard=False).tag(('Grow', (w, h), self.hash))
 
 
 def _needs_flex(elements, size, stretch) -> bool:
@@ -206,7 +208,7 @@ def hstack(
         elif align == 'bottom':
             y = height - e.height
         img.alpha_composite(e.image, (x, y))
-        targets += shifted(e.targets, x, y)
+        targets += shifted(e.marks, x, y)
         x += e.width
         x += gap
 
@@ -256,20 +258,11 @@ def vstack(
         elif align == 'right':
             x = width - e.width
         img.alpha_composite(e.image, (x, y))
-        targets += shifted(e.targets, x, y)
+        targets += shifted(e.marks, x, y)
         y += e.height
         y += gap
 
     return Frame(img, hash=('vstack', gap, align, tuple(elements)), targets=targets)
-
-def _clipped(targets: tuple, w: int, h: int) -> tuple:
-    '''The targets cut to (0, 0, w, h); what's left outside goes.'''
-    out = ()
-    for t in targets:
-        x0, y0, x1, y1 = max(t.x, 0), max(t.y, 0), min(t.x + t.w, w), min(t.y + t.h, h)
-        if x1 > x0 and y1 > y0:
-            out += (t._replace(x=x0, y=y0, w=x1 - x0, h=y1 - y0),)
-    return out
 
 def grid(
     elements: Sequence[Optional[Frame]],
@@ -362,7 +355,7 @@ def grid(
         # The cell clips the element.
         cw, ch = min(f.width, w - dx), min(f.height, h - dy)
         img.alpha_composite(f.image.crop((0, 0, cw, ch)), (x + dx, y + dy))
-        targets += shifted(_clipped(f.targets, cw, ch), x + dx, y + dy)
+        targets += shifted(clipped(f.marks, cw, ch), x + dx, y + dy)
 
     return Frame(img, hash=hash_, targets=targets)
 
@@ -404,6 +397,7 @@ def composite_at(
     frost: float = 0,
     behind: bool = False,
     vibrant: float = 0,
+    guard: bool = True,
 ) -> Frame:
     '''Composes the `frame` so that it is at `anchor` corner of `dest`.
 
@@ -418,6 +412,7 @@ def composite_at(
         └──────────────────┘
 
     It modifies the destination if it is an Image.
+    With `guard` its text is kept readable over dest (guard.py): off where dest is no picture yet.
     Returns a Frame.
     '''
     if not frame:
@@ -428,7 +423,7 @@ def composite_at(
     under = dest.hash if isinstance(dest, Frame) else ('image', dest.size)
     key = ('composite_at', anchor, dx, dy, frost, behind, vibrant, frame, under)
     if isinstance(dest, Frame):
-        targets = dest.targets
+        targets = dest.marks
         dest = dest.image.copy()
 
     original = dest
@@ -463,7 +458,7 @@ def composite_at(
         raise ValueError('Wrong value for anchor.')
 
     blend = lambda left, right, threshold=1: cut_alpha(left, right, threshold, opaque=frost < 0)
-    targets += shifted(frame.targets, left + dx, top + dy)
+    targets += shifted(frame.marks, left + dx, top + dy)
 
     if frost != 0:
         if behind:
@@ -477,9 +472,11 @@ def composite_at(
             return Frame(composite_at(Frame(fg), dest, anchor).image, hash=key, targets=targets)
         
         region = blur_region(dest, (left + dx, top + dy, left + dx  + fw, top + dy + fh), abs(frost))
+        region = dimmed(region, frame.image, frame.inks)
         dest.alpha_composite(blend(region, frame.image), (left + dx, top + dy))
 
-    dest.alpha_composite(frame.image, (left + dx, top + dy))
+    image = guarded(frame, dest, left + dx, top + dy) if guard else frame.image
+    dest.alpha_composite(image, (left + dx, top + dy))
 
     if behind:
         dest.alpha_composite(original, (0, 0))
@@ -541,7 +538,8 @@ def mosaic(
 
     return Frame(img, hash=('mosaic', nx, ny, seamless, frame))
 
-def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm', frost: float = 0) -> Frame:
+def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anchor: ComposeAnchor='mm', frost: float = 0,
+             guard: bool = True) -> Frame:
     '''Places the frame at the given coordinates.
     The anchor is relative to the frame and will be located at the given coordinates.
 
@@ -553,7 +551,7 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
     targets = ()
     under = dest.hash if isinstance(dest, Frame) else ('image', dest.size)
     if isinstance(dest, Frame):
-        targets = dest.targets
+        targets = dest.marks
         dest = dest.image.copy()
 
     fw = frame.width
@@ -581,11 +579,11 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
 
     if frost > 0:
         region = blur_region(dest, (x + dx, y + dy, x + dx + fw, y + dy + fh), frost)
-
+        region = dimmed(region, frame.image, frame.inks)
         dest.alpha_composite(cut_alpha(region, frame.image, threshold=0), (x + dx, y + dy))
 
-    dest.alpha_composite(frame.image, (x + dx, y + dy))
-    return Frame(dest, hash=('place_at', anchor, x, y, frost, frame, under), targets=targets + shifted(frame.targets, x + dx, y + dy))
+    dest.alpha_composite(guarded(frame, dest, x + dx, y + dy) if guard else frame.image, (x + dx, y + dy))
+    return Frame(dest, hash=('place_at', anchor, x, y, frost, frame, under), targets=targets + shifted(frame.marks, x + dx, y + dy))
 
 def tabular(table: list[list[Optional[Frame]]]):
     # convert a 2d list of frames into a tabular grid.

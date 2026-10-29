@@ -125,7 +125,7 @@ def composer(fs: FrameState):
             _cigarette,
             hstack([text(f'{n}' if n < most else f'{most}+', s_count), _asterisk], gap=1, align='top'),
         ], gap=2, align='center'),
-        style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
+        style=DivStyle(padding=1)
     ).tag('smokes')
 
 def widget(fs: FrameState):

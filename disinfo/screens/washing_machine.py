@@ -68,7 +68,7 @@ def composer(fs: FrameState):
             dishwasher_icon,
             text(state.hours, style=label_style),
         ], gap=3),
-        style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
+        style=DivStyle(padding=1)
     ).tag('washing_machine')
 
 def widget(fs: FrameState):

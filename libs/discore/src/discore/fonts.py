@@ -34,6 +34,10 @@ class TTFFont:
     credit: str = ''
     spacing: int = 0
     layout_engine: str = 'basic'
+    # Stem width in px, the glare cap and the legibility floor follow it. 0: measured (stem).
+    stroke: int = 0
+    # Fonts for the characters it lacks, in order: runs of them on its baseline.
+    fallback: tuple['TTFFont', ...] = ()
 
     def __post_init__(self):
         if str(self.path).startswith('https://'):
@@ -56,11 +60,48 @@ class TTFFont:
             self._font = ImageFont.truetype(str(self.path), self.size, layout_engine=mapping[self.layout_engine])
         return self._font
 
+    @property
+    def stem(self) -> int:
+        '''The stroke, or the widest run of lit px across the middle of its 'l'.'''
+        if self.stroke:
+            return self.stroke
+        if (key := (self.filename, self.size)) not in _stems:
+            m = self.font.getmask('l')
+            w, h = m.size
+            row = [m.getpixel((x, h // 2)) > 127 for x in range(w)] if w and h else []
+            runs = ''.join('1' if p else ' ' for p in row).split()
+            _stems[key] = max((len(r) for r in runs), default=1)
+        return _stems[key]
+
+    def covers(self, ch: str) -> bool:
+        '''It has a glyph for ch: one that doesn't draw as its missing glyph.'''
+        if ch.isspace():
+            return True
+        if (key := (self.filename, self.size, ch)) not in _covers:
+            _covers[key] = bytes(self.font.getmask(ch)) != bytes(self.font.getmask(_missing))
+        return _covers[key]
+
+    def runs(self, value: str) -> list[tuple['TTFFont', str]]:
+        '''value cut where the font changes: each run in the first of it and its fallbacks that has the glyph.'''
+        out = []
+        for ch in value:
+            f = next((f for f in (self, *self.fallback) if f.covers(ch)), self)
+            if out and out[-1][0] is f:
+                out[-1] = (f, out[-1][1] + ch)
+            else:
+                out.append((f, ch))
+        return out
+
     def __hash__(self):
-        return hash((self.path, self.size, self.license, self.credit))
+        return hash((self.path, self.size, self.license, self.credit, self.stroke))
 
     def __repr__(self) -> str:
         return f'TTFFont(path={self.path}, size={self.size})'
+
+# A private-use code point: no font has it, it draws as the missing glyph.
+_missing = '\U0010fffd'
+_covers: dict[tuple, bool] = {}
+_stems: dict[tuple, int] = {}
 
 # Used when a TextStyle has no font. Set by the app, e.g. `fonts.default = my_font`.
 default: TTFFont | None = None

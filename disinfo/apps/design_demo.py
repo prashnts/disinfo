@@ -31,11 +31,11 @@ from disinfo.utils import mdi
 from disinfo.utils.mjpeg import MJPEGStream
 from disinfo.utils.weather_icons import get_icon_for_condition
 
-title_style = TextStyle(font=fonts.bitocra7, color='#a6a6a6')
-label_style = TextStyle(font=fonts.microfont_35_reg, color='#808080')
-dim_style = TextStyle(font=fonts.microfont_35_reg, color='#5b5e64')
+title_style = TextStyle(font=fonts.bitocra7, color='@fg')
+label_style = TextStyle(font=fonts.microfont_35_reg, color='@fg2')
+dim_style = TextStyle(font=fonts.microfont_35_reg, color='@fg3')
 dark_style = TextStyle(font=fonts.microfont_35_reg, color='#000000')
-body_style = TextStyle(font=fonts.microfont_35_reg, color='#a6a6a6', spacing=2)
+body_style = TextStyle(font=fonts.microfont_35_reg, color='@fg', spacing=2)
 palette = ['#42a459', '#2d83b4', '#b7925e', '#8a6cc8', '#c93f20']
 page_seconds = 10
 
@@ -202,14 +202,14 @@ sample_fonts = [('bitocra7', fonts.bitocra7), ('microfont', fonts.microfont_35_r
                 ('scientifica', fonts.scientifica__r), ('cozette', fonts.cozette), ('px_op', fonts.px_op__r), ('galmuri9', fonts.galmuri9), ('px_op l', fonts.px_op__l)]
 
 def fonts_page(fs: FrameState, w: int, h: int) -> Frame:
-    rows = [hstack([text(name, dim_style), Spacer(), text('Aa 0123', TextStyle(font=font, color='#a6a6a6'))], gap=3) for name, font in sample_fonts]
+    rows = [hstack([text(name, dim_style), Spacer(), text('Aa 0123', TextStyle(font=font, color='@fg'))], gap=3) for name, font in sample_fonts]
     return div(vstack(rows, gap=2, align='hstretch'), width=w, anchor='tl')
 
 sizes = [('5', fonts.microfont_35_reg), ('7', fonts.bitocra7), ('9', fonts.tamzen__rs), ('11', fonts.scientifica__r), ('13', fonts.cozette), ('16', fonts.px_op__l)]
 
 def sizes_page(fs: FrameState, w: int, h: int) -> Frame:
     # The pixel fonts are drawn at their own size, one each.
-    rows = [hstack([div(text(px, dim_style), width=10, anchor='ml'), text(fs.now.strftime('%H:%M'), TextStyle(font=font, color='#a6a6a6'))], gap=3) for px, font in sizes]
+    rows = [hstack([div(text(px, dim_style), width=10, anchor='ml'), text(fs.now.strftime('%H:%M'), TextStyle(font=font, color='@fg'))], gap=3) for px, font in sizes]
     return vstack(rows, gap=3)
 
 weights = [
@@ -220,7 +220,7 @@ weights = [
 ]
 
 def weights_page(fs: FrameState, w: int, h: int) -> Frame:
-    return vstack([labelled(name, hstack([text(s, TextStyle(font=f, color='#a6a6a6')) for s, f in faces], gap=5)) for name, faces in weights], gap=3)
+    return vstack([labelled(name, hstack([text(s, TextStyle(font=f, color='@fg')) for s, f in faces], gap=5)) for name, faces in weights], gap=3)
 
 # LEDs blow out light tones: the greys stop at #a6a6a6, colors are muted.
 tones = [('dim', '#5b5e64'), ('muted', '#808080'), ('bright', '#a6a6a6'), ('white', '#ffffff'), ('warn', '#b7925e'), ('ok', '#42a459')]
@@ -251,7 +251,7 @@ def wrap_page(fs: FrameState, width: int, h: int) -> Frame:
     ], gap=4, align='hstretch'))
 
 def digits_page(fs: FrameState, w: int, h: int) -> Frame:
-    big = TextStyle(font=fonts.cozette, color='#a6a6a6')
+    big = TextStyle(font=fonts.cozette, color='@fg')
     n = f'{int(fs.tick * 2) % 1000:03}'
     # Up from the top, down from the bottom: a value that wanders.
     wander = f'{round(50 + 40 * math.sin(int(fs.tick) / 3))}'
@@ -339,7 +339,7 @@ def number_page(fs: FrameState, w: int, h: int) -> Frame:
     target = [0.2, 0.9, 0.5, 0.7][changing(fs, 3, 4)]
     v = NumberTransition('dd.number', 1.2, ease.cubic.cubic_in_out, initial=0).mut(target).value(fs)
     return vstack([
-        hstack([Ring(v, palette[1], 22), text(f'{v:.2f}', TextStyle(font=fonts.cozette, color='#a6a6a6'))], gap=6, align='center'),
+        hstack([Ring(v, palette[1], 22), text(f'{v:.2f}', TextStyle(font=fonts.cozette, color='@fg'))], gap=6, align='center'),
         progress_bar(v, ProgressStyle(width=w, height=4, radius=2, color=palette[1])),
     ], gap=4)
 
@@ -383,7 +383,7 @@ def card(name: str, body: Frame, focus: bool = False) -> Widget:
     return Widget(name, body, focus=focus, wait_time=2)
 
 def cards(fs: FrameState, prefix: str, focus: str | None = None) -> list[Widget]:
-    big = TextStyle(font=fonts.cozette, color='#a6a6a6')
+    big = TextStyle(font=fonts.cozette, color='@fg')
     return [card(f'{prefix}.{name}', body, name == focus) for name, body in [
         ('weather', hstack([Frame(get_icon_for_condition('rain', 1), ('dd.weather', 'rain')), text('11.2', big)], gap=3, align='center')),
         ('printer', vstack([hstack([sprites[0].draw(fs.tick), text('63%', big)], gap=3, align='center'), progress_bar(0.63, ProgressStyle(width=40))], gap=2)),

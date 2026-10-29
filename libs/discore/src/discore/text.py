@@ -5,14 +5,16 @@ from functools import lru_cache
 
 from PIL import Image, ImageDraw
 
-from .elements import Frame, TrimParam, Box, UNBOUNDED
+from .elements import Frame, Ink, TrimParam, Box, UNBOUNDED
 from .layouts import vstack
 from . import fonts
 from .fonts import TTFFont
+from .color import Palette, palette, resolve, capped
 
 @dataclass(frozen=True)
 class TextStyle:
-    color: str          = '#fff'
+    # A color, or a token ('@fg'): drawn in the palette's, held to the glare cap of the font's stroke.
+    color: str          = '@fg'
     outline: int        = 0
     outline_color: str  = '#000'
     font: Optional[TTFFont] = None     # fonts.default
@@ -44,6 +46,23 @@ class TextStyle:
     def line_spacing(self) -> int:
         return max(self.ttf.spacing, self.spacing)
 
+    def resolved(self) -> 'TextStyle':
+        '''The style with its tokens turned to the palette's colors: what it draws and hashes with.'''
+        if not self.color.startswith('@') and not self.outline_color.startswith('@'):
+            return self
+        p, known = palette(), self.__dict__.get('_resolved')
+        if known is None or known[0] is not p:
+            known = (p, _resolved(self, p))
+            object.__setattr__(self, '_resolved', known)
+        return known[1]
+
+@lru_cache(maxsize=1024)
+def _resolved(style: TextStyle, p: Palette) -> TextStyle:
+    color = resolve(style.color)
+    if style.color.startswith('@') and p.glare:
+        color = capped(color, style.ttf.stem)
+    return dc_replace(style, color=color, outline_color=resolve(style.outline_color))
+
 # Used as a fallback image when the text value is missing.
 EmptyTextFallback = Image.new('RGBA', (1, 1), (0, 0, 0, 0))
 
@@ -54,7 +73,7 @@ class Text(Frame):
         style: TextStyle = TextStyle(),
     ):
         self.value = value
-        self.style = style
+        self.style = style.resolved()
         self.hash = (self.__class__.__name__, self.value, self.style)
 
         self.draw_text()
@@ -63,16 +82,24 @@ class Text(Frame):
         self.image = im
         self.width = im.width
         self.height = im.height
+        # Its glyphs, for the guard; an outline is a guard of its own.
+        self._targets = ()
+        if im is not EmptyTextFallback and not self.style.outline:
+            self._targets = (Ink(0, 0, im.width, im.height, im.getchannel('A'), self.style.color, self.style.ttf.stem),)
         if self.style.trim:
             trim = self.trim(*self.style.trims)
             self.image = trim.image
             self.width = trim.width
             self.height = trim.height
+            self._targets = trim.marks
 
     def draw_text(self):
         value = self.value
         if not value:
             return self.populate_frame(EmptyTextFallback)
+
+        if len(runs := self.style.ttf.runs(value)) > 1:
+            return self.populate_frame(self._draw_runs(runs))
 
         o = self.style.outline
         # If the text has outline the bounding box needs to be adjusted
@@ -93,6 +120,19 @@ class Text(Frame):
         )
         self.populate_frame(im)
 
+    def _draw_runs(self, runs: list[tuple[TTFFont, str]]) -> Image.Image:
+        # Each run in its font, on one baseline.
+        o, s = self.style.outline, self.style
+        ascent = max(f.font.getmetrics()[0] for f, _ in runs)
+        height = ascent + max(f.font.getmetrics()[1] for f, _ in runs)
+        width = sum(round(f.font.getlength(r)) for f, r in runs) + 2 * o
+        im = Image.new('RGBA', (s.width if s.width > 0 else width, height + 2 * o), (0, 0, 0, 0))
+        d, x = ImageDraw.Draw(im), o
+        for f, r in runs:
+            d.text((x, o + ascent), r, fill=s.color, font=f.font, anchor='ls', stroke_width=o, stroke_fill=s.outline_color)
+            x += round(f.font.getlength(r))
+        return im
+
     def update(self, value: Optional[str] = None, style: Optional[TextStyle] = None) -> bool:
         dirty = False
 
@@ -100,7 +140,7 @@ class Text(Frame):
             self.value = value
             dirty = True
 
-        if style and self.style != style:
+        if style and self.style != (style := style.resolved()):
             self.style = style
             dirty = True
 
@@ -178,6 +218,7 @@ class TextBox(Box):
 
     def __init__(self, value: Optional[str], style: TextStyle):
         self.value = value or ''
+        style = style.resolved()
         self.style = style
         self.line_style = dc_replace(style, overflow='visible')
         self.hash = ('TextBox', self.value, style)
@@ -227,9 +268,12 @@ def _cut(value: str, style: TextStyle, max_w: int) -> str:
     return value[:lo].rstrip()
 
 
-@lru_cache(maxsize=1024)
 def text(value: str, style: TextStyle = TextStyle(), multiline: bool = False, **kwargs) -> Text:
-    style = dc_replace(style, **kwargs)
+    # Cached on the colors it resolves to: another palette, another text.
+    return _text(value, (dc_replace(style, **kwargs) if kwargs else style).resolved(), multiline)
+
+@lru_cache(maxsize=1024)
+def _text(value: str, style: TextStyle, multiline: bool) -> Text:
     if style.overflow != 'visible':
         return TextBox(value, style)
     if multiline:

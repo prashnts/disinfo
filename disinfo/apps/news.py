@@ -13,7 +13,7 @@ from discore.data_structures import FrameState
 from discore.widget import Widget
 from discore.text import text, TextStyle
 from discore.layouts import vstack, hstack, place_at, composite_at
-from discore.layers import div, DivStyle, styled_div
+from discore.layers import div, DivStyle, styled_div, shapes
 from discore.transitions import Resize
 from discore.scroller import VScroller
 from disinfo import fonts
@@ -75,15 +75,9 @@ class NewsStory(HashModel, index=True):
         }
         cat = hstack([
             render_emoji(map[self.category], size=10), 
-            text(self.category.upper(), color="#e5e5e5b0")
+            text(self.category.upper(), color='@fg')
         ], gap=1)
-        stuff = div(cat,
-                    padding=(1, 2, 1, 2),
-                    radius=2,
-                    background="#232A54A3",
-                    border=1,
-                    margin=2,
-                    border_color="#120f2cff",).tag(self.category)
+        stuff = div(cat, shapes.pill, background='@navy/a5', border=1, margin=2, border_color='@line').tag(self.category)
         return stuff
 
     @classmethod
@@ -225,17 +219,13 @@ def _news_deck(fs: FrameState):
     title_style = TextStyle(
         font=fonts.greybeard if not state.details else fonts.microfont_35_reg,
         width=112,
-        color="#A3A7A8",
-        spacing=1,
-        outline=1,
-        outline_color="#000000A1")
+        color='@fg',
+        spacing=1)
     sumry_style = TextStyle(
         font=fonts.galmuri7,
         width=112,
-        color="#CACACACC",
-        spacing=0,
-        outline=1,
-        outline_color="#000000A1")
+        color='@fg',
+        spacing=0)
 
     divblock = styled_div(
         background="#ffffff49",
@@ -260,7 +250,7 @@ def _news_deck(fs: FrameState):
         state.summary_end_at = fs.tick
     summary = div(
         summary_frame,
-        background="#20202194",
+        background='@scrim',
         padding=0,
         radius=3)
 
@@ -295,14 +285,7 @@ def _news_deck(fs: FrameState):
     s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5)
     s = composite_at(content, s, 'mm', frost=3)
-    s = div(
-        s,
-        background="#5A4F3C82",
-        radius=(4, 0, 0, 4),
-        margin=0,
-        border=1,
-        border_color="#15501A9B",
-        anchor='bm')
+    s = div(s, shapes.tinted('amber'), padding=0, radius=(4, 0, 0, 4), anchor='bm')
     infos = hstack([
         divblock(text('llm', color="#0C0C0CC5"), padding=1) if st.extracts else None,
         divblock(text(f'{st.index}/{state.count}', color="#0C0C0CC5"), padding=1),

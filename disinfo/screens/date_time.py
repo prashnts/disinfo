@@ -1,3 +1,4 @@
+from dataclasses import replace as dc_replace
 import random
 import time
 
@@ -11,19 +12,19 @@ from .colors import gray, gray_lt, amber_red, black, light_gray, light_blue, ora
 from discore.data_structures import FrameState
 from disinfo import fonts
 from discore.elements import Frame
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.layouts import hstack, vstack, composite_at
 from discore.text import TextStyle, text
 from discore.transitions import text_slide_in
 from discore.widget import Widget
 
 
-s_date      = TextStyle(color=gray.darken(.2).hex, font=fonts.bitocra7)
+s_date      = TextStyle(color='@fg2', font=fonts.bitocra7)
 s_hour      = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
-s_day_flip  = TextStyle(color=gray.hex, font=fonts.px_op__r)
-s_date_flip = TextStyle(color=gray.hex, font=fonts.dansk, trim=(0, 0, 0, 0))
-s_time_flip = TextStyle(color=gray_lt.hex, font=fonts.s16x8, trim=(0, 0, 0, 0))
+s_day_flip  = TextStyle(color='@fg2', font=fonts.px_op__r)
+s_date_flip = TextStyle(color='@fg2', font=fonts.dansk, trim=(0, 0, 0, 0))
+s_time_flip = dc_replace(fonts.roles.display, trim=(0, 0, 0, 0))
 s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -32,12 +33,12 @@ s_sticky_h  = TextStyle(color=minute_green.darken(.2).hex, font=fonts.bitocra7)
 s_sticky_s  = TextStyle(color=light_gray.darken(.4).hex, font=fonts.bitocra7)
 s_day = {
     'weekend': {
-        'text': TextStyle(color=light_gray.darken(.1).hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=orange_red.darken(.2).hex, padding=(1, 1, 1, 2)),
+        'text': TextStyle(color='@bg', font=fonts.tamzen__rs),
+        'div': dc_replace(shapes.pill, background='@bad', padding=(1, 1, 1, 2)),
     },
     'weekday': {
-        'text': TextStyle(color=black.hex, font=fonts.tamzen__rs),
-        'div': DivStyle(radius=2, background=gray.darken(.2).hex, padding=(1, 1, 1, 2)),
+        'text': TextStyle(color='@bg', font=fonts.tamzen__rs),
+        'div': dc_replace(shapes.pill, background='@fg2', padding=(1, 1, 1, 2)),
     },
 }
 s_colon = [
@@ -166,7 +167,7 @@ def _flip_text(fs: FrameState, value: str, text_style: TextStyle, edge: str, bac
         padding=3,
         radius=3,
         border=1,
-        border_color="#2D2D2DB8")
+        border_color='@ink2/a6')
     content = text_slide_in(fs, value, text_style, edge, duration=0.3, easing=ease_seq, div_style=div_style, together=together)
     content = content.trim(left=2, right=2)
     return content
@@ -233,10 +234,10 @@ def world_clock(fs: FrameState):
     return hstack([
         div(text(
                 'DEL',
-                TextStyle(color=black.hex, font=fonts.tamzen__rs)
+                TextStyle(color='@bg', font=fonts.tamzen__rs)
             ),
-            DivStyle(background=light_blue.darken(.2).hex, radius=2, padding=(1, 1, 1, 2))),
-        text_slide_in(fs, t.strftime('%H:%M'), TextStyle(color=gray.hex, font=fonts.bitocra7), 'top'),
+            dc_replace(shapes.pill, background='@info', padding=(1, 1, 1, 2))),
+        text_slide_in(fs, t.strftime('%H:%M'), fonts.roles.body, 'top'),
     ], gap=2)
 
 def day_of_the_week(fs: FrameState):

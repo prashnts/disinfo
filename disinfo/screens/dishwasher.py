@@ -113,7 +113,7 @@ def composer(fs: FrameState):
             dishwasher_icon,
             display,
         ], gap=3),
-        style=DivStyle(padding=1, radius=1, background=gray.darken(0.7).hex)
+        style=DivStyle(padding=1)
     ).tag('dishwasher')
 
 def widget(fs: FrameState):

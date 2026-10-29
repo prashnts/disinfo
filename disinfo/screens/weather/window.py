@@ -23,7 +23,7 @@ rain_s = 1800
 hold_s = 600            # kept up this long after the last reason: no blinking on and off with the gusts
 amber = '#f7a401'
 s_value = TextStyle(font=fonts.bitocra7, color=light_gray.darken(0.1).hex)
-s_label = TextStyle(font=fonts.bitocra7, color='#5b5e64')
+s_label = TextStyle(font=fonts.bitocra7, color='@fg3')
 
 _held = {'until': 0, 'why': None}
 

@@ -6,6 +6,7 @@ from typing import Union, Optional
 
 from .elements import Frame, Box, UNBOUNDED, less
 from .layouts import composite_at, ComposeAnchor
+from .color import Palette, palette, resolve
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,7 @@ class DivStyle:
     The radius is ordered on top-right, bottom-right, bottom-left, and top-left corners.
     The margin and padding are ordered top, right, bottom, and left edges.
     Anchor specifies where the frame is positioned in the container.
+    Colors may be tokens ('@card', '@ok/a3'): drawn in the palette's.
     '''
     padding: Union[int, tuple[int]] = 0
     radius: Union[int, tuple[int]] = 0
@@ -31,6 +33,36 @@ class DivStyle:
     background_frame: Frame | None = None
     background_blur: float = 0
     anchor: ComposeAnchor = 'mm'
+
+    def resolved(self) -> 'DivStyle':
+        if not self.background.startswith('@') and not self.border_color.startswith('@'):
+            return self
+        # Once per palette: a style is resolved at every div.
+        p, known = palette(), self.__dict__.get('_resolved')
+        if known is None or known[0] is not p:
+            known = (p, _resolved(self, p))
+            object.__setattr__(self, '_resolved', known)
+        return known[1]
+
+
+@lru_cache(maxsize=512)
+def _resolved(style: DivStyle, p: Palette) -> DivStyle:
+    return dc_replace(style, background=resolve(style.background), border_color=resolve(style.border_color))
+
+
+class shapes:
+    '''The surfaces every screen shares. Spacing 1 2 3 4 6 8 px; radius 1 chip, 2 pill, 3 card; borders 1 px.
+    Nested in a card: inset (no second card), pill, chip.'''
+    card = DivStyle(padding=3, radius=3, border=1, background='@card', border_color='@line')
+    inset = DivStyle(padding=2, radius=2, background='@ink2/a3')
+    pill = DivStyle(padding=(1, 2, 1, 2), radius=2, background='@accent')
+    chip = DivStyle(padding=1, radius=1, background='@card')
+    scrim = DivStyle(padding=(1, 2, 1, 2), radius=2, background='@scrim')
+
+    @staticmethod
+    def tinted(tint: str) -> DivStyle:
+        '''A card in a section's tint (navy, green, violet, amber).'''
+        return dc_replace(shapes.card, background=f'@{tint}/a3')
 
 
 @lru_cache(maxsize=512)
@@ -98,8 +130,7 @@ def div(
 
     Returns a new Frame.
     '''
-    if kwargs:
-        style = dc_replace(style, **kwargs)
+    style = (dc_replace(style, **kwargs) if kwargs else style).resolved()
     if not frame:
         return Frame.fallback(('div', style))
     if isinstance(frame, Box):
@@ -148,18 +179,22 @@ def div(
     elif style.anchor[1] == 'r':
         o_x = -1 * (margin[1] + pad[1])
 
+    # Its text is guarded here only over its own picture or an opaque background; else where it's placed.
+    picture = style.background_frame is not None
     if sum(radius) == 0 and sum(margin) == 0:
         i = Image.new('RGBA', (w, h), ImageColor.getrgb(style.background))
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             i.alpha_composite(bg.image, (0, 0))
-        targets = composite_at(frame, i, anchor=style.anchor, dx=o_x, dy=o_y).targets
+        solid = ImageColor.getrgb(style.background)[3:] in ((), (255,))
+        targets = composite_at(frame, i, anchor=style.anchor, dx=o_x, dy=o_y, guard=picture or solid).marks
     else:
         frame_div = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         if style.background_frame:
             bg = style.background_frame.resize((w, h), ratio_fn=max)
             frame_div.alpha_composite(bg.image, (0, 0))
-        targets = composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y, frost=style.background_blur).targets
+        targets = composite_at(frame, frame_div, anchor=style.anchor, dx=o_x, dy=o_y, frost=style.background_blur,
+                               guard=picture).marks
 
         i = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         i.alpha_composite(

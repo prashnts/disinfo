@@ -1,3 +1,4 @@
+from dataclasses import replace as dc_replace
 import numpy as np
 
 from colour import Color
@@ -7,7 +8,7 @@ from PIL import Image, ImageDraw
 from disinfo import fonts
 from discore.elements import Frame, StillImage
 from discore.text import TextStyle, text
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.scroller import HScroller
 from discore.layouts import hstack, vstack, composite_at, place_at, Spacer
 from discore.spriteim import SpriteIcon
@@ -30,8 +31,8 @@ sunset_icon = StillImage('assets/raster/sunset-7x9.png')
 sunrise_icon = StillImage('assets/raster/sunrise-7x7.png')
 
 s_temp_value = TextStyle(font=fonts.px_op__l, color=light_gray.darken(0.1).hex)
-s_condition = TextStyle(font=fonts.tamzen__rs, color='#5b5e64')
-s_sunset_time = TextStyle(font=fonts.bitocra7, color='#5b5e64')
+s_condition = TextStyle(font=fonts.tamzen__rs, color='@fg3')
+s_sunset_time = TextStyle(font=fonts.bitocra7, color='@fg3')
 s_moon_phase = TextStyle(font=fonts.bitocra7, color='#818284')
 s_deg_c = TextStyle(font=fonts.px_op__r, color=light_gray.darken(0.1).hex)
 s_forecast = TextStyle(font=fonts.bitocra7, color='#7fb5e8')
@@ -49,7 +50,7 @@ def astronomical_info(fs: FrameState):
     if not (state := get_weather_data(fs)):
         return
     s = state.data
-    phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='#000000d0'))
+    phase_value = div(text(f'{s.moon_phase}%', style=s_moon_phase), DivStyle(background='@scrim'))
     infos = []
 
     if state.show_sunrise:
@@ -118,7 +119,7 @@ def temp_range(t_current: float, t_high: float, t_low: float) -> Frame:
 def vigil_lines(now: float, tick: float, width: int) -> Frame | None:
     '''What Météo-France warns of (rain, cold first), then the next rain and the lowest temperature: one line, scrolled
     in the card's own width, so the card does not change.'''
-    parts = [div(text(t, style=s_vigil), DivStyle(background=vigil_colors[c], padding=(1, 2, 1, 2), radius=2))
+    parts = [div(text(t, style=s_vigil), dc_replace(shapes.pill, background=vigil_colors[c]))
              for c, t in vigilance.lines(now)]
     parts += [text(t, style=s_forecast) for t in vigilance.forecast_lines(now)]
     if not parts:

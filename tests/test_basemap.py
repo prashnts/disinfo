@@ -4,6 +4,7 @@ import math
 os.environ.setdefault('DI_CONFIG_PATH', '.config.sample.json')
 
 import cairocffi as cairo
+from discore.color import resolve
 
 from disinfo.screens.aviator import shapes, osm, basemap
 from disinfo.config import app_config
@@ -89,7 +90,7 @@ def test_map_up_and_zoom_are_kept(monkeypatch):
 
 def test_widget_texts_are_darker_in_light_mode():
     from disinfo.screens.aviator import widgets
-    lum = lambda c: sum(int(c[i:i + 2], 16) for i in (1, 3, 5))
+    lum = lambda c: resolve(c).lum
     for name in ('callsign', 'value', 'muted', 'unit', 'tiny', 'tiny_dim'):
         assert lum(getattr(widgets.light, name).color) < lum(getattr(widgets.dark, name).color), name
 

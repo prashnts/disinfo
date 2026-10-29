@@ -1,3 +1,4 @@
+from dataclasses import replace as dc_replace
 from functools import cache
 from PIL import Image, ImageDraw
 
@@ -5,7 +6,7 @@ from disinfo import fonts
 from discore.elements import Frame, StillImage
 from discore.text import TextStyle, text
 from discore.layouts import hstack, vstack, grid, mosaic
-from discore.layers import div, DivStyle, rounded_rectangle
+from discore.layers import div, DivStyle, rounded_rectangle, shapes
 from discore.frame_cycler import FrameCycler
 from discore.scroller import VScroller, HScroller
 from discore.data_structures import FrameState
@@ -23,10 +24,10 @@ status_hscroll = HScroller(size=30, name='metro.issues', pause_at_loop=True, pau
 
 time_style = TextStyle(font=fonts.bitocra7, color='#a57a05')
 note_style = TextStyle(font=fonts.microfont_35_reg, color='#b9b9b9', outline=1, outline_color='#181818', overflow='wrap')
-later_style = TextStyle(font=fonts.microfont_35_reg, color='#7a7a7a', overflow='wrap')
-doubt_style = TextStyle(font=fonts.microfont_35_reg, color='#b7925e', overflow='wrap')
+later_style = TextStyle(font=fonts.microfont_35_reg, color='@fg2', overflow='wrap')
+doubt_style = TextStyle(font=fonts.microfont_35_reg, color='@warn', overflow='wrap')
 health_colors = {'ok': '#2f9e44', 'slow': '#b7925e', 'none': '#c93f20'}
-card_style = DivStyle(background='#05153486', padding=3, radius=3, border=1, border_color='#333435C9')
+card_style = shapes.tinted('navy')
 max_width = 160         # the card's content on the wide screens
 fresh_s = 600           # older data is not shown, the banner is
 
@@ -124,7 +125,7 @@ def card(fs: FrameState, s: MetroState) -> Frame:
     # A stop at each note.
     msg_vscroll.set_size(h).set_frame(vstack(rows, gap=4), pauses=[sum(r.height + 4 for r in rows[:i]) for i in range(len(rows))], pause_offset=0)
     box = div(hstack([warning_line(h), msg_vscroll.draw(fs.tick)], gap=1, align='top'),
-              style=DivStyle(background='#24242485', padding=1, radius=(2, 2, 0, 0)))
+              style=dc_replace(shapes.inset, padding=1, radius=(2, 2, 0, 0)))
     return hstack([left, box], gap=2, align='top')
 
 

@@ -14,7 +14,7 @@ from discore.data_structures import FrameState
 from discore.widget import Widget
 from discore.text import text, TextStyle
 from discore.layouts import vstack, hstack
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.transitions import Resize, text_slide_in
 from disinfo import fonts
 from discore.elements import Frame
@@ -303,7 +303,7 @@ def timer_view(fs: FrameState):
         t_mm = secs // 60
         t_ss = secs % 60
         mmss = text_slide_in(fs, f'{t_mm:02d}:{t_ss:02d}', display_style)
-        return div(mmss, padding=5, margin=1, border=1, border_color="#C7722DFF", radius=3)
+        return div(mmss, shapes.card, padding=5, margin=1, background='#00000000', border_color='@accent')
 
     def timecard(timer: TimerEntry):
         next_secs = timer.end.diff(fs.now).in_seconds()
@@ -326,7 +326,7 @@ def timer_view(fs: FrameState):
             text(f'{dur_t_mm}:{dur_t_ss}'),
             hhmm,
         ]).tag(('timerentry', str(timer.pk)))
-        itc = div(tc, DivStyle(padding=2, radius=2, background="#AB4711AD" if is_active else "#092B5787"))
+        itc = div(tc, shapes.inset, background='@accent/a4' if is_active else '@navy/a5')
         return itc
 
     rows = []

@@ -15,7 +15,7 @@ from discore.text import Text, TextStyle, text
 from PIL import Image
 from discore.elements import StillImage, Frame
 from discore.layouts import vstack, hstack, Spacer
-from discore.layers import div, DivStyle
+from discore.layers import div, DivStyle, shapes
 from discore.scroller import HScroller
 from discore.spriteim import SpriteIcon
 from discore.widget import Widget
@@ -41,25 +41,25 @@ bedt_icon = StillImage('assets/raster/printerbed-5x5.png')
 
 tail_arrow_style = TextStyle(font=fonts.scientifica__r, color='#8c5b3e')
 # LEDs oversaturate and blow out light tones: muted, warm colors read as intended.
-muted_small_style = TextStyle(font=fonts.bitocra7, color='#808080')
-dim_small_style = TextStyle(font=fonts.bitocra7, color='#5b5e64')
-bright_small_style = TextStyle(font=fonts.bitocra7, color='#a6a6a6')
-warn_small_style = TextStyle(font=fonts.bitocra7, color='#b7925e')
+muted_small_style = TextStyle(font=fonts.bitocra7, color='@fg2')
+dim_small_style = TextStyle(font=fonts.bitocra7, color='@fg3')
+bright_small_style = TextStyle(font=fonts.bitocra7, color='@fg')
+warn_small_style = TextStyle(font=fonts.bitocra7, color='@warn')
 # Three sizes: cozette for the progress, bitocra7 for values, microfont for names and labels.
-tiny_style = TextStyle(font=fonts.microfont_35_reg, color='#808080')
-tiny_dim_style = TextStyle(font=fonts.microfont_35_reg, color='#5b5e64')
-tiny_bright_style = TextStyle(font=fonts.microfont_35_reg, color='#a6a6a6')
+tiny_style = TextStyle(font=fonts.microfont_35_reg, color='@fg2')
+tiny_dim_style = TextStyle(font=fonts.microfont_35_reg, color='@fg3')
+tiny_bright_style = TextStyle(font=fonts.microfont_35_reg, color='@fg')
 
 tail_arrow_left         = text(f'⤙', style=tail_arrow_style)
 tail_arrow_right        = text(f'⤚', style=tail_arrow_style)
-text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='#888888'))
+text_percent_sign       = Text('%', style=TextStyle(font=fonts.tamzen__rs, color='@fg2'))
 
-widget_style = DivStyle(padding=3, radius=3, background="#0455233D", border=1, border_color="#00000088")
+widget_style = shapes.tinted('green')
 # Content width, the card stays within 128px with the widget padding.
 card_width = 80
 phase_colors = {
-    'printing': '#42a459', 'paused': '#b7925e', 'done': '#2d83b4', 'failed': '#c93f20', 'idle': '#5b5e64',
-    'busy': '#42a459', 'active': '#8a6cc8', 'error': '#c93f20', 'starting': '#b7925e',
+    'printing': '@ok', 'paused': '@warn', 'done': '@info', 'failed': '@bad', 'idle': '@fg3',
+    'busy': '@ok', 'active': '@active', 'error': '@bad', 'starting': '@warn',
 }
 # Dark text on the phase color: unlit pixels read best on the LEDs.
 pill_style = TextStyle(font=fonts.bitocra7, color='#000000')
@@ -419,7 +419,7 @@ def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
     stage = stage_text(state)
     layer = f'L{state.current_layer or 0}/{state.total_layers}' if state.total_layers else None
     layer = text(layer, muted_small_style) if layer and layer != stage else None
-    stage_style = TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '#5b5e64'), overflow='fit')
+    stage_style = TextStyle(font=fonts.microfont_35_reg, color=phase_colors.get(state.phase, '@fg3'), overflow='fit')
     return vstack([
         hstack([
             temp(fs, toolt_icon, state.extruder_temp, state.extruder_target, uname('toolt')),
@@ -437,7 +437,7 @@ def stats_slide(fs: FrameState, state: PrinterState, h: int) -> Frame:
 
 # Overlays: lines of a ticker on a scrim over the bottom of the camera, w wide.
 def camera_overlay(fs: FrameState, state: PrinterState, w: int) -> Frame:
-    color = phase_colors.get(state.phase, '#5b5e64')
+    color = phase_colors.get(state.phase, '@fg3')
     eta = text(state.completion_time, muted_small_style) if state.completion_time else None
     return div(hstack([text(stage_text(state), TextStyle(font=fonts.microfont_35_reg, color=color, overflow='fit')), Spacer(), eta], gap=3), width=w)
 
@@ -466,7 +466,7 @@ def ticker(fs: FrameState, state: PrinterState, view: Frame, h: int) -> Frame:
         (lambda: job_overlay(fs, state, w), slide_times['job']),
         (lambda: stats_overlay(fs, state, w), slide_times['stats']),
     ]).draw(fs)
-    scrim = div(rolled, padding=(1, 2, 1, 2), background='#000000a0')
+    scrim = div(rolled, shapes.scrim, radius=0)
     return div(scrim, width=card_width, height=h, radius=2, anchor='bl', background_frame=view)
 
 
@@ -505,17 +505,17 @@ def composer(fs: FrameState, state: PrinterState):
     if not (state.is_visible or expanded):
         return
     uname = lambda x: f'{x}_{state.printer_id}'
-    color = phase_colors.get(state.phase, '#5b5e64')
+    color = phase_colors.get(state.phase, '@fg3')
     name = text((state.printer_name or state.printer_id).split('-')[0].removeprefix('pi_')[:10], tiny_dim_style)
 
     if state.is_printing:
         headline = hstack([
-            text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='#a6a6a6'), name=uname('progress')),
+            text_slide_in(fs, f'{int(state.progress)}', TextStyle(font=fonts.cozette, color='@fg'), name=uname('progress')),
             text_percent_sign,
         ], gap=1, align='top')
         right = vstack([name, time_remaining(fs, state)], gap=2, align='right')
     else:
-        headline = div(text(phase_names.get(state.phase, ''), pill_style), padding=(1, 2, 1, 2), radius=2, background=color)
+        headline = div(text(phase_names.get(state.phase, ''), pill_style), shapes.pill, background=color)
         # Done or failed for how long, in other phases since when.
         since = ago(fs, state.phase_at)
         right = hstack([

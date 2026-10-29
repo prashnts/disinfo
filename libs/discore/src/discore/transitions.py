@@ -77,8 +77,8 @@ class TimedTransition(Generic[TransitionValue], metaclass=ScopedInstance):
         return self.prev_value
 
     def settled(self) -> tuple:
-        '''The value's touch targets once it's all in: nothing can be touched while it moves.'''
-        return self.curr_value.targets if self.pos >= 1 and isinstance(self.curr_value, Frame) else ()
+        '''The value's marks once it's all in: nothing can be touched or guarded while it moves.'''
+        return self.curr_value.marks if self.pos >= 1 and isinstance(self.curr_value, Frame) else ()
 
     def reset(self):
         self.pos = 0
@@ -121,7 +121,7 @@ class FadeIn(TimedTransition[Frame]):
             self.shown = Frame(self.curr_value.image, hash=self.hash, targets=self.settled())
             return self.shown
         i = Image.new('RGBA', self.curr_value.size, (0, 0, 0, 0))
-        composite_at(self.prev_value, i, 'mm')
+        composite_at(self.prev_value, i, 'mm', guard=False)
         # Its own picture, kept: a new value mid-way fades from it.
         self.shown = Frame(Image.blend(i, self.curr_value.image, self.pos), hash=self.hash, targets=self.settled())
         return self.shown
