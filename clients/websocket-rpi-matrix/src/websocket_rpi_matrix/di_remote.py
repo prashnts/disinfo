@@ -51,8 +51,8 @@ class Config(BaseModel):
     tof_params: dict = {}                   # tof.ToFParams: rotate (to the sensor's view), distances, timings
     tof_background: str = '.tof_bg.json'    # the room's distances by zone, kept across restarts
     tof_rate: dict = {}                     # tof.ToFRate: steps ((ambient, Hz), ...) by the light
-    tof_record: str = ''                    # raw frames for training, into this dir (a RAM disk), till:
-    tof_record_until: str = ''              # local time, '2026-10-29T23:59'
+    tof_record: str = '/tmp/tof_rec'        # raw frames for training, into this dir (a RAM disk): for a session
+    tof_record_until: str = ''              # (act 'record:<s>', the web page's tof tab) or till: '2026-10-29T23:59'
 
     apds_enable: bool = True
     apds_color_enable: bool = True
@@ -429,6 +429,8 @@ class ToFSensor:
             self.tracker.save()
         elif params == 'reset':
             self.tracker.reset()
+        elif params.startswith('record:') and self.recorder:
+            self.recorder.until = time.time() + float(params.split(':', 1)[1])
 
     @classmethod
     def setup(cls, bus: board.I2C, conf: Config, **kwargs):
@@ -449,8 +451,8 @@ class ToFSensor:
             cls._start(tof)
             tracker = ToFTracker(ToFParams(**conf.tof_params), Path(conf.tof_background))
             recorder = None
-            if conf.tof_record and conf.tof_record_until:
-                until = time.mktime(time.strptime(conf.tof_record_until, '%Y-%m-%dT%H:%M'))
+            if conf.tof_record:
+                until = time.mktime(time.strptime(conf.tof_record_until, '%Y-%m-%dT%H:%M')) if conf.tof_record_until else 0
                 recorder = ToFRecorder(Path(conf.tof_record), until)
             return cls(tof, tracker, recorder, rate, **kwargs)
         except Exception as e:

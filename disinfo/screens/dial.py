@@ -19,7 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import lru_cache
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 from discore.data_structures import FrameState
 from discore.elements import Frame, Target
@@ -386,17 +386,72 @@ def icon_box(i: int, n: int) -> tuple[int, int, int, int]:
 def subtitle(fs: FrameState, name: str, shown: list[TimerEntry]) -> str:
     if name == 'timer':
         running = [t for t in shown if t.left() > 0]
-        return f'{len(running)} running' if running else 'turn to set'
+        return f'{len(running)} on' if running else ''
     if name == 'weather' and (w := weather.state.get_weather_data(fs)):
         return f'{round(w.data.temperature)}°'
     return ''
 
+@lru_cache(maxsize=64)
+def pill_mask(w: int) -> Image.Image:
+    # the selector's shape, w x 34, smooth edges
+    m = Image.new('L', (w * SS, 34 * SS), 0)
+    ImageDraw.Draw(m).rounded_rectangle((0, 0, w * SS - 1, 34 * SS - 1), radius=17 * SS, fill=255)
+    return m.resize((w, 34), Image.LANCZOS)
+
+ROW = 38                # px, a row of the menu's list
+ROW_X = 30              # the selected row's left edge; the others follow the round edge in
+
+def row_x(dy: float) -> float:
+    # the screen's left edge at dy from the middle, ROW_X in from it
+    return C - math.sqrt(max(C * C - dy * dy, 0)) + ROW_X
+
+@lru_cache(maxsize=64)
+def menu_list(pos: float, sel: int, width: float, subs: tuple) -> Image.Image:
+    # M5's "more" list: the rows scroll (pos: the row in the middle, between two while it moves), each indented
+    # along the round edge and dimmer the farther it is; an inverted pill over the selected one
+    img = Image.new('RGBA', (S, S), (0, 0, 0, 255))
+    rows = [(-1, 'disinfo', None, '#F3E9D2')] + [(k, title, icon, color) for k, (_, title, icon, color) in enumerate(APPS)]
+    for k, title, icon, color in rows:
+        dy = (k - pos) * ROW
+        if abs(dy) > C - 8:
+            continue
+        x, y = row_x(dy), C + dy
+        fade = max(0.25, 1 - abs(dy) / C)
+        if icon and (f := mdi.icon(icon, 22, color)):
+            img.alpha_composite(f.opacity(fade).image, (round(x), round(y - 11)))
+        t = label(title, fonts.px_op__xl, color if k < 0 else '#f0f0f0').opacity(fade)
+        img.alpha_composite(t.image, (round(x + (30 if icon else 0)), round(y - t.height / 2)))
+    box = (ROW_X - 8, C - 17, ROW_X - 8 + round(width), C + 17)
+    part = img.crop(box)
+    inv = Image.merge('RGBA', (*ImageOps.invert(part.convert('RGB')).split(), Image.new('L', part.size, 255)))
+    img.paste(inv, box[:2], pill_mask(round(width)))
+    # the selected one's icon in its own colour (inverted, the red timer went cyan); what it says beside the pill
+    _, _, icon, color = APPS[sel]
+    dy = (sel - pos) * ROW
+    if abs(dy) < ROW / 2 and (f := mdi.icon(icon, 22, color)):
+        img.alpha_composite(f.image, (round(row_x(dy)), round(C + dy - 11)))
+    if subs[sel] and abs(dy) < 1:
+        u = label(subs[sel], fonts.px_op__lb, '#a0a0a0')
+        img.alpha_composite(u.image, (round(ROW_X - 8 + width + 6), round(C - u.height / 2)))
+    return img
+
+@lru_cache(maxsize=16)
+def title_width(i: int) -> int:
+    return 30 + label(APPS[i][1], fonts.px_op__xl).width + 16
+
 def menu(fs: FrameState, st: State, shown: list[TimerEntry]) -> Frame:
-    items = tuple((icon, color, True) for _, _, icon, color in APPS)
-    name, title, *_ = APPS[st.apps.i]
-    targets = [tap(fs, {'go': 'home'}, 0, 0, S, S), tap(fs, {'go': 'open'}, C - 50, C - 50, 100, 100)]
-    targets += [tap(fs, {'go': n}, *icon_box(i, len(APPS))) for i, n in enumerate(NAMES)]
-    return ring_page(fs, items, st.apps, title, subtitle(fs, name, shown), targets)
+    t = ease_back((time.monotonic() - st.apps.at) / MOVE)
+    a, b = st.apps.prev, st.apps.i
+    pos = a + (b - a) * t
+    width = title_width(a) + (title_width(b) - title_width(a)) * t
+    subs = tuple(subtitle(fs, n, shown) for n in NAMES)
+    img = menu_list(round(pos * 40) / 40, b, round(width), subs)
+    targets = [tap(fs, {'go': 'home'}, 0, 0, S, S)]
+    for k, n in enumerate(NAMES):
+        dy = (k - b) * ROW
+        if abs(dy) < C - 8:
+            targets.append(tap(fs, {'go': n}, 0, round(C + dy - ROW / 2), S, ROW))
+    return Frame(img, hash=('dial.menu', pos, b, subs), targets=tuple(targets))
 
 def lights_page(fs: FrameState, st: State) -> Frame:
     ls = lights()
@@ -568,17 +623,18 @@ def home(fs: FrameState, st: State, shown: list[TimerEntry]) -> Frame:
     return Frame(img, targets=(tap(fs, {'go': 'menu'}, 0, 0, S, S),))
 
 def opening(fs: FrameState, st: State, page: Frame) -> Frame:
-    # the app comes in a circle growing from its icon, its colour round it (M5's grows a circle of it)
+    # the app comes in a circle growing from its row in the menu, its colour round it (M5's grows a circle of it)
     t = (time.monotonic() - st.opened_at) / OPEN
     if t >= 1 or st.view not in NAMES:
         return page
-    x, y = polar(R_ICON, angle(NAMES.index(st.view), len(APPS)))
+    x, y = ROW_X + 11, C
     r = 24 + t * 240
-    edge = smooth(lambda d, k: d.ellipse(((x - r) * k, (y - r) * k, (x + r) * k, (y + r) * k), fill=rgba(APPS[NAMES.index(st.view)][3])))
-    inside = smooth(lambda d, k: d.ellipse(((x - r + 4) * k, (y - r + 4) * k, (x + r - 4) * k, (y + r - 4) * k), fill=(255, 255, 255, 255)))
+    # a quarter second: not supersampled (that was ~75 ms a frame)
     img = Image.new('RGBA', (S, S), (0, 0, 0, 255))
-    img.alpha_composite(edge)
-    img.paste(page.image, (0, 0), inside.getchannel('A'))
+    inside = Image.new('L', (S, S), 0)
+    ImageDraw.Draw(img).ellipse((x - r, y - r, x + r, y + r), fill=rgba(APPS[NAMES.index(st.view)][3]))
+    ImageDraw.Draw(inside).ellipse((x - r + 4, y - r + 4, x + r - 4, y + r - 4), fill=255)
+    img.paste(page.image, (0, 0), inside)
     return Frame(img, targets=page.targets)
 
 def compose(fs: FrameState) -> Frame:

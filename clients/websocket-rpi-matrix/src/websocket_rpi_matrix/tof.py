@@ -249,7 +249,8 @@ class ToFRate:
 @dataclass
 class ToFRecorder:
     '''Raw frames for training (the statuses too: the mask can be redone) with what the tracker made of them, a
-    compressed file a minute in `path` (a RAM disk), till `until` (epoch) or `max_mb` there.'''
+    compressed file a minute in `path` (a RAM disk), till `until` (epoch: from the config, or a session's act) or
+    `max_mb` there.'''
     path: Path
     until: float
     max_mb: float = 1200
@@ -263,6 +264,8 @@ class ToFRecorder:
 
     def add(self, distance_mm, status, targets, tracker: 'ToFTracker', ambient: float = 0.0, hz: int = 0):
         if not self.on():
+            if self._rows:
+                self.flush()        # the end of a session: its last minute
             return
         now = time.time()
         t, n = tracker.target, tracker.near

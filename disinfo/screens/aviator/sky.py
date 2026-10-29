@@ -1277,7 +1277,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             # Where the web page turned it, a while.
             view = held.get('yaw', view[0]), held.get('fov', view[1]), view[2]
     if (turned := hand.yaw(fs, _cams.get(fs.config.name, view)[0])) is not None:
-        view = turned, view[1], view[2]
+        view = turned, hand.fov(fs, _cams.get(fs.config.name, view)[1]), view[2]
     yaw, fov, tl = camera(fs, view, 0.25 if hand.active(fs) else 0.8)
     live(fs, yaw=round(yaw % 360, 1), fov=round(fov, 1), tilt=round(tl, 3), held=bool(held) and now - held['at'] < SKY_HOLD,
          demo=(scene or 'around') if demo else None)

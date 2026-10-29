@@ -158,6 +158,13 @@ telemetry carries the result, the grid is debug only; near → a mode (menu) or 
   then reset. 12:00: new module + longer cable, on top of disinfo, turned clockwise (facing it), tilted down, on tack:
   config still `rotate: 1` (wrong now) till the printed base (~22° yaw, ~15° down). Then: hand at the top → `rotate`,
   `tof reset` with the view empty, sit/lean/wave check. Open: the hand-pan's zen stayed on through the swap (client
-  dead 11:57-12:01 with near pressed); the user cleared it. Depth → zoom/pitch: the user to pick.
+  dead 11:57-12:01 with near pressed); the user cleared it.
+- **Desk scale (2026-10-29 pm, the user's pick):** the sensor to point at the desk (limn, laptops, monitor, PC), the
+  user ≥2 m away is out of daylight range. Training: web tab `tof` (`TofTab`, editable "seconds text" steps) → `POST
+  /tof/train` → timed note on distudy + act `tof record:<s>` + session in redis `di.tof.train` (t0, steps) to label
+  the frames by. Desk side deployed; server side (`server.py`, `web/index.html`) for the user to deploy. Next: named
+  regions from the sessions ("laptop", "PC", "limn" … where the hands are), retune present/near/rate for ~1 m.
+- **Depth → zoom (the user: "the most important"):** `hand.py` `fov()`: 15 cm nearer halves the view's width
+  (`mm_per_half`, `zoom_sign`, clamp 12-120°), from where the hand came; sky.py uses it. For the user to deploy.
 - Next: train/tune on the recordings (body vs hand vs passers-by, the table as background); lean → denser/overview; maybe turn the sensor a bit more toward the chair (lean margin). Guided tests: the note widget
   (`/note`, `note.steps`).

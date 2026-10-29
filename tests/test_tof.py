@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'clients/websocket-rpi-matrix/src/websocket_rpi_matrix'))
-from tof import ToFTracker, ToFParams, ToFRate     # the client's: plain numpy, no hardware
+from tof import ToFTracker, ToFParams, ToFRate, ToFRecorder     # the client's: plain numpy, no hardware
 
 
 def frames(tr, grid, s, t):
@@ -113,3 +113,21 @@ def test_reset_relearns(tmp_path):
     tr.reset()
     t = frames(tr, moved, 7, t)
     assert not tr.present['on'] and not tr.found
+
+
+def test_recorder_session_writes_its_last_minute(tmp_path, monkeypatch):
+    import tof
+    clock = [1000.0]
+    monkeypatch.setattr(tof.time, 'time', lambda: clock[0])
+    rec, tr = ToFRecorder(tmp_path, until=0), ToFTracker(ToFParams())
+    rec.add([0] * 64, [0] * 64, [0] * 64, tr)
+    assert not rec._rows                            # no session
+    rec.until = clock[0] + 20                       # act record:20
+    for _ in range(10):
+        rec.add([2500] * 64, [5] * 64, [1] * 64, tr, 90.0, 5)
+        clock[0] += 1
+    clock[0] += 30
+    rec.add([2500] * 64, [5] * 64, [1] * 64, tr)
+    f, = tmp_path.glob('*.npz')
+    z = np.load(f)
+    assert len(z['t']) == 10 and z['hz'][0] == 5 and z['amb'][0] == 90

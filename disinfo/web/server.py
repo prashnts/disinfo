@@ -294,6 +294,29 @@ async def note_put(n: NoteInput):
         note.put(n.screen, n.text, n.minutes * 60)
     return note.notes()
 
+TRAIN_KEY = 'di.tof.train'      # the ToF training sessions: when each step was, to label the recordings by
+
+class TrainInput(AppBaseModel):
+    screen: str = 'distudy'
+    steps: list[tuple[float, str]]  # [[seconds, text], ...]
+    start: float = 10
+
+@app.get('/tof/train')
+async def tof_train_list():
+    return [json.loads(x) for x in db.lrange(TRAIN_KEY, -20, -1)][::-1]
+
+@app.post('/tof/train')
+async def tof_train(n: TrainInput):
+    # The steps on the screen (a timed note), its ToF recording for as long (and a bit), the session kept.
+    from disinfo.screens import note
+    value, ttl = note.steps(n.steps, n.start)
+    note.put(n.screen, value, ttl)
+    s = int(n.start + sum(s for s, _ in n.steps) + 10)
+    publish('di.pubsub.acts', action='act', payload=dict(cmd=['tof', f'record:{s}', str(time.time())], dt=time.monotonic(), dest=n.screen))
+    session = {'screen': n.screen, 't0': json.loads(value)['t0'], 'steps': n.steps, 'at': time.time()}
+    db.rpush(TRAIN_KEY, json.dumps(session))
+    return session
+
 @app.delete('/note/{screen}')
 async def note_clear(screen: str):
     from disinfo.screens import note

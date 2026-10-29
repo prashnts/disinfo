@@ -44,3 +44,16 @@ def test_zen_already_on_stays(monkeypatch):
     clock[0] += hand.linger + 1
     hand.update(fs)
     assert sent == []
+
+
+def test_hand_nearer_zooms_in(monkeypatch):
+    fs, st, sent, clock = setup(monkeypatch)
+    st.tof.near.pressed, st.tof.near.x, st.tof.near.mm = True, 4.0, 300
+    hand.update(fs)
+    assert hand.fov(fs, 50) == 50          # from how wide it was
+    st.tof.near.mm = 300 - hand.mm_per_half
+    hand.update(fs)
+    assert hand.fov(fs, 0) == 25
+    st.tof.near.mm = 900                   # far out: clamped
+    hand.update(fs)
+    assert hand.fov(fs, 0) == hand.fov_range[1]

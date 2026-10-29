@@ -61,6 +61,7 @@
         input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
         input[type=number] { width: 4em; }
         input[type=text] { width: 100%; box-sizing: border-box; }
+        textarea { width: 100%; box-sizing: border-box; font: inherit; color: var(--text); background: #333; border: 1px solid var(--line); border-radius: 2px; padding: 3px 7px; }
         label { cursor: pointer; }
         code { color: var(--accent); }
         small, .dim { color: var(--dim); }
@@ -587,7 +588,45 @@
         }
 
 
-        const TABS = {view: ViewTab, sky: SkyTab, radar: RadarTab, shown: ShownTab, timers: TimersTab, dev: DevTab}
+        const TRAIN_STEPS = `20 stand clear of the desk
+30 type on the laptop
+30 use this PC: keyboard, mouse
+20 reach to limn, touch it
+15 look at the monitor, point at it
+15 lean in
+15 sit back
+15 hand near the screen: sweep left, right
+15 hand near the screen: closer, farther
+15 stand up, leave`
+
+        function TofTab() {
+            // A ToF training session at the desk: the steps on its screen one by one, recorded the while; the
+            // sessions kept (when each step was) to label the recordings by. One "seconds text" a line.
+            const [sessions, reload] = useFetch('/tof/train', 10000)
+            const [text, setText] = useState(kept('di.tof.steps') || TRAIN_STEPS)
+            const [start, setStart] = useState(10)
+            const steps = text.split('\n').map(l => l.trim().match(/^(\d+(?:\.\d+)?)\s+(.+)$/)).filter(Boolean).map(m => [+m[1], m[2]])
+            const total = start + steps.reduce((a, [s]) => a + s, 0)
+            const now = Date.now() / 1000
+            const running = (sessions || []).find(s => now < s.t0 + s.steps.reduce((a, [d]) => a + d, 0))
+            const go = () => fetch('/tof/train', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({screen: 'distudy', steps, start})}).then(reload)
+            return html`<div class="tab">
+                <h2>tof training <small>desk</small></h2>
+                <textarea rows="12" value=${text} onInput=${e => { setText(e.currentTarget.value); kept('di.tof.steps', e.currentTarget.value) }}/>
+                <${Range} label="starts in" min="0" max="60" step="5" value=${start} show=${`${start} s`} onInput=${setStart}/>
+                <div class="row">
+                    <span class="grow"><small>${steps.length} steps, ${Math.round(total / 60 * 10) / 10} min, recorded</small></span>
+                    <${Btn} onClick=${() => setText(TRAIN_STEPS)}>default</${Btn}>
+                    <${Btn} on=${!!running} onClick=${() => !running && steps.length && go()}>${running ? 'running…' : 'start'}</${Btn}>
+                </div>
+                <h2>sessions</h2>
+                ${(sessions || []).map(s => html`<div class="row"><span class="grow"><code>${new Date(s.t0 * 1000).toLocaleString()}</code>
+                    <small>${s.steps.length} steps</small></span></div>`)}
+            </div>`
+        }
+
+        const TABS = {view: ViewTab, sky: SkyTab, radar: RadarTab, shown: ShownTab, timers: TimersTab, tof: TofTab, dev: DevTab}
 
         function Panel() {
             // Scoped by the screen picked (here, or under its frame): 'all' sets every screen, the screens' own go.
