@@ -17,7 +17,7 @@ from disinfo.config import app_config
 from disinfo.drat import shown
 
 from .state import ADSBxStateManager, OpenedStateManager, VIEWS, VIEW_HOLD, VIEW_TURN, STORM, live
-from . import lightning, hand
+from . import lightning, hand, link
 from .colors import marker_color
 from . import basemap, skylook, weather
 from .utils import airports, local_xy
@@ -199,6 +199,10 @@ def on_top(fs: FrameState) -> str | None:
     return _on_top.get(fs.config.name)
 
 def following(fs: FrameState) -> str | None:
+    first = card_or_overhead(fs)
+    return link.plane(fs, first) if link.on(fs) else first
+
+def card_or_overhead(fs: FrameState) -> str | None:
     st = ADSBxStateManager().get_state(fs)
     hex = _following.get(fs.config.name)
     if hex in st.planes and (hex in st.overhead or hex in OpenedStateManager().get_state(fs).opened):
@@ -510,6 +514,7 @@ def view_mode(fs: FrameState) -> str:
     views = [v for v in VIEWS if v in fs.config.aviator_views]
     pressed, at = m.of('view', fs)
     held = pressed in views and now - at < VIEW_HOLD
+    linked = link.on(fs) and 'map' in views and 'sky' in views
     if 'sky' in views and hand.active(fs):
         # A hand near the screen turns the sky.
         mode = 'sky'
@@ -518,8 +523,16 @@ def view_mode(fs: FrameState) -> str:
         mode = 'sky'
     elif held:
         mode = pressed
+    elif linked and link.eiffel(fs):
+        mode = 'sky'
     else:
         turns = [v for v in views if v not in m.of('views_off', fs)] or ['solar']
+        if linked:
+            # Linked, map and sky are one turn: the show.
+            turns = [v for v in turns if v != 'map'] if 'sky' in turns else turns
         mode = turns[int(now // VIEW_TURN) % len(turns)]
+        if linked and mode in ('map', 'sky'):
+            following(fs)
+            mode = link.phase(fs)
     live(fs, view=mode)
     return mode

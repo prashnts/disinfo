@@ -60,6 +60,7 @@ def test_storm_brings_the_sky_unless_pressed_since(monkeypatch):
     now = time.time()
     fs = NS(config=NS(name='s', aviator_views=['map', 'sky', 'solar']))
     monkeypatch.setattr(app, 'live', lambda *a, **k: None)
+    monkeypatch.setattr(app.link, 'on', lambda fs: False)
     monkeypatch.setattr(lightning, 'storm', lambda t: now - 300)
     m = OpenedState()
     monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: m))

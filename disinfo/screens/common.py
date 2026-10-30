@@ -35,7 +35,7 @@ def radar_wanted(fs: FrameState, on_top: list) -> bool:
         return True
     if aviator.app.quiet(fs) or (view := aviator.app.view_mode(fs)) == 'solar':
         return False
-    return view == 'sky' or any(w and w.background == 'aviator' for w in on_top)
+    return view == 'sky' or (view == 'map' and aviator.link.on(fs)) or any(w and w.background == 'aviator' for w in on_top)
 
 def background(fs: FrameState, style: AnalogClockStyle, clear: tuple, on_top: list) -> Frame:
     '''The background the widgets on top of the stacks bring (a plane's card: the radar), the solar clock otherwise.

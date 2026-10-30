@@ -63,6 +63,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - A hand near the screen brings the sky view, in zen, and turns it as the hand moves; a few seconds after the hand's gone, back to what was there (zen off, unless it was on before). Any time, the quiet hours too.
 - The hand told from the body: nearer than it, held a moment (someone passing by is quicker), let go when it stops moving for long. 🔧 The desk's ToF can record its frames for a while (`tof_record`).
 - Nyan Cat redone: crisp pixels and a rainbow along its path, all on screen; a bigger show the rarer the time (22:22 most, 14:14 less), 12:34 climbs stairs, 13:31 a mirrored pair, palettes by the hour; over the roofs with fireworks in the sky view.
+- Planes and sky linked (`aviator/link.py`, web checkbox, on by default): one plane at a time, 8 s on the map then 45 s in the sky, zoomed, tracked smoothly in the cards' clear box (a high plane squeezes the sky over the roofs, the view stays narrow); the Eiffel show wins over the turns. Tighter sky zoom (planes 14°, the tower 5–12°). A pressed view pressed again lets go; the displays' button toggles solar.
 
 ### Changed
 - Widgets on the shapes and tokens: cards, pills and backdrops the same everywhere (klipper, metro, aviator, weather, date, news, timers, entry, notes); news text without outlines.

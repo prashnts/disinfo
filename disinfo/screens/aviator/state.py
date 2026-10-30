@@ -17,6 +17,7 @@ LIGHT_KEY = 'di.aviator.light'    # the radar in light mode
 LAYERS_KEY = 'di.aviator.layers'  # the map's layers switched off
 HORIZON_KEY = 'di.aviator.horizon'  # where the sky view's horizon rests, of the height from the top (None: its own)
 EYE_KEY = 'di.aviator.eye'          # the sky view seen from floors under (or over) the window
+LINK_KEY = 'di.aviator.link'        # the planes and the sky linked: the show (link.py), on unless switched off
 LIVE_KEY = 'di.aviator.live'        # screen -> what its renderer shows now, for the web page: {view, yaw, fov, tilt, at}
 VIEWS = ['map', 'sky', 'solar']
 STORM = 'storm'                    # in views_off: no sky view brought by a storm
@@ -67,13 +68,14 @@ class OpenedState(AppBaseModel):
     demo: dict[str, list] = {}          # [when the sky view's demo started, the scene held (None: once around)]
     sky: dict[str, dict] = {}           # the sky view turned or zoomed: yaw, fov, at
     horizon: dict[str, float | None] = {}   # the sky view's horizon (None: its own)
+    link: dict[str, bool] = {}          # the planes and the sky linked
     floors: dict[str, float] = {}       # the sky view from that many floors up (under 0: down) from the window
 
     def of(self, name: str, fs: FrameState | None):
         d = getattr(self, name)
         return d.get(fs and fs.config.name, d.get('*', unset[name]))
 
-unset = {'view': [None, 0], 'views_off': [], 'off': [], 'light': False, 'demo': [None, None], 'sky': {}, 'horizon': None, 'floors': 0}
+unset = {'view': [None, 0], 'views_off': [], 'off': [], 'light': False, 'demo': [None, None], 'sky': {}, 'horizon': None, 'floors': 0, 'link': True}
 
 def read_dict(key: str) -> dict[str, float]:
     try:
@@ -98,7 +100,7 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
     channels = ('di.pubsub.remote',)
     keep_open = 90
     kept = {'view': VIEW_KEY, 'views_off': VIEWS_OFF_KEY, 'map_up': MAP_UP_KEY, 'zoom': ZOOM_KEY, 'light': LIGHT_KEY,
-            'off': LAYERS_KEY, 'horizon': HORIZON_KEY, 'floors': EYE_KEY}
+            'off': LAYERS_KEY, 'horizon': HORIZON_KEY, 'floors': EYE_KEY, 'link': LINK_KEY}
 
     def initial_state(self) -> OpenedState:
         return OpenedState(**{k: read_scoped(key) for k, key in self.kept.items()})
@@ -113,9 +115,9 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
             case 'aviator.close':
                 self.state.opened.pop(p['hex'], None)
             case 'aviator.view':
-                # The one asked for (checked again), or the next (the displays' button), for VIEW_HOLD.
-                current = mine('view')[0] or 'map'
-                self.pressed(screen, p.get('view') or VIEWS[(VIEWS.index(current) + 1) % len(VIEWS) if current in VIEWS else 0])
+                # The one asked for (checked again) for VIEW_HOLD, pressed again: let go. The displays' button: solar or not.
+                view, (current, at) = p.get('view') or 'solar', mine('view')
+                self.pressed(screen, None if view == current and now - at < VIEW_HOLD else view)
             case 'aviator.views':
                 # A checkbox: in the turns or out. Out, its press goes too.
                 view, on = p['view'], bool(p['on'])
@@ -142,6 +144,8 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
                 self.put('horizon', screen, min(max(float(h), 0.3), 0.85) if h is not None else None)
             case 'aviator.eye':
                 self.put('floors', screen, min(max(float(p.get('floors') or 0), -12), 3))
+            case 'aviator.link':
+                self.put('link', screen, bool(p['on']) if 'on' in p else not mine('link'))
             case 'aviator.light':
                 # The one asked for, or the other.
                 self.put('light', screen, bool(p['on']) if 'on' in p else not mine('light'))

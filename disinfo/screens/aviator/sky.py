@@ -36,12 +36,12 @@ elev_gamma = 0.5        # y ~ (elevation / top) ** gamma: the few degrees over t
 dip_max = 30            # degrees under the horizon at the bottom of the frame, the same stretch
 earth_r = 6371
 view_fov = 50           # degrees across, most of the time: the waypoints' piece of the skyline
-follow_fov = 25         # on the followed plane
-fov_min = 20            # zoomed on a plane, the moment its card comes on top
+follow_fov = 14         # on the followed plane (wider for a high one: it stays under the top)
+fov_min = 8             # zoomed on a plane, the moment its card comes on top
 wide_every, wide_for = 900, 45          # s: pulled back to the whole window that long, every so often
 tour_dwell, tour_glide = 180, 90        # s: idle, on a sight (every other one the waypoints), then turning to the next
 show_lead, show_back = 60, 30           # s: turning to the Eiffel tower before it sparkles, back to the tour after
-show_fov = (12, 26)     # zoomed in and out on it while it sparkles, every show_breathe s
+show_fov = (5, 12)     # zoomed in and out on it while it sparkles, every show_breathe s
 show_breathe = 110
 home_ground = 47        # m above the sea
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
@@ -131,6 +131,7 @@ _cams = {}              # screen -> [yaw, fov, at]: eases towards the view
 _roofs = {}             # screen -> (what they're drawn for, the layer, its rows)
 roofline = {}           # screen -> (when, the roofs' top y per column): twenty_two's cat flies over them
 _held = {}              # screen -> the yaw: turned only when what it looks at has moved away
+_lift = {}              # screen -> [degrees the top of the frame is lifted to (0: its own), eased, at]
 _eye = {'m': home_ground + app_config.aviator_eye_m}
 
 
@@ -855,17 +856,30 @@ def camera(fs: FrameState, target: tuple[float, float, float], ease: float = 0.8
         c[:3] = target
     return c[0], c[1], c[2]
 
-def top_of(fov: float) -> float:
+def top_of(fov: float, lift: float = 0) -> float:
     # Degrees over the horizon at the top of the frame: zoomed in, the few over the roofs get the room.
-    return min(90, max(fov * 1.2, 30))
+    # Lifted, the sky over the roofs is squeezed for a high plane: the view stays narrow, the roofs keep their room.
+    return max(min(90, max(fov * 1.2, 6)), lift)
 
 def dip_of(fov: float) -> float:
-    return dip_max * min(max(fov, fov_min) / 90, 1)
+    return dip_max * min(max(fov, 20) / 90, 1)
 
-def tilt_to(e: float, fov: float) -> float:
-    # The horizon where a plane e degrees up sits a third down the frame.
-    s = (min(max(e, 0), 90) / top_of(fov)) ** elev_gamma
-    return min(max(0.33 / max(1 - s, 0.01), tilt[0]), tilt[1])
+def tilt_to(e: float, fov: float, at: float = 0.33, lift: float = 0) -> float:
+    # The horizon where a plane e degrees up sits at (of the height) down the frame.
+    s = (min(max(e, 0), 90) / top_of(fov, lift)) ** elev_gamma
+    return min(max(at / max(1 - s, 0.01), tilt[0]), tilt[1])
+
+def lift_for(e: float, at: float) -> float:
+    # The top of the frame a plane e degrees up needs to come down to at (of the height), the horizon at its lowest.
+    return min(max(e, 0) / max(1 - at / tilt[1], 0.2) ** (1 / elev_gamma), 120)
+
+def lifted(fs: FrameState) -> float:
+    # The lift, eased like the camera.
+    l = _lift.setdefault(fs.config.name, [0, 0, time.monotonic()])
+    now = time.monotonic()
+    l[1] += (l[0] - l[1]) * (1 - math.exp(-(now - l[2]) / 0.8))
+    l[2] = now
+    return l[1]
 
 def mean_bearing(bs: list[float]) -> float:
     return math.degrees(math.atan2(sum(math.sin(math.radians(b)) for b in bs), sum(math.cos(math.radians(b)) for b in bs)))
@@ -929,22 +943,21 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
     yaw = _held.get(fs.config.name)
     followed = app.following(fs)
     middle = (clear[0] + clear[2]) / 2 - w / 2
+    at = (clear[1] + clear[3]) / 2 / fs.config.height
     storm = lightning.aim(time.time(), view_fov)
     if storm and followed not in OpenedStateManager().get_state(fs).opened:
         followed = None
+    lift = _lift.setdefault(fs.config.name, [0, 0, time.monotonic()])
+    lift[0] = 0
     if followed:
-        fov = follow_fov
+        # Tracked: the plane in the middle of the clear box, the view panning along with it.
         p = st.planes[followed]
         b, e = sky_point(*app.position(p, time.time()), p['alt'])
         swept_hex, swept_at = app._swept.get(fs.config.name, (None, 0))
-        if swept_hex == followed and time.monotonic() - swept_at < app.sweep:
-            zoom = max(fov_min, fov / app.sweep_zoom)
-            return b - middle / w * zoom, zoom, tilt_to(e, zoom)
-        px = w / 2 + wrap(b - (yaw if yaw is not None else b)) / fov * w
-        if yaw is None or not clear[0] + 6 <= px <= clear[2] - 6:
-            yaw = b - middle / w * fov
-        _held[fs.config.name] = yaw
-        return yaw, fov, tilt_to(e, fov)
+        fov = max(fov_min, follow_fov / app.sweep_zoom) if swept_hex == followed and time.monotonic() - swept_at < app.sweep else follow_fov
+        lift[0] = lift_for(e, at)
+        _held[fs.config.name] = yaw = b - middle / w * fov
+        return yaw, fov, tilt_to(e, fov, at, lift[0])
     if storm:
         # On the storm, held while it stays within a quarter view; a little sway.
         target, fov = storm[0], round(storm[1] / 10) * 10
@@ -961,10 +974,12 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
         k, u = on
         e = min(max(u, 0), 300)
         zoom = show_fov[0] + (show_fov[1] - show_fov[0]) * (0.5 + 0.5 * math.cos(2 * math.pi * e / show_breathe))
-        b = bearing(*local_xy(*landmarks[-1][1:3])) - middle / w * zoom + 0.2 * zoom * math.sin(2 * math.pi * e / 80)
+        b = bearing(*local_xy(*landmarks[-1][1:3])) - middle / w * zoom + 0.05 * zoom * math.sin(2 * math.pi * e / 80)
         _held[fs.config.name] = yaw = (target + wrap(b - target) * k) % 360
+        # The tower in the middle of the clear box: the horizon a bit under it.
         rest = OpenedStateManager().get_state(fs).of('horizon', fs) or horizon
-        return yaw, fov + (zoom - fov) * k, rest
+        fov = fov + (zoom - fov) * k
+        return yaw, fov, rest + (tilt_to(1, fov, at) - rest) * k
     # Idle it follows the tour; on planes, it turns only when they're a quarter view away.
     if yaw is None or abs(wrap(target - yaw)) > fov / 4 or not any(h in st.planes for h in st.watched):
         yaw = target
@@ -1284,7 +1299,10 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     # Whole pixels: between them the frame stays the same (the roofs from the cache, nothing new to send).
     yaw = round(yaw / (fov / w)) * fov / w
     hz = round(h * tl)
-    top, dip = top_of(fov), dip_of(fov)
+    top, dip = top_of(fov, lifted(fs) if not demo else 0), dip_of(fov)
+    if followed and not demo:
+        # Panning along with the plane: smooth, not a step a second.
+        app._moving[fs.config.name] = True
     in_view = lambda b, margin=10: abs(wrap(b - yaw)) < fov / 2 + margin
     to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
     to_px = lambda b, e: (to_x(b), hz - hz * (min(e, 90) / top) ** elev_gamma if e >= 0 else hz + (h - hz) * (min(-e, dip) / dip) ** elev_gamma)

@@ -5,7 +5,7 @@ import pytest
 
 os.environ.setdefault('DI_CONFIG_PATH', '.config.sample.json')
 
-from disinfo.screens.aviator import utils, app, tasks
+from disinfo.screens.aviator import utils, app, tasks, link
 from disinfo.screens.aviator.state import OpenedState
 
 
@@ -77,9 +77,13 @@ def test_the_card_on_top_brings_the_radar(monkeypatch):
     fs = type('fs', (), {'config': type('c', (), {'name': 'test', 'aviator_view': 'map', 'aviator_quiet': []}), 'now': __import__('pendulum').parse('2026-10-20T12:00:00')})()
     monkeypatch.setattr(app, 'view_mode', lambda fs: fs.config.aviator_view)
     monkeypatch.setattr(app, 'quiet', lambda fs: False)
+    monkeypatch.setattr(link, 'on', lambda fs: False)
     plane, weather = Widget('aviator.a', background='aviator'), Widget('weather')
     assert common.radar_wanted(fs, [weather, plane])
     assert not common.radar_wanted(fs, [weather, None])
+    # Linked: the map's the show's glance, card or not.
+    monkeypatch.setattr(link, 'on', lambda fs: True)
+    assert common.radar_wanted(fs, [weather, None])
     # The sky's always there; never in the quiet hours.
     fs.config.aviator_view = 'sky'
     assert common.radar_wanted(fs, [weather])
@@ -135,6 +139,7 @@ def test_views_take_turns(monkeypatch):
     monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: m))
     monkeypatch.setattr(app, 'live', lambda fs, **kw: None)
     monkeypatch.setattr(app.lightning, 'storm', lambda now: None)
+    monkeypatch.setattr(app.link, 'on', lambda fs: False)
     fs = NS(config=NS(name='distudy', aviator_views=['map', 'sky', 'solar']))
     seen = set()
     for k in range(3):
@@ -174,6 +179,7 @@ def test_the_nearest_overhead_plane_is_framed_when_no_card(monkeypatch):
     monkeypatch.setattr(app, 'OpenedStateManager', lambda: NS(get_state=lambda fs: NS(opened={})))
     monkeypatch.setattr(app, '_following', {})
     monkeypatch.setattr(app, '_near', {})
+    monkeypatch.setattr(app.link, 'on', lambda fs: False)
     fs = NS(config=NS(name='t'))
     assert app.following(fs) == 'a'
     # Another becomes the nearest: the one framed stays while it is overhead.
@@ -648,3 +654,21 @@ def test_sky_masts():
     alpha = np.frombuffer(s.get_data(), np.uint8).reshape(200, 400, 4)[:, :, 3]
     assert alpha[:118, 200].sum() > 0 and alpha[119:, 200].max() == 0
 
+
+def test_link_glances_at_the_map_then_the_sky(monkeypatch):
+    planes = {'a': {'ground': False, 'dist': 5}, 'b': {'ground': False, 'dist': 3}}
+    st = type('st', (), {'planes': planes, 'watched': ['a']})
+    monkeypatch.setattr(link, 'ADSBxStateManager', lambda: type('m', (), {'get_state': lambda self, fs: st})())
+    monkeypatch.setattr(link, 'OpenedStateManager', lambda: type('m', (), {'get_state': lambda self, fs: OpenedState()})())
+    monkeypatch.setattr(link, 'eiffel', lambda fs: False)
+    monkeypatch.setattr(link, '_on', {})
+    fs = type('fs', (), {'config': type('c', (), {'name': 'test.link'})})()
+    assert link.plane(fs, None) == 'a' and link.phase(fs) == 'map'
+    link._on['test.link'][1] -= link.glance
+    assert link.plane(fs, None) == 'a' and link.phase(fs) == 'sky'
+    link._on['test.link'][1] -= link.stay
+    assert link.plane(fs, None) == 'b' and link.phase(fs) == 'map'
+    # A card's plane at once; the Eiffel tower over all but a tapped one.
+    assert link.plane(fs, 'a') == 'a'
+    monkeypatch.setattr(link, 'eiffel', lambda fs: True)
+    assert link.plane(fs, 'a') is None and link.phase(fs) == 'sky'

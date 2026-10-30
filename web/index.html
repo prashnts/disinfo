@@ -293,7 +293,11 @@
                     <${Check} label=${`${v} in turns`} checked=${!views_off.includes(v)} onChange=${on => go('aviator.views', {view: v, on})}/>
                     <${Btn} on=${held && pressed === v} onClick=${() => go('aviator.view', {view: v})}>${v}</${Btn}>
                 </div>`)}
-                <small>${held ? `${pressed} pressed, for ${Math.ceil((at + VIEW_HOLD - Date.now() / 1000) / 60)} min more` : 'taking turns'}</small>
+                <small>${held ? `${pressed} pressed, for ${Math.ceil((at + VIEW_HOLD - Date.now() / 1000) / 60)} min more (press again: let go)` : 'taking turns'}</small>
+                <div class="row">
+                    <${Check} label="link planes and sky" checked=${pick(set.link, scope, true)} onChange=${on => go('aviator.link', {on})}/>
+                    <small>a glance at the map, then the sky on each plane; the Eiffel show</small>
+                </div>
                 <div class="row">
                     <${Check} label="a storm brings the sky" checked=${!views_off.includes('storm')} onChange=${on => go('aviator.views', {view: 'storm', on})}/>
                     <${Btn} onClick=${() => send('lightning.demo')} title="a storm passing, on every screen">storm demo</${Btn}>
