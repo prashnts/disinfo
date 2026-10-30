@@ -90,6 +90,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The planes' cards were never shown: they're back for the planes passing overhead, and a tapped plane always gets its card.
 - The web page's show buttons toggled each renderer on its own, so screens could disagree.
 - The salon's client logged a missing remote a thousand times a second (2.4 GB a day on its SD card).
+- Frosted cards had square corners since the frost dim (2026-10-29): the frost fades in over their rounded edges.
 
 ### Performance
 - The guard costs ~1.3 ms a frame (cached on the frame and the pixels under it, per ink box).

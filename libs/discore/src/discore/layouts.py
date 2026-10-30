@@ -359,10 +359,15 @@ def grid(
 
     return Frame(img, hash=hash_, targets=targets)
 
-def cut_alpha(left: Image.Image, right: Image.Image, threshold: int = 1, opaque: bool = False) -> Image.Image:
+@lru_cache(maxsize=8)
+def _cut_lut(threshold: int, soft: int) -> list[int]:
+    return [0 if a <= threshold else min(255, a * 255 // soft) if soft else 255 for a in range(256)]
+
+def cut_alpha(left: Image.Image, right: Image.Image, threshold: int = 1, opaque: bool = False,
+              soft: int = 0) -> Image.Image:
     '''Makes `left` transparent where `right` is (nearly) transparent, in place.
-    Elsewhere left keeps its alpha, or becomes opaque.'''
-    cut = right.getchannel('A').point([0] * (threshold + 1) + [255] * (255 - threshold))
+    Elsewhere left keeps its alpha, or becomes opaque. Up to `soft` alpha it fades in: antialiased (rounded) edges.'''
+    cut = right.getchannel('A').point(_cut_lut(threshold, soft))
     alpha = Image.new('L', left.size, 255) if opaque else left.getchannel('A')
     left.putalpha(ImageChops.multiply(alpha, cut))
     return left
@@ -457,7 +462,7 @@ def composite_at(
     else:
         raise ValueError('Wrong value for anchor.')
 
-    blend = lambda left, right, threshold=1: cut_alpha(left, right, threshold, opaque=frost < 0)
+    blend = lambda left, right, threshold=1, soft=0: cut_alpha(left, right, threshold, opaque=frost < 0, soft=soft)
     targets += shifted(frame.marks, left + dx, top + dy)
 
     if frost != 0:
@@ -473,7 +478,7 @@ def composite_at(
         
         region = blur_region(dest, (left + dx, top + dy, left + dx  + fw, top + dy + fh), abs(frost))
         region = dimmed(region, frame.image, frame.inks)
-        dest.alpha_composite(blend(region, frame.image), (left + dx, top + dy))
+        dest.alpha_composite(blend(region, frame.image, soft=32), (left + dx, top + dy))
 
     image = guarded(frame, dest, left + dx, top + dy) if guard else frame.image
     dest.alpha_composite(image, (left + dx, top + dy))
@@ -580,7 +585,7 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
     if frost > 0:
         region = blur_region(dest, (x + dx, y + dy, x + dx + fw, y + dy + fh), frost)
         region = dimmed(region, frame.image, frame.inks)
-        dest.alpha_composite(cut_alpha(region, frame.image, threshold=0), (x + dx, y + dy))
+        dest.alpha_composite(cut_alpha(region, frame.image, threshold=0, soft=32), (x + dx, y + dy))
 
     dest.alpha_composite(guarded(frame, dest, x + dx, y + dy) if guard else frame.image, (x + dx, y + dy))
     return Frame(dest, hash=('place_at', anchor, x, y, frost, frame, under), targets=targets + shifted(frame.marks, x + dx, y + dy))
