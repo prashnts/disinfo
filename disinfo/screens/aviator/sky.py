@@ -1498,4 +1498,4 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     img = to_pil(surface)
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')
-    return Frame(img, targets=tuple(targets)).tag(('aviator.sky', fs.config.name))
+    return Frame(img, targets=tuple(targets)).pictured().tag(('aviator.sky', fs.config.name))

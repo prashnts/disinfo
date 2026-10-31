@@ -67,7 +67,7 @@ def astronomical_info(fs: FrameState):
         ], gap=1, align='center')
         infos.append(sunset_info)
     return hstack([
-        composite_at(phase_value, moon_phase_image(s.moon_phase), 'br'),
+        composite_at(phase_value, moon_phase_image(s.moon_phase).pictured(), 'br'),
         vstack(infos, gap=1),
     ], gap=2, align='center')
 

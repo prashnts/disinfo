@@ -103,6 +103,16 @@ def clamp(value, min_value=0, max_value=1):
     return max(min(value, max_value), min_value)
 
 def sun_times(t, config):
+    # suncalc + pandas: ~1 ms. The sun moves 0.125° in 30 s.
+    key = (int(t.timestamp()) // 30, config.longitude, config.latitude)
+    if (got := _sun.get(key)) is None:
+        _sun.clear()
+        got = _sun[key] = _sun_times(t, config)
+    return got
+
+_sun = {}
+
+def _sun_times(t, config):
     times = get_times(t.in_tz('UTC'), config.longitude, config.latitude)
     position = get_position(t.in_tz('UTC'), config.longitude, config.latitude)
     utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items() if not str(v) == 'NaT'}

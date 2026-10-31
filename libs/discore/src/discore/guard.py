@@ -8,11 +8,9 @@ import numpy as np
 from PIL import Image, ImageChops
 from PIL.Image import ImagePointHandler
 
-from .color import Color, palette, glare, lstar as lstar_of
+from .color import Color, palette, lstar as lstar_of
 
 enabled = True
-# ΔL* a stroke needs from what's under it.
-floor = {1: 45, 2: 35}
 flat = 30           # p90 - p10 L* under the glyphs: flat below
 grainy = 5          # mean |ground - its blur| L*, at the stroke's scale around the glyphs: grainy over
 opaque = 0.9        # what's under it must be this opaque: on a transparent frame it isn't known yet
@@ -61,14 +59,17 @@ def _ground(under: np.ndarray, top: np.ndarray, glyphs: np.ndarray) -> tuple[np.
     return lin, a[..., 0]
 
 
-def guarded(f, dest: Image.Image, x: int, y: int) -> Image.Image:
+def guarded(f, dest: Image.Image, x: int, y: int, pictures: tuple | None = None) -> Image.Image:
     '''The Frame f's image as it should go at (x, y) on dest (before it's there), its inks recolored. A copy, 1 px
-    larger with a shadow, or its image when nothing changes.
+    larger with a shadow, or its image when nothing changes. With dest's Picture marks known, only the inks over
+    them; unknown (None, a bare image), all.
 
     Cached on its pixels (not its hash: a scroller's or a transition's frame keeps it while it moves) and on the
     ground coarsely (under a card on an animated sky it changes every frame; only the frame's px are recolored).'''
     frame, inks = f.image, f.inks
     if not enabled or not inks or x < 0 or y < 0:      # off an edge: it's coming in, it moves
+        return frame
+    if pictures is not None and not (inks := tuple(k for k in inks if _over(k, x, y, pictures))):
         return frame
     W, H = dest.size
     fw, fh = frame.size
@@ -80,12 +81,12 @@ def guarded(f, dest: Image.Image, x: int, y: int) -> Image.Image:
     centers = [c for k in inks if 0 <= (c := (x + k.x + k.w // 2, y + k.y + k.h // 2))[0] < W and 0 <= c[1] < H]
     if dest.mode == 'RGBA' and all(dest.getpixel(c)[3] < 255 * opaque for c in centers):
         return frame
+    # Most inks: on their own fill, or a floor over the brightest px under them.
+    if not (inks := [k for k in inks if not _reads(k, frame, dest, x, y)]):
+        return frame
     crop = dest.crop((x0, y0, x1, y1))
     crop = crop if crop.mode == 'RGBA' else crop.convert('RGBA')
     if crop.getextrema()[3][1] < 255 * opaque:
-        return frame
-    # Most inks: on their own fill, or a floor over the brightest px under them.
-    if not (inks := [k for k in inks if not _reads(k, frame, crop, x - x0, y - y0)]):
         return frame
     coarse = (crop.reduce(4) if min(crop.size) >= 4 else crop).tobytes().translate(_coarse)
     marks = tuple((k.x, k.y, k.w, k.h, k.color, k.stroke) for k in inks)
@@ -95,6 +96,10 @@ def guarded(f, dest: Image.Image, x: int, y: int) -> Image.Image:
             _guarded.clear()
         done = _guarded[key] = _guard(frame, inks, crop, x - x0, y - y0)
     return done
+
+def _over(k, x: int, y: int, pictures: tuple) -> bool:
+    x0, y0 = x + k.x, y + k.y
+    return any(x0 < p.x + p.w and p.x < x0 + k.w and y0 < p.y + p.h and p.y < y0 + k.h for p in pictures)
 
 _guarded = {}
 _inked = {}
@@ -109,22 +114,39 @@ class _Lut(ImagePointHandler):
     def point(self, im: Image.Image) -> Image.Image:
         return im._new(im.im.point(self.lut, None))
 
+def _l(color: str) -> float:
+    if (l := _ls.get(color)) is None:
+        l = _ls[color] = Color(color).L
+    return l
+
+_ls = {}
+_lin8 = _lut.tolist()
+
 def need(k) -> float:
     '''The ΔL* an ink needs from its ground: the floor, or what a dim light ink (fg3) has on black.'''
-    f, l = floor.get(k.stroke, floor[1]), Color(k.color).L
+    f, l = palette().floor[k.stroke > 1], _l(k.color)
     return min(f, l) if l >= dark else f
 
-def _reads(k, frame: Image.Image, crop: Image.Image, fx: int, fy: int) -> bool:
+def _card(k, frame: Image.Image) -> float:
+    # Its least opaque px: the card's own alpha. Once per frame image (the same while it's cached).
+    key = (id(frame), k.x, k.y, k.w, k.h)
+    if (got := _cards.get(key)) is None or got[0] is not frame:
+        if len(_cards) > 2048:
+            _cards.clear()
+        got = _cards[key] = (frame, frame.crop((k.x, k.y, k.x + k.w, k.y + k.h)).getextrema()[3][0] / 255)
+    return got[1]
+
+_cards = {}
+
+def _reads(k, frame: Image.Image, dest: Image.Image, x: int, y: int) -> bool:
     # On its own fill (a pill), or light enough over the brightest px under it, through the frame's card.
-    box = (k.x, k.y, k.x + k.w, k.y + k.h)
-    card = frame.crop(box).getextrema()[3][0] / 255     # its least opaque px: the card's own alpha
-    if card >= opaque:
+    if (card := _card(k, frame)) >= opaque:
         return True
-    l = Color(k.color).L
-    if l < dark:
+    if (l := _l(k.color)) < dark:
         return False
-    top = max(e[1] for e in crop.crop((fx + box[0], fy + box[1], fx + box[2], fy + box[3])).getextrema()[:3])
-    return l - float(lstar(_lut[top] * (1 - card) * np.ones(3))) >= need(k)
+    box = (x + k.x, y + k.y, x + k.x + k.w, y + k.y + k.h)
+    top = max(e[1] for e in dest.crop(box).getextrema()[:3])
+    return l - lstar_of(_lin8[top] * (1 - card)) >= need(k)
 
 def _guard(frame: Image.Image, inks: tuple, crop: Image.Image, fx: int, fy: int) -> Image.Image:
     # crop: dest under the frame and 2 px around, the frame at (fx, fy) in it. Each ink in its own box.
@@ -197,7 +219,8 @@ def _ink(k, under: np.ndarray, top: np.ndarray, own: np.ndarray, glyphs: np.ndar
         px[..., :3] = np.where(g[..., None], _srgb(ink), px[..., :3])
         return px, (px != top).any(-1)
     # Light on the ground, no more glare than its stroke may add to it; a dark copy 1 px down-right.
-    top_l = lstar_of(min(glare / k.stroke + float(_y(np.array(mid))), 1)) if palette().glare else 92
+    cap = palette().glare
+    top_l = lstar_of(min(cap / k.stroke + float(_y(np.array(mid))), 1)) if cap else 92
     px[..., :3] = np.where(g[..., None], _srgb(toward(base, np.array(max(c.L, min(mid + f, top_l, 92))))), px[..., :3])
     s = np.zeros_like(own)
     s[1:, 1:] = (own * top[..., 3] / 255)[:-1, :-1]
@@ -213,16 +236,17 @@ def dimmed(region: Image.Image, frame: Image.Image, inks: tuple) -> Image.Image:
     '''The blurred ground of a frost panel, dimmed so its p90 sits a floor under the panel's light text.
     Only what the panel's own background doesn't already dim; between the palette's dim floor and cap.'''
     p = palette()
-    light = [k for k in inks if Color(k.color).L > 50]
+    light = [k for k in inks if _l(k.color) > 50]
     if not enabled or not light or region.size != frame.size:
         return region
-    target = min(Color(k.color).L - need(k) for k in light)
+    target = min(_l(k.color) - need(k) for k in light)
     # Blurred: a quarter of the px says as much.
     small = (lambda im: im.reduce(4)) if min(frame.size) >= 8 else (lambda im: im)
     under, top = small(region), small(frame)
     if _lstar8[max(e[1] for e in under.getextrema()[:3])] <= target:
         return region
-    key = (under.tobytes(), top.tobytes(), under.size, target, p.dim)
+    # The ground coarsely: under a moving sky it changes every frame, the dim (in steps) hardly.
+    key = (under.tobytes().translate(_coarse), top.tobytes(), under.size, target, p.dim)
     if (d := _dims.get(key)) is None:
         if len(_dims) > 64:
             _dims.clear()

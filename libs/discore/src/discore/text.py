@@ -59,8 +59,8 @@ class TextStyle:
 @lru_cache(maxsize=1024)
 def _resolved(style: TextStyle, p: Palette) -> TextStyle:
     color = resolve(style.color)
-    if style.color.startswith('@') and p.glare:
-        color = capped(color, style.ttf.stem)
+    if style.color.startswith('@') and (cap := p.hero_glare if style.color.startswith('@hero') else p.glare):
+        color = capped(color, style.ttf.stem, cap)
     return dc_replace(style, color=color, outline_color=resolve(style.outline_color))
 
 # Used as a fallback image when the text value is missing.

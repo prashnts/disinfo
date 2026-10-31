@@ -20,8 +20,8 @@ from ..utils.drawer import draw_loop
 from .aviator import sky
 
 
-# The cat: pixel art facing right, cat_block px a pixel. Mine one day, nyan for now.
-cat_path, cat_block, cat_step = 'assets/raster/nyan-cat2.gif', 8, 0.07
+# The cat: pixel art facing right, cat_block px a pixel. Malow (assets/raster/malow.py).
+cat_path, cat_block, cat_step = 'assets/raster/malow.gif', 8, 0.07
 
 palettes = {
     'rainbow': ('#FF1A1A', '#FF9A00', '#FFF000', '#3CFF00', '#0AA5FF', '#7A3CFF'),
@@ -48,6 +48,7 @@ def _frames(path: str, block: int) -> list[Image.Image]:
     return frames
 
 cat_frames = _frames(cat_path, cat_block)
+cat_fit = 21 / cat_frames[0].height      # the sizes below were made for nyan, 21 px tall
 
 @lru_cache(maxsize=512)
 def cat(i: int, k: int, flip: bool = False, tilt: int = 0) -> Frame:
@@ -226,7 +227,7 @@ def composer(fs: FrameState):
     w, h, now = fs.config.width, fs.config.height, fs.tick
     roof = roofline(fs)
     kind = 'city' if roof is not None else {'same': 'wander', 'pair': 'wander', 'run': 'stairs', 'mirror': 'wave'}[mo.kind]
-    k = 1 + min(w, h) // 160 + (mo.level >= 0.7) - (roof is not None and min(w, h) > 128)
+    k = max(1, round(cat_fit * (1 + min(w, h) // 160 + (mo.level >= 0.7) - (roof is not None and min(w, h) > 128))))
     cw, ch = cat(0, k).width, cat(0, k).height
 
     f = flights.get(fs.config.name)
@@ -262,7 +263,7 @@ def composer(fs: FrameState):
     vx, vy = f.pos[0] - back[0], f.pos[1] - back[1]
     flip = vx < 0 if abs(vx) > 0.01 else f.dir < 0
     tilt = int(max(-45, min(45, round(math.degrees(math.atan2(-vy, abs(vx) + 1e-6)) / 15) * 15))) if kind != 'stairs' else 0
-    i, spots = int(now / cat_step), []
+    i, spots = int(now / cat_step) % len(cat_frames), []
     for mirror in ((False, True) if twin else (False,)):
         c = cat(i, k, flip != mirror, -tilt if flip != mirror else tilt)
         x = w - f.pos[0] if mirror else f.pos[0]

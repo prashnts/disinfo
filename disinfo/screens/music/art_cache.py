@@ -62,7 +62,7 @@ def _load(digest: str) -> Frame | None:
     if not data:
         return None
     with io.BytesIO(data) as fp:
-        return Frame(Image.open(fp).convert('RGBA'), ('music.art', digest))
+        return Frame(Image.open(fp).convert('RGBA'), ('music.art', digest)).pictured()
 
 
 def recent(entity_id: str) -> list[Frame]:

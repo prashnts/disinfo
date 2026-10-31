@@ -25,7 +25,7 @@ s_month     = TextStyle(color=gray.hex, font=fonts.dansk)
 s_day_flip  = TextStyle(color='@fg2', font=fonts.px_op__r)
 s_date_flip = TextStyle(color='@fg2', font=fonts.dansk, trim=(0, 0, 0, 0))
 s_time_flip = dc_replace(fonts.roles.display, trim=(0, 0, 0, 0))
-s_second_flip = TextStyle(color=light_blue.darken(.1).hex, font=fonts.scientifica__i)
+s_second_flip = TextStyle(color='@hero2', font=fonts.dansk, trim=(0, 0, 0, 0))
 s_minute    = TextStyle(color=gray.hex, font=fonts.px_op__l)
 s_seconds   = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
 s_sticky    = TextStyle(color=light_blue.darken(.1).hex, font=fonts.bitocra7)
@@ -210,7 +210,7 @@ def flip_digital_clock(fs: FrameState, seconds=True, align='right'):
     ], gap=0)
     
     if seconds:
-        ss = _flip_text(fs, t.strftime('%S'), styled_text(t.strftime('%S'), s_colon_2[0]), 'flip-top', together=True, background=bg)
+        ss = _flip_text(fs, t.strftime('%S'), styled_text(t.strftime('%S'), s_second_flip), 'flip-top', together=True, background=bg)
         if (bot := robot()):
             ss = hstack([bot, ss] if align == 'right' else [ss, bot], gap=3)
         return vstack([hhmm, ss], gap=2, align=align)

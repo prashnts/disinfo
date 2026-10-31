@@ -36,8 +36,15 @@ class Ink(NamedTuple):
     color: str
     stroke: int = 1
 
-# Marks: the Targets and Inks a frame carries, moved along by the layouts.
-Mark = Union[Target, Ink]
+class Picture(NamedTuple):
+    '''A box of a frame where it shows a picture (a photo, the sky, a map): the guard looks at text only over these.'''
+    x: int
+    y: int
+    w: int
+    h: int
+
+# Marks: the Targets, Inks and Pictures a frame carries, moved along by the layouts.
+Mark = Union[Target, Ink, Picture]
 
 def shifted(marks: tuple, dx: int, dy: int) -> tuple:
     return tuple(m._replace(x=m.x + dx, y=m.y + dy) for m in marks) if dx or dy else marks
@@ -45,7 +52,7 @@ def shifted(marks: tuple, dx: int, dy: int) -> tuple:
 def scaled(marks: tuple, sx: float, sy: float) -> tuple:
     # Inks don't scale: a resized glyph isn't one.
     return tuple(t._replace(x=round(t.x * sx), y=round(t.y * sy), w=round(t.w * sx), h=round(t.h * sy))
-                 for t in marks if isinstance(t, Target))
+                 for t in marks if not isinstance(t, Ink))
 
 def clipped(marks: tuple, w: int, h: int) -> tuple:
     '''The marks cut to (0, 0, w, h); what's left outside goes.'''
@@ -94,6 +101,14 @@ class Frame(UIElement):
         if known is None or known[0] is not marks:
             known = self._inks = (marks, tuple(m for m in marks if isinstance(m, Ink)))
         return known[1]
+
+    @property
+    def pictures(self) -> tuple[Picture, ...]:
+        return tuple(m for m in self.marks if isinstance(m, Picture))
+
+    def pictured(self) -> 'Frame':
+        '''Marks it all as a picture: text placed over it is guarded.'''
+        return Frame(self.image, hash=self.hash, targets=self.marks + (Picture(0, 0, self.width, self.height),))
 
     def inked(self, color: str = '#ffffff', stroke: int = 1) -> 'Frame':
         '''Marks its opaque pixels as one ink (an icon), meant in color.'''

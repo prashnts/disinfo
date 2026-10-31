@@ -158,6 +158,8 @@ class Palette:
     fg: Color = Color('#a6a8ae')        # values, body
     fg2: Color = Color('#83868c')       # labels, display
     fg3: Color = Color('#5b5e64')       # units, ticks
+    hero: Color = Color('#83868c')      # the time
+    hero2: Color = Color('#5b5e64')     # its seconds
     line: Color = Color('#ffffff30')
     card: Color = Color('#00000088')
     scrim: Color = Color('#000000b0')
@@ -181,8 +183,11 @@ class Palette:
     # Frost: blur radius, and the dim between its floor and cap solved to keep the text readable.
     frost: float = 1.8
     dim: tuple[float, float] = (0.08, 0.7)
-    # The glare cap applies (LEDs bloom, AMOLED and LCD don't).
-    glare: bool = True
+    # The glare cap, luminance x stroke (LEDs bloom, AMOLED and LCD don't: 0, off); the hero's own.
+    glare: float = glare
+    hero_glare: float = 0.7
+    # The ΔL* a 1 px and a 2 px stroke need from what's under it (guard.py).
+    floor: tuple[int, int] = (45, 35)
 
     def __hash__(self) -> int:
         # Hashed for every cached style: once.

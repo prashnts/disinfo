@@ -107,7 +107,7 @@ def _slide(art: Frame) -> Frame:
     w, h = SLIDE_SIZE
     img = art.resize(SLIDE_SIZE, ratio_fn=max).image
     left, top = (img.width - w) // 2, (img.height - h) // 2
-    return Frame(img.crop((left, top, left + w, top + h)), ('np.recent', art.hash))
+    return Frame(img.crop((left, top, left + w, top + h)), ('np.recent', art.hash)).pictured()
 
 
 @throttle(30_000)

@@ -423,12 +423,12 @@ def composite_at(
     if not frame:
         return dest
 
-    targets = ()
+    targets, pictures = (), None
     # What's under it, where and how: a frame moved, or over another picture, is another one. An image's pixels unknown: its size.
     under = dest.hash if isinstance(dest, Frame) else ('image', dest.size)
     key = ('composite_at', anchor, dx, dy, frost, behind, vibrant, frame, under)
     if isinstance(dest, Frame):
-        targets = dest.marks
+        targets, pictures = dest.marks, dest.pictures
         dest = dest.image.copy()
 
     original = dest
@@ -480,7 +480,7 @@ def composite_at(
         region = dimmed(region, frame.image, frame.inks)
         dest.alpha_composite(blend(region, frame.image, soft=32), (left + dx, top + dy))
 
-    image = guarded(frame, dest, left + dx, top + dy) if guard else frame.image
+    image = guarded(frame, dest, left + dx, top + dy, pictures) if guard else frame.image
     dest.alpha_composite(image, (left + dx, top + dy))
 
     if behind:
@@ -553,10 +553,10 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
     if not frame:
         return dest
 
-    targets = ()
+    targets, pictures = (), None
     under = dest.hash if isinstance(dest, Frame) else ('image', dest.size)
     if isinstance(dest, Frame):
-        targets = dest.marks
+        targets, pictures = dest.marks, dest.pictures
         dest = dest.image.copy()
 
     fw = frame.width
@@ -587,7 +587,7 @@ def place_at(frame: Frame, dest: Union[Image.Image, Frame], x: int, y: int, anch
         region = dimmed(region, frame.image, frame.inks)
         dest.alpha_composite(cut_alpha(region, frame.image, threshold=0, soft=32), (x + dx, y + dy))
 
-    dest.alpha_composite(guarded(frame, dest, x + dx, y + dy) if guard else frame.image, (x + dx, y + dy))
+    dest.alpha_composite(guarded(frame, dest, x + dx, y + dy, pictures) if guard else frame.image, (x + dx, y + dy))
     return Frame(dest, hash=('place_at', anchor, x, y, frost, frame, under), targets=targets + shifted(frame.marks, x + dx, y + dy))
 
 def tabular(table: list[list[Optional[Frame]]]):

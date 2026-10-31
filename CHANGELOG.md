@@ -36,6 +36,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ## [Unreleased]
 
 ### Added
+- **Malow, the cat**: the 22:22 moments' nyan is now Malow, grey tabby and white, in nyan's style (`assets/raster/malow.py` draws `malow.gif`), and `malow-stand.gif`, up on her hind legs for her food. Sized as nyan was; the cat's sprite cache no longer misses every frame.
+- **Ink follows the room**: Sensei's lux (the desk's sensor without it) picks a band, night, room or bright; each lifts the inks, bright to white with livelier meaning colors and a higher floor over pictures. The time and its seconds get their own tokens (`hero`, `hero2`).
 - **Color & type system, v1** (`discore`): `Color` (a hex string with L*, luminance, mix), `Palette` tokens (`'@fg'`, `'@ok/a3'`) resolved when drawn, per screen (scheme `dark`/`vibrant`, profile `led`/`amoled`/`lcd`, runtime overrides in `disinfo.palette`); the glare cap on token inks by the font's stem; shapes (card, inset, pill, chip, scrim, tinted); type roles (`fonts.roles`); font fallback chains (bitocra7 → fusion8 → unifont), Galmuri11 Condensed.
 - **Text stays readable over pictures**: text carries its glyphs (`Ink` marks, moved along like targets); where it's placed the guard leaves it, lifts or darkens it (flat ground) or adds a dark 1 px shadow (busy: photos, the map). Frost panels dim as much as their text needs.
 - **Timers, everywhere**: known timers (an icon, a duration) in Redis (`di.timers.known`), saved from the dial or the entry; the newest timer first; a long one boops its last 7 s, then rings; done, it counts on (+02:13) a while, minutes for a cake; repeat; a turn starts from the timer in front (a pref). A timers tab on the web page (`/timers`). A touch or a turn while one rings mutes it on every screen (`buzzer` `stop`). The dial: turn and the time shows (steeper steps, a pause for the exact second), the known ones round the edge, a pill lending the dial to pick or +/-; its timers kept on the device, rung there. The entry: a pill and a sheet of chips and known timers.
@@ -94,6 +96,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Frosted cards had square corners since the frost dim (2026-10-29): the frost fades in over their rounded edges.
 
 ### Performance
+- Back to before the color system: the guard looks only at text over pictures (`Picture` marks: sky, map, moon, covers) and checks cheaper; frost's dim and the sun's times cached. Compose −1.6 to −2.3 ms on the PC (desk 9.0 → 7.5, entry 11.6 → 9.6).
 - The guard costs ~1.3 ms a frame (cached on the frame and the pixels under it, per ink box).
 - Renderers on the server (Pi 5, awake): the timer no longer scans Redis each frame, nor the plane cards read it; frost reuses its blur while the pixels under it are the same. Compose salon 22 → 13 ms, desk 29 → 15 ms, entry 16 → 13 ms: within 48 and 42 fps now.
 - HUB75 clients draw only what changed, and nothing when nothing did, the salon's CPU 125 → 57%, the desk's 117 → 56% (on `/ws2` now). What's left is the panel's own refresh.

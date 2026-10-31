@@ -160,7 +160,7 @@ class roles:
     title = TextStyle(font=cozette, color='@fg')
     large = TextStyle(font=galmuri9, color='@fg2')
     large_c = TextStyle(font=galmuri11_c, color='@fg2')
-    display = TextStyle(font=s16x8, color='@fg2')
+    display = TextStyle(font=s16x8, color='@hero')
 
 
 fonts.default = ttpixels

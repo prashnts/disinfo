@@ -468,7 +468,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')
     # Tagged: it moves every frame, the fade in is only for when it shows up.
-    return Frame(img, targets=tuple(targets)).tag(('aviator.radar', fs.config.name))
+    return Frame(img, targets=tuple(targets)).pictured().tag(('aviator.radar', fs.config.name))
 
 
 def plane_marks(fs: FrameState) -> list[tuple[float, float, float]]:

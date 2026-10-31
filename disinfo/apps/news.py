@@ -280,7 +280,7 @@ def _news_deck(fs: FrameState):
     # Fixed cover box (cropped to content by composite) so the image isn't rescaled while content resizes.
     cover_size = (max(COVER_SIZE[0], content.width), max(COVER_SIZE[1], content.height))
     f_img = (Resize(uname('cover'))
-        .mut(Frame(st.cover_im(cover_size).image).tag(('storycover', st.pk)))
+        .mut(Frame(st.cover_im(cover_size).image).pictured().tag(('storycover', st.pk)))
         .draw(fs))
     s = composite_at(f_emoji, content.blank(), 'tr', dx=-3, dy=3)
     s = composite_at(f_img, s, 'mm', behind=True, vibrant=0.5)

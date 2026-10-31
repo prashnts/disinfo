@@ -51,7 +51,7 @@ def test_stack_fill():
     colors = {'a': (255, 0, 0, 255), 'b': (0, 255, 0, 255), 'c': (0, 0, 255, 255)}
     ws = [Widget(n, solid(c, (10, 10)), transition_duration=0.01) for n, c in colors.items()]
     t0 = fs.tick + 1
-    which = lambda p: p.index(max(p[:3])) if max(p[:3]) > 200 else None
+    which = lambda p: p.index(max(p[:3])) if p[3] == 255 and max(p[:3]) > 200 else None   # the card, not its border
     cards = lambda im: [which(im.getpixel((6, y))) for y in range(im.height)]
     runs = lambda c: [k for i, k in enumerate(c) if k is not None and (i == 0 or c[i - 1] != k)]
     stack = Stack('t.fill', StackStyle(size=80, fill=True)).mut(ws)
@@ -296,7 +296,7 @@ def test_targets_follow_the_layouts():
     assert boxes(div(b, padding=2)) == [(2, 2, w, h, 'b')]
     assert boxes(composite_at(b, solid((0, 0, 0, 255), (50, 50)), 'br')) == [(50 - w, 50 - h, w, h, 'b')]
     assert boxes(place_at(b, solid((0, 0, 0, 255), (50, 50)), 10, 20, 'tl')) == [(10, 20, w, h, 'b')]
-    assert boxes(b.trim(left=1, upper=2)) == [(-1, -2, w, h, 'b')]
+    assert boxes(b.trim(left=1, upper=2)) == [(0, 0, w - 1, h - 2, 'b')]                 # clipped to the frame
     assert boxes(b.rescale(2)) == [(0, 0, 2 * w, 2 * h, 'b')]
 
 def test_nothing_to_touch_while_it_moves():
