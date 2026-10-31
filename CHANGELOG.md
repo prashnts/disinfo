@@ -78,6 +78,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - **The web page's controls** in a sidebar (or a window of their own), in tabs: views, sky, radar, shown, dev. A screen picked (above, or under its frame) gets its own views, sky, map and zen; "all" sets every screen. The sky tab: a compass of what the window sees (landmarks, waypoints, sun, moon, planes; drag to turn, tap a plane to follow), a scene of the demo held, the sky outside; what each screen shows now.
 - Sliding digits go the way the value went: higher comes in from the top, lower from the bottom. The printer, the plane cards and the timer use it; the clocks keep theirs.
 - The map's land reaches 80 km around home, past the planes (it ended in a 50 km square); the old one shows until it's fetched.
+- Planes' trails: 8 min by default, up to 20 (the table keeps 20, thinned past 5 min: no bigger); darker and stronger in a light sky, contrails a bit more often, longer and whiter. No plane cards in the solar view's stacks unless pressed. The sky view's horizon higher: more of the roofs.
 - The side stack scrolls no further than its end: the cards before the selected one stay in view, all of them, held still, when they fit (`discore`: `StackStyle(fill=)`).
 
 ### Fixed

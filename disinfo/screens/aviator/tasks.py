@@ -15,8 +15,10 @@ TRAIL_KEY = 'di.aviator.trail'        # s, set from the web page: how long the r
 MAX_ALT_KEY = 'di.aviator.max_alt'    # m, set from the web page: planes above it are left out
 # Only planes within this of home are kept, the receiver sees ~300 km around.
 keep_km = 60
-trail_every = 5         # s between trail points
-trail_len = 120         # points: 10 minutes
+trail_every = 5         # s between trail points, the last few minutes; older ones thinned
+trail_fine = 300        # s
+trail_coarse = 15       # s between the older points
+trail_max = 1200        # s kept: the web slider's top. ~120 points
 forget_after = 60       # s without a position
 # Overhead: degrees above the horizon, now or at the closest approach within lookahead. Seen from anywhere.
 overhead_deg = 60       # (the old rule: elevation; unused now)
@@ -26,7 +28,7 @@ passed_for = 30         # s a pass stays 'overhead' after it
 # Seen from the window: in its bearings, above the roofs, not too far. The nearest ones are watched.
 min_elev = 2
 radius_km = 40
-trail_s = 180            # the radar's trails: the table keeps trail_len * trail_every = 10 minutes
+trail_s = 480            # the radar's trails by default: the table keeps trail_max
 max_alt_m = 13000       # the slider's top: no filter
 max_watched = 2
 # A queue: planes low around an airport, climbing or descending.
@@ -90,6 +92,15 @@ def plane_of(p: dict, at: float) -> dict | None:
         'elev': round(elevation(alt, dist), 1),
     }
 
+def thin(trail: list, now: float) -> list:
+    # Every point the last trail_fine s, one per trail_coarse before, none past trail_max.
+    out = []
+    for p in trail:
+        if now - p[0] > trail_max or out and now - p[0] > trail_fine and p[0] - out[-1][0] < trail_coarse:
+            continue
+        out.append(p)
+    return out
+
 def update(now: float, aircraft: list):
     for p in aircraft:
         plane = plane_of(p, now)
@@ -98,7 +109,7 @@ def update(now: float, aircraft: list):
         prev = table.get(plane['hex'], {})
         trail = prev.get('trail', [])
         if not trail or plane['at'] - trail[-1][0] >= trail_every:
-            trail = (trail + [[round(plane['at'], 1), plane['lat'], plane['lon'], plane['alt']]])[-trail_len:]
+            trail = thin(trail + [[round(plane['at'], 1), plane['lat'], plane['lon'], plane['alt']]], plane['at'])
         plane['trail'] = trail
         # The flight and db fields come and go between messages.
         for k in ('flight', 'r', 't', 'desc', 'cat', 'squawk'):

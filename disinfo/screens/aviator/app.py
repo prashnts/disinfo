@@ -55,8 +55,8 @@ landmark_px = (4, 1.5)  # dot size at the resting view, near to far; it grows wi
 landmark_max = 8
 landmark_far = 20       # km: the size of the farthest
 trail_alpha = 0.4
-# The table keeps 10 minutes, the background shows the last few: st.trail, from the web page.
-watched_fade = 600      # the watched planes show their whole approach
+# The table keeps 20 minutes, the background shows the last few: st.trail, from the web page.
+watched_fade = 600      # the watched planes show their whole approach (st.trail if longer)
 ahead = 120             # s of the path ahead of the watched planes, dashed
 plane_alpha = 0.8
 plane_outline = (0, 0, 0, 0.7)
@@ -406,7 +406,7 @@ def radar(fs: FrameState, clear: tuple | None = None) -> Frame:
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         watched = hex in st.watched or hex in opened
-        fade = watched_fade if watched else st.trail
+        fade = max(watched_fade, st.trail) if watched else st.trail
         alpha = 2 * trail_alpha if watched else trail_alpha
         trail = p['trail']
         for (_, la0, lo0, _), (t1, la1, lo1, alt1) in zip(trail, trail[1:]):

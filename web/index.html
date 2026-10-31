@@ -387,7 +387,7 @@
             const [heldAt, setHeldAt] = useState(0)
             const live = useLive()
             const go = (action, p, end) => live(action, {...p, screen: scope}, end)
-            useEffect(() => { setH(pick(set.horizon, scope, 0.6) || 0.6); setFloors(pick(set.floors, scope, 0)) }, [scope, set])
+            useEffect(() => { setH(pick(set.horizon, scope, 0.5) || 0.5); setFloors(pick(set.floors, scope, 0)) }, [scope, set])
             if (!sky) return html`<div class="tab"><small>loading…</small></div>`
 
             const cur = sky.live[onSky(sky, scope) ? scope : SCREENS.map(s => s[0]).find(s => scope === 'all' && onSky(sky, s))]
@@ -464,7 +464,7 @@
                 <h2>planes <${All}/></h2>
                 <${Range} label="radius" min="5" max="60" step="5" value=${km} show=${`${km} km`} onInput=${setKm} onChange=${v => send('aviator.radius', {km: v})}/>
                 <${Range} label="max alt" min="500" max="13000" step="500" value=${alt} show=${alt >= 13000 ? 'all' : `${alt} m`} onInput=${setAlt} onChange=${v => send('aviator.max_alt', {m: v})}/>
-                <${Range} label="trails" min="1" max="10" step="1" value=${trail} show=${`${trail} min`} onInput=${setTrail} onChange=${v => send('aviator.trail', {s: v * 60})}/>
+                <${Range} label="trails" min="1" max="20" step="1" value=${trail} show=${`${trail} min`} onInput=${setTrail} onChange=${v => send('aviator.trail', {s: v * 60})}/>
 
                 <h2>map <${Own} d=${set.map_up} scope=${scope}/></h2>
                 <div class="row">

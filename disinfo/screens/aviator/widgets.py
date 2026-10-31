@@ -180,6 +180,9 @@ def tile(fs: FrameState, planes: list[dict]) -> Frame:
 
 def planes(fs: FrameState) -> list[Widget]:
     # A card for the planes passing overhead and the one tapped, a tile for the others seen from the window.
+    # None in the solar view's stacks, unless pressed.
+    if view_mode(fs) == 'solar' and not shown.is_pressed(fs, 'planes'):
+        return []
     k = looks(fs)
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
@@ -192,8 +195,8 @@ def planes(fs: FrameState) -> list[Widget]:
     seen = [st.planes[h] for h in dict.fromkeys([*overhead, *st.watched]) if h in st.planes and h not in carded]
     top = on_top(fs)
     # The planes seen from the window, attached under the card (on its own without one). Not 'aviator.<hex>': the
-    # radar follows the cards only. The solar view keeps to the planes passing overhead: no tile.
-    seen = tile(fs, seen) if seen and view_mode(fs) != 'solar' else None
+    # radar follows the cards only.
+    seen = tile(fs, seen) if seen else None
     # After the other cards (the printer's, the music's): they take the stack only when tapped.
     # On top of the stack, they bring the radar behind (the map or the sky).
     def widget(h: str) -> Widget:

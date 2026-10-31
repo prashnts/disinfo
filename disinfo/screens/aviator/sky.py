@@ -29,8 +29,8 @@ from .utils import airports, local_xy, bearing
 from . import app, astro, skylook, skyline, weather, lightning, hand
 
 
-horizon = 0.6           # of the height, from the top
-tilt = (0.45, 0.8)      # where the horizon may go: up to look down on the roofs, down to look up at a plane
+horizon = 0.5           # of the height, from the top
+tilt = (0.4, 0.75)      # where the horizon may go: up to look down on the roofs, down to look up at a plane
 tilt_sway, tilt_period = 0.06, 340      # the horizon drifts up and down that much while nothing's followed
 elev_gamma = 0.5        # y ~ (elevation / top) ** gamma: the few degrees over the horizon get room
 dip_max = 30            # degrees under the horizon at the bottom of the frame, the same stretch
@@ -47,7 +47,7 @@ home_ground = 47        # m above the sea
 compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 horizon_color = (1, 1, 1, 0.25)
 sun_color = (1, 0.8, 0.4)
-trail_alpha = 0.3       # the numbered planes' trails; the others are dots
+trail_alpha = 0.3       # the numbered planes' trails; the others are dots. Twice that and darker in a light sky
 dot_alpha = 0.45
 sway = 4                # degrees
 sway_period = 200       # s
@@ -1150,8 +1150,13 @@ def cirrus(ctx: cairo.Context, yaw: float, fov: float, w: int, to_px, color: tup
         ctx.line_to(x1, y1)
         ctx.stroke()
 
-contrail_alpha = 0.5
-contrail_life = (25, 600)       # s a trail stays: in dry air, in air saturated over ice
+contrail_alpha = 0.65
+contrail_life = (60, 600)       # s a trail stays: in dry air, in air saturated over ice
+contrail_below = 400            # m under the height they form at: some planes leave one anyway
+
+def sky_light(lk) -> float:
+    # How light the sky is behind the trails, 0..1.
+    return min(max((max(lk.horizon) - 0.3) / 0.4, 0), 1)
 
 def contrails(ctx: cairo.Context, planes, now: float, in_view, to_px, color: tuple, trails: tuple):
     # Behind the planes flying where it's cold enough (skystate.py: the planes' own temperatures, else the model's):
@@ -1159,7 +1164,7 @@ def contrails(ctx: cairo.Context, planes, now: float, in_view, to_px, color: tup
     form, persist, u, v = trails
     life = contrail_life[0] + (contrail_life[1] - contrail_life[0]) * persist
     for p in planes:
-        if p['ground'] or p['alt'] < form:
+        if p['ground'] or p['alt'] < form - contrail_below:
             continue
         pts = [(t, *local_xy(la, lo), alt or p['alt']) for t, la, lo, alt in p['trail'] if now - t < life]
         pts.append((now, *app.position(p, now), p['alt']))
@@ -1372,8 +1377,11 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if 'rain' not in off:
         rain(ctx, yaw, fov, w, hz, to_px, tint)
 
+    sunlit = sky_light(lk)
     if show_planes and seen.trails and 'clouds' not in off:
-        contrails(ctx, st.planes.values(), now, in_view, to_px, skylook.cloud_color(lk), seen.trails)
+        # Whiter than the clouds by day: a light sky behind.
+        white = tuple(c + (1 - c) * 0.8 * sunlit for c in skylook.cloud_color(lk))
+        contrails(ctx, st.planes.values(), now, in_view, to_px, white, seen.trails)
 
     targets, lit = [], []
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
@@ -1391,10 +1399,12 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             ctx.fill()
             continue
         stepped = now // app.fade_step * app.fade_step
-        points = [(t, sky_point(*local_xy(la, lo), alt or 0)) for t, la, lo, alt in p['trail'] if stepped - t < app.watched_fade]
+        fade = max(app.watched_fade, st.trail)
+        dark = tuple(c * (1 - 0.45 * sunlit) for c in color)
+        points = [(t, sky_point(*local_xy(la, lo), alt or 0)) for t, la, lo, alt in p['trail'] if stepped - t < fade]
         for (_, (b0, e0)), (t1, (b1, e1)) in zip(points, points[1:]):
             if in_view(b0) and in_view(b1):
-                ctx.set_source_rgba(*color, trail_alpha * (1 - max(stepped - t1, 0) / app.watched_fade))
+                ctx.set_source_rgba(*dark, trail_alpha * (1 + sunlit) * (1 - max(stepped - t1, 0) / fade))
                 ctx.move_to(*to_px(b0, e0))
                 ctx.line_to(*to_px(b1, e1))
                 ctx.stroke()

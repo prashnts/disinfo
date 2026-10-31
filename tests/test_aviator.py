@@ -119,9 +119,10 @@ def test_hidden_cards_go_in_the_tile(monkeypatch):
     tiled = []
     monkeypatch.setattr(widgets, 'card', lambda fs, p, active: Frame(Image.new('RGBA', (2, 2))))
     monkeypatch.setattr(widgets, 'tile', lambda fs, ps: tiled.append([p['hex'] for p in ps]) or Frame(Image.new('RGBA', (2, 2))))
-    assert [w.name for w in widgets.planes(None)] == ['aviator.b', 'aviator.a']     # the solar view: cards only
-    runtime.up = False      # away: the tapped one's still a card, no tile in the solar view
-    assert [w.name for w in widgets.planes(None)] == ['aviator.b'] and tiled == []
+    assert widgets.planes(None) == []       # the solar view: none, unless pressed
+    runtime.pressed = True
+    assert [w.name for w in widgets.planes(None)][:2] == ['aviator.b', 'aviator.a']
+    runtime.pressed, runtime.up, tiled[:] = False, False, []     # away: the tapped one's still a card
     monkeypatch.setattr(widgets, 'view_mode', lambda fs: 'map')
     assert [w.name for w in widgets.planes(None)] == ['aviator.b'] and tiled == [['a', 'c']]     # under the card
     assert widgets.planes(None)[0].attached[0].frame
@@ -672,3 +673,12 @@ def test_link_glances_at_the_map_then_the_sky(monkeypatch):
     assert link.plane(fs, 'a') == 'a'
     monkeypatch.setattr(link, 'eiffel', lambda fs: True)
     assert link.plane(fs, 'a') is None and link.phase(fs) == 'sky'
+
+def test_trail_thinned():
+    from disinfo.screens.aviator import tasks
+    trail = []
+    for t in range(0, 1800, tasks.trail_every):
+        trail = tasks.thin(trail + [[t, 0, 0, 0]], t)
+    ages = [1795 - p[0] for p in trail]
+    assert max(ages) <= tasks.trail_max and len(trail) <= 130
+    assert all(a - b == tasks.trail_every for a, b in zip(ages, ages[1:]) if a <= tasks.trail_fine)
