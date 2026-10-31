@@ -7,7 +7,7 @@ dependencies = [
     "pillow==13.0.0",
     "numpy",
     "lru-dict>=1.4.1",
-    "pendulum>=2.1.2",
+    "pendulum>=3.3.0",
     "requests>=2.25.1",
     "colour>=0.1.5",
     "cairosvg>=2.7.1",
