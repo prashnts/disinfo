@@ -26,6 +26,7 @@ from .web.telemetry import TelemetryStateManager, act
 from disinfo.redis import publish
 from disinfo.apps.timer import timer_app
 from disinfo.apps.news import news_app
+from disinfo.apps.feeder import feeder_app
 from disinfo.apps.design_demo import design_demo_app
 from disinfo.utils.hass import get_entity
 
@@ -161,6 +162,7 @@ def compose_big_frame(fs: FrameState):
             image = composite_at(stream_widget(fs).draw(fs), image, 'bm')
     image = composite_at(screens.twenty_two.draw(fs), image, 'mm')
     image = composite_at(timer_app(fs).draw(fs), image, 'br' if screen.spot('side').anchor[1] == 'r' else 'bl', frost=2)
+    image = composite_at(feeder_app(fs), image, 'bl' if screen.spot('side').anchor[1] == 'r' else 'br', frost=2)
     if (note := screens.note.draw(fs)):
         image = composite_at(note, image, 'bm', dy=-2)
 

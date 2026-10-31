@@ -705,6 +705,9 @@ class Buzzer:
             return [('D5', 10), ('REST', 10)]
         elif name == 'ok':
             return [('E5', 125)]
+        elif name == 'feed':
+            # Malow's food: a rising C E G, twice.
+            return [('C5', 160), ('E5', 160), ('G5', 160), ('REST', 300)] * 2
         elif name == 'siren':
             return self.generate_siren(440, 880, 4000, 200, 2)
         elif name == 'nokia':

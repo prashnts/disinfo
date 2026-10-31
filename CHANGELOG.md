@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 ## [Unreleased]
 
 ### Added
+- **Malow's feeder**: at her meals (00:30, 08:30, 12:30, 16:30, 20:30, +10 s as the food drops) the desk's buzzer chimes C E G twice, and every screen shows her card, `fed hh:mm`, 20 min (`apps/feeder.py`, `feed` sound in the client).
 - **Malow, the cat**: the 22:22 moments' nyan is now Malow, grey tabby and white, in nyan's style (`assets/raster/malow.py` draws `malow.gif`), and `malow-stand.gif`, up on her hind legs for her food. Sized as nyan was; the cat's sprite cache no longer misses every frame.
 - **Ink follows the room**: Sensei's lux (the desk's sensor without it) picks a band, night, room or bright; each lifts the inks, bright to white with livelier meaning colors and a higher floor over pictures. The time and its seconds get their own tokens (`hero`, `hero2`).
 - **Color & type system, v1** (`discore`): `Color` (a hex string with L*, luminance, mix), `Palette` tokens (`'@fg'`, `'@ok/a3'`) resolved when drawn, per screen (scheme `dark`/`vibrant`, profile `led`/`amoled`/`lcd`, runtime overrides in `disinfo.palette`); the glare cap on token inks by the font's stem; shapes (card, inset, pill, chip, scrim, tinted); type roles (`fonts.roles`); font fallback chains (bitocra7 → fusion8 → unifont), Galmuri11 Condensed.
