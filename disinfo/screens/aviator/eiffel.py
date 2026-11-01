@@ -22,7 +22,7 @@ gold = (1, 0.64, 0.24)
 gold_floor = (1, 0.8, 0.45)
 sparkle = (1, 1, 0.95)
 lattice_px = 90         # this tall and up: the lattice shows, see-through
-beam_turn = 80          # s a turn of the beacon (four beams)
+beam_turn = 80          # s a turn of the beacon (two beams, back to back)
 beam_km = 9             # how far a beam reaches, fading
 beam_fade_km = 2.2
 beam_up = 1.2           # degrees over the horizontal
@@ -136,7 +136,7 @@ def lamp(top: float, base: float) -> float:
 
 def beams(ctx: cairo.Context, x: float, y: float, z: float, now: float, point, to_px, px_rad: float, strength: float,
           w: int):
-    '''The beacon's four beams, x, y km from the eye, z m over the sea: each a cone a little up from the horizontal,
+    '''The beacon's two beams, back to back, x, y km from the eye, z m over the sea: each a cone a little up from the horizontal,
     projected from the eye (sideways, a long sweep over the city; at us, a short one and the lamp flaring), fading
     the farther. point(x, y, alt) -> (bearing, elevation) from the eye; px_rad: the view's px a radian, w its width.'''
     d = math.hypot(x, y)
@@ -147,8 +147,8 @@ def beams(ctx: cairo.Context, x: float, y: float, z: float, now: float, point, t
     ss = np.r_[0, np.geomspace(0.01, beam_km, 30)]
     up, spread = math.radians(beam_up), math.radians(beam_spread) / 2
     flare = 0
-    for j in range(4):
-        phi = math.radians(360 * now / beam_turn + 90 * j)
+    for j in range(2):
+        phi = math.radians(360 * now / beam_turn + 180 * j)
         ux, uy = math.sin(phi) * math.cos(up), math.cos(phi) * math.cos(up)
         flare = max(flare, -(ux * x + uy * y) / d)
         pts = []
