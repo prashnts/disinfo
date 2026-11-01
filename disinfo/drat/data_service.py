@@ -5,10 +5,12 @@ from traceback import format_exc
 from schedule import Scheduler
 
 from ..redis import db
-from ..utils import hass
+from ..utils import hass, moonraker, mjpeg
+from ..config import app_config
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm, shown
 from ..screens.aviator.tasks import adsbx_task
+from ..screens.aviator import lookup
 from ..screens.weather import vigilance, stations, forecast
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
 from ..screens.aviator import daylight, skystate, lightning
@@ -92,8 +94,12 @@ scheduler.every(1).minutes.do(skystate.task)        # after the others: they're 
 
 def main():
     print('[Data Service] Scheduler Started')
-    # Home Assistant's websocket, for every process.
+    # Home Assistant's websocket, the printers' and the cameras', for every process.
     hass.serve()
+    key = app_config.moonraker_api_key
+    moonraker.serve(key.get_secret_value() if key else None)
+    mjpeg.serve()
+    lookup.serve()     # the planes' routes and photos
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)

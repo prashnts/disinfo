@@ -4,6 +4,7 @@ import pendulum
 import websocket
 
 from discore.data_structures import UniqInstance
+from disinfo import xbus
 
 
 # Klipper objects the printer card reads. None subscribes to all of an object's fields.
@@ -32,6 +33,7 @@ class MoonrakerWS(metaclass=UniqInstance):
         self.changed_at: dict[tuple[str, str], pendulum.DateTime] = {}
         self.live = False
         self.klippy = True
+        self.on_change = lambda: None      # the data service shares it
         self.ws = websocket.WebSocketApp(
             url,
             header={'X-Api-Key': api_key} if api_key else None,
@@ -49,6 +51,7 @@ class MoonrakerWS(metaclass=UniqInstance):
 
     def on_close(self, *args):
         self.live = False
+        self.on_change()
 
     def merge(self, status: dict, initial: bool = False):
         before = {k: self.status.get(k[0], {}).get(k[1]) for k in watched}
@@ -77,6 +80,50 @@ class MoonrakerWS(metaclass=UniqInstance):
                 # Klipper's host process is gone, the status is stale until it's ready again.
                 self.klippy = False
                 self.changed_at[('webhooks', 'state')] = pendulum.now('local')
+        self.on_change()
 
     def get(self, name: str, field: str, default=None):
         return self.status.get(name, {}).get(field, default)
+
+    def doc(self) -> str:
+        return json.dumps({'status': self.status, 'live': self.live, 'klippy': self.klippy,
+                           'changed_at': [[*k, t.isoformat()] for k, t in self.changed_at.items()]})
+
+
+class MoonrakerDoc:
+    '''A MoonrakerWS as the data service shares it: what the card reads.'''
+
+    def __init__(self, raw: str):
+        d = json.loads(raw)
+        self.status, self.live, self.klippy = d['status'], d['live'], d['klippy']
+        self.changed_at = {(a, b): pendulum.parse(t) for a, b, t in d['changed_at']}
+
+    get = MoonrakerWS.get
+
+
+# The websockets are the data service's (serve()), shared over xbus ('moonraker', by url).
+_serving: list = []     # [the Shared, the api key] once serving
+
+def serve(api_key: str | None):
+    shared = xbus.Shared('moonraker', read=_read, keys=lambda: [])
+    _serving[:] = [shared, api_key]
+    # Asked for before this started: a View asks once.
+    shared.changed(list(shared.ids))
+
+def _read(url: str) -> str:
+    shared, api_key = _serving
+    mr = MoonrakerWS(url, api_key)
+    mr.on_change = lambda: shared.changed([url])
+    return mr.doc()
+
+def client(url: str, api_key: str | None = None) -> 'MoonrakerWS | MoonrakerDoc | None':
+    if _serving:
+        return MoonrakerWS(url, api_key)
+    return _view().get(url)
+
+_views = {}
+
+def _view() -> xbus.View:
+    if 'v' not in _views:
+        _views['v'] = xbus.View('moonraker', MoonrakerDoc)
+    return _views['v']

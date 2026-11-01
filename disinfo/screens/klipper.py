@@ -29,7 +29,7 @@ from ..data_structures import AppBaseModel
 from disinfo.utils.hass import HaWS
 from disinfo.utils.imops import image_from_url
 from disinfo.utils.mjpeg import MJPEGStream
-from disinfo.utils.moonraker import MoonrakerWS
+from disinfo.utils import moonraker
 from disinfo.utils.time import is_expired
 
 
@@ -185,7 +185,7 @@ def get_moonraker_state(printer_id: str, url: Optional[str] = None, api_key: Opt
     changed_at = lambda sensor: x.last_changed if (x := entity(sensor)) else None
 
     # Moonraker's websocket when it's up: pushed within ~250ms, HA polls it every few seconds.
-    mr = MoonrakerWS(url, api_key) if url else None
+    mr = moonraker.client(url, api_key) if url else None
     if mr and mr.live:
         printer_state = mr.get('webhooks', 'state') if mr.klippy else 'startup'
         idle = mr.get('idle_timeout', 'state')

@@ -1,5 +1,6 @@
 import io
 import time
+import hashlib
 import threading
 import urllib.request
 
@@ -7,65 +8,90 @@ from PIL import Image
 
 from discore.elements import Frame
 from discore.data_structures import UniqInstance
+from disinfo.xbus import Bus
+
+# The data service reads each stream once, while someone draws it, and sends its jpegs over xbus: x.mjpeg.want
+# (the url, again every few seconds while it's drawn), x.mjpeg.<id> (the jpegs).
+WANT = 'x.mjpeg.want'
+idle_timeout = 10       # s without a want: the stream is closed
+max_fps = 10            # jpegs sent a second, at most
+
+def channel(url: str) -> str:
+    return f'x.mjpeg.{hashlib.sha1(url.encode()).hexdigest()[:12]}'
+
+
+class Relay(metaclass=UniqInstance):
+    '''In the data service: the streams someone wants, read and sent.'''
+
+    def __init__(self):
+        self.wanted: dict[str, float] = {}      # url -> when it was last asked for
+        self.threads: dict[str, threading.Thread] = {}
+        Bus().on(WANT, self.on_want)
+
+    def on_want(self, _, data: bytes):
+        url = data.decode()
+        self.wanted[url] = time.monotonic()
+        if not (t := self.threads.get(url)) or not t.is_alive():
+            self.threads[url] = t = threading.Thread(target=self._run, args=(url,), name='mjpeg', daemon=True)
+            t.start()
+
+    def _run(self, url: str):
+        wanted = lambda: time.monotonic() - self.wanted.get(url, 0) < idle_timeout
+        to, sent = channel(url), 0.0
+        while wanted():
+            try:
+                with urllib.request.urlopen(url, timeout=5) as r:
+                    buf = b''
+                    while wanted():
+                        chunk = r.read1(1 << 18)
+                        if not chunk:
+                            break
+                        buf += chunk
+                        # The last complete jpeg (SOI..EOI), the older ones dropped.
+                        end = buf.rfind(b'\xff\xd9')
+                        if end == -1:
+                            continue
+                        start = buf.rfind(b'\xff\xd8', 0, end)
+                        if start != -1 and (now := time.monotonic()) - sent >= 1 / max_fps:
+                            Bus().send(to, buf[start:end + 2])
+                            sent = now
+                        buf = buf[end + 2:]
+            except OSError as e:
+                print(f'[mjpeg] {url}: {e}')
+                time.sleep(1)
+
+
+def serve():
+    Relay()
 
 
 class MJPEGStream(metaclass=UniqInstance):
-    '''Latest frame of an MJPEG stream, shared by everything drawing the same url.
+    '''Latest frame of an MJPEG stream, from the data service's relay.
 
-    The reader runs in the background only while frames are read, and stops
-    after `idle_timeout` seconds without reads. It keeps the newest jpeg only,
-    so what's drawn is live. Decoding happens on read, once per new frame and
-    at a reduced scale.
+    Asked for while frames are read; it stops after `idle_timeout` s without. Decoding happens on read, once per new
+    frame and at a reduced scale.
     '''
-    idle_timeout = 10
     stale_after = 2
 
     def __init__(self, url: str):
         self.url = url
         self.jpeg: bytes | None = None
         self.jpeg_at = 0
-        self.read_at = 0
-        self._thread = None
-        self._lock = threading.Lock()
+        self.asked_at = -99.0
         self._fitted = {}   # (width, height, box) -> (jpeg, frame)
+        Bus().on(channel(url), self._got)
 
-    def _wanted(self):
-        return time.monotonic() - self.read_at < self.idle_timeout
-
-    def _run(self):
-        while self._wanted():
-            try:
-                with urllib.request.urlopen(self.url, timeout=5) as r:
-                    buf = b''
-                    while self._wanted():
-                        # Large reads: few GIL round trips, the draw threads keep it busy.
-                        chunk = r.read1(1 << 18)
-                        if not chunk:
-                            break
-                        buf += chunk
-                        # Keep the last complete jpeg (SOI..EOI), drop the older ones.
-                        end = buf.rfind(b'\xff\xd9')
-                        if end == -1:
-                            continue
-                        start = buf.rfind(b'\xff\xd8', 0, end)
-                        if start != -1:
-                            self.jpeg, self.jpeg_at = buf[start:end + 2], time.monotonic()
-                        buf = buf[end + 2:]
-            except OSError as e:
-                print(f'[mjpeg] {self.url}: {e}')
-                time.sleep(1)
-        self.jpeg = None
+    def _got(self, _, data: bytes):
+        self.jpeg, self.jpeg_at = data, time.monotonic()
 
     def read(self, width: int, height: int | None = None, box: tuple[float, float, float, float] | None = None) -> Frame | None:
         '''Latest frame fitted to `width` x `height`, or None while connecting or stalled.
 
         `box` crops it first, (x0, y0, x1, y1) as fractions of the frame.
         '''
-        self.read_at = time.monotonic()
-        with self._lock:
-            if not self._thread or not self._thread.is_alive():
-                self._thread = threading.Thread(target=self._run, daemon=True)
-                self._thread.start()
+        if (now := time.monotonic()) - self.asked_at > 2:
+            Bus().send(WANT, self.url)
+            self.asked_at = now
 
         jpeg = self.jpeg
         if not jpeg or time.monotonic() - self.jpeg_at > self.stale_after:
