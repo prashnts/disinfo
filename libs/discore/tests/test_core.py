@@ -526,3 +526,28 @@ def test_screen_following_focus_only_on_relayout(monkeypatch):
     assert s.spot('card').anchor == 'ml'     # drawn for this arrangement: says nothing of the others
     s.arrange(screen_fs, {'card': card, 'time': clock}, radar, relayout=True)
     assert s.spot('card').anchor == 'mr'
+
+def test_lazy_cards_out_of_view_arent_drawn():
+    from dataclasses import replace
+    from discore.elements import Lazy
+    fs = FrameState.create()
+    made = {}
+    def make(name, color):
+        def draw():
+            made[name] = made.get(name, 0) + 1
+            return solid(color, (10, 20))
+        return draw
+    colors = {n: (255, 30 * i, 0, 255) for i, n in enumerate('abcdefgh')}
+    # A stack showing about one card: eight of them, made anew each frame as the screens do.
+    stack = Stack('t.lazy', StackStyle(size=24))
+    # Their own Resize: each grows from nothing, it's drawn until it has.
+    draw = lambda t: stack.mut([Widget(n, Lazy(make(n, c), ('t.lazy', n), fresh=60))
+                                for n, c in colors.items()]).draw(replace(fs, tick=fs.tick + t))
+    for t in range(40):
+        im = draw(1 + t / 10)
+    assert all(w + h > 20 for w, h in stack._sizes.values())     # grown, all of them
+    made.clear()
+    for t in range(20):
+        im = draw(5 + t / 10)
+    assert made and len(made) <= 4                 # the ones in view and around, not all
+    assert im.height == 24 and im.image.getextrema()[3][1] == 255     # its window, a card in it

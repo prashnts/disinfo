@@ -13,7 +13,7 @@ from ..utils.drawer import draw_loop
 from ..drat import shown
 from discore.text import Text, TextStyle, text
 from PIL import Image
-from discore.elements import StillImage, Frame
+from discore.elements import StillImage, Frame, Lazy
 from discore.layouts import vstack, hstack, Spacer
 from discore.layers import div, DivStyle, shapes
 from discore.scroller import HScroller
@@ -579,7 +579,8 @@ def widget(fs: FrameState):
             continue
         w = Widget(
             f'printer_{state.printer_id}',
-            frame=loops[i](fs, state),
+            # Lazy: out of view its painter isn't asked, it idles.
+            frame=Lazy(lambda draw=loops[i], state=state: draw(fs, state), (fs.config.name, f'printer_{state.printer_id}')),
             style=widget_style,
             priority=2 if state.is_printing else 1,
             focus=wants_focus(fs, state),

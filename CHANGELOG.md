@@ -108,6 +108,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The data service reads the printers' cameras (≤10 fps, while drawn), Moonraker's websocket and the planes' routes, photos and thumbnails, for all over xbus: each renderer had its own (~30% of a core each on the server).
 - Timers listed from a set (`di.timers.pks`), not a scan of all of Redis: ~100 round trips a second per process, now one.
 - Telemetry on a channel per node (`di.pubsub.telemetry.<node>`): each process parsed every node's, ~21 a second.
+- Lazy frames (`discore.elements.Lazy`): a card draws when its stack shows it; out of view, its place from its last size, and `draw_loop`'s painter idles. The weather, moon, music and printer cards. Compose on the server about the same (−0 to 5%): off-screen cards were a small part.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 

@@ -9,7 +9,7 @@ from datetime import timedelta
 from ..utils.drawer import draw_loop
 from ..config import app_config
 from disinfo import fonts
-from discore.elements import Frame, StillImage
+from discore.elements import Frame, StillImage, Lazy
 from discore.text import Text, TextStyle, text
 from discore.layouts import hstack, vstack, composite_at
 from discore.layers import div, DivStyle, shapes
@@ -184,7 +184,7 @@ def composer(fs: FrameState):
     return card.tag('music')
 
 def widget(fs: FrameState):
-    return Widget('music', composer(fs))
+    return Widget('music', Lazy(lambda: composer(fs), (fs.config.name, 'music')))
 
 def slideshow_widget(fs: FrameState):
     s = get_state(fs)

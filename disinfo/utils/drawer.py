@@ -1,3 +1,4 @@
+import time
 import threading
 
 from typing import Generic, TypeVar, Callable, Protocol
@@ -38,17 +39,18 @@ def draw_loop(composer: ComposerFn, sleepms: int = 50, use_threads: bool = False
         with scope(name):
             while True:
                 with adaptive_delay(sleepms):
-                    if p['args'] != previous_state:
+                    # Only while its frame is asked for: a lazy card out of view doesn't, nothing to draw.
+                    if p['args'] != previous_state and time.monotonic() - p['asked'] < 1:
                         p['frame'] = composer(*p['args'], **p['kwargs'])
                         previous_state = p['args']
 
     def draw(*args, **kwargs) -> Frame | None:
         name = current_scope()
         if name not in painters:
-            painters[name] = p = {'args': args, 'kwargs': kwargs, 'frame': None}
+            painters[name] = p = {'args': args, 'kwargs': kwargs, 'frame': None, 'asked': time.monotonic()}
             threading.Thread(target=painter, args=(name, p), daemon=True).start()
         p = painters[name]
-        p['args'], p['kwargs'] = args, kwargs
+        p['args'], p['kwargs'], p['asked'] = args, kwargs, time.monotonic()
         return p['frame']
 
     return draw

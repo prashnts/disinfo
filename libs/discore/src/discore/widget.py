@@ -35,7 +35,8 @@ class Widget:
 
     def card(self, style: DivStyle) -> Frame:
         # Its div, the attached ones' under it: they come and go with its resize.
-        own = div(self.frame, style)
+        # A Lazy frame of nothing is falsy: no frame, not drawn for that.
+        own = div(self.frame or None, style)
         attached = [a for a in self.attached if a.frame]
         if not attached:
             return own

@@ -1,5 +1,7 @@
 import random
 
+from PIL import Image
+
 from typing import Optional
 from dataclasses import dataclass
 
@@ -38,6 +40,8 @@ class Stack(metaclass=ScopedInstance):
         self.last_step = 0
         self.pos = 0
         self.shown = {}             # widget name -> seconds on top, lately
+        self._sizes = {}            # widget name -> its card's size when last drawn: where it goes, unseen
+        self._resized = {}          # widget name -> when that size last changed: still growing or shrinking
         self._shown_at = None
 
         if self.style.horizontal:
@@ -75,7 +79,8 @@ class Stack(metaclass=ScopedInstance):
         # frames = [w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)]
         frames = [self._frames[w] for i, w in enumerate(self._widgets)]
         frames = [f for _, f in enumerate(frames) if (f.width + f.height) > 2]
-        pos = _visible.index(curr_widget) if curr_widget in _visible else 0
+        # By identity: a Widget's == compares its frame, which draws a Lazy one.
+        pos = next((i for i, w in enumerate(_visible) if w is curr_widget), 0)
         # out_frames = frames[:pos]
         # frames += out_frames
         # frames[:pos] = [f.opacity(0) for f in out_frames]
@@ -143,7 +148,7 @@ class Stack(metaclass=ScopedInstance):
             return
         
         if len(items_just_added) == 1:
-            self.pos = [i for i, w in enumerate(self._widgets) if _visible(w) and w == items_just_added[0]][0]
+            self.pos = [i for i, w in enumerate(self._widgets) if _visible(w) and w is items_just_added[0]][0]
             self.last_step = step
             return
 
@@ -164,10 +169,43 @@ class Stack(metaclass=ScopedInstance):
             self.scroller.on_target = False
             self.last_step = step
 
+    def _near(self) -> set[int] | None:
+        '''The widgets in the scroller's window or close to it, where it is and where it's going. None: all.'''
+        sc, size = self.scroller, self.style.size
+        if sc.target is None or any(w.name not in self._sizes for w in self._widgets):
+            return None
+        # The scroller pads the surface with its size before it: its window is [pos - size, pos] on the surface.
+        lo, hi = min(sc.pos, sc.target) - size - 16, max(sc.pos, sc.target) + 16
+        near, at = set(), 0
+        for i, w in enumerate(self._widgets):
+            w_, h_ = self._sizes[w.name]
+            length = w_ if self.style.horizontal else h_
+            if w_ + h_ <= 2:
+                continue
+            if at < hi and at + length > lo:
+                near.add(i)
+            at += length + 2
+        if self.style.static_if_small and at <= size:
+            return None
+        return near
+
     def draw(self, fs: FrameState) -> Optional[Frame]:
         if not self._widgets:
             return
-        self._frames = {w: w.draw(fs, active=i == self.pos and self.scroller.on_target) for i, w in enumerate(self._widgets)}
+        # Lazy: the ones out of view keep their place, blank. Their frames (Lazy) aren't drawn either.
+        near = self._near()
+        self._frames = {}
+        for i, w in enumerate(self._widgets):
+            known = self._sizes.get(w.name)
+            # Settling (growing from nothing, resizing): drawn until it's done, a size that holds.
+            settling = known is None or (w.frame and sum(known) <= 2) or fs.tick - self._resized.get(w.name, -9) < 1
+            if near is None or i in near or settling:
+                f = self._frames[w] = w.draw(fs, active=i == self.pos and self.scroller.on_target)
+                if (f.width, f.height) != known:
+                    self._resized[w.name] = fs.tick
+                self._sizes[w.name] = (f.width, f.height)
+            else:
+                self._frames[w] = _blank(self._sizes[w.name])
         surface, pos = self.surface(fs)
         delta = self.style.scroll_delta
         if self.scroller.direction < 0:
@@ -180,3 +218,12 @@ class Stack(metaclass=ScopedInstance):
 
         self.tick(fs)
         return stack_im
+
+_blanks = {}
+
+def _blank(size: tuple[int, int]) -> Frame:
+    if (f := _blanks.get(size)) is None:
+        if len(_blanks) > 64:
+            _blanks.clear()
+        f = _blanks[size] = Frame(Image.new('RGBA', size), hash=('stack.blank', size))
+    return f

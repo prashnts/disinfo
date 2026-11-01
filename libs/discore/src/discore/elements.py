@@ -1,3 +1,5 @@
+import time
+
 from PIL import Image, ImageEnhance
 from abc import ABCMeta
 from collections import namedtuple
@@ -205,6 +207,61 @@ class Frame(UIElement):
 
     def blank(self) -> 'Frame':
         return Frame(Image.new('RGBA', self.size, (0, 0, 0, 0)), hash=('blank', self.hash))
+
+class Lazy(Frame):
+    '''A frame drawn when its pixels (or hash, or marks) are asked for: a layout that doesn't show it reads only its size.
+
+    Its size meanwhile is the last one drawn under its key; with none yet, or older than `fresh` s, it's drawn now (a
+    card that comes or goes shows within that). make() may return None: nothing, a frame of no size, falsy.
+    '''
+    __slots__ = ('_make', '_key', '_made')
+    sizes: dict = {}        # key -> ((width, height), when it was drawn)
+
+    def __init__(self, make, key, fresh: float = 1.0):
+        self._make, self._key, self._made = make, key, False
+        known = Lazy.sizes.get(key)
+        if known and time.monotonic() - known[1] < fresh:
+            self.width, self.height = known[0]
+            self._targets = ()
+        else:
+            self._draw()
+
+    def _draw(self):
+        if self._made:
+            return
+        self._made = True
+        f = self._make()
+        Frame.image.__set__(self, f.image if f else _nothing)
+        Frame.hash.__set__(self, f.hash if f else ('lazy', self._key, None))
+        self.width, self.height = (f.width, f.height) if f else (0, 0)
+        self._targets = f.marks if f else ()
+        Lazy.sizes[self._key] = ((self.width, self.height), time.monotonic())
+
+    @property
+    def image(self) -> Image.Image:
+        self._draw()
+        return Frame.image.__get__(self)
+
+    @property
+    def hash(self):
+        self._draw()
+        return Frame.hash.__get__(self)
+
+    @hash.setter
+    def hash(self, value):
+        self._draw()
+        Frame.hash.__set__(self, value)
+
+    @property
+    def marks(self) -> tuple[Mark, ...]:
+        self._draw()
+        return self._targets
+
+    def __bool__(self) -> bool:
+        return self.width + self.height > 0
+
+_nothing = Image.new('RGBA', (0, 0))
+
 
 class StillImage(Frame):
     def __init__(self, filename: str, resize: Optional[tuple[int, int]] = None):
