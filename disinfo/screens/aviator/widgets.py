@@ -82,7 +82,7 @@ def marker_color_rgb(hex: str) -> tuple[float, float, float]:
 
 @cache
 def flag(hexid: str) -> Frame | None:
-    cc = find_icao_range(hexid).get('country_code', '').upper()
+    cc = (find_icao_range(hexid).get('country_code') or '').upper()
     if not cc:
         return None
     with open(f'assets/flags/3x2/{cc}.svg', 'r') as fp:

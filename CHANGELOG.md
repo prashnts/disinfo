@@ -112,6 +112,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Fewer dependencies: spectra (its colour scales are `screens.colors.scale`, same colours), pandas (only suncalc picked it up) and scikit-image (unused) removed, colormath2 and networkx with them; requirements-dev.txt gone. Import: renderer 136 → 97 MB, data service 128 → 89 MB on the PC.
 - A card out of view no longer keeps its camera streaming: Lazy's size checks draw while `measuring()`, the stream isn't asked for then, and `draw_loop` composes them every 5 s only. The cameras were ~3 MB/s into the server with no card showing.
 - A printer in error shows its camera 15 min (as done or failed), then a line: limn2, worked on, stays in error for days and streamed ~3 MB/s.
+- The printer's line in error is its message (it was its job's name: none, an empty line). A plane with a non-ICAO address (tar1090's `~7a8ac5`) or an unassigned one no longer crashes the renderer on its flag.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 

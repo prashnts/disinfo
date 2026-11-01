@@ -532,7 +532,9 @@ def composer(fs: FrameState, state: PrinterState):
     # The tag changes when the card expands, so the widget animates the resize.
     card = lambda *rows: div(vstack([head, bar, *rows], gap=3), width=card_width).tag(('printer_card', state.printer_id, expanded))
     if not expanded:
-        return card(text(title_of(state), tiny_style, overflow='fit'))
+        # Its job; in error (none), what went wrong.
+        line = (state.message if state.phase == 'error' else None) or title_of(state)
+        return card(text(line, tiny_style, overflow='fit'))
 
     h = 40 if fs.config.height < 160 else 48
     if state.model == 'klipper':

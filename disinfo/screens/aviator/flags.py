@@ -235,7 +235,10 @@ unassigned_range = {
 # Always returns a non-null object.
 #   (todo: binary search)
 def find_icao_range(icao):
-    hexa = int(icao, 16)
+    try:
+        hexa = int(icao, 16)
+    except ValueError:      # tar1090's '~7a8ac5': not an ICAO address (TIS-B), no country
+        return unassigned_range
     for i in range(len(ICAO_Ranges)):
         if hexa >= ICAO_Ranges[i]["start"] and hexa <= ICAO_Ranges[i]["end"]:
             return ICAO_Ranges[i]
