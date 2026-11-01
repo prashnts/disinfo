@@ -24,7 +24,7 @@ def run_sensors():
     def callback(payload):
         global acts
         # print(f"[maindev] Sensor payload: {payload}")
-        publish('di.pubsub.telemetry', action='update', payload={'data': json.dumps(payload)})
+        publish('di.pubsub.telemetry.disalon', action='update', payload={'data': json.dumps(payload), '_node': 'disalon'})
         if len(acts):
             local_acts = acts.copy()
             acts = []

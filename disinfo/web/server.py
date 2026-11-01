@@ -209,7 +209,8 @@ def publish_telemetry(screen: str, msg: dict):
     telemetry = msg.get('telemetry')
     node_id = msg.get('_node')
     if telemetry and node_id:
-        publish('di.pubsub.telemetry', action='update', payload={'data': telemetry, '_node': node_id})
+        # A channel per node: a process parses only the nodes it reads.
+        publish(f'di.pubsub.telemetry.{node_id}', action='update', payload={'data': telemetry, '_node': node_id})
 
 PubSubManager().attach('frames', ('di.pubsub.frames',), load_frame)
 PubSubManager().attach('acts', ('di.pubsub.acts',), load_acts)

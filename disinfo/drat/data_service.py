@@ -103,7 +103,7 @@ def main():
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)
-    pubsub.attach('daylight', ('di.pubsub.telemetry',), daylight.on_telemetry)
+    pubsub.attach('daylight', (f'di.pubsub.telemetry.{app_config.daylight_node}',), daylight.on_telemetry)
 
     # Run all the jobs to begin, and then continue with schedule.
     scheduler.run_all(1)

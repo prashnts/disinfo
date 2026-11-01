@@ -138,6 +138,7 @@ class TelemetryStateManager(PubSubStateManager[DiTelemetryState]):
 
     def __init__(self, node: str):
         self.node = node
+        self.channels = (f'di.pubsub.telemetry.{node}',)
         super().__init__()
 
     def _uid(self) -> str:
