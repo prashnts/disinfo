@@ -495,13 +495,15 @@ def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
     return hstack([vstack(kept, gap=2), div(view, radius=2) if view else None], gap=3, align='top')
 
 def watching(fs: FrameState, state: PrinterState) -> bool:
-    # While printing and for a while after: the camera is the card.
+    # While printing and for a while after, or after an error: the camera is the card.
     since = (fs.now - state.phase_at).total_seconds() if state.phase_at else None
-    return state.is_printing or (state.phase in ('done', 'failed') and since is not None and since < camera_minutes * 60)
+    return state.is_printing or (state.phase in ('done', 'failed', 'error') and since is not None and since < camera_minutes * 60)
 
 def composer(fs: FrameState, state: PrinterState):
     # show_printers expands every online printer, otherwise only the ones printing or just done.
-    expanded = watching(fs, state) or state.phase in live_phases or (state.is_on and shown.is_pressed(fs, 'printers'))
+    # An error: expanded while it's new (watching), then a line (a printer worked on stays in error for days).
+    live = state.phase in live_phases and state.phase != 'error'
+    expanded = watching(fs, state) or live or (state.is_on and shown.is_pressed(fs, 'printers'))
     if not (state.is_visible or expanded):
         return
     uname = lambda x: f'{x}_{state.printer_id}'
