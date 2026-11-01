@@ -1451,7 +1451,7 @@ def view_from(fs: FrameState, clear: tuple | None = None, place: tuple | None = 
         if info and (n := app.number(st, hex)):
             labels.append((app.pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
 
-    # The Eiffel tower's beacon turning over the city, under the roofs: the hazier, the more the beams show.
+    # The Eiffel tower's beacon turning over the city, under the roofs: the hazier, the more the beam shows.
     t = time.localtime(now)
     clock = tuple(today) if demo else (t.tm_yday, t.tm_hour, t.tm_min)
     beaming = lit(night, clock[1:])

@@ -1,6 +1,6 @@
 '''The Eiffel tower: its outline from the real one's (the legs and their arch, the floors, the top, the antenna), at
 any size, a coverage mask per pixel: crisp on the LEDs, never a triangle. Lit gold at night, sparkling the first
-minutes of the hour, its lattice showing once it's big; the beacon on top turning its beams over the city.
+minutes of the hour, its lattice showing once it's big; the beacon on top turning its beam over the city.
 
 Drawn as tall as the view puts it, as wide as its own proportions say (the view stretches the elevations).
 '''
@@ -22,7 +22,7 @@ gold = (1, 0.64, 0.24)
 gold_floor = (1, 0.8, 0.45)
 sparkle = (1, 1, 0.95)
 lattice_px = 90         # this tall and up: the lattice shows, see-through
-beam_turn = 80          # s a turn of the beacon (two beams, back to back)
+beam_turn = 80          # s a turn of the beacon's beam
 beam_km = 9             # how far a beam reaches, fading
 beam_fade_km = 2.2
 beam_up = 1.2           # degrees over the horizontal
@@ -136,44 +136,41 @@ def lamp(top: float, base: float) -> float:
 
 def beams(ctx: cairo.Context, x: float, y: float, z: float, now: float, point, to_px, px_rad: float, strength: float,
           w: int):
-    '''The beacon's two beams, back to back, x, y km from the eye, z m over the sea: each a cone a little up from the horizontal,
-    projected from the eye (sideways, a long sweep over the city; at us, a short one and the lamp flaring), fading
-    the farther. point(x, y, alt) -> (bearing, elevation) from the eye; px_rad: the view's px a radian, w its width.'''
+    '''The beacon's beam, x, y km from the eye, z m over the sea: two projectors taking turns, half a turn each, so
+    one beam all round. A cone a little up from the horizontal, projected from the eye (sideways, a long sweep over
+    the city; at us, a short one and the lamp flaring), fading the farther. point(x, y, alt) -> (bearing, elevation)
+    from the eye; px_rad: the view's px a radian, w its width.'''
     d = math.hypot(x, y)
     if strength < 0.01 or d < 0.05:
         return
     ctx.save()
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
-    ss = np.r_[0, np.geomspace(0.01, beam_km, 30)]
     up, spread = math.radians(beam_up), math.radians(beam_spread) / 2
-    flare = 0
-    for j in range(2):
-        phi = math.radians(360 * now / beam_turn + 180 * j)
-        ux, uy = math.sin(phi) * math.cos(up), math.cos(phi) * math.cos(up)
-        flare = max(flare, -(ux * x + uy * y) / d)
-        pts = []
-        for s in ss:
-            px, py = x + ux * s, y + uy * s
-            r = math.hypot(px, py)
-            if r < 0.3 * d:
-                break
-            u, v = to_px(*point(px, py, z + s * 1000 * math.sin(up)))
-            pts.append((u, v, max(spread * s / r * px_rad, 0.6), strength * beam_alpha * math.exp(-s / beam_fade_km)))
-        for (u0, v0, w0, a0), (u1, v1, w1, a1) in zip(pts, pts[1:]):
-            n = math.hypot(u1 - u0, v1 - v0)
-            if n < 0.01:
-                continue
-            nx, ny = -(v1 - v0) / n, (u1 - u0) / n
-            ctx.move_to(u0 + nx * w0, v0 + ny * w0)
-            ctx.line_to(u1 + nx * w1, v1 + ny * w1)
-            ctx.line_to(u1 - nx * w1, v1 - ny * w1)
-            ctx.line_to(u0 - nx * w0, v0 - ny * w0)
-            ctx.close_path()
-            ctx.set_source_rgba(1, 0.93, 0.78, min(a0, 0.6) / max(min(w0, 6), 1))
-            ctx.fill()
-    # The lamp: a point, flaring as a beam comes round at us.
+    phi = math.radians(360 * now / beam_turn)
+    ux, uy = math.sin(phi) * math.cos(up), math.cos(phi) * math.cos(up)
+    pts = []
+    for s in np.r_[0, np.geomspace(0.01, beam_km, 30)]:
+        px, py = x + ux * s, y + uy * s
+        r = math.hypot(px, py)
+        if r < 0.3 * d:
+            break
+        u, v = to_px(*point(px, py, z + s * 1000 * math.sin(up)))
+        pts.append((u, v, max(spread * s / r * px_rad, 0.6), strength * beam_alpha * math.exp(-s / beam_fade_km)))
+    for (u0, v0, w0, a0), (u1, v1, w1, _) in zip(pts, pts[1:]):
+        n = math.hypot(u1 - u0, v1 - v0)
+        if n < 0.01:
+            continue
+        nx, ny = -(v1 - v0) / n, (u1 - u0) / n
+        ctx.move_to(u0 + nx * w0, v0 + ny * w0)
+        ctx.line_to(u1 + nx * w1, v1 + ny * w1)
+        ctx.line_to(u1 - nx * w1, v1 - ny * w1)
+        ctx.line_to(u0 - nx * w0, v0 - ny * w0)
+        ctx.close_path()
+        ctx.set_source_rgba(1, 0.93, 0.78, min(a0, 0.6) / max(min(w0, 6), 1))
+        ctx.fill()
+    # The lamp: a point, flaring as the beam comes round at us.
     u, v = to_px(*point(x, y, z))
-    f, r = max(flare, 0) ** 40, min(w / 400, 1)
+    f, r = max(-(ux * x + uy * y) / d, 0) ** 40, min(w / 400, 1)
     g = cairo.RadialGradient(u, v, 0, u, v, (2 + 7 * f) * r)
     g.add_color_stop_rgba(0, 1, 0.97, 0.88, min(0.5 + 0.5 * f, 1) * min(strength * 2, 1))
     g.add_color_stop_rgba(1, 1, 0.9, 0.7, 0)
