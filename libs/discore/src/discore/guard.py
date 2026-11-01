@@ -10,7 +10,7 @@ from PIL.Image import ImagePointHandler
 
 from .color import Color, palette, lstar as lstar_of
 
-enabled = True
+enabled = False     # off for now (2026-11-01): 8-15 ms a frame on the Pi by day
 flat = 30           # p90 - p10 L* under the glyphs: flat below
 grainy = 5          # mean |ground - its blur| L*, at the stroke's scale around the glyphs: grainy over
 opaque = 0.9        # what's under it must be this opaque: on a transparent frame it isn't known yet
