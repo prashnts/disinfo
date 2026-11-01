@@ -11,6 +11,7 @@ from typing import Generic, TypeVar, Callable
 
 from disinfo.config import app_config
 from disinfo.redis import db
+from disinfo.xbus import Bus
 from discore.data_structures import FrameState, UniqInstance
 from disinfo.data_structures import AppBaseModel
 
@@ -21,19 +22,14 @@ class PubSubMessage(AppBaseModel):
 
 
 class PubSubManager(metaclass=UniqInstance):
+    # On xbus: only the channels attached to, not all of di.pubsub.* (each process parsed every message).
     def __init__(self):
-        self.pubsub = db.pubsub()
-        self.pubsub.psubscribe(**{'di.pubsub.*': self.handle_message})
-        self.pubsub.run_in_thread(sleep_time=0.1, daemon=True)
         self.subscribers = {}
+        self.channels = set()
 
-    def handle_message(self, message):
-        if not message or message['type'] != 'pmessage':
-            return
-
-        channel_name = message['channel'].decode()
+    def handle_message(self, channel_name: str, raw: bytes):
         try:
-            data = json.loads(message['data'].decode())
+            data = json.loads(raw.decode())
             action = data['_action']
             del data['_action']
             payload = data
@@ -52,6 +48,9 @@ class PubSubManager(metaclass=UniqInstance):
     def attach(self, uid: str, channels: tuple[str], callback: Callable):
         if uid not in self.subscribers:
             self.subscribers[uid] = (channels, callback)
+            for c in set(channels) - self.channels:
+                self.channels.add(c)
+                Bus().on(c, self.handle_message)
         return self
 
 class StateManager(Generic[StateModel], metaclass=UniqInstance):

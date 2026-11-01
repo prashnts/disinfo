@@ -18,6 +18,7 @@ from disinfo.drat.tools import trigger_motion
 from disinfo.drat import shown
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
+from disinfo.xbus import Bus
 from disinfo.utils.hass import HaWS
 from disinfo.utils import ha_states
 from disinfo.transport import RAW_CHANNEL, ENCODINGS, PNG, RGBZ, unpack_raw, pack_ws2, encode, changed_boxes, pack_regions, bounds
@@ -110,20 +111,15 @@ async def changed(screen: str, timeout: float):
     except asyncio.TimeoutError:
         pass
 
-def load_raw(message):
-    name, w, h, rgbz = unpack_raw(message['data'])
+def load_raw(channel: str, data: bytes):
+    name, w, h, rgbz = unpack_raw(data)
     prev = screens.get(name)
     if prev and prev.rgbz == rgbz:
         return
     screens[name] = Screen((prev.seq if prev else 0) + 1, (w, h), rgbz, prev)
     notify(name)
 
-_raw = db.pubsub(ignore_subscribe_messages=True)
-_raw.subscribe(**{RAW_CHANNEL: load_raw})
-def _keep_listening(e, pubsub, worker):
-    print(f'[frames] {e!r}')
-
-_raw.run_in_thread(sleep_time=0.01, daemon=True, exception_handler=_keep_listening)
+Bus().on(RAW_CHANNEL, load_raw)
 
 
 def load_frame(channel_name, message: PubSubMessage):

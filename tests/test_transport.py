@@ -145,7 +145,7 @@ def server():
         yield server, client
 
 def publish(server, name: str, img: Image.Image):
-    server.load_raw({'data': pack_raw(name, img.size, img.tobytes())})
+    server.load_raw(server.RAW_CHANNEL, pack_raw(name, img.size, img.tobytes()))
 
 def next_bytes(ws) -> bytes:
     # Text first ({"display"}, acts, alive): the next frame.
