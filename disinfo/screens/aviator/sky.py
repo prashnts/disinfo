@@ -10,6 +10,7 @@ import random
 import numpy as np
 import cairocffi as cairo
 
+from PIL import Image
 from functools import cache
 from suncalc import get_position
 
@@ -26,7 +27,7 @@ from disinfo.screens.solar.app import sky_color
 from .state import ADSBxStateManager, OpenedStateManager, DEMO_S, SKY_HOLD, live
 from .colors import marker_color
 from .utils import airports, local_xy, bearing
-from . import app, astro, skylook, skyline, weather, lightning, hand
+from . import app, astro, skylook, skyline, weather, lightning, hand, eiffel, trip
 
 
 horizon = 0.5           # of the height, from the top
@@ -58,6 +59,7 @@ near_color = (0.03, 0.032, 0.036)
 hill_color = (0.11, 0.118, 0.13)        # the real roofline's farthest: the hills, hazy
 # By day: Paris' limestone in the shade, hazier the farther (towards the horizon's colour): hills, then far to near.
 stone_color = (0.27, 0.258, 0.24)
+iron_color = (0.17, 0.14, 0.11)
 aerial = (0.5, 0.38, 0.26, 0.13, 0.03)          # as hazy as usual; the sky state's haze takes it up to:
 aerial_max = 0.92
 # The trees by the day of the year: bare (see-through), the new leaves, summer, autumn. (day, rgb, how dense)
@@ -128,18 +130,25 @@ demo_blend = 2          # s from one to the next
 _demo = {}              # screen -> (the demo's start, the yaw it started at)
 
 _cams = {}              # screen -> [yaw, fov, at]: eases towards the view
-_roofs = {}             # screen -> (what they're drawn for, the layer, its rows)
+_roofs = {}             # screen, vantage -> (what they're drawn for, the layer, its rows)
 roofline = {}           # screen -> (when, the roofs' top y per column): twenty_two's cat flies over them
 _held = {}              # screen -> the yaw: turned only when what it looks at has moved away
 _lift = {}              # screen -> [degrees the top of the frame is lifted to (0: its own), eased, at]
 _eye = {'m': home_ground + app_config.aviator_eye_m}
+_at = [0.0, 0.0]        # km east, north of home: where the eye is (a landmark's vantage), the view drawn now
 
 
 def wrap(a: float) -> float:
     return (a + 180) % 360 - 180
 
+def seen_xy(lat: float, lon: float) -> tuple[float, float]:
+    # km east, north of the eye.
+    x, y = local_xy(lat, lon)
+    return x - _at[0], y - _at[1]
+
 def sky_point(x: float, y: float, alt: float) -> tuple[float, float]:
-    # Bearing and elevation, seen from the window, of a point km east, km north, m over the sea. The earth curves away.
+    # Bearing and elevation, seen from the eye, of a point km east, km north of home, m over the sea. The earth curves away.
+    x, y = x - _at[0], y - _at[1]
     d = max(math.hypot(x, y), 0.01)
     return bearing(x, y), math.degrees(math.atan2(alt - _eye['m'], d * 1000)) - math.degrees(d / (2 * earth_r))
 
@@ -163,16 +172,23 @@ def city() -> tuple[list, list]:
     return row((0.8, 2.2), -0.1, 0.25, 0.6), row((2.5, 5), -1.2, 0.5, 0.4)
 
 def landmark_points(eye: float) -> list[tuple]:
-    # (bearing, elevation of the top, angular width, shape) from the window.
+    # (bearing, elevation of the top, angular width, shape, elevation of the foot) from the window.
     out = []
     for _, lat, lon, height, ground, width, shape in landmarks:
-        x, y = local_xy(lat, lon)
+        x, y = seen_xy(lat, lon)
         d = math.hypot(x, y) * 1000
-        out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape))
+        out.append((bearing(x, y), math.degrees(math.atan2(ground + height - eye, d)), math.degrees(width / d), shape,
+                    math.degrees(math.atan2(ground - eye, d))))
     return out
 
+def drawn_points(sk: skyline.Skyline, eye: float) -> list[tuple]:
+    # The landmarks drawn: out of reach (over the hills), or left out of the buildings: (point, the band in front of it).
+    nb = len(band_m)
+    return [(p, nb - int(np.searchsorted(skyline.bands, km * 1000)) if km < sk.reach else 0)
+            for p, km, lm in zip(landmark_points(eye), landmark_km(), landmarks) if km >= sk.reach or lm[0] in sk.drawn]
+
 def landmark_km() -> list[float]:
-    return [math.hypot(*local_xy(lat, lon)) for _, lat, lon, *_ in landmarks]
+    return [math.hypot(*seen_xy(lat, lon)) for _, lat, lon, *_ in landmarks]
 
 def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, float] | None = None, rim: tuple = rim_color,
           daylit: tuple[float, float] | None = None):
@@ -248,11 +264,14 @@ def roofs(ctx: cairo.Context, in_view, to_px, h: int, sunlight: tuple[float, flo
 
 def shapes(ctx: cairo.Context, points: list, in_view, to_px):
     # The landmarks drawn, filled in the colour set.
-    for b, e, width, shape in points:
+    for b, e, width, shape, foot in points:
         if not in_view(b, 5):
             continue
         x, y = to_px(b, e)
         _, base = to_px(b, -1)
+        if shape == 'eiffel':
+            eiffel.draw(ctx, x, y, to_px(b, foot)[1], ctx.get_source().get_rgba()[:3])
+            continue
         wpx = max(1, round(to_px(b + width / 2, 0)[0] - to_px(b - width / 2, 0)[0]))
         x, y, base = round(x), round(y), round(base)
         match shape:
@@ -266,10 +285,6 @@ def shapes(ctx: cairo.Context, points: list, in_view, to_px):
             case 'dome':
                 ctx.rectangle(x - wpx // 2, y + 2, wpx, base - y - 2)
                 ctx.arc(x, y + 2, max(wpx / 3, 1), math.pi, 0)
-            case 'eiffel':
-                ctx.move_to(x - wpx / 2, base)
-                ctx.line_to(x, y)
-                ctx.line_to(x + wpx / 2, base)
             case _:
                 ctx.rectangle(x - wpx // 2, y, wpx, base - y)
         ctx.fill()
@@ -322,7 +337,9 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
     # the cranes, (x, y m from the eye, mast, jib, m away).
     ex, ey = (v * 1000 for v in local_xy(*sk.eye[:2]))
     eye = eye_m + dz
-    marks = [(b, e, wd, lm[3], km * 1000) for (b, e, wd, _), lm, km in zip(landmark_points(eye), landmarks, landmark_km()) if km < skyline.reach_km]
+    pts, kms = landmark_points(eye), landmark_km()
+    drawn = drawn_points(sk, eye)
+    marks = [(b, e, wd, lm[3], km * 1000) for (b, e, wd, *_), lm, km in zip(pts, landmarks, kms) if km < sk.reach and lm[0] not in sk.drawn]
     marks += [(b, e + math.degrees(math.atan(-dz / d)), math.degrees(35 / d), tall, d) for b, e, d, tall in sk.beacons if tall >= tower_m]
     standing = [[] for _ in rows]
     for m in marks:
@@ -342,9 +359,26 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
     aer = [min(a * (0.7 + 1.5 * hazy), aerial_max) for a in aerial]
     sb = sunlight[0] if sunlight else daylit[0] if daylit else 0
     now = time.time() if now is None else now
+    to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
+    to_px = lambda b, e: (to_x(b), float(to_y(np.array([e]))[0]))
+
+    def stand(n: int):
+        # The drawn landmarks in front of band n (the hills: 0), a little darker than its roofs; lit at night.
+        ones = [p for p, at in drawn if at == n]
+        if not ones:
+            return
+        k, a = (0.25, aer[1]) if n == 0 else (n / (len(rows) - 1), aer[n])
+        # The Eiffel tower in its iron's brown, darker than the stone around.
+        for color, its in ((mix(stone_color, (0.42, 0.37, 0.31), 0.4), [p for p in ones if p[3] != 'eiffel']), (iron_color, [p for p in ones if p[3] == 'eiffel'])):
+            ctx.set_source_rgb(*mix(mix(hill_color, near_color, k), mix(color, (0.55 * c for c in haze), a), day))
+            shapes(ctx, its, lambda b, m=0: abs(wrap(b - yaw)) < fov / 2 + m, to_px)
+        tower(ctx, [p for p in ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now, today[1:], hazy)
+
     for n, row in enumerate(rows):
         k = n / (len(rows) - 1)
         bs = bss[n]
+        if n > 1:
+            stand(n - 1)
         ys = np.minimum(np.round(to_y(row)), h).astype(int)
         top = runs(ys)
         ctx.move_to(0, h)
@@ -358,13 +392,7 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
         ctx.fill()
         if n == 0:
             # The landmarks out of the buildings' reach (the Eiffel tower) over the hills, in the far roofs' colour.
-            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(stone_color, (0.55 * c for c in haze), aer[1]), day))
-            to_x = lambda b: w / 2 + wrap(b - yaw) / fov * w
-            far_ones = [p for p, d in zip(landmark_points(eye), landmark_km()) if d > skyline.reach_km]
-            to_px = lambda b, e: (to_x(b), float(to_y(np.array([e]))[0]))
-            ctx.set_source_rgb(*mix(mix(hill_color, near_color, 0.25), mix(mix(stone_color, (0.42, 0.37, 0.31), 0.4), (0.55 * c for c in haze), aer[1]), day))
-            shapes(ctx, far_ones, lambda b, m=0: abs(wrap(b - yaw)) < fov / 2 + m, to_px)
-            eiffel(ctx, [p for p in far_ones if p[3] == 'eiffel'], yaw, fov, to_px, night, now, today[1:])
+            stand(0)
             continue
         # The windows by bearing, a fifth of a degree each: they stay where they are when the view turns.
         cell = np.floor(bs * 5)
@@ -467,6 +495,7 @@ def real_roofs(ctx: cairo.Context, sk: skyline.Skyline, yaw: float, fov: float, 
         if crane_at[n]:
             cranes(ctx, crane_at[n], eye, yaw - shifts[n], fov, w, to_y,
                    *(mix(crane_night, mix(c, (0.55 * c_ for c_ in haze), aer[n]), day) for c in (crane_color, crane_streak)), night, now)
+    stand(len(rows) - 1)
     ctx.set_antialias(cairo.ANTIALIAS_DEFAULT)
     return rows
 
@@ -756,26 +785,12 @@ def lit(night: float, clock: tuple) -> bool:
     # The Eiffel tower: lit gold from dusk to 23:45, sparkling the first five minutes of each hour. clock: (hour, minute)
     return night >= 0.05 and clock < (23, 45) and not 3 < clock[0] < 12
 
-def eiffel(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float, clock: tuple):
+def tower(ctx: cairo.Context, points: list, yaw: float, fov: float, to_px, night: float, now: float, clock: tuple, haze: float):
     if not lit(night, clock):
         return
-    for b, e, width, _ in points:
-        if abs(wrap(b - yaw)) > fov / 2 + 5:
-            continue
-        (x, y), (_, base) = to_px(b, e), to_px(b, -1)
-        wpx = max(1, to_px(b + width / 2, 0)[0] - to_px(b - width / 2, 0)[0])
-        ctx.move_to(x - wpx / 2, base)
-        ctx.line_to(x, y)
-        ctx.line_to(x + wpx / 2, base)
-        ctx.set_source_rgba(1, 0.72, 0.35, 0.35 * night)
-        ctx.fill()
-        if clock[1] < 5:
-            rnd = random.Random(int(now * 4))
-            for _ in range(max(3, round(wpx * 2))):
-                v = rnd.random()
-                ctx.rectangle(round(x + (rnd.random() - 0.5) * wpx * v), round(y + (base - y) * v), 1, 1)
-            ctx.set_source_rgba(1, 1, 0.95, 0.9 * night)
-            ctx.fill()
+    for b, e, _, _, foot in points:
+        if abs(wrap(b - yaw)) < fov / 2 + 5:
+            eiffel.lights(ctx, to_px(b, e)[0], to_px(b, e)[1], to_px(b, foot)[1], night, haze)
 
 def panes(ctx: cairo.Context, bs: np.ndarray, ys: np.ndarray, on: np.ndarray, px_m: float, n: int, now: float,
           catch: np.ndarray, night: float, alpha: float, h: int):
@@ -1269,14 +1284,17 @@ def drop_slant(yaw: float) -> float:
     r = math.radians(yaw)
     return float(np.clip((u * math.cos(r) - v * math.sin(r)) / 8, -0.8, 0.8))
 
-def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
+def view_from(fs: FrameState, clear: tuple | None = None, place: tuple | None = None, adjust=None) -> Frame:
+    '''The sky view from the window, or from a landmark's vantage (place). adjust(view) -> view: a trip's (trip.py),
+    from the window's own view (None at a vantage).'''
     st = ADSBxStateManager().get_state(fs)
     opened = OpenedStateManager().get_state(fs).opened
     w, h = fs.config.width, fs.config.height
     now = time.time()
     followed = app.following(fs)
-    sk = skyline.get(now)
-    dz = OpenedStateManager().get_state(fs).of('floors', fs) * floor_m
+    sk = skyline.get(now) if place is None else skyline.vantage(place, now)
+    _at[:] = local_xy(*sk.eye[:2]) if place else (0, 0)
+    dz = OpenedStateManager().get_state(fs).of('floors', fs) * floor_m if place is None else 0
     _eye['m'] = (sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m) + dz
     opened_ = OpenedStateManager().get_state(fs)
     (started, scene), held = opened_.of('demo', fs), opened_.of('sky', fs)
@@ -1291,20 +1309,25 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             _demo[fs.config.name] = started, _cams.get(fs.config.name, [90])[0]
         (dsb, dse), dseen, *today = demo_at(now - started)
         view = (_demo[fs.config.name][1] + 360 * (now - started) / DEMO_S) % 360, view_fov, opened_.of('horizon', fs) or horizon
-    else:
+    elif place is None:
         view = look(fs, st, clear or (0, 0, w, h), w)
         if held and now - held['at'] < SKY_HOLD:
             # Where the web page turned it, a while.
             view = held.get('yaw', view[0]), held.get('fov', view[1]), view[2]
-    if (turned := hand.yaw(fs, _cams.get(fs.config.name, view)[0])) is not None:
-        view = turned, hand.fov(fs, _cams.get(fs.config.name, view)[1]), view[2]
-    yaw, fov, tl = camera(fs, view, 0.25 if hand.active(fs) else 0.8)
+    if place is not None:
+        yaw, fov, tl = adjust(None)
+    else:
+        if (turned := hand.yaw(fs, _cams.get(fs.config.name, view)[0])) is not None:
+            view = turned, hand.fov(fs, _cams.get(fs.config.name, view)[1]), view[2]
+        yaw, fov, tl = camera(fs, view, 0.25 if hand.active(fs) else 0.8)
+        if adjust:
+            yaw, fov, tl = adjust((yaw, fov, tl))
     live(fs, yaw=round(yaw % 360, 1), fov=round(fov, 1), tilt=round(tl, 3), held=bool(held) and now - held['at'] < SKY_HOLD,
-         demo=(scene or 'around') if demo else None)
+         demo=(scene or 'around') if demo else None, place=place and place[0])
     # Whole pixels: between them the frame stays the same (the roofs from the cache, nothing new to send).
     yaw = round(yaw / (fov / w)) * fov / w
     hz = round(h * tl)
-    top, dip = top_of(fov, lifted(fs) if not demo else 0), dip_of(fov)
+    top, dip = top_of(fov, lifted(fs) if not demo and place is None else 0), dip_of(fov)
     if followed and not demo:
         # Panning along with the plane: smooth, not a step a second.
         app._moving[fs.config.name] = True
@@ -1383,7 +1406,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         white = tuple(c + (1 - c) * 0.8 * sunlit for c in skylook.cloud_color(lk))
         contrails(ctx, st.planes.values(), now, in_view, to_px, white, seen.trails)
 
-    targets, lit = [], []
+    targets, ringed = [], []
     for hex, p in sorted(st.planes.items() if show_planes else (), key=lambda i: (i[0] == followed, i[0] in st.watched)):
         color = marker_color(p['alt']).rgb
         x, y = app.position(p, now)
@@ -1424,9 +1447,18 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         app.chevron(ctx, px, py, heading, size * 1.3)
         ctx.fill()
         if hex == followed:
-            lit.append((px, py))
+            ringed.append((px, py))
         if info and (n := app.number(st, hex)):
             labels.append((app.pill(n, marker_color(p['alt']).hex), round(px) + 5, round(py) - 10))
+
+    # The Eiffel tower's beacon turning over the city, under the roofs: the hazier, the more the beams show.
+    t = time.localtime(now)
+    clock = tuple(today) if demo else (t.tm_yday, t.tm_hour, t.tm_min)
+    beaming = lit(night, clock[1:])
+    if beaming:
+        _, lat, lon, height, ground, *_ = next(l for l in landmarks if l[0] == 'eiffel')
+        eiffel.beams(ctx, *seen_xy(lat, lon), ground + eiffel.lamp_m, now, lambda x, y, z: sky_point(x + _at[0], y + _at[1], z),
+                     to_px, w / math.radians(fov), night * (0.3 + 0.7 * lk.haze) * (1 - 0.6 * wet), w)
 
     # The roofs over all that: a low plane goes behind them. Its number and the ring stay on top.
     # Wet roofs shine with the rain's light, snowy ones are white along their tops.
@@ -1437,21 +1469,19 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     if sk:
         night = min(max((-se - 2) / 8, 0), 1)
         # The eye's lean a pixel at a time (the nearest band's), the light and the hour rounded: the same roofs are
-        # drawn once, then painted from the cache; a crane or the Eiffel tower sparkling in view, more often.
+        # drawn once, then painted from the cache; a crane in view, more often.
         q = band_m[-1] * math.radians(fov / w)
         lean = round(lean_m * math.sin(2 * math.pi * now / sway_period) / q) * q
         r2 = lambda v: tuple(round(x, 2) for x in v) if isinstance(v, tuple) else v
         lit_q = [None if v is None else r2(v) if i == 1 else (round(v[0]), round(v[1], 2)) for i, v in enumerate(lights)]
-        t = time.localtime(now)
-        clock = tuple(today) if demo else (t.tm_yday, t.tm_hour, t.tm_min)
-        moving = any(abs(wrap(bearing(*local_xy(la, lo)) - yaw)) < fov / 2 + 10 for la, lo, *_ in app_config.screen_data.aviator.cranes)
-        tick = 0.25 if night > 0.05 and clock[2] < 5 else 1 if moving else 60
+        moving = any(abs(wrap(bearing(*seen_xy(la, lo)) - yaw)) < fov / 2 + 10 for la, lo, *_ in app_config.screen_data.aviator.cranes)
+        tick = 1 if moving else 60
         args = (yaw, fov, w, h, to_y, *lit_q, round(night, 2), round(float(np.clip((se + 3) / 10, 0, 1)) * (1 - 0.3 * lk.cloud), 2),
                 r2(lk.horizon), lean, round(lk.haze, 2), clock, dz, now // tick * tick)
         key = (id(sk), hz, top, dip, *args[:4], *args[5:])
-        if (hit := _roofs.get(fs.config.name)) is None or hit[0] != key:
+        if (hit := _roofs.get((fs.config.name, sk.place))) is None or hit[0] != key:
             layer = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-            hit = _roofs[fs.config.name] = key, layer, real_roofs(cairo.Context(layer), sk, *args)
+            hit = _roofs[fs.config.name, sk.place] = key, layer, real_roofs(cairo.Context(layer), sk, *args)
         # The thunder shakes them.
         dy = lightning.rumble(now)
         roofline[fs.config.name] = now, to_y(hit[2].max(axis=0)) + dy
@@ -1461,6 +1491,12 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
         ctx.paint()
         if night > 0.05:
             beacons(ctx, sk.lifted(dz), yaw, fov, w, to_y, hit[2], night, lean, dz)
+        if lit(night, clock[1:]) and clock[2] < 5:
+            # The Eiffel tower sparkling over the cached roofs, every frame; behind the ones in front of it.
+            for (b, e, _, shape, foot), n in drawn_points(sk, _eye['m']):
+                if shape == 'eiffel' and in_view(b, 5):
+                    front = to_y(hit[2][n + 1:].max(axis=0)) if n + 1 < len(hit[2]) else np.full(w, h)
+                    eiffel.sparkles(ctx, to_px(b, e)[0], to_px(b, e)[1], to_px(b, foot)[1], night, now, front)
         ctx.restore()
     else:
         roofs(ctx, in_view, to_px, h, *lights)
@@ -1475,14 +1511,14 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     windy = 'wind' not in off and (seen.wind or 0) >= curl_ms and seen.wind_dir is not None
     if windy:
         curls(ctx, w, hz * 0.3, hz, now, yaw, seen.wind, seen.gust or seen.wind, seen.wind_dir, skylook.cloud_color(lk))
-    app._raining[fs.config.name] = wet > 0.05 or windy
+    app._raining[fs.config.name] = wet > 0.05 or windy or beaming and in_view(bearing(*seen_xy(*landmarks[-1][1:3])), 60)
     lightning.front_light(ctx, now, w, h, night, bolts)
     app._flashing[fs.config.name] = lightning.busy(now, bolts)
     if wet > 0.05:
         slant = drop_slant(yaw)
         drops(ctx, w, h, now, wet, slant, tint, 1 - snow)
         flakes(ctx, w, h, now, wet, slant, snow_tint, snow)
-    for px, py in (lit if info else ()):
+    for px, py in (ringed if info else ()):
         ctx.set_source_rgba(1, 1, 1, 0.85)
         ctx.arc(px, py, 6.5, 0, 2 * math.pi)
         ctx.stroke()
@@ -1491,7 +1527,7 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
             if at := app.label_at(t := text(name, label_style), round(to_x(i * 45)), hz + 4, taken):
                 labels.append((t, *at))
     for a in (airports if info else ()):
-        ab = bearing(a.x, a.y)
+        ab = bearing(a.x - _at[0], a.y - _at[1])
         if in_view(ab, 0) and (at := app.label_at(t := text(a.code, label_style), round(to_x(ab)), hz + 4, taken)):
             labels.append((t, *at))
 
@@ -1509,3 +1545,102 @@ def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
     for label, x, y in labels:
         place_at(label, img, x, y, 'tl')
     return Frame(img, targets=tuple(targets)).pictured().tag(('aviator.sky', fs.config.name))
+
+
+# Trips to the landmarks (trip.py): the Eiffel tower's show from its vantage, now and then on the tour, or asked
+# for on the web page. Only while nothing else has the view.
+visit_s = 120           # s at the vantage, asked for
+trips = ('eiffel', 'montparnasse', 'mercuriales', 'duo')       # worth the trip: the others' buildings are boxes
+tour_trips = 2          # on the tour, every that many landmark stops
+_trips = {}             # screen -> [the trip, its vantage's view in the frame (to cross back from, cut short), cut at]
+
+def free(fs: FrameState, now: float) -> bool:
+    m = OpenedStateManager().get_state(fs)
+    (started, scene), held = m.of('demo', fs), m.of('sky', fs)
+    demo = started is not None and now - started < (SKY_HOLD if scene else DEMO_S)
+    return not (demo or held and now - held['at'] < SKY_HOLD or app.following(fs) or lightning.aim(now, view_fov) or hand.active(fs))
+
+def trip_now(fs: FrameState, now: float) -> trip.Trip | None:
+    ready = lambda name: skyline.vantage(next(m for m in landmarks if m[0] == name), now) is not None
+    for m in landmarks:
+        if m[0] in trips:
+            skyline.vantage(m, now)     # built one after the other, the first time
+    if not free(fs, now):
+        return None
+    at, name = OpenedStateManager().get_state(fs).of('visit', fs)
+    if name in trips and now - at < trip.length(t := trip.Trip(name, at, visit_s, 'visit')):
+        return t if ready(name) else None
+    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    night = min(max((-math.degrees(sun['altitude']) - 2) / 8, 0), 1)
+    lead = trip.go_s + trip.cross_s + trip.settle_s + 15
+    for at in (now - now % 3600, now - now % 3600 + 3600):
+        # Settled at the tower a little before it sparkles, back once it's done.
+        t = trip.Trip('eiffel', at - lead, lead + 300, 'show')
+        if 0 <= now - t.start < trip.length(t) and lit(night, (time.localtime(at).tm_hour, 0)) and ready('eiffel'):
+            return t
+    st = ADSBxStateManager().get_state(fs)
+    if any(h in st.planes for h in st.watched) or now % wide_every < wide_for:
+        return None
+    # The tour's stop on a landmark (the same pick as tour()), once it's turned there.
+    k = int(now) // (tour_dwell + tour_glide)
+    pick = int(abs(math.sin(k * 12.9898)) * 43758.5453) % (len(landmarks) + 3) if k % 2 else len(landmarks)
+    if pick < len(landmarks) and landmarks[pick][0] in trips and k // 2 % tour_trips == 0 and ready(landmarks[pick][0]):
+        t = trip.Trip(landmarks[pick][0], k * (tour_dwell + tour_glide) + tour_glide, tour_dwell - 2 * (trip.go_s + trip.cross_s + trip.settle_s), 'tour')
+        return t if trip.legs(t, now) else None
+    return None
+
+def trip_legs(fs: FrameState, clear: tuple | None, t: trip.Trip, now: float) -> list[tuple]:
+    '''(the vantage, None for the window; its weight in the frame; adjust) for each view in the frame. The landmark in
+    the middle of the clear box, its top near the box's top: from home zoomed in on it, at the vantage as big at
+    first (the views cross), then settled as big as it looks good.'''
+    w, h = fs.config.width, fs.config.height
+    box = clear or (0, 0, w, h)
+    middle, at = (box[0] + box[2]) / 2 - w / 2, (box[1] + 0.15 * (box[3] - box[1])) / h
+    mark = next(m for m in landmarks if m[0] == t.mark)
+    _, lat, lon, tall, ground, *_ = mark
+    sk, sv = skyline.get(now), skyline.vantage(mark, now)
+    eye = (sk.eye[2] if sk else home_ground + fs.config.aviator_eye_m) + OpenedStateManager().get_state(fs).of('floors', fs) * floor_m
+    def end(x: float, y: float, eye: float) -> tuple:
+        d = math.hypot(x, y) * 1000
+        return bearing(x, y), *(math.degrees(math.atan2(z - eye, d)) for z in (ground + tall, ground)), d
+    (x, y), (vx, vy) = local_xy(lat, lon), local_xy(*sv.eye[:2])
+    bh, th, fh, dh = end(x, y, eye)
+    bv, tv, fv, dv = end(x - vx, y - vy, sv.eye[2])
+    fov_h = min(max(2.2 * (th - fh), 3), 20, 80 * dv / dh)
+    fov_m, fov_r = fov_h * dh / dv, min(max(1.5 * (tv - fv), 20), 70)
+    def home_view(k: float, z: float):
+        fov = fov_h * z
+        to = bh - middle / w * fov, fov, tilt_to(th, fov, at)
+        return lambda v: ((v[0] + wrap(to[0] - v[0]) * k) % 360, v[1] + (to[1] - v[1]) * k, v[2] + (to[2] - v[2]) * k)
+    def there_view(k: float, z: float, u: float):
+        # Settled, held still: the roofs from the cache.
+        fov = fov_m * z + (fov_r - fov_m * z) * k
+        return lambda v: ((bv - middle / w * fov) % 360, fov, tilt_to(tv, fov, at))
+    return [(mark if l.there else None, l.weight, there_view(l.k, l.z, l.u) if l.there else home_view(l.k, l.z), l.k)
+            for l in trip.legs(t, now)]
+
+def sky(fs: FrameState, clear: tuple | None = None) -> Frame:
+    '''The sky view: from the window, on a trip from a landmark's vantage, or crossing over from one to the other.'''
+    now, name = time.time(), fs.config.name
+    t = trip_now(fs, now)
+    legs = trip_legs(fs, clear, t, now) if t else []
+    was = _trips.get(name)
+    if legs:
+        _trips[name] = [t, next(((m, a) for m, _, a, _ in legs if m), None), None]
+    elif was and was[1]:
+        # Cut short at the vantage (a plane, a storm, the web page): back home across at once.
+        was[2] = was[2] or now
+        x = trip.smooth((now - was[2]) / trip.cross_s)
+        legs = [(None, x, None, 0), (*was[1][:1], 1 - x, was[1][1], 0)] if x < 1 else []
+        if x >= 1:
+            del _trips[name]
+    frames = [(view_from(fs, clear, m, a), wt) for m, wt, a, _ in legs if wt > 0.001]
+    if not frames:
+        return view_from(fs, clear)
+    # Moving but settled at the vantage.
+    app._moving[name] = any(m is None or k < 1 for m, wt, a, k in legs)
+    if len(frames) == 1:
+        return frames[0][0]
+    (a, wa), (b, wb) = frames
+    img = Image.blend(a.image.convert('RGBA'), b.image.convert('RGBA'), wb / (wa + wb))
+    return Frame(img, targets=(a if wa >= wb else b).targets).pictured().tag(('aviator.sky', name))

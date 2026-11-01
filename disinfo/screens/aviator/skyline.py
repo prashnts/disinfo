@@ -6,7 +6,11 @@ Built once in a thread and kept in redis for months: by bearing, how high the ro
 at a few distances, near to far. A new version is built on its own; the last one is shown meanwhile. The window is nudged, a few metres, until the places seen from it (the landmarks of
 screen_data) are over the roofs in front of them: they're the planes' waypoints from here.
 
+The same from a place near each landmark (a vantage): the spot picked around it, on the side facing home, from where
+it shows whole; a shorter reach, the hills seen from home moved there. The sky view goes there to have a closer look.
+
     python -m disinfo.screens.aviator.skyline       # builds it now, and says what it sees
+    python -m disinfo.screens.aviator.skyline eiffel        # the vantage on a landmark (of sky.py's)
 '''
 import json
 import math
@@ -40,12 +44,20 @@ ground_cell = 250       # m: the ground under the trees, from the buildings' aro
 masts_km, mast_min_m = 14, 25    # the antennas, chimneys and pylons that far, that tall and up: over the roofs
 beacon_m = 45           # m tall and up: may have a red light on top at night (the sky view picks)
 earth_r = 6371000
+vantage_km = 3          # the vantages' reach
+vantage_d = (2.2, 3, 4)         # the landmark's heights away: the spots tried
+vantage_turn = (0, -20, 20, -40, 40, -60, 60)   # degrees off the way home
+vantage_near = 250, 1500        # m away at the least, the most
+vantage_up = 30         # m over the ground, or over the roof it stands on
+hills_m = 15000         # how far the hills are, roughly: seen from somewhere else
 ttl = 180 * 24 * 3600
 retry = 600
 wfs = 'https://data.geopf.fr/wfs/ows'
 _loaded = {}
 _checked = [0.0]
 _lifted = {}
+_vantages = {}          # landmark -> its vantage's
+_checked_v = {}
 
 
 class Skyline(NamedTuple):
@@ -58,6 +70,9 @@ class Skyline(NamedTuple):
     pd: np.ndarray | None = None    # (bands, bins): how far the roofs' highest are, m; the trees' the same
     td: np.ndarray | None = None
     masts: list = []        # the antennas, chimneys, pylons: (x, y m from the eye, top m over the sea, m tall, kind)
+    reach: float = reach_km     # km: the landmarks farther are drawn over the hills
+    drawn: list = []        # the landmarks left out of the buildings: drawn by the sky view wherever they are
+    place: str | None = None        # the landmark it's the vantage of; None: the window
 
     def lifted(self, dz: float) -> 'Skyline':
         '''Seen from dz m higher (lower under 0): each bin's highest as much higher as it's near; the hills as they are.'''
@@ -105,15 +120,15 @@ def landscape(path=landscape_path) -> tuple[tuple, list]:
     hills = [tuple(map(float, l.split()[:2])) for l in files.get('horizon.txt', '').splitlines() if l.strip() and not l.startswith('#')]
     return eye, hills
 
-def tiles(ex: float, ey: float) -> list[tuple[int, int]]:
+def tiles(ex: float, ey: float, reach: float = reach_km) -> list[tuple[int, int]]:
     # The km squares within reach, all around.
     out = []
-    n = math.ceil(reach_km)
+    n = math.ceil(reach + abs(ex) / 1000 + abs(ey) / 1000)
     for i in range(-n - 1, n + 1):
         for j in range(-n - 1, n + 1):
             x0, y0 = i * 1000 - ex, j * 1000 - ey
             nx, ny = min(max(0, x0), x0 + 1000), min(max(0, y0), y0 + 1000)
-            if math.hypot(nx, ny) <= reach_km * 1000:
+            if math.hypot(nx, ny) <= reach * 1000:
                 out.append((i, j))
     return out
 
@@ -138,7 +153,8 @@ def features(tile: tuple[int, int], kind: str, km: float = 1) -> list:
             return out
 
 def rings(g: dict) -> list:
-    return [[q[:2] for q in poly[0]] for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']])]
+    # As arrays: a few hundred thousand of them, lists of lists would weigh several times as much.
+    return [np.array([q[:2] for q in poly[0]]) for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']])]
 
 def fetch(tile: tuple[int, int]) -> list:
     # One km square's buildings: (ring as (lon, lat), roof, roof's top) over the sea, and how tall.
@@ -319,25 +335,96 @@ def masts(poles: list, ground, ex: float, ey: float) -> list:
         out.append((round(x - ex, 1), round(y - ey, 1), round(top if top is not None else ground(x, y) + tall, 1), round(tall, 1), kind))
     return out
 
-def build(path=landscape_path, log=print) -> dict:
+def load(ts: list, got: dict) -> tuple[list, list]:
+    # The buildings and the woods of the squares, those not got yet fetched.
+    new = [t for t in ts if t not in got]
+    with ThreadPoolExecutor(4) as pool:
+        for t, b, wd in zip(new, pool.map(fetch, new), pool.map(fetch_trees, new)):
+            got[t] = b, wd
+    return [b for t in ts for b in got[t][0]], [w for t in ts for w in got[t][1]]
+
+def all_masts() -> list:
+    n = math.ceil(masts_km / 4)
+    with ThreadPoolExecutor(4) as pool:
+        return [b for t in pool.map(fetch_masts, [(i, j) for i in range(-n, n) for j in range(-n, n)]) for b in t]
+
+def inside(ring: list, x: float, y: float) -> bool:
+    pts = np.array([local_xy(la, lo) for lo, la in ring]) * 1000
+    (x0, y0), (x1, y1) = pts[:-1].T, pts[1:].T
+    cross = (y0 > y) != (y1 > y)
+    return bool((cross & (x < x0 + (y - y0) * (x1 - x0) / np.where(y1 == y0, 1e-9, y1 - y0))).sum() % 2)
+
+def spot(buildings: list, ground, mark: tuple, ez0: float) -> tuple[tuple, float]:
+    '''Where to see a landmark (name, lat, lon, m tall, ground, m wide, shape) from: around it on the side facing
+    home, a few of its heights away, vantage_up m over what's there. The one it shows the most from, then the least
+    turned, then the nearest to three heights. ((x, y, z) m from home, how much of it shows).'''
+    _, lat, lon, tall, foot, *_ = mark
+    lx, ly = (v * 1000 for v in local_xy(lat, lon))
+    w, _ = walls(buildings, 1e9, 1e9, [])
+    # Its own walls don't hide it (the BnF's towers, around their garden).
+    w = w[np.hypot((w[:, 0] + w[:, 2]) / 2 - lx, (w[:, 1] + w[:, 3]) / 2 - ly) > 0.75 * mark[5]]
+    home_b = math.degrees(math.atan2(-lx, -ly))
+    best = None
+    for turn in vantage_turn:
+        for k in vantage_d:
+            d = min(max(k * tall, vantage_near[0]), vantage_near[1])
+            a = math.radians(home_b + turn)
+            x, y = lx + d * math.sin(a), ly + d * math.cos(a)
+            roof = max((r for ring, r, _, _ in buildings if abs(ring[0][1] - lat) < 0.03 and inside(ring, x, y)), default=None)
+            z = max(ground(x, y) + vantage_up, (roof or 0) + 3)
+            e0, e1 = (float(angle(h, z, d)) for h in (foot, foot + tall))
+            shows = min(max((e1 - max(blocked(w, x, y, z, lx, ly), e0)) / (e1 - e0), 0), 1)
+            score = round(shows * 20), -abs(turn), -abs(k - 3)
+            if best is None or score > best[0]:
+                best = score, (x, y, z), shows
+    return best[1], best[2]
+
+def moved(hills: list, dx: float, dy: float, ez0: float, ez: float) -> list:
+    # The hills seen from home as seen from dx, dy m away and ez m up: as if they were hills_m away.
+    out = []
+    for az, alt in hills:
+        a = math.radians(az)
+        x, y = hills_m * math.sin(a) - dx, hills_m * math.cos(a) - dy
+        z = ez0 + math.tan(math.radians(alt)) * hills_m + hills_m ** 2 / (2 * earth_r)
+        d = math.hypot(x, y)
+        out.append((math.degrees(math.atan2(x, y)) % 360, float(angle(z, ez, d))))
+    return out
+
+def build(path=landscape_path, log=print, mark: tuple | None = None) -> dict:
+    '''From the window; with a landmark (sky.py's), from its vantage.'''
     (lat, lon, ez), hills = landscape(path)
     ex, ey = (v * 1000 for v in local_xy(lat, lon))
-    marks = [tuple(v * 1000 for v in local_xy(*p)) for p in app_config.screen_data.aviator.landmarks]
-    ts = tiles(ex, ey)
-    log(f'[skyline] {len(ts)} tiles')
-    with ThreadPoolExecutor(4) as ex_:
-        buildings = [b for t in ex_.map(fetch, ts) for b in t]
-        woods = [b for t in ex_.map(fetch_trees, ts) for b in t]
-        n = math.ceil(masts_km / 4)
-        poles = [b for t in ex_.map(fetch_masts, [(i, j) for i in range(-n, n) for j in range(-n, n)]) for b in t]
+    got, reach, drawn = {}, reach_km, []
+    if mark:
+        # Around the landmark first, to pick the spot; then all around the spot. The tower's own parts out: it's drawn.
+        lx, ly = (v * 1000 for v in local_xy(*mark[1:3]))
+        own = lambda b: mark[6] == 'eiffel' and math.dist(np.array([local_xy(la, lo) for lo, la in b[0]]).mean(0) * 1000, (lx, ly)) < mark[5]
+        drawn = [mark[0]] if mark[6] == 'eiffel' else []
+        near, _ = load(tiles(lx, ly, vantage_near[1] / 1000 + 0.5), got)
+        ground = grounds(near)
+        (x, y, z), shows = spot([b for b in near if not own(b)], ground, mark, ez)
+        hills = moved(hills, x - ex, y - ey, ez, z)
+        ex, ey, ez, reach = x, y, z, vantage_km
+        buildings, woods = load(tiles(ex, ey, reach), got)
+        buildings = [b for b in buildings if not own(b)]
+        log(f'[skyline] {mark[0]}: from {math.hypot(x - lx, y - ly):.0f} m, {z:.0f} m up, {shows:.0%} of it shows')
+        targets, ms = [], []
+    else:
+        buildings, woods = load(tiles(ex, ey), got)
+    poles = all_masts()
     ground = grounds(buildings)
     tw = tree_walls(woods, ground)
-    w, tops = walls(buildings, ex, ey, marks)
-    targets = [(x, y, z) for (x, y), z in zip(marks, tops) if z]
-    (dx, dy, dz), ms = fit(w, ex, ey, ez, targets) if targets else ((0, 0, 0), [])
-    ex, ey, ez = ex + dx, ey + dy, ez + dz
-    log(f'[skyline] {len(buildings)} buildings, {len(w)} walls; window moved {dx:+} m E {dy:+} m N {dz:+} m up: '
-        f'{sum(m > -seen_tol for m in ms)}/{len(ms)} places seen; {len(woods)} woods, {len(poles)} masts')
+    if not mark:
+        marks = [tuple(v * 1000 for v in local_xy(*p)) for p in app_config.screen_data.aviator.landmarks]
+        w, tops = walls(buildings, ex, ey, marks)
+        targets = [(x, y, z) for (x, y), z in zip(marks, tops) if z]
+        (dx, dy, dz), ms = fit(w, ex, ey, ez, targets) if targets else ((0, 0, 0), [])
+        ex, ey, ez = ex + dx, ey + dy, ez + dz
+        log(f'[skyline] {len(buildings)} buildings, {len(w)} walls; window moved {dx:+} m E {dy:+} m N {dz:+} m up: '
+            f'{sum(m > -seen_tol for m in ms)}/{len(ms)} places seen; {len(woods)} woods, {len(poles)} masts')
+    else:
+        w, _ = walls(buildings, ex, ey, [])
+        w = w[np.hypot((w[:, 0] + w[:, 2]) / 2 - ex, (w[:, 1] + w[:, 3]) / 2 - ey) < reach * 1000 + 500]
     start, n = 0, int(360 / res)
     w[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
     tw[:, :4] -= np.array([ex, ey, ex, ey], np.float32)
@@ -352,9 +439,12 @@ def build(path=landscape_path, log=print) -> dict:
             'p': np.round(p * 100).astype(int).tolist(), 't': np.round(t * 100).astype(int).tolist(),
             'pd': np.round(pd[:-1]).astype(int).tolist(), 'td': np.round(td).astype(int).tolist(),
             'seen': [round(m, 2) for m in ms], 'beacons': beacons(buildings, ex, ey, ez, start, n),
-            'masts': masts(poles, ground, ex, ey)}
+            'masts': masts(poles, ground, ex, ey), 'reach': reach, 'drawn': drawn, 'place': mark[0] if mark else None}
 
-def key(path=landscape_path) -> str:
+def key(path=landscape_path, mark: tuple | None = None) -> str:
+    if mark:
+        h = hashlib.sha1(path.read_bytes() + json.dumps(mark).encode())
+        return f'di.vantage.{version}.{mark[0]}.{h.hexdigest()[:12]}'
     h = hashlib.sha1(path.read_bytes() + json.dumps(app_config.screen_data.aviator.landmarks).encode())
     return f'di.skyline.{version}.{h.hexdigest()[:12]}'
 
@@ -362,7 +452,7 @@ def of(doc: dict) -> Skyline:
     return Skyline(tuple(doc['eye']), doc['start'], np.array(doc['p'], np.float32) / 100, doc['seen'], doc.get('beacons', []),
                    np.array(doc['t'], np.float32) / 100 if 't' in doc else None,
                    np.array(doc['pd'], np.float32) if 'pd' in doc else None, np.array(doc['td'], np.float32) if 'td' in doc else None,
-                   doc.get('masts', []))
+                   doc.get('masts', []), doc.get('reach', reach_km), doc.get('drawn', []), doc.get('place'))
 
 def last(k: str) -> str | None:
     # The newest one built before k: shown while k is built.
@@ -370,13 +460,16 @@ def last(k: str) -> str | None:
     ks = [o for o in ks if not o.endswith('.lock') and o != k and o.split('.')[2].isdigit()]
     return max(ks, key=lambda o: int(o.split('.')[2]), default=None)
 
-def ask(k: str):
-    # One process builds it (the lock is in redis), the others find it there.
-    if not db.set(f'{k}.lock', 1, nx=True, ex=retry):
+def ask(k: str, mark: tuple | None = None):
+    # One process builds it (the lock is in redis), the others find it there. The vantages one at a time.
+    lock = 'di.vantage.lock' if mark else f'{k}.lock'
+    if not db.set(lock, 1, nx=True, ex=retry):
         return
     def run():
         try:
-            db.set(k, json.dumps(build()), ex=ttl)
+            db.set(k, json.dumps(build(mark=mark)), ex=ttl)
+            if mark:
+                db.delete(lock)
         except Exception as e:
             print(f'[skyline] {e}')
     threading.Thread(target=run, daemon=True).start()
@@ -398,8 +491,27 @@ def get(now: float) -> Skyline | None:
     return _loaded.get('old')
 
 
+def vantage(mark: tuple, now: float) -> Skyline | None:
+    '''The roofline from the landmark's vantage, None until it's built (after the window's, one at a time).'''
+    name = mark[0]
+    if name in _vantages:
+        return _vantages[name]
+    if now - _checked_v.get(name, 0) < 20 or 'sky' not in _loaded:
+        return None
+    _checked_v[name] = now
+    k = key(mark=mark)
+    if v := db.get(k):
+        _vantages[name] = of(json.loads(v))
+        return _vantages[name]
+    ask(k, mark)
+    return None
+
+
 if __name__ == '__main__':
+    import sys
+    from .sky import landmarks
     t = time.monotonic()
-    doc = build()
-    db.set(key(), json.dumps(doc), ex=ttl)
+    mark = next(m for m in landmarks if m[0] == sys.argv[1]) if len(sys.argv) > 1 else None
+    doc = build(mark=mark)
+    db.set(key(mark=mark), json.dumps(doc), ex=ttl)
     print(f'[skyline] built in {time.monotonic() - t:.0f} s; seen:', ' '.join(f'{m:+.1f}' for m in doc['seen']))

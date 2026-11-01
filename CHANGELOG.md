@@ -66,6 +66,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - A hand near the screen brings the sky view, in zen, and turns it as the hand moves; a few seconds after the hand's gone, back to what was there (zen off, unless it was on before). Any time, the quiet hours too.
 - The hand told from the body: nearer than it, held a moment (someone passing by is quicker), let go when it stops moving for long. 🔧 The desk's ToF can record its frames for a while (`tof_record`).
 - Nyan Cat redone: crisp pixels and a rainbow along its path, all on screen; a bigger show the rarer the time (22:22 most, 14:14 less), 12:34 climbs stairs, 13:31 a mirrored pair, palettes by the hour; over the roofs with fireworks in the sky view.
+- **The Eiffel tower, drawn as itself**: from its real outline at any size (the arch, the floors, the antenna, the lattice up close), its iron's brown by day, gold at night; the beacon's four beams turn over the city, brighter in the haze, the lamp flaring as one comes round.
+- **Trips in the sky view**: zoomed in on a landmark from home, the view crosses over to one from close by (a vantage picked where it shows whole, with its own skyline), stays a while, then comes back the same way. For the tower's sparkle, now and then on the tour, or from the web page (visit). The Eiffel tower, Montparnasse, the Mercuriales, Duo.
 - Planes and sky linked (`aviator/link.py`, web checkbox, on by default): one plane at a time, 8 s on the map then 45 s in the sky, zoomed, tracked smoothly in the cards' clear box (a high plane squeezes the sky over the roofs, the view stays narrow); the Eiffel show wins over the turns. Tighter sky zoom (planes 14°, the tower 5–12°). A pressed view pressed again lets go; the displays' button toggles solar.
 
 ### Changed
@@ -112,6 +114,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - Fewer dependencies: spectra (its colour scales are `screens.colors.scale`, same colours), pandas (only suncalc picked it up) and scikit-image (unused) removed, colormath2 and networkx with them; requirements-dev.txt gone. Import: renderer 136 → 97 MB, data service 128 → 89 MB on the PC.
 - A card out of view no longer keeps its camera streaming: Lazy's size checks draw while `measuring()`, the stream isn't asked for then, and `draw_loop` composes them every 5 s only. The cameras were ~3 MB/s into the server with no card showing.
 - A printer in error shows its camera 15 min (as done or failed), then a line: limn2, worked on, stays in error for days and streamed ~3 MB/s.
+- The tower's sparkle drawn over the cached roofs (they were redrawn 4 times a second): the sky view during it 11 → 2 ms at 800x480 on the PC. Skylines built with ~25% less memory.
 - The printer's line in error is its message (it was its job's name: none, an empty line). A plane with a non-ICAO address (tar1090's `~7a8ac5`) or an unassigned one no longer crashes the renderer on its flag.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone

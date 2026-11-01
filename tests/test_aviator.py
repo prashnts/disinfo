@@ -682,3 +682,25 @@ def test_trail_thinned():
     ages = [1795 - p[0] for p in trail]
     assert max(ages) <= tasks.trail_max and len(trail) <= 130
     assert all(a - b == tasks.trail_every for a, b in zip(ages, ages[1:]) if a <= tasks.trail_fine)
+
+def test_eiffel_outline():
+    from disinfo.screens.aviator import eiffel
+    for tall in (8, 20, 60, 200):
+        a, plat, half = eiffel.mask(tall, 0.3)
+        assert a.shape[0] == math.ceil(tall + 0.3) and (a[:, ::-1] == a).all()     # symmetric about its axis
+        assert a[0, half] >= 0.85                   # the antenna, a pixel at the least
+        assert plat.sum() >= 3                      # the three floors
+    a, _, half = eiffel.mask(60, 0)
+    assert a[-3, half] == 0 and a[-3].sum() > 5     # the sky under the arch, the legs around
+
+def test_trip_legs():
+    from disinfo.screens.aviator import trip
+    t = trip.Trip('eiffel', 100, 60)
+    assert trip.legs(t, 99) == [] and trip.legs(t, 100 + trip.length(t)) == []
+    for u in range(0, int(trip.length(t)) * 4):
+        ls = trip.legs(t, 100 + u / 4)
+        assert sum(l.weight for l in ls) == pytest.approx(1) and len(ls) in (1, 2)
+    there = trip.go_s + trip.cross_s + trip.settle_s + 1
+    assert trip.legs(t, 100 + there)[0].there and trip.legs(t, 100 + there)[0].k == 1
+    cut = trip.until_back(t, 100 + there + 5)
+    assert trip.length(cut) == pytest.approx(trip.length(t) - 60 + 6)

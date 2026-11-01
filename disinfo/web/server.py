@@ -238,7 +238,7 @@ async def aviator_sky():
     from disinfo.config import app_config
     from datetime import datetime, timezone
     from suncalc import get_position
-    from disinfo.screens.aviator import astro, sky, state, skystate
+    from disinfo.screens.aviator import astro, sky, state, skystate, skyline
     from disinfo.screens.aviator.utils import bearing, local_xy
     b = lambda lat, lon: round(bearing(*local_xy(lat, lon)), 1)
     doc, st, now = skystate.doc() or {}, state.read_state(), time.time()
@@ -254,6 +254,7 @@ async def aviator_sky():
             'planes': [[h, p.get('flight') or h, p['bearing'], p.get('elev'), p['alt'], h in st.watched]
                        for h, p in st.planes.items() if 'bearing' in p],
             'scenes': [d[0] for d in sky.demo_scenes], 'demo_s': state.DEMO_S, 'hold_s': state.SKY_HOLD,
+            'vantages': [m[0] for m in sky.landmarks if m[0] in sky.trips and skyline.landscape_path.exists() and db.exists(skyline.key(mark=m))],
             'live': {k.decode(): json.loads(x) for k, x in db.hgetall(state.LIVE_KEY).items()}, 'now': now}
 
 @app.get('/shown')

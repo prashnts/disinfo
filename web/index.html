@@ -409,6 +409,10 @@
                     <${Btn} onClick=${() => turn(Math.round(sky.sun[0]), true)}>sun</${Btn}>
                     <${Btn} onClick=${() => turn(Math.round(sky.moon[0]), true)}>moon</${Btn}>
                 </div>
+                <h2>visit <small>${cur?.place ? `at the ${cur.place}'s vantage` : 'from the window'}</small></h2>
+                <div class="bar">
+                    ${sky.vantages.map(name => html`<${Btn} on=${cur?.place === name} onClick=${() => send('aviator.visit', {place: name, screen: scope})}>${name}</${Btn}>`)}
+                </div>
                 <${Range} label="pan" min="0" max="359" step="1" value=${yaw ?? Math.round(cur?.yaw ?? 90)}
                     show=${`${yaw ?? Math.round(cur?.yaw ?? 90)}° ${compass(yaw ?? cur?.yaw ?? 90)}`} onInput=${d => turn(d)} onChange=${d => turn(d, true)}/>
                 <${Range} label="zoom" min="12" max="360" step="5" value=${fov} show=${`${fov}°`} onInput=${zoom} onChange=${f => zoom(f, true)}/>

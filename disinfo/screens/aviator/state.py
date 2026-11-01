@@ -70,12 +70,13 @@ class OpenedState(AppBaseModel):
     horizon: dict[str, float | None] = {}   # the sky view's horizon (None: its own)
     link: dict[str, bool] = {}          # the planes and the sky linked
     floors: dict[str, float] = {}       # the sky view from that many floors up (under 0: down) from the window
+    visit: dict[str, list] = {}         # [when, the landmark]: the sky view's trip there (not kept)
 
     def of(self, name: str, fs: FrameState | None):
         d = getattr(self, name)
         return d.get(fs and fs.config.name, d.get('*', unset[name]))
 
-unset = {'view': [None, 0], 'views_off': [], 'off': [], 'light': False, 'demo': [None, None], 'sky': {}, 'horizon': None, 'floors': 0, 'link': True}
+unset = {'view': [None, 0], 'views_off': [], 'off': [], 'light': False, 'demo': [None, None], 'sky': {}, 'horizon': None, 'floors': 0, 'link': True, 'visit': [None, None]}
 
 def read_dict(key: str) -> dict[str, float]:
     try:
@@ -142,6 +143,12 @@ class OpenedStateManager(PubSubStateManager[OpenedState]):
             case 'aviator.horizon':
                 h = p.get('h')
                 self.put('horizon', screen, min(max(float(h), 0.3), 0.85) if h is not None else None)
+            case 'aviator.visit':
+                # A trip to the landmark on the sky view; the same again, or none: back.
+                place, (at, was) = p.get('place'), mine('visit')
+                self.put('visit', screen, [now, place] if place and (place != was or at is None or now - at > 300) else [None, None])
+                if place:
+                    self.put('view', screen, ['sky', now])
             case 'aviator.eye':
                 self.put('floors', screen, min(max(float(p.get('floors') or 0), -12), 3))
             case 'aviator.link':
