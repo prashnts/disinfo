@@ -1,5 +1,7 @@
 import time
+import threading
 
+from contextlib import contextmanager
 from PIL import Image, ImageEnhance
 from abc import ABCMeta
 from collections import namedtuple
@@ -208,6 +210,21 @@ class Frame(UIElement):
     def blank(self) -> 'Frame':
         return Frame(Image.new('RGBA', self.size, (0, 0, 0, 0)), hash=('blank', self.hash))
 
+_measure = threading.local()
+
+def measuring() -> bool:
+    '''Drawn to learn its size only (a Lazy out of view): what's costly or has effects (a camera's stream) can wait.'''
+    return getattr(_measure, 'on', False)
+
+@contextmanager
+def measuring_draw(on: bool = True):
+    before, _measure.on = measuring(), on
+    try:
+        yield
+    finally:
+        _measure.on = before
+
+
 class Lazy(Frame):
     '''A frame drawn when its pixels (or hash, or marks) are asked for: a layout that doesn't show it reads only its size.
 
@@ -224,7 +241,8 @@ class Lazy(Frame):
             self.width, self.height = known[0]
             self._targets = ()
         else:
-            self._draw()
+            with measuring_draw():
+                self._draw()
 
     def _draw(self):
         if self._made:

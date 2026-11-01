@@ -6,7 +6,7 @@ import urllib.request
 
 from PIL import Image
 
-from discore.elements import Frame
+from discore.elements import Frame, measuring
 from discore.data_structures import UniqInstance
 from disinfo.xbus import Bus
 
@@ -89,7 +89,8 @@ class MJPEGStream(metaclass=UniqInstance):
 
         `box` crops it first, (x0, y0, x1, y1) as fractions of the frame.
         '''
-        if (now := time.monotonic()) - self.asked_at > 2:
+        # Measured only (a card out of view): its last frame, the stream isn't asked for.
+        if not measuring() and (now := time.monotonic()) - self.asked_at > 2:
             Bus().send(WANT, self.url)
             self.asked_at = now
 
