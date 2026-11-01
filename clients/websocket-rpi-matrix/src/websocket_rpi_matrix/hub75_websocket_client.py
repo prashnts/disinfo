@@ -6,6 +6,7 @@ import base64
 import websocket
 
 from collections import deque
+from pathlib import Path
 from typing import Callable
 
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ from PIL import Image, ImageFile, ImageDraw, ImageFont
 
 from websocket_rpi_matrix.di_remote import sensor_thread, Config as SensorConfig
 from websocket_rpi_matrix.frames import FrameAssembler, WS2_MAGIC
+from websocket_rpi_matrix.panel_tune import PanelTune
 
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions   # type: ignore
@@ -51,6 +53,8 @@ class Config(BaseModel):
     # v1: /ws/<screen>, a frame for each telemetry sent. v2: /ws2/<screen>, frames pushed as they change.
     protocol: str = 'v1'
     telemetry_hz: float = 30
+    tune_port: int = 8093       # the panels' colour page (panel_tune.py), 0: none
+    tune_name: str = 'Salon'
     fps: int = 30
     matrix_conf: RGBMatrixConf = RGBMatrixConf()
     sensor_conf: SensorConfig = SensorConfig()
@@ -205,8 +209,18 @@ def main(conf: Config):
     time.sleep(1)
     print('[Inial setup done]')
 
+    # Its file made writable before the matrix drops privileges (as the ToF's background)
+    tune_file = Path('.panel_tune.json')
+    if conf.tune_port and not tune_file.exists():
+        tune_file.write_text('{}')
+        tune_file.chmod(0o666)
+
     matrix = RGBMatrix(options=conf.matrix_conf.matrix_options())
     double_buffer = matrix.CreateFrameCanvas()
+    tune = PanelTune(tune_file, (double_buffer.width, double_buffer.height), conf.matrix_conf.brightness, conf.tune_name)
+    if conf.tune_port:
+        tune.serve(conf.tune_port)
+    tune_v, test_drawn, test_pic = -1, 0, None
 
     print('[Matrix Renderer started]')
     last_telemetry = 0
@@ -228,13 +242,23 @@ def main(conf: Config):
 
     while True:
         t_start = time.monotonic()
+        if tune.version != tune_v:      # the page changed something: all of it again, both canvases
+            tune_v, drawn, test_drawn = tune.version, [0, 0], 0
+            matrix.brightness = tune.brightness
+            test_pic = tune.picture() if tune.test else None
+            tune.status = f'{double_buffer.width}x{double_buffer.height}, brightness {tune.brightness}'
         v, im = latest
-        if im and drawn[0] != v:
+        if test_pic:
+            if test_drawn < 2:
+                double_buffer.SetImage(test_pic)
+                double_buffer = matrix.SwapOnVSync(double_buffer)
+                test_drawn += 1
+        elif im and drawn[0] != v:
             boxes = since(drawn[0])
             if boxes is None:
-                double_buffer.SetImage(im)
+                double_buffer.SetImage(tune.correct(im))
             for b in boxes or []:
-                double_buffer.SetImage(im.crop(b), b[0], b[1])
+                double_buffer.SetImage(tune.correct(im.crop(b), b[:2]), b[0], b[1])
             drawn[0] = v
             double_buffer = matrix.SwapOnVSync(double_buffer)
             drawn.reverse()

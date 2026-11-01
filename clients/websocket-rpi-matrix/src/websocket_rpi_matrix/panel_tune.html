@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Matrix</title><style>
+body{font:14px system-ui,sans-serif;background:#111;color:#ddd;margin:16px;max-width:760px}
+h1{font-size:18px;margin:0 0 12px}h2{font-size:14px;margin:18px 0 8px;color:#aaa}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.p{background:#1c1c1c;border-radius:8px;padding:10px}
+.p b{font-size:16px}.p small{color:#888}label{display:flex;align-items:center;gap:8px;margin:4px 0}
+input[type=range]{flex:1}.v{width:3.2em;text-align:right;font-variant-numeric:tabular-nums}
+.r{color:#f66}.g{color:#6d6}.b{color:#69f}.t{display:flex;flex-wrap:wrap;gap:6px}
+button{background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:6px;padding:6px 10px;cursor:pointer}
+button.on{background:#c7722d;color:#111;border-color:#c7722d}#st{color:#888;font-size:12px;margin-top:14px}
+</style></head><body><h1 id="title">Matrix: colour and test pictures</h1>
+<h2>Picture</h2><div class="t" id="tests"></div>
+<h2>Brightness</h2><label><input type="range" id="br" min="5" max="100"><span class="v" id="brv"></span></label>
+<h2>Panels, as seen from the front</h2><div class="grid" id="panels"></div>
+<p><button id="save">Save</button> <button id="reset">All gains 1</button> <span id="msg"></span></p>
+<div id="st"></div><script>
+const T=[[0,'Regular screen'],[7,'Sky'],[9,'Swatches'],[8,'Greys'],[6,'Bands'],[3,'Ramps'],[5,'Darkest'],
+[4,'White (power)'],[1,'Chain order'],[2,'Orientation']];
+let C, b, timer;
+const $=id=>document.getElementById(id);
+function post(o,save){return fetch('/api/config?save='+(save?1:0),{method:'POST',body:JSON.stringify(o)})}
+function later(o){clearTimeout(timer);timer=setTimeout(()=>post(o,false),120);$('msg').textContent='not saved'}
+function tests(){$('tests').innerHTML='';for(const[n,name]of T.filter(t=>!b.tests||b.tests.includes(t[0]))){const e=document.createElement('button');
+e.textContent=name;e.className=b.test==n?'on':'';e.onclick=()=>{b.test=n;post({board:{test:n}},false);tests()};
+$('tests').append(e)}}
+function panels(){const g=b.gain,L=b.layout,el=$('panels');el.innerHTML='';const cells=[];
+const cols=Math.max(...L.map(l=>l[0]))+1;el.style.gridTemplateColumns=`repeat(${cols},1fr)`;
+for(let i=0;i<L.length;i++){const pos=b.rotate?i:L[i][1]*cols+L[i][0];cells[pos]=i}
+cells.forEach((i,pos)=>{const d=document.createElement('div');d.className='p';
+d.innerHTML=`<b>${b.rotate?'#'+i:'ABCDEFGH'[pos]}</b> <small>${b.unit||'chain'} ${i}</small>`;
+['r','g','b'].forEach((c,k)=>{const l=document.createElement('label');l.className=c;
+l.innerHTML=`${c.toUpperCase()}<input type="range" min="0.3" max="1" step="0.01" value="${g[i][k]}"><span class="v">${(+g[i][k]).toFixed(2)}</span>`;
+const r=l.querySelector('input'),v=l.querySelector('.v');
+r.oninput=()=>{g[i][k]=+r.value;v.textContent=(+r.value).toFixed(2);later({board:{gain:g}})};d.append(l)});
+el.append(d)})}
+async function load(){C=await(await fetch('/api/config')).json();b=C.board||{};
+b.layout=b.layout||[[0,0,0],[1,0,0],[0,1,0],[1,1,0]];
+b.gain=b.gain||b.layout.map(()=>[1,1,1]);b.test=b.test||0;if(b.name)document.title=$('title').textContent=b.name+': colour and test pictures';$('br').value=C.brightness;$('brv').textContent=C.brightness;tests();panels()}
+$('br').oninput=()=>{$('brv').textContent=$('br').value;later({brightness:+$('br').value})};
+$('save').onclick=async()=>{clearTimeout(timer);await post({brightness:+$('br').value,board:{gain:b.gain}},true);
+$('msg').textContent='saved'};
+$('reset').onclick=()=>{b.gain=b.gain.map(()=>[1,1,1]);post({board:{gain:b.gain}},false);panels();$('msg').textContent='not saved'};
+async function st(){try{const s=await(await fetch('/api/status')).json();$('st').textContent=s.chips}catch(e){}}
+load();st();setInterval(st,3000);
+</script></body></html>
