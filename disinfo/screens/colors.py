@@ -1,4 +1,19 @@
+from typing import Callable
+
 from discore.color import AppColor
+
+
+def scale(stops: list) -> Callable[[float], AppColor]:
+    '''Colors between (value, hex) stops, linear in RGB; clamped to the ends.'''
+    values = [v for v, _ in stops]
+    rgbs = [tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) for _, h in stops]
+
+    def at(value: float) -> AppColor:
+        value = min(max(value, values[0]), values[-1])
+        i = next((i for i in range(1, len(values)) if value <= values[i]), len(values) - 1)
+        k = (value - values[i - 1]) / ((values[i] - values[i - 1]) or 1)
+        return AppColor('#%02x%02x%02x' % tuple(round(a + (b - a) * k) for a, b in zip(rgbs[i - 1], rgbs[i])))
+    return at
 
 
 gray_lt = AppColor("#cbcdd9")

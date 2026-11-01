@@ -1,5 +1,4 @@
-import spectra
-from disinfo.screens.colors import AppColor
+from disinfo.screens.colors import scale as color_scale
 
 
 altitude_scale = [
@@ -11,14 +10,7 @@ altitude_scale = [
     [9000,  '#3E39F0'],
     [12000, '#C111D1'],
 ]
-tickpoints, colors = zip(*altitude_scale)
-scale = spectra.scale(colors).domain(tickpoints)
+scale = color_scale(altitude_scale)
 
 def marker_color(altitude: float):
-    if type(altitude) == str:
-        altitude = 0
-    if altitude < tickpoints[0]:
-        altitude = tickpoints[0]
-    elif altitude > tickpoints[-1]:
-        altitude = tickpoints[-1]
-    return AppColor(scale(altitude).hexcode)
+    return scale(0 if type(altitude) == str else altitude)

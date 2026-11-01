@@ -1,5 +1,4 @@
-import spectra
-from disinfo.screens.colors import AppColor
+from disinfo.screens.colors import scale
 
 
 # Temperature color palette.
@@ -16,11 +15,7 @@ temperature_scale_mapping = [
     [35, '#a64c4c'],
     [40, '#9e214b'],
 ]
+_temperature = scale(temperature_scale_mapping)
+
 def temperature_color(temp: float):
-    tickpoints, colors = zip(*temperature_scale_mapping)
-    scale = spectra.scale(colors).domain(tickpoints)
-    if temp < tickpoints[0]:
-        temp = tickpoints[0]
-    elif temp > tickpoints[-1]:
-        temp = tickpoints[-1]
-    return AppColor(scale(temp).hexcode)
+    return _temperature(temp)
