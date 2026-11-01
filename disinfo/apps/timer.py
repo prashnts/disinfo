@@ -84,19 +84,30 @@ class State:
     down: bool = False
 
 states = defaultdict(State)   # per screen
-_pks = [0.0, []]              # when, the timers' keys: all_pks scans all of redis, so once a second at most
+_pks = [0.0, []]              # when, the timers' keys: once a second at most
+INDEX = 'di.timers.pks'       # the timers' keys: all_pks scans all of redis (~100 round trips)
+_seeded = []
+
+def index() -> list[str]:
+    if not _seeded:
+        # Once a process: the timers set before the index, or by an older one.
+        if pks := list(TimerEntry.all_pks()):
+            db.sadd(INDEX, *pks)
+        _seeded.append(True)
+    return [pk.decode() for pk in db.smembers(INDEX)]
 sounded = defaultdict(set)    # screen -> (pk, what) the buzzer had
 
 def timers(tick: float) -> list[TimerEntry]:
     '''The timers there, the newest first.'''
     if tick - _pks[0] > 1:
-        _pks[:] = tick, list(TimerEntry.all_pks())
+        _pks[:] = tick, index()
     out = []
     for pk in _pks[1]:
         try:
             out.append(TimerEntry.get(pk))
         except NotFoundError:       # expired since
-            pass
+            db.srem(INDEX, pk)
+            _pks[0] = 0
     again(out)
     return sorted(out, key=lambda t: -t.created)
 
@@ -104,6 +115,7 @@ def start(duration: int, label: str = 'T', icon: str = 'timer-outline', origin: 
     t = TimerEntry(target=pendulum.now().add(seconds=duration), duration=duration, label=label, icon=icon,
                    created=time.time(), origin=origin, repeat=repeat).save()
     t.expire(duration + t.tail + 5)
+    db.sadd(INDEX, t.pk)
     _pks[0] = 0
     return t
 
@@ -129,6 +141,7 @@ def set_prefs(**kw):
 def cancel(pk: str):
     db.set(f'di.timers.again.{pk}', 1, ex=60)      # a repeating one: not again
     TimerEntry.delete(pk)
+    db.srem(INDEX, pk)
     _pks[0] = 0
 
 def shift(t: TimerEntry, secs: int):

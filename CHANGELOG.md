@@ -106,6 +106,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - One websocket to Home Assistant, in the data service: the other processes get only the entities they read, over Redis (`di.ha.states`, `di.ha.state`), and call services through it. Each was keeping and parsing all 2,739. Bench RSS 286 → 201 MB, compose p90 salon 19.5 → 12.9 ms, desk 16.3 → 12.7 ms.
 - xbus (`disinfo/xbus.py`): one Redis pubsub connection and thread per process, exact channels (each process parsed all of `di.pubsub.*`: telemetry ~21/s); Shared/View for data one process owns and the others read by key, Calls to the owner. HA, `PubSubManager` and the web server's frames on it.
 - The data service reads the printers' cameras (≤10 fps, while drawn), Moonraker's websocket and the planes' routes, photos and thumbnails, for all over xbus: each renderer had its own (~30% of a core each on the server).
+- Timers listed from a set (`di.timers.pks`), not a scan of all of Redis: ~100 round trips a second per process, now one.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 
