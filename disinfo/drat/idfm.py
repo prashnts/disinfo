@@ -13,12 +13,13 @@ from datetime import datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from pydantic_ai import Agent, ModelRetry
+# pydantic-ai off for now (memory, 2026-11-01): the messages show as they come.
+# from pydantic_ai import Agent, ModelRetry
 
 from disinfo.config import app_config
 from disinfo.data_structures import AppBaseModel
 from disinfo.redis import db, publish
-from disinfo.utils.llm import model
+# from disinfo.utils.llm import model
 from . import shown
 
 PRIM = 'https://prim.iledefrance-mobilites.fr/marketplace'
@@ -195,13 +196,13 @@ You sum up Paris metro messages for a small LED display at home. Return one note
 Use only what's given, don't invent.
 '''
 
-agent = Agent(model, output_type=Notes, deps_type=set, retries=2)
-
-@agent.output_validator
-def every_one(ctx, out: Notes) -> Notes:
-    if missing := ctx.deps - {n.id for n in out.notes}:
-        raise ModelRetry(f'Give a note for every message, missing: {", ".join(missing)}')
-    return out
+# agent = Agent(model, output_type=Notes, deps_type=set, retries=2)
+#
+# @agent.output_validator
+# def every_one(ctx, out: Notes) -> Notes:
+#     if missing := ctx.deps - {n.id for n in out.notes}:
+#         raise ModelRetry(f'Give a note for every message, missing: {", ".join(missing)}')
+#     return out
 
 def prompt(doc: dict, now: float) -> str:
     when = lambda t: datetime.fromtimestamp(t, tz).strftime('%a %Y-%m-%dT%H:%M')
@@ -233,7 +234,8 @@ def summarize(doc: dict):
         periods = {r['id']: r['periods'] for r in doc['reports']}
         notes = {}
         try:
-            out = agent.run_sync(prompt(doc, now), deps=set(periods)).output.notes if periods else []
+            # out = agent.run_sync(prompt(doc, now), deps=set(periods)).output.notes if periods else []
+            out = []
             notes = {n.id: {**n.model_dump(exclude={'spans'}), 'spans': checked(n.spans, periods[n.id])} for n in out if n.id in periods}
         except Exception as e:
             print(f'metro summary: {e!r}')

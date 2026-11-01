@@ -102,6 +102,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The guard costs ~1.3 ms a frame (cached on the frame and the pixels under it, per ink box).
 - Renderers on the server (Pi 5, awake): the timer no longer scans Redis each frame, nor the plane cards read it; frost reuses its blur while the pixels under it are the same. Compose salon 22 → 13 ms, desk 29 → 15 ms, entry 16 → 13 ms: within 48 and 42 fps now.
 - HUB75 clients draw only what changed, and nothing when nothing did, the salon's CPU 125 → 57%, the desk's 117 → 56% (on `/ws2` now). What's left is the panel's own refresh.
+- Memory (the server ran out, 2026-11-01): pydantic-ai commented out, the metro's notes and the news highlights skip the llm for now. −51 MB in each process (import: renderer 187 → 136, web 126 → 77, data 179 → 128 MB on the PC). The bench logs RSS.
+- One websocket to Home Assistant, in the data service: the other processes get only the entities they read, over Redis (`di.ha.states`, `di.ha.state`), and call services through it. Each was keeping and parsing all 2,739. Bench RSS 286 → 201 MB, compose p90 salon 19.5 → 12.9 ms, desk 16.3 → 12.7 ms.
 
 ## [2026.10.25] - v0.4.6: touch, screens, aviator redone
 

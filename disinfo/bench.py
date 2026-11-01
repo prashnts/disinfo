@@ -33,6 +33,13 @@ from disinfo.config import app_config, load_config
 from disinfo.transport import pack_raw, changed_boxes, pack_regions, RGBZ
 
 
+def rss_mb() -> int:
+    with open('/proc/self/statm') as f:
+        return int(f.read().split()[1]) * os.sysconf('SC_PAGE_SIZE') // 2**20
+
+_rss_import = rss_mb()     # the compositor and all it brings
+
+
 def report(line: str):
     print(line, file=sys.stderr, flush=True)
 
@@ -148,6 +155,8 @@ def main(
                    f"  | regions {r['regions_ms']:5.2f} ms  {r['region_kb']} KB  ({r['changed_frames']} changed)")
     m = micro()
     report(f"Frame(720p) {m['frame_720p_ms']} ms   Frame.of_pixels(720p) {m['frame_of_pixels_720p_ms']} ms   uname() {m['uname_us']} us")
+    rss = {'import': _rss_import, 'end': rss_mb()}
+    report(f"RSS: after import {rss['import']} MB, at the end {rss['end']} MB")
 
     if prof:
         pstats.Stats(prof, stream=sys.stderr).sort_stats('cumtime').print_stats(25)
@@ -155,7 +164,8 @@ def main(
     rev = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
     dirty = bool(subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True).stdout.strip())
     entry = {'at': datetime.now().isoformat(timespec='seconds'), 'rev': rev + ('+' if dirty else ''), 'label': label,
-             'frames': frames, 'awake': not as_is, 'clock': at or None, 'screens': results, 'micro': m}
+             'frames': frames, 'awake': not as_is, 'clock': at or None, 'screens': results, 'micro': m,
+             'rss_mb': rss}
     with log.open('a') as f:
         f.write(json.dumps(entry) + '\n')
     report(f'logged to {log}')

@@ -106,7 +106,8 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
     if not data:
         return None
 
-    if fs.tick > (weather_state.refreshed_at + 15 * 60) or not data.service_response:
+    # Asked for over Redis (the data service's websocket): not again each frame while the answer comes.
+    if fs.tick > weather_state.refreshed_at + (15 * 60 if data.service_response else 30):
         ok = HaWS().call_service(
             'weather.get_forecasts',
             service_data={'type': 'daily'},

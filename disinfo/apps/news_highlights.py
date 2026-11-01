@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from threading import Thread
 from typing import TYPE_CHECKING
 
-from pydantic_ai import Agent
+# pydantic-ai off for now (memory, 2026-11-01): no highlights.
+# from pydantic_ai import Agent
 
 from disinfo.data_structures import AppBaseModel
-from disinfo.utils.llm import model
+# from disinfo.utils.llm import model
 
 @dataclass
 class Deps:
@@ -20,9 +21,9 @@ class Output(AppBaseModel):
     highlight_3: str | None = None
 
 
-agent = Agent(model, deps_type=Deps)
-
-@agent.instructions
+# agent = Agent(model, deps_type=Deps)
+#
+# @agent.instructions
 async def prompt(ctx) -> str:
     deps = ctx.deps
     return f"""
@@ -52,8 +53,9 @@ ENDSTORY
 """
     def runner():
         if not story.extracts:
-            story.extracts = agent.run_sync(content, deps=deps).output
-            story.save()
+            pass
+            # story.extracts = agent.run_sync(content, deps=deps).output
+            # story.save()
 
     if story.uid not in _running_threads:
         t = Thread(target=runner, daemon=True)

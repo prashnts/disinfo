@@ -5,6 +5,7 @@ from traceback import format_exc
 from schedule import Scheduler
 
 from ..redis import db
+from ..utils import hass
 from .app_states import PubSubManager, PubSubMessage
 from . import idfm, shown
 from ..screens.aviator.tasks import adsbx_task
@@ -91,6 +92,8 @@ scheduler.every(1).minutes.do(skystate.task)        # after the others: they're 
 
 def main():
     print('[Data Service] Scheduler Started')
+    # Home Assistant's websocket, for every process.
+    hass.serve()
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)
