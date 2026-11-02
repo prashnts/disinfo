@@ -45,8 +45,13 @@ dependencies = [
     "discore",
 ]
 
+[project.optional-dependencies]
+# the standalone remotes' hub (data service, config remotes_port): the disinfo-remote repo beside this one
+remotes = ["disinfo-remote"]
+
 [tool.uv.sources]
 discore = { path = "libs/discore", editable = true }
+disinfo-remote = { path = "../disinfo-remote", editable = true }
 websocket-rpi-matrix = { path = "clients/websocket-rpi-matrix", editable = true }
 
 [dependency-groups]

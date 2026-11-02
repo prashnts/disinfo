@@ -15,7 +15,8 @@ State keys: ha.<entity> (its state), ha.<entity>.brightness (0-100), weather.tem
   aviator.sky (the compass: remote sky widget), aviator.view.<v>, aviator.layer.<l>, aviator.light (bools),
   aviator.zoom (0-100), for the remote's scope.
 
-    uv run --with-editable ../disinfo-remote python -m disinfo.remotes --dry [--ble] [--no-usb]   # the PC test: HA calls logged only
+    uv run --with-editable ../disinfo-remote python -m disinfo.remotes --dry [--ble] [--no-usb] [--port 4290]
+    --dry: HA calls logged only (the PC test). In the server: start() from the data service (config remotes_port).
 '''
 import json
 import logging
@@ -208,27 +209,35 @@ def state(keys: list[str], remote: dict | None = None) -> dict:
 
 
 BUNDLES = Path(os.environ.get('DI_REMOTES', Path.home() / '.local' / 'state' / 'disinfo-remote' / 'remotes'))
-_compiled: dict[Path, tuple[float, object]] = {}
+_compiled: dict[tuple[Path, str], tuple[float, object]] = {}
 
 
 def bundle(hello: dict):
-    '''The remote's layout: <its id, ':' as '-'>.svg in BUNDLES, else default.svg; compiled when changed.'''
-    from disinfo_remote.compiler import compile_svg
-    for name in (hello.get('id', '').replace(':', '-'), 'default'):
+    '''The remote's layout: <its id, ':' as '-'>.svg in BUNDLES, else default-<board>.svg, default.svg; compiled
+    for its board when changed.'''
+    from disinfo_remote.compiler import BOARD_NAMES, compile_svg
+    board = BOARD_NAMES.get(hello.get('board'), 'tdp')
+    for name in (hello.get('id', '').replace(':', '-'), f'default-{board}', 'default'):
         p = BUNDLES / f'{name}.svg'
         if p.exists():
             mtime = p.stat().st_mtime
-            if _compiled.get(p, (0,))[0] != mtime:
-                _compiled[p] = mtime, compile_svg(p.read_bytes(), name=p.stem)
-            return _compiled[p][1]
+            if _compiled.get((p, board), (0,))[0] != mtime:
+                _compiled[(p, board)] = mtime, compile_svg(p.read_bytes(), board=board, name=p.stem)
+            return _compiled[(p, board)][1]
     return None
 
 
-def main():
+def start(port: int, key: str = '', usb=False, ble=False):
+    '''The hub, in this process (the data service has the HA websocket).'''
     from disinfo_remote.hub import Hub
+    return Hub(act, state, bundle, usb=usb, ble=ble, port=port, key=key).start()
+
+
+def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(message)s')
     hass.serve()                    # standalone: its own HA websocket (in the server: the data service's)
-    Hub(act, state, bundle, usb='--no-usb' not in sys.argv, ble='--ble' in sys.argv).start()
+    port = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else 0
+    start(port, os.environ.get('DI_REMOTE_KEY', ''), usb='--no-usb' not in sys.argv, ble='--ble' in sys.argv)
     while True:
         time.sleep(3600)
 

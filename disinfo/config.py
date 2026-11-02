@@ -128,6 +128,9 @@ class Config(AppBaseModel):
     # printer id -> Moonraker websocket, for live Klipper state. Merged over the defaults, HA otherwise.
     moonraker_urls: dict[str, str] = {'pi_limn2': 'wss://limn.nb.malow.im/websocket'}
     moonraker_api_key: SecretStr | None = None
+    # The standalone remotes (disinfo-remote): they dial the data service here over Wi-Fi with this key; 0: off.
+    remotes_port: int = 0
+    remotes_key: SecretStr | None = None
 
     # Aviator
     overpass_url: str = 'https://overpass-api.de/api/interpreter'

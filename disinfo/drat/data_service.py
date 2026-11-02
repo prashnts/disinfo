@@ -100,6 +100,13 @@ def main():
     moonraker.serve(key.get_secret_value() if key else None)
     mjpeg.serve()
     lookup.serve()     # the planes' routes and photos
+    if app_config.remotes_port:     # the standalone remotes: this process has the HA websocket they act through
+        try:
+            from disinfo import remotes
+            key = app_config.remotes_key
+            remotes.start(app_config.remotes_port, key.get_secret_value() if key else '')
+        except ImportError as e:
+            print(f'[Data Service] no remotes: {e}')
 
     pubsub = PubSubManager()
     pubsub.attach('data_service', ('di.pubsub.dataservice', 'di.pubsub.remote'), on_pubsub)
