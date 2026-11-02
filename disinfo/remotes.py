@@ -209,20 +209,21 @@ def state(keys: list[str], remote: dict | None = None) -> dict:
 
 
 BUNDLES = Path(os.environ.get('DI_REMOTES', Path.home() / '.local' / 'state' / 'disinfo-remote' / 'remotes'))
+BUILT = BUNDLES.parent / 'built'
 _compiled: dict[tuple[Path, str], tuple[float, object]] = {}
 
 
 def bundle(hello: dict):
     '''The remote's layout: <its id, ':' as '-'>.svg in BUNDLES, else default-<board>.svg, default.svg; compiled
     for its board when changed.'''
-    from disinfo_remote.compiler import BOARD_NAMES, compile_svg
+    from disinfo_remote.compiler import BOARD_NAMES, compile_apart
     board = BOARD_NAMES.get(hello.get('board'), 'tdp')
     for name in (hello.get('id', '').replace(':', '-'), f'default-{board}', 'default'):
         p = BUNDLES / f'{name}.svg'
         if p.exists():
             mtime = p.stat().st_mtime
-            if _compiled.get((p, board), (0,))[0] != mtime:
-                _compiled[(p, board)] = mtime, compile_svg(p.read_bytes(), board=board, name=p.stem)
+            if _compiled.get((p, board), (0,))[0] != mtime:     # in a child: the renders' memory goes with it
+                _compiled[(p, board)] = mtime, compile_apart(p, board, BUILT / f'{p.stem}-{board}')
             return _compiled[(p, board)][1]
     return None
 
