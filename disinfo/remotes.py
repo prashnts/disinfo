@@ -228,8 +228,13 @@ def bundle(hello: dict):
 
 
 def start(port: int, key: str = '', usb=False, ble=False):
-    '''The hub, in this process (the data service has the HA websocket).'''
+    '''The hub, in this process (the data service has the HA websocket); its lines in this process's log.'''
     from disinfo_remote.hub import Hub
+    if not log.handlers and not logging.getLogger().handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter('[remotes] %(name)s %(message)s'))
+        log.addHandler(h)
+        log.setLevel(logging.INFO)
     return Hub(act, state, bundle, usb=usb, ble=ble, port=port, key=key).start()
 
 
