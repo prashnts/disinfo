@@ -11,6 +11,10 @@ Actions (a remote's widgets; ones not known here are skipped, remotes are shared
                                      turn.<sun|moon|landmark>: the sky view turned there; release: back to its own;
                                      fov, zoom: a slider's 0-100 scaled (30-180 deg, 0.25-4x)
 Layouts: BUNDLES/<remote id>.svg or default.svg (compiled here, pushed when its hash differs).
+HTTP on the hub's port + 1 (vellum's remote plugin), header x-key = the hub's key:
+  GET /remotes  the remotes connected;  GET /layouts  the layouts here
+  PUT /layouts/<name>.svg  a layout saved; the remotes connected say hello again: the changed ones get the bundle
+  GET /entities?q=<words>&limit=  HA's entities matching (id, name, state): the plugin's typeahead
 State keys: ha.<entity> (its state), ha.<entity>.brightness (0-100), weather.temp, home.temp, timer.next,
   aviator.sky (the compass: remote sky widget), aviator.view.<v>, aviator.layer.<l>, aviator.light (bools),
   aviator.zoom (0-100), for the remote's scope.
@@ -23,6 +27,7 @@ import logging
 import math
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -236,7 +241,88 @@ def start(port: int, key: str = '', usb=False, ble=False):
         h.setFormatter(logging.Formatter('[remotes] %(name)s %(message)s'))
         log.addHandler(h)
         log.setLevel(logging.INFO)
-    return Hub(act, state, bundle, usb=usb, ble=ble, port=port, key=key).start()
+    hub = Hub(act, state, bundle, usb=usb, ble=ble, port=port, key=key).start()
+    if port:
+        serve_http(hub, port + 1, key)
+    return hub
+
+
+def entities(q: str, limit: int) -> list[dict]:
+    words = q.lower().split()
+    out = []
+    for e in list(getattr(hass.HaWS().client, 'db', {}).values()):
+        name = (e.attributes or {}).get('friendly_name') or ''
+        hay = f'{e.entity_id} {name}'.lower()
+        if all(w in hay for w in words):
+            out.append({'id': e.entity_id, 'name': name, 'state': e.state})
+    out.sort(key=lambda d: (not d['id'].startswith(tuple(words)), d['id']))
+    return out[:limit]
+
+
+def serve_http(hub, port: int, key: str):
+    '''The layouts and HA's entities for the editor (vellum): a small server beside the hub, in its thread.'''
+    import re
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import parse_qs, urlparse
+
+    class H(BaseHTTPRequestHandler):
+        def reply(self, code: int, body):
+            data = json.dumps(body).encode()
+            self.send_response(code)
+            self.send_header('content-type', 'application/json')
+            self.send_header('content-length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def allowed(self) -> bool:
+            if key and self.headers.get('x-key') != key:
+                self.reply(403, {'error': 'key'})
+                return False
+            return True
+
+        def do_GET(self):
+            if not self.allowed():
+                return
+            u = urlparse(self.path)
+            if u.path == '/remotes':
+                return self.reply(200, [{'where': w, **{k: l.hello.get(k) for k in ('id', 'board', 'remote', 'hash')}}
+                                        for w, l in list(hub.links.items()) if l.hello])
+            if u.path == '/layouts':
+                return self.reply(200, sorted(p.stem for p in BUNDLES.glob('*.svg')))
+            if u.path == '/entities':
+                q = parse_qs(u.query)
+                return self.reply(200, entities(q.get('q', [''])[0], int(q.get('limit', ['30'])[0])))
+            self.reply(404, {'error': 'not here'})
+
+        def do_PUT(self):
+            if not self.allowed():
+                return
+            m = re.fullmatch(r'/layouts/([A-Za-z0-9_.-]+)\.svg', urlparse(self.path).path)
+            if not m:
+                return self.reply(404, {'error': 'not here'})
+            data = self.rfile.read(int(self.headers.get('content-length', 0)))
+            if b'<svg' not in data[:2000]:
+                return self.reply(400, {'error': 'not an SVG'})
+            BUNDLES.mkdir(parents=True, exist_ok=True)
+            tmp = BUNDLES / f'.{m.group(1)}.svg'
+            tmp.write_bytes(data)
+            tmp.replace(BUNDLES / f'{m.group(1)}.svg')
+            asked = []
+            for w, l in list(hub.links.items()):    # hello again: compiled on it, pushed where the hash differs
+                try:
+                    l.send({'t': 'hi'})
+                    asked.append(w)
+                except Exception as e:
+                    log.warning('%s: hi: %s', w, e)
+            log.info('layout %s saved (%d KB), asked %s', m.group(1), len(data) >> 10, asked)
+            self.reply(200, {'saved': m.group(1), 'asked': asked})
+
+        def log_message(self, *a):
+            pass
+
+    srv = ThreadingHTTPServer(('', port), H)
+    threading.Thread(target=srv.serve_forever, daemon=True, name='remotes-http').start()
+    log.info('http on :%d', port)
 
 
 def main():
