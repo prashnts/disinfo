@@ -98,6 +98,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Ver
 - The web page's show buttons toggled each renderer on its own, so screens could disagree.
 - The salon's client logged a missing remote a thousand times a second (2.4 GB a day on its SD card).
 - Frosted cards had square corners since the frost dim (2026-10-29): the frost fades in over their rounded edges.
+- Every process leaked a list per Redis pubsub message since the redis 8 bump (2026-10-25; hiredis < 3.4.2, hiredis-py#250): the server grew ~20 MB/h on the frames and stalled the screens once in swap. hiredis 3.5.0.
 
 ### Performance
 - Back to before the color system: the guard looks only at text over pictures (`Picture` marks: sky, map, moon, covers) and checks cheaper; frost's dim and the sun's times cached. Compose −1.6 to −2.3 ms on the PC (desk 9.0 → 7.5, entry 11.6 → 9.6).
