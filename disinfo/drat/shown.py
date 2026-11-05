@@ -20,7 +20,7 @@ WIDGETS = {
     'weather': (('weather.widget',), 600, 900),
     'graphs': (('weather.graphs',), 600, 900),
     'moon': (('moon_phase',), 600, 900),
-    'music': (('music', 'shazam.recognized'), 600, 900),
+    'music': (('music',), 600, 900),
     'planes': ((), 600, 900),               # their cards (aviator.widgets): away, the planes go in the tile
     'plane_tile': (('aviator-tile',), 600, 900),
     'metro': (('di.metro',), 60, 900),

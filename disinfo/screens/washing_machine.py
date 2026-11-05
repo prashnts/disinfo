@@ -1,4 +1,3 @@
-from pyquery import PyQuery as pq
 from functools import cache
 
 from ..utils.drawer import draw_loop
@@ -12,6 +11,7 @@ from ..drat.app_states import PubSubStateManager, PubSubMessage
 from discore.data_structures import FrameState
 from ..data_structures import AppBaseModel
 from discore.cairo import load_svg, load_svg_string
+from .dishwasher import lcd_svg
 
 label_style = TextStyle(font=fonts.bitocra7, color=amber_red.darken(0.2).hex)
 
@@ -48,13 +48,7 @@ def washer_lcd(letter):
         0: ['a', 'b1', 'b2', 'd1', 'd2', 'e'],
         'h': ['b1', 'c', 'd1', 'd2'],
     }
-    with open('assets/dishwasher-segment.svg', 'rb') as f:
-        svg = pq(f.read())
-
-    for led in mapping[letter]:
-        svg(f'#{led}').attr('stroke', amber_red.darken(0.1).hex)
-    
-    return load_svg_string(str(svg))
+    return load_svg_string(lcd_svg(mapping[letter], amber_red.darken(0.1).hex))
 
 
 def composer(fs: FrameState):

@@ -1,7 +1,6 @@
 import json
 import time
-from typing import Literal, TypeVar
-from typing_extensions import Annotated
+from typing import Annotated, Literal, TypeVar
 from pydantic import ValidationError, Field, model_validator, RootModel
 
 from disinfo.data_structures import AppBaseModel

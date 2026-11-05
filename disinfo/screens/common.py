@@ -10,7 +10,6 @@ from discore.screen import Focus
 from discore.transitions import FadeIn
 
 from . import aviator, debug_info, dishwasher, klipper, now_playing, paris_metro, smokes, solar, trash_pickup, washing_machine, weather
-from .music.shazam import widgets as shazam_widgets
 from .solar import AnalogClockStyle
 from disinfo.drat import shown
 from disinfo.redis import db
@@ -86,7 +85,6 @@ def focus(fs: FrameState, on_top: list, solar_style):
 def side_cards(fs: FrameState) -> list:
     return shown.kept(fs, [
         weather.widgets.weather(fs),
-        *shazam_widgets(fs),
         now_playing.slideshow_widget(fs),
         weather.widgets.moon_phase(fs),
         dishwasher.widget(fs),

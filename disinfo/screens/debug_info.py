@@ -68,19 +68,21 @@ FR: Voix ambiguë d’un cœur qui au zéphyr préfère les jattes de kiwis.
 
 # font_demo(debug=True)  # uncomment to autogenerate the font cards, saved to .debugdemo.png
 
-def get_palette(name):
-    from matplotlib import cm
-    cmap = cm.get_cmap(name, 256)
+# matplotlib's colormaps at 17 stops (within 5/255 once interpolated).
+colormaps = {
+    'viridis': ['#440154', '#48186a', '#472d7b', '#424086', '#3b528b', '#33638d', '#2c728e', '#26828e', '#21918c',
+                '#1fa088', '#28ae80', '#3fbc73', '#5ec962', '#84d44b', '#addc30', '#d8e219', '#fde725'],
+    'twilight': ['#e2d9e2', '#c2ced4', '#93b4c6', '#7196c1', '#6275ba', '#5e4fac', '#59298e', '#44135a', '#301437',
+                 '#4d1443', '#761f4f', '#9a3750', '#b35953', '#c37f64', '#cda68c', '#d9c9c2', '#e2d9e2'],
+}
 
-    try:
-        colors = cmap.colors
-    except AttributeError:
-        colors = np.array([cmap(i) for i in range(256)], dtype=float)
-
-    arr = np.array(colors * 255).astype('uint8')
-    arr = arr.reshape((16, 16, 4))
-    arr = arr[:, :, 0:3]
-    return arr.tobytes()
+@cache
+def get_palette(name: str) -> bytes:
+    '''The 256-color PIL palette of a colormap.'''
+    stops = np.array([[int(c[i:i + 2], 16) for i in (1, 3, 5)] for c in colormaps[name]], dtype=float)
+    xs = np.linspace(0, 255, len(stops))
+    rgb = np.stack([np.interp(np.arange(256), xs, stops[:, i]) for i in range(3)], axis=1)
+    return rgb.round().astype('uint8').tobytes()
 
 _tof_asked = [0.0]
 s_tof = TextStyle(font=fonts.tamzen__rs, color='#DFD9C9')

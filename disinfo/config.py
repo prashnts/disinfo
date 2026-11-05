@@ -24,13 +24,6 @@ class MonitorConfig(AppBaseModel):
         'sensor.enviomental_lux',
     ]
 
-class ShazamConfig(AppBaseModel):
-    chunk: int = 1024
-    channels: int = 1
-    sample_rate: int = 48000
-    record_duration: int = 6
-    device_index: int = 6
-
 class UDPPanel(AppBaseModel):
     ip: str
     size: int
@@ -171,8 +164,6 @@ class Config(AppBaseModel):
     smokes_screens: list[str] = ['distudy']
     smokes_home: str = ''
     smokes_away: list[str] = []
-
-    shazam: ShazamConfig = ShazamConfig()
 
     screen_data: ScreenData = load_screen_data()
 

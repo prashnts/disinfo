@@ -1,5 +1,6 @@
 
-# from pyquery import PyQuery as pq
+import xml.etree.ElementTree as ET
+
 from functools import cache
 from typing import Optional
 from datetime import datetime, timedelta
@@ -70,13 +71,18 @@ def washer_lcd(letter: str, color: str):
         'a': ['a', 'b1', 'b2', 'c', 'd1', 'd2'],
         'n': ['a', 'b1', 'b2', 'd1', 'd2'],
     }
-    with open('assets/dishwasher-segment.svg', 'rb') as f:
-        svg = pq(f.read())
+    return load_svg_string(lcd_svg(mapping[letter], color))
 
-    for led in mapping[letter]:
-        svg(f'#{led}').attr('stroke', color)
-    
-    return load_svg_string(str(svg))
+
+def lcd_svg(segments: list[str], color: str) -> str:
+    '''The 7-segment digit SVG with these segments lit.'''
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
+    root = ET.parse('assets/dishwasher-segment.svg').getroot()
+    for el in root.iter():
+        if el.get('id') in segments:
+            el.set('stroke', color)
+    return ET.tostring(root, encoding='unicode')
 
 
 def timer_full_cycle(now):

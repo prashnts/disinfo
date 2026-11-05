@@ -13,8 +13,6 @@ from .data_structures import FrameState
 from .drat.app_states import CursorStateManager, PresenceSensorStateManager
 
 from . import screens
-from .screens.music.shazam import widgets as shazam_widgets
-from .screens.music.shazam import indicators as shazam_indicators
 from .config import app_config
 
 
@@ -34,7 +32,6 @@ def compose_small_frame(fs: FrameState):
     composite_at(screens.solar.draw(fs), image, 'mm')
     stack = Stack('main_cards').mut([
         *screens.aviator.widgets.planes(fs),
-        *shazam_widgets(fs),
         screens.weather.widgets.weather(fs),
         screens.dishwasher.widget(fs),
         screens.weather.widgets.moon_phase(fs),
@@ -46,6 +43,5 @@ def compose_small_frame(fs: FrameState):
     composite_at(stack.draw(fs), image, 'ml', dx=p_stack_offset())
     composite_at(screens.date_time.sticky_widget(fs), image, 'tr', dy=p_time_offset())
     composite_at(screens.twenty_two.draw(fs), image, 'mm')
-    composite_at(shazam_indicators(fs).draw(fs), image, 'br')
 
     return Frame(image).tag('present')
