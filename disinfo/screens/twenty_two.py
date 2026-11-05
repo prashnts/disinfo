@@ -63,7 +63,7 @@ def cat(i: int, k: int, flip: bool = False, tilt: int = 0) -> Frame:
 
 @dataclass
 class Moment:
-    kind: str       # same 22:22, run 12:34, pair 14:14, mirror 13:31
+    kind: str       # same 22:22, run 12:34 (or 21:43), pair 14:14, mirror 13:31
     level: float    # 0..1, how big a show
     palette: str
     color: str
@@ -78,6 +78,9 @@ def moment(t) -> Moment | None:
         return Moment('same', min(1, 0.7 + 0.15 * int(hm[0]) + 0.1 * sec), 'rainbow', '#CF3F13' if sec else '#CF8C13')
     if hm in ('0123', '1234', '2345'):
         return Moment('run', 1 if t.strftime('%H%M%S') in ('012345', '123456') else 0.6, 'rainbow', '#13A7CF')
+    if ''.join(sorted(hm)) in ('0123', '1234', '2345'):
+        # 21:34, 14:32...: the run's digits, shuffled.
+        return Moment('run', 0.3, by_hour(t.hour), '#13A7CF')
     if t.hour == t.minute:
         return Moment('pair', 0.25 + 0.2 * t.hour / 23 + 0.15 * sec, by_hour(t.hour), '#CF3F13' if sec else '#2FB21B')
     if hm == hm[::-1]:
