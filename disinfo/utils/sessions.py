@@ -11,12 +11,13 @@ song changes don't count. `di.sessions.<name>.starts` holds session start timest
         ...
 '''
 import time
-import pendulum
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from functools import cache
 from redis import RedisError
 
+from discore import clock
 from disinfo.redis import db
 
 REFRESH = 60
@@ -83,14 +84,14 @@ class Sessions:
     def is_recent(self, now: float | None = None) -> bool:
         return (now or time.time()) - self.last() < self.recent
 
-    def is_habit_time(self, now: pendulum.DateTime | None = None) -> bool:
+    def is_habit_time(self, now: datetime | None = None) -> bool:
         '''True if a session started around this time of day on a few recent days.'''
-        now = now or pendulum.now()
+        now = now or clock.now()
         minute = now.hour * 60 + now.minute
         days = set()
         for t in self.starts():
-            dt = pendulum.from_timestamp(t, tz=now.timezone)
-            if (now - dt).in_days() >= self.habit_days:
+            dt = clock.from_ts(t, now.tzinfo)
+            if (now - dt).days >= self.habit_days:
                 continue
             delta = abs(dt.hour * 60 + dt.minute - minute)
             if min(delta, 1440 - delta) <= self.habit_window:

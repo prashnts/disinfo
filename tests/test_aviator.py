@@ -74,7 +74,7 @@ def test_watched_keeps_its_planes(monkeypatch):
 def test_the_card_on_top_brings_the_radar(monkeypatch):
     from discore.widget import Widget
     from disinfo.screens import common
-    fs = type('fs', (), {'config': type('c', (), {'name': 'test', 'aviator_view': 'map', 'aviator_quiet': []}), 'now': __import__('pendulum').parse('2026-10-20T12:00:00')})()
+    fs = type('fs', (), {'config': type('c', (), {'name': 'test', 'aviator_view': 'map', 'aviator_quiet': []}), 'now': __import__('discore.clock').clock.parse('2026-10-20T12:00:00')})()
     monkeypatch.setattr(app, 'view_mode', lambda fs: fs.config.aviator_view)
     monkeypatch.setattr(app, 'quiet', lambda fs: False)
     monkeypatch.setattr(link, 'on', lambda fs: False)

@@ -1,5 +1,6 @@
 '''Malow's feeder: a chime on the buzzer as it drops the food, then her card a while, 'fed hh:mm'.'''
 from collections import defaultdict
+from datetime import timedelta
 from dataclasses import replace as dc_replace
 
 from discore.text import text, TextStyle
@@ -26,7 +27,7 @@ def meal(fs: FrameState) -> tuple[str, float] | None:
     for m in MEALS:
         h, mi = map(int, m.split(':'))
         at = fs.now.replace(hour=h, minute=mi, second=DELAY, microsecond=0)
-        for t in (at, at.subtract(days=1)):
+        for t in (at, at - timedelta(days=1)):
             since = (fs.now - t).total_seconds()
             if 0 <= since < SHOW:
                 return m, since

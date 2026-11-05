@@ -1,10 +1,9 @@
 import io
 import re
 import time
-import pendulum
 import numpy as np
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from functools import cache
 from typing import Optional
@@ -24,6 +23,7 @@ from discore.slides import Slides, SlidesStyle
 from discore.progress import progress_bar, ProgressStyle
 from disinfo import fonts
 from ..config import app_config
+from discore import clock
 from discore.data_structures import FrameState, UniqInstance
 from ..data_structures import AppBaseModel
 from disinfo.utils.hass import HaWS
@@ -85,6 +85,14 @@ live_phases = ('busy', 'active', 'error', 'starting')
 phase_names = {'done': 'Done', 'failed': 'Failed', 'idle': 'Idle', 'busy': 'Busy', 'active': 'Ready', 'error': 'Error', 'starting': 'Start'}
 # Done/failed cards stay this long after the printer stopped.
 recent_minutes = 30
+# A printer worked on stays in error: shown for a while when it starts, then only briefly on activity.
+error_minutes = 10
+error_blip_seconds = 15
+# Klipper sensors that change only on activity, the HA fallback for the websocket's pushes.
+activity_sensors = ('printer_state', 'printer_message', 'current_display_message', 'current_print_state',
+                    'idle_timeout_state', 'toolhead_position_x', 'toolhead_position_y', 'toolhead_position_z')
+# printer_id -> when its error started. Kept through restarts that end in error again.
+error_since: dict[str, datetime] = {}
 
 class PrinterState(AppBaseModel):
     printer_id: str
@@ -127,6 +135,7 @@ class PrinterState(AppBaseModel):
     is_visible: bool = False
     is_done: bool = False
     is_printing: bool = False
+    blip: bool = False      # in error, something just happened
 
     model: str = 'bambu'
     message: Optional[str] = None
@@ -134,16 +143,14 @@ class PrinterState(AppBaseModel):
 
     _id: str = 'klipper'
 
-    def seconds_left(self, now: pendulum.DateTime) -> int:
+    def seconds_left(self, now: datetime) -> float:
         if not self.eta:
             return -1
-
-        eta = pendulum.parse(self.eta, tz=self.source_timezone).in_tz(tz='local')
-        return (eta - now).total_seconds()
+        return (clock.parse(self.eta, self.source_timezone) - now).total_seconds()
 
     def set_phase(self, phase: str, changed_at):
         self.phase = phase
-        self.phase_at = pendulum.instance(changed_at).in_tz('local') if changed_at else None
+        self.phase_at = clock.aware(changed_at).astimezone(clock.local()) if changed_at else None
         self.is_on = phase != 'offline'
         self.is_printing = phase in ('printing', 'paused')
         self.is_done = phase == 'done'
@@ -168,7 +175,7 @@ def get_moonraker_state(printer_id: str, url: Optional[str] = None, api_key: Opt
         filename=get_sensor('filename'),
         thumbnail=thumburl,
         online=True,
-        completion_time=pendulum.parse(x).in_tz('local').strftime('%H:%M') if (x := get_sensor('print_eta')) else None,
+        completion_time=clock.local_hm(get_sensor('print_eta')),
         current_layer=int(float(x)) if (x := get_sensor('current_layer')) else None,
         total_layers=int(float(x)) if (x := get_sensor('total_layer')) else None,
         time_left=get_sensor('print_time_left'),
@@ -196,9 +203,9 @@ def get_moonraker_state(printer_id: str, url: Optional[str] = None, api_key: Opt
         progress, duration = mr.get('virtual_sdcard', 'progress') or 0, mr.get('print_stats', 'print_duration') or 0
         state.progress = int(progress * 100)
         # Like Fluidd's file estimate: the time so far, scaled by the progress.
-        eta = pendulum.now('UTC').add(seconds=duration / progress - duration) if state.state in klipper_phases and progress > 0.01 else None
+        eta = clock.now() + timedelta(seconds=duration / progress - duration) if state.state in klipper_phases and progress > 0.01 else None
         state.eta = eta.isoformat() if eta else None
-        state.completion_time = eta.in_tz('local').strftime('%H:%M') if eta else None
+        state.completion_time = eta.strftime('%H:%M') if eta else None
         fields = {'printer_state': ('webhooks', 'state'), 'idle_timeout_state': ('idle_timeout', 'state'), 'current_print_state': ('print_stats', 'state')}
         changed_at = lambda sensor, ha=changed_at: mr.changed_at.get(fields[sensor]) or ha(sensor)
 
@@ -216,7 +223,18 @@ def get_moonraker_state(printer_id: str, url: Optional[str] = None, api_key: Opt
         phase, by = klipper_idle_phases[idle], 'idle_timeout_state'
     else:
         phase, by = print_phase, 'current_print_state'
-    return state.set_phase(phase, changed_at(by) if by else None)
+    at = changed_at(by) if by else None
+    if phase != 'error':
+        if phase != 'starting':
+            error_since.pop(printer_id, None)
+        return state.set_phase(phase, at)
+    at = error_since.setdefault(printer_id, at or clock.now())
+    pushed = mr.active_at if mr and mr.live else None
+    active = max(filter(None, [pushed, *(x.last_changed for s in activity_sensors if (x := entity(s)))]), default=None)
+    state.set_phase(phase, at)
+    state.blip = not is_expired(active, seconds=error_blip_seconds, expired_if_none=True)
+    state.is_visible = not is_expired(at, minutes=error_minutes) or state.blip
+    return state
 
 def get_bambulab_state(printer_id: str):
     cam = HaWS().get_entity(f'camera.{printer_id}_camera')
@@ -238,7 +256,7 @@ def get_bambulab_state(printer_id: str):
         filename=get_sensor('task_name'),
         thumbnail=thumburl,
         online=True,
-        completion_time=pendulum.parse(x).in_tz('local').strftime('%H:%M') if (x := get_sensor('end_time')) else None,
+        completion_time=clock.local_hm(get_sensor('end_time')),
         current_layer=int(x) if (x := get_sensor('current_layer')) else None,
         total_layers=int(x) if (x := get_sensor('total_layer_count')) else None,
         bed_target=float(x) if (x := get_sensor('bed_target_temperature')) else None,
@@ -248,7 +266,7 @@ def get_bambulab_state(printer_id: str):
         chamber_temp=float(x) if (x := get_sensor('chamber_temperature')) else None,
         weight=float(x) if (x := get_sensor('print_weight')) else None,
         objects=int(x) if (x := get_sensor('printable_objects')) else None,
-        started_at=pendulum.parse(x).in_tz('local').strftime('%H:%M') if (x := get_sensor('start_time')) else None,
+        started_at=clock.local_hm(get_sensor('start_time')),
         time_left=get_sensor('remaining_time'),
         eta=get_sensor('end_time'),
         printer_name=get_sensor('printer_name'),
@@ -280,8 +298,7 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     # Two largest units. Past the eta it counts up as overdue instead of wrapping around.
     if not state.eta:
         return None
-    eta = pendulum.parse(state.eta, tz=state.source_timezone).in_tz(tz='local')
-    d = int((eta - fs.now).total_seconds())
+    d = int(state.seconds_left(fs.now))
     overdue = d < 0
     d = abs(d)
     segments = [(d // 86400, 'd'), (d % 86400 // 3600, 'h'), (d % 3600 // 60, 'm'), (d % 60, 's')]
@@ -292,7 +309,7 @@ def time_remaining(fs: FrameState, state: PrinterState) -> Frame:
     return hstack([
         text('+', style) if overdue else None,
         *[hstack([text_slide_in(fs, f'{s}', style, name=f'kl.tr.{state.printer_id}.{l}'), text(l, muted_small_style)], gap=1) for s, l in segments[:2]],
-    ], gap=2).tag(('klipper.eta', eta, overdue))
+    ], gap=2).tag(('klipper.eta', state.eta, overdue))
 
 
 def temp(fs: FrameState, icon: Frame, value: float, target: Optional[float], name: str) -> Frame:
@@ -497,7 +514,8 @@ def limn_body(fs: FrameState, state: PrinterState, h: int) -> Frame:
 def watching(fs: FrameState, state: PrinterState) -> bool:
     # While printing and for a while after, or after an error: the camera is the card.
     since = (fs.now - state.phase_at).total_seconds() if state.phase_at else None
-    return state.is_printing or (state.phase in ('done', 'failed', 'error') and since is not None and since < camera_minutes * 60)
+    minutes = error_minutes if state.phase == 'error' else camera_minutes
+    return state.is_printing or (state.phase in ('done', 'failed', 'error') and since is not None and since < minutes * 60)
 
 def composer(fs: FrameState, state: PrinterState):
     # show_printers expands every online printer, otherwise only the ones printing or just done.
@@ -572,7 +590,7 @@ def wants_focus(fs: FrameState, state: PrinterState) -> bool:
     # The stack jumps to the card when the print starts, pauses, finishes or fails, and for its last minutes.
     changed = state.phase_at and (fs.now - state.phase_at).total_seconds() < focus_seconds
     ending = state.is_printing and 0 < state.seconds_left(fs.now) < focus_seconds * 4
-    return bool(state.is_visible and (changed or ending))
+    return bool(state.is_visible and (changed or ending or state.blip))
 
 def widget(fs: FrameState):
     printers = get_state(fs)

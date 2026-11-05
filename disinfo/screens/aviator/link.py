@@ -4,6 +4,7 @@ import time
 
 from suncalc import get_position
 
+from discore import clock
 from discore.data_structures import FrameState
 
 from .state import ADSBxStateManager, OpenedStateManager
@@ -18,7 +19,7 @@ def on(fs: FrameState) -> bool:
     return bool(OpenedStateManager().get_state(fs).of('link', fs))
 
 def eiffel(fs: FrameState) -> bool:
-    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sun = get_position(fs.now.astimezone(clock.UTC), fs.config.longitude, fs.config.latitude)
     return sky.show(sun['altitude'] * 57.29578, time.time()) is not None
 
 def plane(fs: FrameState, first: str | None) -> str | None:

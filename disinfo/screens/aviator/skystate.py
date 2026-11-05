@@ -22,6 +22,8 @@ import json
 import math
 import time
 import datetime as dt
+
+from discore import clock
 import numpy as np
 
 from suncalc import get_times
@@ -344,15 +346,14 @@ def surface(f: dict, notes: dict) -> dict:
 def outlook(fc: dict | None, obs_log: list, now: float, tz: str = 'Europe/Paris') -> dict | None:
     '''The blend pulled to the stations, by the hour ahead, and today's high and low: what the stations saw since
     midnight with what's ahead until the next.'''
-    import pendulum
     from disinfo.screens.weather import forecast, stations
     if not fc:
         return None
     a = forecast.anchored(fc, (stations.doc() or {}).get('home'), now)
     rows = [[t, *(a[k][i] for k in ('temp', 'dew', 'wind', 'gust', 'pressure', 'rain', 'rain_p', 'cloud', 'spread'))]
             for i, t in enumerate(a['time']) if t + 3600 > now]
-    day = pendulum.from_timestamp(now, tz).start_of('day')
-    a0, a1 = day.int_timestamp, day.add(days=1).int_timestamp
+    day = clock.from_ts(now, tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    a0, a1 = int(day.timestamp()), int((day + dt.timedelta(days=1)).timestamp())
     temps = [r[1] for r in obs_log if a0 <= r[0] <= now and r[1] is not None]
     temps += [r[1] for r in rows if now < r[0] <= a1 and r[1] is not None]
     today = {'high': round(max(temps), 1), 'low': round(min(temps), 1)} if temps else None

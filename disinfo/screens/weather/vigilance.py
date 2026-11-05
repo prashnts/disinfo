@@ -3,7 +3,7 @@ yellow or worse today and tomorrow, as short lines for the weather card. The use
 '''
 import json
 import time
-import pendulum
+from discore import clock
 import requests
 
 from disinfo.config import app_config
@@ -37,7 +37,7 @@ def parse(doc: dict, domain: str) -> dict:
                 for t in ph['timelaps_items']:
                     if t['color_id'] > 1:
                         out.setdefault(ph['phenomenon_id'], []).append(
-                            [pendulum.parse(t['begin_time']).int_timestamp, pendulum.parse(t['end_time']).int_timestamp, t['color_id']])
+                            [int(clock.parse(t['begin_time']).timestamp()), int(clock.parse(t['end_time']).timestamp()), t['color_id']])
     return {'at': time.time(), 'update': doc['product']['update_time'], 'domain': domain, 'phenomena': out}
 
 def job():
@@ -71,8 +71,8 @@ def lines(now: float, d: dict | None = None) -> list[tuple[int, str]]:
         if not live:
             continue
         begin, end, color = max(live, key=lambda w: (w[2], -w[0]))
-        t = lambda s: pendulum.from_timestamp(s, 'Europe/Paris')
-        span = f'jusqu\'à {t(end).format("H")}h' if begin <= now else f'{t(begin).format("H")}h-{t(end).format("H")}h'
+        t = lambda s: clock.from_ts(s, 'Europe/Paris')
+        span = f'jusqu\'à {t(end).hour}h' if begin <= now else f'{t(begin).hour}h-{t(end).hour}h'
         out.append((color, f'{PHENOMENA.get(ph, ph)} {span}'))
     return sorted(out, key=lambda l: -l[0])
 
@@ -145,7 +145,7 @@ def forecast_lines(now: float, d: dict | None = None, sky: dict | None = None) -
             return air_lines(sky)
         hours = d['hours']
     hours = [h for h in hours if h[0] > now]       # an hour's rain is the hour that ends at its time
-    t = lambda s: pendulum.from_timestamp(s, 'Europe/Paris').format('H')
+    t = lambda s: clock.from_ts(s, 'Europe/Paris').hour
     out = []
     wet = [i for i, h in enumerate(hours) if h[1] >= rain_mm]
     if wet:

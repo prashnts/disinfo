@@ -1,5 +1,4 @@
 import math
-import pendulum
 import numpy as np
 import cairocffi as cairo
 
@@ -8,6 +7,9 @@ from suncalc import get_position, get_times
 from dataclasses import dataclass
 from typing import Optional
 
+from datetime import time as dtime
+
+from discore import clock
 from discore.data_structures import FrameState
 
 from discore.elements import Frame
@@ -113,9 +115,10 @@ def sun_times(t, config):
 _sun = {}
 
 def _sun_times(t, config):
-    times = get_times(t.in_tz('UTC'), config.longitude, config.latitude)
-    position = get_position(t.in_tz('UTC'), config.longitude, config.latitude)
-    utctimes = {k: pendulum.instance(v).in_tz('local') for k, v in times.items() if not str(v) == 'NaT'}
+    utc = t.astimezone(clock.UTC)
+    times = get_times(utc, config.longitude, config.latitude)
+    position = get_position(utc, config.longitude, config.latitude)
+    utctimes = {k: clock.aware(v).astimezone(clock.local()) for k, v in times.items() if not str(v) == 'NaT'}
     angles = {k: time_to_angle(v.time()) for k, v in utctimes.items()}
     return angles, utctimes, position
 
@@ -141,7 +144,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     w = style.width or fs.config.width
     h = style.height or fs.config.height
 
-    # t = pendulum.now().set(hour=17, minute=00, month=1)
+    # t = t.replace(hour=17, minute=0, month=1)
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
     surface_sun = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
 
@@ -228,8 +231,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     tick_len = [4, 2]
 
     for hour in range(0, 24):
-        time = pendulum.time(hour=hour)
-        htheta = time_to_angle(time)
+        htheta = time_to_angle(dtime(hour))
         tick_l = tick_len[hour % 2]
 
         lx = cx + tick_radius * math.cos(htheta)
@@ -357,9 +359,8 @@ def analog_clock(fs, style: AnalogClockStyle):
 
     time_ticks = [0, 6, 12, 18]
     for hour in time_ticks:
-        time = pendulum.time(hour=hour)
-        theta = time_to_angle(time)
-        label = time.format('HH')
+        theta = time_to_angle(dtime(hour))
+        label = f'{hour:02d}'
         lx = round(cx + label_radius * math.cos(theta))
         ly = round(cy + label_radius * math.sin(theta))
 
@@ -370,7 +371,7 @@ def analog_clock(fs, style: AnalogClockStyle):
     sunset = solar_times['sunset']
     sunset_theta = time_to_angle(sunset.time())
     sunset_radius = min(rcontain / math.sin(sunset_theta) - 5, rcontain / math.cos(2 * math.pi - sunset_theta))
-    sunset_label = sunset.format('HH:mm')
+    sunset_label = sunset.strftime('%H:%M')
     sunset_x = round(cx + sunset_radius * math.cos(sunset_theta))
     sunset_y = round(cy + sunset_radius * math.sin(sunset_theta))
     place_at(text(sunset_label, s_time_tick[0]), i, sunset_x, sunset_y, anchor='ml')

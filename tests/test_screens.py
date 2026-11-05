@@ -35,12 +35,12 @@ def test_date_in_the_time_row_only_when_covered():
 
 def test_design_demo_pages_draw_in_their_room(monkeypatch):
     import time
-    import pendulum
+    from discore import clock
     from discore.data_structures import FrameState
     from disinfo.config import app_config
     from disinfo.drat.app_states import RuntimeStateManager, PubSubMessage
     from disinfo.apps import design_demo as dd
-    fs = FrameState(tick=time.time(), now=pendulum.now(), config=app_config)
+    fs = FrameState(tick=time.time(), now=clock.now(), config=app_config)
     m = RuntimeStateManager()
     m.state.stream_url = None
     monkeypatch.setattr(dd, 'up', lambda fs, name, scheduled=False: True)

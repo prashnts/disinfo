@@ -607,7 +607,7 @@ def sky(fs: FrameState) -> Frame:
 def home(fs: FrameState, st: State, shown: list[TimerEntry]) -> Frame:
     f = sky(fs)
     rows = [label(fs.now.strftime('%H:%M'), fonts.px_op__xl, '#f0f0f0'), label(fs.now.strftime('%a %d %b'), fonts.px_op__l, '#a0a0a0')]
-    running = sorted((t for t in shown if t.left() > -t.tail), key=lambda t: t.end)
+    running = sorted((t for t in shown if t.left() > -t.tail), key=lambda t: t.left())
     if running:
         rows.append(label(T.over(running[0]), fonts.px_op__lb, ORANGE))
     f = place_at(vstack(rows, gap=2, align='center'), f, C, 196, 'bm', frost=1.5)

@@ -1,6 +1,5 @@
 import requests
 import io
-import pendulum
 
 from PIL import Image
 from functools import cache, lru_cache
@@ -8,6 +7,7 @@ from datetime import timedelta
 
 from ..utils.drawer import draw_loop
 from ..config import app_config
+from discore import clock
 from disinfo import fonts
 from discore.elements import Frame, StillImage, Lazy
 from discore.text import Text, TextStyle, text
@@ -77,7 +77,7 @@ def get_state(fs: FrameState):
     state['paused'] = s['state'] == 'paused'
 
     last_updated = s['last_updated']
-    now = pendulum.now('utc')
+    now = clock.now()
 
     state['media_title'] = s['attributes'].get('media_title', '')
     state['media_album'] = s['attributes'].get('media_album_name', '')

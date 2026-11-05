@@ -1,5 +1,3 @@
-import pendulum
-
 from typing import Optional
 from datetime import datetime, timedelta
 
@@ -45,9 +43,9 @@ class WeatherData(AppBaseModel):
     icon_name: str = 'sleet'
     t_high: float = 5.0
     t_low: float = 0
-    sunset_time: Optional[datetime] = pendulum.now().set(hour=19, minute=0, second=0)
-    sunrise_time: Optional[datetime] = pendulum.now().set(hour=7, minute=0, second=0)
-    updated_at: Optional[datetime] = pendulum.now()
+    sunset_time: Optional[datetime] = None
+    sunrise_time: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     moon_phase: int = 10
 
 class WeatherState(AppBaseModel):
@@ -131,8 +129,9 @@ def get_weather_data(fs: FrameState) -> WeatherState | None:
         updated_at=data.last_updated,
     )
     weather_state.data = weather
-    weather_state.show_sunrise = fs.now < weather.sunset_time
-    weather_state.show_sunset = weather.sunset_time < fs.now
+    # HA's next dusk: before it, the sunrise; past it (the sensor not yet moved on), the sunset.
+    weather_state.show_sunrise = bool(weather.sunset_time and fs.now < weather.sunset_time)
+    weather_state.show_sunset = bool(weather.sunset_time and weather.sunset_time < fs.now)
     weather_state.show_moon_phase = True
     weather_state.is_outdated = sky['outdated'] if sky else not data.service_response
     return weather_state

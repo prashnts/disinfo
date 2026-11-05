@@ -16,13 +16,13 @@ import pstats
 import subprocess
 import sys
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 import typer
 import zlib
-import pendulum
+from discore import clock
 from PIL import Image
 
 from discore.data_structures import FrameState
@@ -78,7 +78,7 @@ def frame_state(cfg) -> FrameState:
     if not _clock:
         return FrameState.create(cfg)
     at, t0 = _clock
-    return FrameState(tick=time.time(), now=at.add(seconds=time.time() - t0), config=cfg)
+    return FrameState(tick=time.time(), now=at + timedelta(seconds=time.time() - t0), config=cfg)
 
 def bench_screen(cfg, frames: int, warmup: int, fps: float, profile: Optional[cProfile.Profile]) -> dict:
     for _ in range(warmup):
@@ -136,7 +136,7 @@ def main(
     # --config and --size can be repeated.
     global _clock
     if at:
-        _clock = (pendulum.parse(at, tz=pendulum.local_timezone()), time.time())
+        _clock = (clock.parse(at, clock.local()), time.time())
     if not as_is:
         compositor.should_turn_on_display = lambda fs: True
     configs = [load_config(c) for c in config or []] or [app_config]

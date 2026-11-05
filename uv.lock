@@ -769,7 +769,6 @@ dependencies = [
     { name = "colour" },
     { name = "lru-dict" },
     { name = "numpy" },
-    { name = "pendulum" },
     { name = "pillow" },
     { name = "requests" },
 ]
@@ -780,7 +779,6 @@ requires-dist = [
     { name = "colour", specifier = ">=0.1.5" },
     { name = "lru-dict", specifier = ">=1.4.1" },
     { name = "numpy" },
-    { name = "pendulum", specifier = ">=3.3.0" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "requests", specifier = ">=2.25.1" },
 ]
@@ -807,7 +805,6 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "paho-mqtt" },
-    { name = "pendulum" },
     { name = "pillow" },
     { name = "py-mjpeg" },
     { name = "pyaudio" },
@@ -865,7 +862,6 @@ requires-dist = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
-    { name = "pendulum", specifier = ">=2.1.2" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "py-mjpeg", specifier = ">=1.0.1" },
     { name = "pyaudio", specifier = ">=0.2.14" },
@@ -2041,29 +2037,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d4/de/53e0bcf53d13e005bd8c92e7855142494f41171b34c2536b86187474184d/parso-0.8.5.tar.gz", hash = "sha256:034d7354a9a018bdce352f48b2a8a450f05e9d6ee85db84764e9b6bd96dafe5a", size = 401205, upload-time = "2025-08-23T15:15:28.028Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/16/32/f8e3c85d1d5250232a5d3477a2a28cc291968ff175caeadaf3cc19ce0e4a/parso-0.8.5-py2.py3-none-any.whl", hash = "sha256:646204b5ee239c396d040b90f9e272e9a8017c630092bf59980beb62fd033887", size = 106668, upload-time = "2025-08-23T15:15:25.663Z" },
-]
-
-[[package]]
-name = "pendulum"
-version = "3.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "python-dateutil" },
-    { name = "tzdata" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/3f/345b5bc712ce806f3b5fbce6eea141f46713b2c1a7654eaead1b2593d5a1/pendulum-3.3.0.tar.gz", hash = "sha256:9aceb5b24e9f55381df08187397e88546b5ba82f698b741cbf1a05c5e2369116", size = 87458, upload-time = "2026-10-12T20:54:11.461Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/1a/b47123cfe223a4ba80c76b979b50a76a7164990be68de945bd75c2ed0098/pendulum-3.3.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:8726b64b1c65885008c8b53b06fbe23b8efcbff31056e59898db3f2344203b24", size = 333615, upload-time = "2026-10-12T20:52:44.776Z" },
-    { url = "https://files.pythonhosted.org/packages/79/2c/97b8567610009906d005ed8a6ddb4d2b22bd4c428e7ad590e598e3e14635/pendulum-3.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b13c6f2726a14114c11137dd800ded3fc31f6666eb96e902d4504adc6b5d4e78", size = 323841, upload-time = "2026-10-12T20:52:46.371Z" },
-    { url = "https://files.pythonhosted.org/packages/0b/fa/6ba6e9df4f8d33df308f0ac5aae7da9f9bfa18607ab232fa6c2d7662a805/pendulum-3.3.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bacf141e9b6419a67b1fef994bac98b3becf68472f3b7914cf5c04077013126d", size = 335719, upload-time = "2026-10-12T20:52:47.775Z" },
-    { url = "https://files.pythonhosted.org/packages/69/db/042f6aa22b6eab78683328bda1d4c89236ea2c431c5aa01b91db756b9b1c/pendulum-3.3.0-cp313-cp313-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:472d781f2339c33d4fec62405f38042d8ca1ed51ac55900ecb5846b2a7500e17", size = 366652, upload-time = "2026-10-12T20:52:49.446Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/a4/a71b56a5a4e8e26c904fdff8e269fb057d2e4d27bf48a98c70a14b1a9686/pendulum-3.3.0-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:520a878e30d34b751edfd751ed6d3676684deba1817224657bb3e6e0de86433f", size = 375427, upload-time = "2026-10-12T20:52:50.973Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/39/8439d364a4df47972179888366c8f3c448db4fe5bb9a1d437e69f35e9db8/pendulum-3.3.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb37111ead5f13cedf61f27bdbb8edb108b8754005d8c2e1887890047f848b0d", size = 341916, upload-time = "2026-10-12T20:52:52.468Z" },
-    { url = "https://files.pythonhosted.org/packages/7d/f6/615a747fbb55bb93ee81eab8f890961ad7cddb8b9a9ed4e81ed88c673544/pendulum-3.3.0-cp313-cp313-musllinux_1_1_aarch64.whl", hash = "sha256:569c9473ea14103d10a413d18b4c785ca1e14231253175a89b8893168e76f153", size = 514482, upload-time = "2026-10-12T20:52:53.94Z" },
-    { url = "https://files.pythonhosted.org/packages/d9/79/db1b8c8071579368158c0fc47aaf5d89f8f0137f998a1d47fab3ce2daac5/pendulum-3.3.0-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:3e6f8c40df456f0dcfd85f6310e7f9d9223758403c48f4934d4db9dbc4a73caf", size = 554289, upload-time = "2026-10-12T20:52:55.419Z" },
-    { url = "https://files.pythonhosted.org/packages/ad/c9/2e837e49d18af84f917fff60f21168a9288fa529475ea8b8d74f64c42382/pendulum-3.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:4ac1b10a20f045b5535913e4bc5eb285ab242709a5011fb2cc2dcf6c96fb7a14", size = 256142, upload-time = "2026-10-12T20:52:56.901Z" },
-    { url = "https://files.pythonhosted.org/packages/da/f4/20fa40a2946a986301f2b4d780eaaac05c2fb9302923bb3ffe6af250f7ff/pendulum-3.3.0-cp313-cp313-win_arm64.whl", hash = "sha256:7ee094380aeb31c252d94b36be15a2f82e197ed27c4ce1409c7a1c77734381e2", size = 252555, upload-time = "2026-10-12T20:52:58.339Z" },
-    { url = "https://files.pythonhosted.org/packages/af/d8/2733a7d2533a61bd3f94a996f5ce2a0784d6ed3636dc2d4adb0c1f9fbb0f/pendulum-3.3.0-py3-none-any.whl", hash = "sha256:3a89816a1aaa6f068fe17f30ddd6c5d9a4a8dad62f8612da28c29a8810773fd4", size = 116287, upload-time = "2026-10-12T20:54:10.052Z" },
 ]
 
 [[package]]

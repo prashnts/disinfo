@@ -12,6 +12,7 @@ from discore.layers import div, DivStyle, shapes
 from discore.scroller import HScroller
 from discore.layouts import hstack, vstack, composite_at, place_at, Spacer
 from discore.spriteim import SpriteIcon
+from discore import clock
 from discore.data_structures import FrameState
 from discore.elements import Box
 from disinfo.screens.colors import light_gray
@@ -56,14 +57,14 @@ def astronomical_info(fs: FrameState):
     if state.show_sunrise:
         sunrise_info = hstack([
             sunrise_icon,
-            text(s.sunrise_time.strftime('%H:%M'), style=s_sunset_time),
+            text(s.sunrise_time.astimezone(clock.local()).strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         infos.append(sunrise_info)
 
     if state.show_sunset:
         sunset_info = hstack([
             sunset_icon,
-            text(s.sunset_time.strftime('%H:%M'), style=s_sunset_time),
+            text(s.sunset_time.astimezone(clock.local()).strftime('%H:%M'), style=s_sunset_time),
         ], gap=1, align='center')
         infos.append(sunset_info)
     return hstack([

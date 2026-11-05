@@ -26,7 +26,7 @@ SCHEDULE = [
 ]
 
 def todays_trash_schedule(fs: FrameState):
-    today = fs.now.day_of_week
+    today = fs.now.weekday()
     for s in SCHEDULE:
         yield s['icon'].opacity(0.4 if today not in s['days'] else 1)
 

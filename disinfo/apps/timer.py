@@ -1,15 +1,15 @@
 import json
 import time
-import pendulum
 import math
 import bisect
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from collections import namedtuple, defaultdict
 from redis_om import HashModel, NotFoundError
 
 from disinfo.data_structures import AppBaseModel
+from discore import clock
 from discore.data_structures import FrameState
 from discore.widget import Widget
 from discore.text import text, TextStyle
@@ -53,10 +53,6 @@ class TimerEntry(HashModel, index=True):
 
     class Meta:
         database = om_db
-
-    @property
-    def end(self):
-        return pendulum.instance(self.target, tz='local')
 
     def left(self) -> float:
         '''Seconds to go, below 0 once done.'''
@@ -112,7 +108,7 @@ def timers(tick: float) -> list[TimerEntry]:
     return sorted(out, key=lambda t: -t.created)
 
 def start(duration: int, label: str = 'T', icon: str = 'timer-outline', origin: str = '', repeat: int = 0) -> TimerEntry:
-    t = TimerEntry(target=pendulum.now().add(seconds=duration), duration=duration, label=label, icon=icon,
+    t = TimerEntry(target=clock.now() + timedelta(seconds=duration), duration=duration, label=label, icon=icon,
                    created=time.time(), origin=origin, repeat=repeat).save()
     t.expire(duration + t.tail + 5)
     db.sadd(INDEX, t.pk)
@@ -147,7 +143,7 @@ def cancel(pk: str):
 def shift(t: TimerEntry, secs: int):
     # more (or less) time to go: the duration too, its ring and tail follow
     left = max(5, round(t.left()) + secs)
-    t.target, t.duration, t.muted = pendulum.now().add(seconds=left), max(5, t.duration + secs), 0
+    t.target, t.duration, t.muted = clock.now() + timedelta(seconds=left), max(5, t.duration + secs), 0
     t.save()
     t.expire(left + t.tail + 5)
 
@@ -319,8 +315,8 @@ def timer_view(fs: FrameState):
         return div(mmss, shapes.card, padding=5, margin=1, background='#00000000', border_color='@accent')
 
     def timecard(timer: TimerEntry):
-        next_secs = timer.end.diff(fs.now).in_seconds()
-        sign = '-' if fs.now.diff(timer.end, False).in_seconds() < 0 else ' '
+        left = int(timer.left())
+        next_secs, sign = abs(left), '-' if left < 0 else ' '
         t_mm = next_secs // 60
         t_ss = next_secs % 60
         is_active = timer.pk == state.active_pk
@@ -348,7 +344,7 @@ def timer_view(fs: FrameState):
         rows.append(display(max(state.duration, 0)))
 
 
-    shown = sorted(timers(fs.tick), key=lambda t: t.end)
+    shown = sorted(timers(fs.tick), key=lambda t: t.left())
     for timer in shown:
         rows.append(timecard(timer))
     ring(fs, shown)

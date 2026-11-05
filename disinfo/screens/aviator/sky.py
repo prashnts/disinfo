@@ -16,6 +16,7 @@ from suncalc import get_position
 
 from discore.cairo import to_pil
 from discore.elements import Frame, Target
+from discore.clock import UTC
 from discore.data_structures import FrameState
 from discore.layouts import place_at
 from discore.text import TextStyle, text
@@ -981,7 +982,7 @@ def look(fs: FrameState, st, clear: tuple, w: int) -> tuple[float, float, float]
         _held[fs.config.name] = yaw
         rest = OpenedStateManager().get_state(fs).of('horizon', fs) or horizon
         return yaw + sway / 2 * math.sin(2 * math.pi * time.time() / sway_period), fov, rest
-    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sun = get_position(fs.now.astimezone(UTC), fs.config.longitude, fs.config.latitude)
     sun = (math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude'])
     target, fov = aim(st, fov, sights(st, sun, astro.moon_at(time.time(), fs.config.latitude, fs.config.longitude)[:2]))
     if on := show(sun[1], time.time()):
@@ -1342,7 +1343,7 @@ def view_from(fs: FrameState, clear: tuple | None = None, place: tuple | None = 
     labels, taken = [], []
 
     # The sky: the sun's height, the weather state and the room's light (skylook.py).
-    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sun = get_position(fs.now.astimezone(UTC), fs.config.longitude, fs.config.latitude)
     sb, se = (dsb, dse) if demo else ((math.degrees(sun['azimuth']) + 180) % 360, math.degrees(sun['altitude']))
     off = OpenedStateManager().get_state(fs).of('off', fs)
     # The sky state: every source over home together (skystate.py, the same for all screens).
@@ -1570,7 +1571,7 @@ def trip_now(fs: FrameState, now: float) -> trip.Trip | None:
     at, name = OpenedStateManager().get_state(fs).of('visit', fs)
     if name in trips and now - at < trip.length(t := trip.Trip(name, at, visit_s, 'visit')):
         return t if ready(name) else None
-    sun = get_position(fs.now.in_tz('UTC'), fs.config.longitude, fs.config.latitude)
+    sun = get_position(fs.now.astimezone(UTC), fs.config.longitude, fs.config.latitude)
     night = min(max((-math.degrees(sun['altitude']) - 2) / 8, 0), 1)
     lead = trip.go_s + trip.cross_s + trip.settle_s + 15
     for at in (now - now % 3600, now - now % 3600 + 3600):

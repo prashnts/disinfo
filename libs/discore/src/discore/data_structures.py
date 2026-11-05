@@ -1,20 +1,22 @@
 import os
-import pendulum
 import time
 
 from contextlib import contextmanager
 from contextvars import ContextVar
 from threading import RLock
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Optional, Protocol
 from PIL import Image
 from lru import LRU
+
+from . import clock
 
 
 @dataclass(frozen=True)
 class FrameState:
     tick: float
-    now: pendulum.DateTime
+    now: datetime
 
     # Config of the screen being drawn. Read it only while drawing, never at import.
     config: Any = field(default=None, compare=False)
@@ -22,7 +24,7 @@ class FrameState:
 
     @classmethod
     def create(cls, config: Any = None, **kwargs):
-        return cls(tick=time.time(), now=pendulum.now(tz='local'), config=config, **kwargs)
+        return cls(tick=time.time(), now=clock.now(), config=config, **kwargs)
 
 
 class Drawable(Protocol):

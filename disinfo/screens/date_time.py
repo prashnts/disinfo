@@ -9,6 +9,7 @@ from discore import ease
 from ..utils import mdi
 from ..utils.drawer import draw_loop
 from .colors import gray, gray_lt, amber_red, black, light_gray, light_blue, orange_red, minute_green
+from discore import clock
 from discore.data_structures import FrameState
 from disinfo import fonts
 from discore.elements import Frame
@@ -176,7 +177,7 @@ def _flip_text(fs: FrameState, value: str, text_style: TextStyle, edge: str, bac
 def flip_info(fs: FrameState, seconds=True, align='right'):
     t = fs.now
     bg = "#2D2D2D6E"
-    week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.day_of_week, bg)
+    week_day_bg = {5: '#00883377', 6: '#88003377'}.get(t.weekday(), bg)
     mon_day = hstack([
         _flip_text(fs, t.strftime('%d'), s_date_flip, 'flip-top', together=True, background=bg),
         _flip_text(fs, t.strftime('%b'), s_month, 'flip-top', together=True, background=bg),
@@ -230,7 +231,7 @@ def robot() -> Frame | None:
     return mdi.icon('robot', 11, '#DFD9C9') if _robot[1] else None
 
 def world_clock(fs: FrameState):
-    t = fs.now.in_tz('Asia/Kolkata')
+    t = fs.now.astimezone(clock.zone('Asia/Kolkata'))
     return hstack([
         div(text(
                 'DEL',
@@ -242,7 +243,7 @@ def world_clock(fs: FrameState):
 
 def day_of_the_week(fs: FrameState):
     t = fs.now
-    style = s_day['weekend' if t.day_of_week in (6, 7) else 'weekday']
+    style = s_day['weekend' if t.weekday() >= 5 else 'weekday']
     return div(text_slide_in(fs, t.strftime('%a').upper(), style['text'], 'top'), style['div'])
 
 def date(fs: FrameState):

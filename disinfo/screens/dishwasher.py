@@ -1,9 +1,10 @@
-import pendulum
 
 # from pyquery import PyQuery as pq
 from functools import cache
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from discore import clock
 
 from ..utils.drawer import draw_loop
 from .colors import gray, amber_red, minute_green
@@ -37,14 +38,14 @@ class DishwasherStateManager(PubSubStateManager[DishwasherState]):
 
     def process_message(self, channel: str, data: PubSubMessage):
         if data.action == 'trigger':
-            self.state.triggered_at = pendulum.now()
+            self.state.triggered_at = clock.now()
 
             if not self.state.triggers:
                 self.state.triggers = []
             self.state.triggers.append(self.state.triggered_at)
             if len(self.state.triggers) == 4:
-                now = pendulum.now()
-                trigger_secs = [(now - t).seconds for t in self.state.triggers]
+                now = clock.now()
+                trigger_secs = [(now - t).total_seconds() for t in self.state.triggers]
                 self.state.triggers = []
                 if sum(trigger_secs) < 5:
                     self.state.clean = not self.state.clean
@@ -82,10 +83,10 @@ def timer_full_cycle(now):
     # The dishwasher should finish by 07:30.
     # Cycle time is about 3h30m, so it should start at 04:00.
     # now = now.replace(hour=23, minute=50)
-    next_target = now.replace(hour=4, minute=0, second=0)
+    next_target = now.replace(hour=4, minute=0, second=0, microsecond=0)
     if now > next_target:
-        next_target = next_target.add(days=1)
-    return next_target.diff(now).in_hours()
+        next_target += timedelta(days=1)
+    return int((next_target - now).total_seconds() // 3600)
 
 def is_visible(fs: FrameState):
     state = DishwasherStateManager().get_state(fs)

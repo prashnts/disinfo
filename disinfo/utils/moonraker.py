@@ -1,8 +1,10 @@
 import json
 import threading
-import pendulum
 import websocket
 
+from datetime import datetime
+
+from discore import clock
 from discore.data_structures import UniqInstance
 from disinfo import xbus
 
@@ -30,7 +32,8 @@ class MoonrakerWS(metaclass=UniqInstance):
     def __init__(self, url: str, api_key: str | None = None):
         self.url = url
         self.status: dict[str, dict] = {}
-        self.changed_at: dict[tuple[str, str], pendulum.DateTime] = {}
+        self.changed_at: dict[tuple[str, str], datetime] = {}
+        self.active_at: datetime | None = None     # the last push: Klipper sends only what changed
         self.live = False
         self.klippy = True
         self.on_change = lambda: None      # the data service shares it
@@ -57,7 +60,9 @@ class MoonrakerWS(metaclass=UniqInstance):
         before = {k: self.status.get(k[0], {}).get(k[1]) for k in watched}
         for name, fields in status.items():
             self.status.setdefault(name, {}).update(fields)
-        now = pendulum.now('local')
+        now = clock.now()
+        if not initial and status:
+            self.active_at = now
         for k in watched:
             # The first status says nothing about when: left to the caller's fallback.
             if not initial and self.status.get(k[0], {}).get(k[1]) != before[k]:
@@ -79,7 +84,7 @@ class MoonrakerWS(metaclass=UniqInstance):
             case {'method': 'notify_klippy_disconnected'}:
                 # Klipper's host process is gone, the status is stale until it's ready again.
                 self.klippy = False
-                self.changed_at[('webhooks', 'state')] = pendulum.now('local')
+                self.changed_at[('webhooks', 'state')] = self.active_at = clock.now()
         self.on_change()
 
     def get(self, name: str, field: str, default=None):
@@ -87,6 +92,7 @@ class MoonrakerWS(metaclass=UniqInstance):
 
     def doc(self) -> str:
         return json.dumps({'status': self.status, 'live': self.live, 'klippy': self.klippy,
+                           'active_at': self.active_at.isoformat() if self.active_at else None,
                            'changed_at': [[*k, t.isoformat()] for k, t in self.changed_at.items()]})
 
 
@@ -96,7 +102,8 @@ class MoonrakerDoc:
     def __init__(self, raw: str):
         d = json.loads(raw)
         self.status, self.live, self.klippy = d['status'], d['live'], d['klippy']
-        self.changed_at = {(a, b): pendulum.parse(t) for a, b, t in d['changed_at']}
+        self.changed_at = {(a, b): clock.parse(t) for a, b, t in d['changed_at']}
+        self.active_at = clock.parse(d['active_at']) if d.get('active_at') else None
 
     get = MoonrakerWS.get
 
