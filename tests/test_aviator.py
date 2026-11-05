@@ -524,7 +524,7 @@ def test_skyline():
     assert ms[0] > -skyline.seen_tol and (dx != 0 or dz > 0)
 
 
-def test_skyline_last_meanwhile(monkeypatch):
+def test_skyline_last_meanwhile(monkeypatch, tmp_path):
     import json
     from disinfo.screens.aviator import skyline
     # A new version not built yet: the newest older one is shown meanwhile, the new one built.
@@ -536,6 +536,8 @@ def test_skyline_last_meanwhile(monkeypatch):
     monkeypatch.setattr(skyline, 'ask', asked.append)
     monkeypatch.setattr(skyline, '_loaded', {})
     monkeypatch.setattr(skyline, '_checked', [0.0])
+    (tmp_path / 'landscape.zip').touch()
+    monkeypatch.setattr(skyline, 'landscape_path', tmp_path / 'landscape.zip')
     sk = skyline.get(100)
     assert sk.eye[2] == 60 and sk.t is not None and asked == ['di.skyline.4.cc']
     store[b'di.skyline.4.cc'] = json.dumps({'eye': [0, 0, 70], 'start': 0, 'p': [[0]], 'seen': []})

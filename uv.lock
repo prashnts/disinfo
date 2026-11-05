@@ -776,11 +776,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cairosvg", specifier = ">=2.7.1" },
+    { name = "cairosvg", specifier = ">=2.9.1" },
     { name = "colour", specifier = ">=0.1.5" },
     { name = "lru-dict", specifier = ">=1.4.1" },
     { name = "numpy" },
-    { name = "pendulum", specifier = ">=2.1.2" },
+    { name = "pendulum", specifier = ">=3.3.0" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "requests", specifier = ">=2.25.1" },
 ]
