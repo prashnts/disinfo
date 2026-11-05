@@ -55,10 +55,7 @@ class MusicStateManager(PubSubStateManager[MusicState]):
         state['media_artist'] = s['attributes'].get('media_artist')
 
         state['is_spotify'] = 'Spotify' in s['attributes'].get('source', '')
-        state['album_art'] = get_album_art(
-            s['attributes'].get('entity_picture'),
-            media_album=state['media_album'],
-            is_spotify=state['is_spotify'])
+        state['album_art'] = s['attributes'].get('entity_picture') or ''
 
         timeout_delay = 40 if state['playing'] else 2
 

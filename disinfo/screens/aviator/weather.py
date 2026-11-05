@@ -71,8 +71,9 @@ def png_of(grey) -> bytes:
 def store(at: float, grey):
     import base64
     from disinfo.redis import db, publish
+    from disinfo.xbus import put
     doc = {'at': at, 'half_km': half_km, 'px_km': px_km, 'scale': scale, 'png': base64.b64encode(png_of(grey)).decode()}
-    db.set(RADAR_KEY, json.dumps(doc), ex=900)
+    put(RADAR_KEY, json.dumps(doc), ex=900)
     publish('weather', 'radar')
 
 def radar_job():
@@ -102,21 +103,12 @@ rain_colors = {
     True: [(0, (0.10, 0.35, 0.90)), (40, (0.35, 0.15, 0.85)), (128, (0.80, 0.10, 0.55))],
 }
 rain_alpha = (0.12, 0.60)       # from a drizzle to 16 mm/h
-read_every = 20                 # s between two looks at redis
 
-_rain = {'read': 0.0, 'doc': None}
 _rain_surfaces = {}             # (at, light) -> (surface, the pixels it points at)
 
 def rain_doc() -> dict | None:
-    now = time.monotonic()
-    if now - _rain['read'] > read_every:
-        from disinfo.redis import db
-        _rain['read'] = now
-        try:
-            _rain['doc'] = json.loads(db.get(RADAR_KEY) or 'null')
-        except ValueError:
-            _rain['doc'] = None
-    return _rain['doc']
+    from disinfo.xbus import Docs
+    return Docs().get(RADAR_KEY)
 
 def rain_surface(doc: dict, light: bool) -> cairo.ImageSurface:
     key = doc['at'], light
@@ -184,7 +176,8 @@ def fetch_wind() -> dict:
 
 def wind_job():
     from disinfo.redis import db, publish
-    db.set(WIND_KEY, json.dumps(fetch_wind()), ex=3 * 3600)
+    from disinfo.xbus import put
+    put(WIND_KEY, json.dumps(fetch_wind()), ex=3 * 3600)
     publish('weather', 'wind')
 
 def wind_task():
@@ -196,18 +189,10 @@ def wind_task():
     return False
 
 
-_wind = {'read': 0.0, 'doc': None}
 
 def wind_doc() -> dict | None:
-    now = time.monotonic()
-    if now - _wind['read'] > read_every:
-        from disinfo.redis import db
-        _wind['read'] = now
-        try:
-            _wind['doc'] = json.loads(db.get(WIND_KEY) or 'null')
-        except ValueError:
-            _wind['doc'] = None
-    return _wind['doc']
+    from disinfo.xbus import Docs
+    return Docs().get(WIND_KEY)
 
 def wind_at(doc: dict, x: float, y: float) -> tuple[float, float] | None:
     '''(east, north) m/s at x, y km from home, bilinear in the grid; None outside it.'''
@@ -294,11 +279,12 @@ def sat_job():
     import base64
     from PIL import Image
     from disinfo.redis import db, publish
+    from disinfo.xbus import put
     im = Image.open(io.BytesIO(fetch_sat())).convert('L')
     b = io.BytesIO()
     im.save(b, 'PNG', optimize=True)
     doc = {'at': time.time(), 'half_km': half_km, 'px_km': px_km, 'png': base64.b64encode(b.getvalue()).decode()}
-    db.set(SAT_KEY, json.dumps(doc), ex=3600)
+    put(SAT_KEY, json.dumps(doc), ex=3600)
     publish('weather', 'sat')
 
 def sat_task():
@@ -310,18 +296,10 @@ def sat_task():
     return False
 
 
-_sat = {'read': 0.0, 'doc': None}
 
 def sat_doc() -> dict | None:
-    now = time.monotonic()
-    if now - _sat['read'] > read_every:
-        from disinfo.redis import db
-        _sat['read'] = now
-        try:
-            _sat['doc'] = json.loads(db.get(SAT_KEY) or 'null')
-        except ValueError:
-            _sat['doc'] = None
-    return _sat['doc']
+    from disinfo.xbus import Docs
+    return Docs().get(SAT_KEY)
 
 sat_color = {False: (0.80, 0.86, 0.95), True: (1.0, 1.0, 1.0)}
 sat_alpha = 0.40        # the densest clouds

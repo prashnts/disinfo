@@ -157,10 +157,12 @@ def check(db, now: float, obs_log: list) -> int:
 
 def job():
     from disinfo.redis import db, publish
+    from disinfo.xbus import put, touched
     from . import stations
     now = time.time()
     obs = stations.doc() or {}
     check(db, now, [json.loads(r) for r in db.lrange(stations.LOG_KEY, 0, 30 * 24 * 10)])
+    touched(SKILL_KEY)
     run = fetch()
     doc = blend(run, json.loads(db.get(SKILL_KEY) or '{}'))
     # Ours is scored with the others: the blend as the card would have used it, pulled to the stations.
@@ -168,7 +170,7 @@ def job():
     run['m']['blend'] = {v: a[v] for v in checked}
     db.lpush(RUNS_KEY, json.dumps({'at': run['at'], 'time': run['time'],
                                    'm': {k: {v: d[v] for v in checked if d.get(v)} for k, d in run['m'].items()}}))
-    db.set(KEY, json.dumps(doc), ex=6 * 3600)
+    put(KEY, json.dumps(doc), ex=6 * 3600)
     publish('weather', 'blend')
     return True
 

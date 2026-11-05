@@ -225,15 +225,14 @@ def blend_obs(d: dict | None, now: float):
             q[name] = x, forecast.error(skill, 'blend', name if name in forecast.checked else 'temp', (now - d['at']) / 3600)[1]
     return d['at'], q, {}
 
-def external_obs(db, now: float) -> dict:
-    # Whatever else writes di.sky.obs.<source> (the camera): {at, q: {name: [value, sigma]}}.
+def external_obs(now: float) -> dict:
+    # Whatever else writes di.sky.obs.<source> with observe() (the camera): {at, q: {name: [value, sigma]}}.
+    from disinfo.xbus import Docs
     out = {}
-    for key in db.scan_iter(f'{OBS_PREFIX}*'):
-        key = key.decode() if isinstance(key, bytes) else key
+    for key, d in Docs().prefix(OBS_PREFIX).items():
         try:
-            d = json.loads(db.get(key) or 'null')
             out[key[len(OBS_PREFIX):]] = d['at'], {k: tuple(x) for k, x in d['q'].items() if k in quantities}, d.get('notes') or {}
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, KeyError, AttributeError):
             continue
     return out
 
@@ -419,11 +418,12 @@ def gather(db, now: float) -> tuple[dict, dict | None]:
                     ('blend', safe(blend_obs, json.loads(db.get(forecast.KEY) or 'null'), now))):
         if r:
             sources[name] = r
-    sources.update(safe(external_obs, db, now) or {})
+    sources.update(safe(external_obs, now) or {})
     return sources, sky
 
 def task():
     from disinfo.redis import db, publish
+    from disinfo.xbus import put
     now = time.time()
     sources, sky = gather(db, now)
     try:
@@ -443,14 +443,14 @@ def task():
     db.lpush(LOG_KEY, json.dumps([round(now), g('sky.cover'), g('sky.deck'), g('sky.high'), g('sky.sun'), g('sky.dark'),
                                   g('precip.rate'), (out['sky']['cover'] or {}).get('conf')]))
     db.ltrim(LOG_KEY, 0, log_days * 1440)
-    db.set(KEY, json.dumps(out), ex=15 * 60)
+    put(KEY, json.dumps(out), ex=15 * 60)
     publish('weather', 'sky')
     return True
 
 def observe(source: str, q: dict, ttl: float = 600, **notes):
     '''For another source in this code base: write its observations ({name: (value, sigma)}) for the fusion.'''
-    from disinfo.redis import db
-    db.set(f'{OBS_PREFIX}{source}', json.dumps({'at': time.time(), 'q': q, 'notes': notes}), ex=round(ttl))
+    from disinfo.xbus import put
+    put(f'{OBS_PREFIX}{source}', json.dumps({'at': time.time(), 'q': q, 'notes': notes}), ex=round(ttl))
 
 
 def doc() -> dict | None:

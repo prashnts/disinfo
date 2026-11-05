@@ -62,9 +62,9 @@ def fetch_sky() -> dict:
                                                      'shortwave_radiation', 'direct_radiation')}, 'hours': j['hourly']}
 
 def sky_task():
-    from disinfo.redis import db
+    from disinfo.xbus import put
     try:
-        db.set(SKY_KEY, json.dumps(fetch_sky()), ex=3 * 3600)
+        put(SKY_KEY, json.dumps(fetch_sky()), ex=3 * 3600)
         return True
     except Exception as e:
         print(f'daylight sky: {e!r}')
@@ -264,6 +264,7 @@ _refreshing = threading.Event()
 
 def task():
     from disinfo.redis import db, publish
+    from disinfo.xbus import put
     from disinfo.utils.hass import get_entity
     now = time.time()
     def ha(fn, *args):
@@ -292,7 +293,7 @@ def task():
         _refreshing.set()
         threading.Thread(target=run, daemon=True).start()
     out = estimate([json.loads(r) for r in db.lrange(LOG_KEY, 0, 30)], envs, json.loads(db.get(SKY_KEY) or 'null'), now)
-    db.set(KEY, json.dumps(out), ex=15 * 60)
+    put(KEY, json.dumps(out), ex=15 * 60)
     publish('weather', 'daylight')
     if app_config.devmode:
         return True
@@ -305,18 +306,10 @@ def task():
     return True
 
 
-_read = {}             # key -> (when, doc)
-
 def read(key: str) -> dict | None:
-    # Read from redis every 20 s at most: renderers call it each frame.
-    now = time.monotonic()
-    if now - _read.get(key, (-99, None))[0] > 20:
-        from disinfo.redis import db
-        try:
-            _read[key] = now, json.loads(db.get(key) or 'null')
-        except Exception:
-            _read[key] = now, None
-    return _read[key][1]
+    # Renderers call it each frame: read again only once it changed.
+    from disinfo.xbus import Docs
+    return Docs().get(key)
 
 def doc() -> dict | None:
     '''The latest estimate; None if it's older than 10 minutes (the data service down).'''

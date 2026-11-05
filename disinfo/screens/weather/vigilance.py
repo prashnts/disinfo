@@ -7,11 +7,11 @@ import pendulum
 import requests
 
 from disinfo.config import app_config
-from disinfo.redis import db, publish
+from disinfo.redis import publish
+from disinfo.xbus import Docs, put
 
 URL = 'https://public-api.meteofrance.fr/public/DPVigilance/v1/cartevigilance/encours'
 KEY = 'di.weather.vigil'
-read_every = 60
 
 PHENOMENA = {
     '1': 'Vent', '2': 'Pluie', '3': 'Orages', '4': 'Crues', '5': 'Neige/verglas',
@@ -45,7 +45,7 @@ def job():
     if not key:
         return
     doc = parse(fetch(key.get_secret_value()), app_config.vigilance_domain)
-    db.set(KEY, json.dumps(doc), ex=3 * 3600)
+    put(KEY, json.dumps(doc), ex=3 * 3600)
     publish('weather', 'vigil')
 
 def task():
@@ -57,17 +57,8 @@ def task():
     return False
 
 
-_cache = {'read': 0.0, 'doc': None}
-
 def doc() -> dict | None:
-    now = time.monotonic()
-    if now - _cache['read'] > read_every:
-        _cache['read'] = now
-        try:
-            _cache['doc'] = json.loads(db.get(KEY) or 'null')
-        except ValueError:
-            _cache['doc'] = None
-    return _cache['doc']
+    return Docs().get(KEY)
 
 def lines(now: float, d: dict | None = None) -> list[tuple[int, str]]:
     '''[(color, text)], the worst first (the colour is the level, the card draws it): the worst colour still to come (or now) for each phenomenon and when.'''
@@ -102,7 +93,7 @@ def fetch_forecast() -> list:
     return [[t, p, c] for t, p, c in zip(h['time'], h['precipitation'], h['temperature_2m']) if p is not None and c is not None]
 
 def forecast_job():
-    db.set(FORECAST_KEY, json.dumps({'at': time.time(), 'hours': fetch_forecast()}), ex=3 * 3600)
+    put(FORECAST_KEY, json.dumps({'at': time.time(), 'hours': fetch_forecast()}), ex=3 * 3600)
 
 def forecast_task():
     try:
@@ -113,17 +104,8 @@ def forecast_task():
     return False
 
 
-_fcache = {'read': 0.0, 'doc': None}
-
 def forecast_doc() -> dict | None:
-    now = time.monotonic()
-    if now - _fcache['read'] > read_every:
-        _fcache['read'] = now
-        try:
-            _fcache['doc'] = json.loads(db.get(FORECAST_KEY) or 'null')
-        except ValueError:
-            _fcache['doc'] = None
-    return _fcache['doc']
+    return Docs().get(FORECAST_KEY)
 
 feels_c = 3            # the feel is worth a line this far from the air's
 gust_ms = 14            # 50 km/h

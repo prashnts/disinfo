@@ -11,6 +11,7 @@ from .app_states import PubSubManager, PubSubMessage
 from . import idfm, shown
 from ..screens.aviator.tasks import adsbx_task
 from ..screens.aviator import lookup
+from ..utils import imops
 from ..screens.weather import vigilance, stations, forecast
 from ..screens.aviator.weather import radar_task, wind_task, sat_task
 from ..screens.aviator import daylight, skystate, lightning
@@ -100,6 +101,7 @@ def main():
     moonraker.serve(key.get_secret_value() if key else None)
     mjpeg.serve()
     lookup.serve()     # the planes' routes and photos
+    imops.serve()     # images from urls, for the renderers
     if app_config.remotes_port:     # the standalone remotes: this process has the HA websocket they act through
         try:
             from disinfo import remotes

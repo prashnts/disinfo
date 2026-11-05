@@ -1,24 +1,21 @@
 '''Route and photo of the planes with an open card, cached in redis.
 
-The data service fetches them (serve()): a renderer asks over xbus and draws without them meanwhile.
+The data service fetches them (serve()): a renderer asks over xbus and draws without them meanwhile. The photos
+themselves: utils/imops.
 '''
-import io
 import json
 import time
 import queue
-import hashlib
 import threading
 import requests
 
-from PIL import Image
-
 from discore.elements import Frame
 from disinfo.redis import db
+from disinfo.utils import imops
+from disinfo.utils.imops import headers
 from disinfo.xbus import Bus
 
 
-# planespotters asks for a contact in the user agent.
-headers = {'User-Agent': 'disinfo (+https://github.com/prashnts/disinfo)'}
 WANT = 'x.lookup.want'      # JSON: the key to fill, its ttl, what to fetch
 thumb_ttl = 3600            # s: the photos themselves, only while their planes are around
 _read = {}          # key -> (when, value): redis once in a while, not each frame; a miss again in 2 s
@@ -77,26 +74,8 @@ def route(p: dict) -> dict | None:
 def photo(p: dict) -> dict | None:
     return cached(f'di.aviator.photo.{p["hex"]}', 7 * 24 * 3600, kind='photo', hex=p['hex'], reg=p.get('r'), type=p.get('t'))
 
-def thumb_key(src: str) -> str:
-    return f'di.aviator.thumb.{hashlib.sha1(src.encode()).hexdigest()[:16]}'
-
-_warm = {}      # (src, size) -> the frame once it's loaded
-
 def photo_frame(src: str, size: tuple[int, int]) -> Frame | None:
-    key = (src, size)
-    if (f := _warm.get(key)) is not None:
-        return f
-    if not (raw := db.get(thumb_key(src))):
-        ask(thumb_key(src), thumb_ttl, kind='thumb', src=src)
-        return None
-    if len(_warm) > 32:
-        _warm.clear()
-    try:
-        img = Image.open(io.BytesIO(raw))
-        f = _warm[key] = Frame(img, ('img_from_url', src, size)).resize(size, ratio_fn=max)
-    except OSError:
-        return None
-    return f
+    return imops.frame(src, size, ttl=thumb_ttl)
 
 
 def fetch(what: dict) -> bytes | str:
@@ -105,10 +84,6 @@ def fetch(what: dict) -> bytes | str:
             return json.dumps(fetch_route(what['flight']))
         case 'photo':
             return json.dumps(fetch_photo(what['hex'], what.get('reg'), what.get('type')))
-        case 'thumb':
-            r = requests.get(what['src'], headers=headers, timeout=5)
-            r.raise_for_status()
-            return r.content
 
 def serve():
     '''In the data service: one at a time, each key once while it's being fetched.'''
@@ -127,8 +102,7 @@ def serve():
                 db.set(what['key'], fetch(what), ex=what['ttl'])
             except Exception as e:
                 print(f'[aviator] {what["key"]}: {e}')
-                if what['kind'] != 'thumb':
-                    db.set(what['key'], 'null', ex=300)    # retried in a while
+                db.set(what['key'], 'null', ex=300)    # retried in a while
             finally:
                 pending.discard(what['key'])
 

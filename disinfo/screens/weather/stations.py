@@ -139,6 +139,7 @@ def ha_temp() -> float | None:
 
 def job():
     from disinfo.redis import db, publish
+    from disinfo.xbus import put
     key = app_config.meteo_france_api_key__observations
     now = time.time()
     prev = json.loads(db.get(KEY) or 'null') or {}
@@ -164,7 +165,7 @@ def job():
     db.lpush(LOG_KEY, json.dumps([round(now), g('t'), g('td'), g('pmer'), g('ms'), g('rr'),
                                   {e: ha_float(e) for e in app_config.weather_indoor_log}, ha_temp()]))
     db.ltrim(LOG_KEY, 0, log_days * 240)
-    db.set(KEY, json.dumps({'at': now, 'stations': st, 'metar': mt, 'indoor': indoor, 'home': home}), ex=3 * 3600)
+    put(KEY, json.dumps({'at': now, 'stations': st, 'metar': mt, 'indoor': indoor, 'home': home}), ex=3 * 3600)
     publish('weather', 'obs')
     return any(now - s['at'] < 1800 for s in st.values())
 

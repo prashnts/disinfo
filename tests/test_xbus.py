@@ -61,3 +61,29 @@ def test_calls_reach_the_owner(shared):
     assert xbus.View(name, str).call(service='light.toggle', target={'entity_id': 'light.x'})
     assert until(lambda: calls) == [{'service': 'light.toggle', 'target': {'entity_id': 'light.x'}}]
     assert not xbus.View(f'{name}-nobody', str).call(x=1)
+
+
+def test_docs_read_once_then_on_put():
+    k = f'di.t.{uuid.uuid4().hex[:8]}'
+    d = xbus.Docs()
+    xbus.put(k, '{"a": 1}', ex=60)
+    time.sleep(0.2)                                 # its own message back: read again once
+    assert d.get(k) == {'a': 1}
+    db.set(k, '{"a": 2}')                           # not through put: still the one read
+    assert d.get(k) == {'a': 1}
+    xbus.put(k, '{"a": 3}', ex=60)                  # here at once, without the message
+    assert d.get(k) == {'a': 3}
+    xbus.put(f'{k}.x', 'x', ex=60)
+    assert d.prefix(f'{k}.', str) == {f'{k}.x': 'x'}
+    xbus.put(f'{k}.y', 'y', ex=60)
+    assert d.prefix(f'{k}.', str) == {f'{k}.x': 'x', f'{k}.y': 'y'}
+    xbus.put(f'{k}.x', None)
+    assert d.prefix(f'{k}.', str) == {f'{k}.y': 'y'}
+    db.delete(k, f'{k}.y')
+
+def test_docs_expire_with_their_key():
+    k = f'di.t.{uuid.uuid4().hex[:8]}'
+    xbus.put(k, '1', ex=1)
+    assert xbus.Docs().get(k) == 1
+    time.sleep(1.1)
+    assert xbus.Docs().get(k) is None

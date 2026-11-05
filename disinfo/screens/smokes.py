@@ -15,7 +15,7 @@ from PIL import Image
 
 from disinfo import fonts
 from disinfo.config import app_config
-from disinfo.redis import db
+from disinfo.xbus import put
 from discore.elements import Frame
 from discore.layers import div, DivStyle
 from discore.layouts import hstack
@@ -76,7 +76,7 @@ def task():
     now = time.time()
     midnight = dt.datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
     ss = sessions(history(app_config.smokes_pm25, midnight))
-    db.set(KEY, json.dumps({'at': now, 'day': midnight.date().isoformat(), 'count': count(ss, now), 'sessions': ss}), ex=86400)
+    put(KEY, json.dumps({'at': now, 'day': midnight.date().isoformat(), 'count': count(ss, now), 'sessions': ss}), ex=86400)
 
 def doc() -> dict | None:
     '''Today's; None if it's stale (the data service down) or yesterday's.'''

@@ -5,12 +5,14 @@
 - Shared / View: one process owns keyed data (HA's states), the others read the keys they use. A View asks for a key
   (or a prefix) the first time, reads it from the hash, then follows its changes. Only wanted keys are mirrored.
 - Calls: fire and forget, from a View to the owner's handler.
+- Docs: plain keys written with put() (any process), read once and again only when changed: no polling.
 
 Redis, for a Shared named n: the hash `x.n` (key -> value), the set `x.n.wanted` (keys, prefixes end in '*'), the
 channels `x.n.changed` ('key\\n' + value; nothing after the newline: it's gone), `x.n.want`, `x.n.call` (JSON).
 '''
 import os
 import json
+import math
 import time
 import threading
 
@@ -162,3 +164,70 @@ class View:
     def call(self, **payload) -> bool:
         '''False: no owner listening.'''
         return bool(db.publish(f'x.{self.name}.call', json.dumps(payload)))
+
+
+DOCS = 'x.docs'         # a key put() wrote
+docs_max_age = 600      # s: read again anyway, a missed message (Redis restarted) can't keep it stale for long
+
+
+def touched(*keys: str):
+    '''These keys changed (written some other way): the Docs readers read them again.'''
+    Docs().stale(keys)          # here at once, the message comes back later
+    for k in keys:
+        db.publish(DOCS, k)
+
+def put(key: str, value: str | bytes | None, ex: int | None = None):
+    '''A doc: set (None: deleted), the readers told.'''
+    if value is None:
+        db.delete(key)
+    else:
+        db.set(key, value, ex=ex)
+    touched(key)
+
+
+class Docs(metaclass=UniqInstance):
+    '''Keys written with put(): get() reads one once, then again once it changed or expired.'''
+
+    def __init__(self):
+        self._pid = os.getpid()
+        self.values: dict[str, tuple] = {}          # key -> (gen, until, value)
+        self.gens: dict[str, int] = {}              # key -> times it changed
+        self.prefixes: dict[str, set[str]] = {}     # prefix -> its keys
+        Bus().on(DOCS, lambda channel, data: self.stale([data.decode()]))
+
+    def stale(self, keys):
+        for k in keys:
+            self.gens[k] = self.gens.get(k, 0) + 1
+            for p, ks in self.prefixes.items():
+                if k.startswith(p):
+                    ks.add(k)
+
+    def get(self, key: str, parse: Callable[[str], Any] = json.loads) -> Any:
+        if self._pid != os.getpid():
+            self.__init__()
+        gen, now = self.gens.get(key, 0), time.time()
+        if (v := self.values.get(key)) and v[0] == gen and now < v[1]:
+            return v[2]
+        p = db.pipeline(transaction=False)
+        p.get(key)
+        p.pttl(key)
+        raw, ttl = p.execute()
+        try:
+            value = None if raw is None else parse(raw.decode())
+        except ValueError:
+            value = None
+        # The generation from before the read: a change meanwhile reads it again.
+        self.values[key] = gen, now + min(ttl / 1000 if ttl > 0 else math.inf, docs_max_age), value
+        return value
+
+    def prefix(self, prefix: str, parse: Callable[[str], Any] = json.loads) -> dict[str, Any]:
+        '''key -> value, the keys under prefix.'''
+        if prefix not in self.prefixes:
+            self.prefixes[prefix] = {k.decode() for k in db.scan_iter(prefix + '*')}
+        out = {}
+        for k in list(self.prefixes[prefix]):
+            if (v := self.get(k, parse)) is None:
+                self.prefixes[prefix].discard(k)
+            else:
+                out[k] = v
+        return out

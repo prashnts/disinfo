@@ -18,7 +18,6 @@ from discore.layers import div, DivStyle, shapes
 from discore.data_structures import FrameState
 from disinfo import fonts
 
-_note = {}      # screen -> (looked at, value)
 s_line = TextStyle(font=fonts.tamzen__rs, color='#DFD9C9')
 s_count = TextStyle(font=fonts.tamzen__rs, color='#FFB000')
 
@@ -29,11 +28,8 @@ def key(screen: str) -> str:
 
 def put(screen: str, value: str | None, seconds: int = 600):
     '''screen 'all': every screen, under their own notes. None clears it.'''
-    from disinfo.redis import db
-    if value:
-        db.set(key(screen), value, ex=max(int(seconds), 1))
-    else:
-        db.delete(key(screen))
+    from disinfo.xbus import put
+    put(key(screen), value or None, ex=max(int(seconds), 1))
 
 
 def steps(items: list, start: float = 0, title: str = 'starts in', done: str = 'done, thanks!') -> tuple[str, int]:
@@ -44,26 +40,16 @@ def steps(items: list, start: float = 0, title: str = 'starts in', done: str = '
 
 def notes() -> dict:
     from disinfo.redis import db
-    out = {}
-    for k in db.scan_iter('di.note.*'):
-        k = k.decode() if isinstance(k, bytes) else k
-        v = db.get(k)
-        out[k.removeprefix('di.note.')] = {'value': v.decode() if isinstance(v, bytes) else v, 'ttl': db.ttl(k)}
-    return out
+    from disinfo.xbus import Docs
+    return {k.removeprefix('di.note.'): {'value': v, 'ttl': db.ttl(k)} for k, v in Docs().prefix('di.note.', str).items()}
 
 
 def _read(name: str) -> str | None:
-    now = time.monotonic()
-    seen, value = _note.get(name, (-99, None))
-    if now - seen > 2:
-        try:
-            from disinfo.redis import db
-            value = db.get(key(name)) or db.get(key('all'))
-            value = value.decode() if isinstance(value, bytes) else value
-        except Exception:
-            value = None
-        _note[name] = now, value
-    return value
+    from disinfo.xbus import Docs
+    try:
+        return Docs().get(key(name), str) or Docs().get(key('all'), str)
+    except Exception:
+        return None
 
 
 def _lines(value: str) -> tuple[tuple[str, ...], str | None]:
